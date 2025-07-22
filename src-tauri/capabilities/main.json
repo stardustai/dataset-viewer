@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability",
+  "identifier": "main-capability",
+  "description": "Capability for the main window with HTTP access, file system and dialog permissions",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "http:default",
+    "fs:default",
+    "dialog:default",
+    {
+      "identifier": "http:allow-fetch",
+      "allow": [
+        {
+          "url": "http://**"
+        },
+        {
+          "url": "https://**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "dialog:allow-save",
+      "allow": []
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "name": "webdav-viewer",
+  "displayName": "WebDAV Viewer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:debug": "tauri build --debug",
+    "build:all": "pnpm build && pnpm tauri:build",
+    "package:debug": "pnpm tauri:build:debug",
+    "package:macos": "pnpm tauri:build",
+    "package:windows": "pnpm tauri:build --target x86_64-pc-windows-gnu",
+    "package:all": "pnpm package:macos && pnpm package:windows",
+    "clean": "rm -rf dist src-tauri/target node_modules/.vite",
+    "clean:build": "rm -rf src-tauri/target/release src-tauri/target/debug",
+    "lint": "tsc --noEmit",
+    "postinstall": "echo '✅ Dependencies installed successfully!'"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.13.12",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-fs": "^2.4.1",
+    "@tauri-apps/plugin-http": "^2.5.1",
+    "@tauri-apps/plugin-opener": "^2",
+    "i18next": "^25.3.2",
+    "lucide-react": "^0.525.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-i18next": "^15.6.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^24.0.15",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.15",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3"
+  }
+}

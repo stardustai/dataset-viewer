@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "WebDAV Viewer",
+  "version": "0.1.0",
+  "identifier": "ai.stardust.webdav-viewer",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "WebDAV Viewer 🐝",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": ["main-capability"]
+    },
+    "withGlobalTauri": false
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Stardust AI",
+    "copyright": "Copyright © 2025 Stardust AI. All rights reserved.",
+    "category": "Productivity",
+    "shortDescription": "Modern WebDAV file browser with large file support",
+    "longDescription": "A powerful WebDAV browser that supports viewing and searching large text files with efficient memory management and modern UI."
+  }
+}

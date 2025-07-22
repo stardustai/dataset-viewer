@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* HTML 和 body 背景色适配 */
+html {
+  @apply bg-white dark:bg-gray-800;
+}
+
+body {
+  @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+}
+
+/* 搜索结果高亮动画 */
+@keyframes searchHighlight {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.3);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.1);
+  }
+}
+
+/* 当前活跃搜索结果的高亮样式 */
+.search-highlight-active {
+  animation: searchHighlight 0.6s ease-in-out, pulseGlow 2s ease-in-out infinite;
+  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  border: 1px solid #f97316;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3),
+              0 0 0 2px rgba(249, 115, 22, 0.1);
+  position: relative;
+  z-index: 10;
+}
+
+/* 暗色模式下的当前活跃搜索结果样式 */
+.dark .search-highlight-active {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+  border: 1px solid #f97316;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.5),
+              0 0 0 2px rgba(249, 115, 22, 0.2);
+  color: #fff;
+}
+
+.search-highlight-active::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #f97316, #ea580c, #dc2626, #ea580c, #f97316);
+  background-size: 400% 400%;
+  border-radius: inherit;
+  z-index: -1;
+  animation: gradientShift 3s ease infinite;
+  opacity: 0.3;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 普通搜索结果的高亮样式 */
+.search-highlight {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  transition: all 0.2s ease;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.search-highlight:hover {
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+/* 暗色模式下的普通搜索结果样式 */
+.dark .search-highlight {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fff;
+}
+
+.dark .search-highlight:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: rgba(245, 158, 11, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+/* 文本查看器优化 */
+.virtualized-text-viewer {
+  font-feature-settings: "liga" 0, "kern" 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* 行号样式优化 */
+.line-number {
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
