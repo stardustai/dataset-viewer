@@ -295,6 +295,7 @@
                 'platform.macos': 'macOS',
                 'platform.macos_desc': 'Apple Silicon 原生优化',
                 'platform.macos_chip': '✓ M1/M2/M3/M4 芯片',
+                'platform.macos_unsigned': '未签名应用',
                 'platform.windows': 'Windows',
                 'platform.windows_desc': 'MSI 安装包',
                 'platform.windows_version': '✓ Windows 10/11 64位',
@@ -329,6 +330,7 @@
                 'platform.macos': 'macOS',
                 'platform.macos_desc': 'Apple Silicon Native Optimized',
                 'platform.macos_chip': '✓ M1/M2/M3/M4 Chips',
+                'platform.macos_unsigned': 'Unsigned App',
                 'platform.windows': 'Windows',
                 'platform.windows_desc': 'MSI Installer',
                 'platform.windows_version': '✓ Windows 10/11 64-bit',
@@ -489,6 +491,8 @@
             
             if (config) {
                 downloadFile(config.downloadUrl, config.filename);
+                // 显示 macOS 安装提示
+                showMacInstallationTip();
             } else {
                 // 跳转到 GitHub releases
                 window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
@@ -578,6 +582,87 @@
                     document.body.removeChild(toast);
                 }, 300);
             }, 3000);
+        }
+
+        function showMacInstallationTip() {
+            // 检查当前语言
+            const currentLang = localStorage.getItem('language') || 'zh';
+            
+            // 创建模态框背景
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            
+            // 创建模态框内容
+            const modal = document.createElement('div');
+            modal.className = 'bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300';
+            
+            const content = currentLang === 'en' ? {
+                title: '🍎 macOS Installation Guide',
+                subtitle: 'Unsigned App Notice',
+                steps: [
+                    'Open the downloaded .dmg file',
+                    'Drag the app to Applications folder',
+                    'Right-click the app → "Open" → "Open"',
+                    'Or: System Preferences → Security & Privacy → Allow'
+                ],
+                note: 'Note: The app is completely safe. Code signing requires Apple Developer Program membership ($99/year).',
+                button: 'Got it!'
+            } : {
+                title: '🍎 macOS 安装指南',
+                subtitle: '未签名应用提醒',
+                steps: [
+                    '打开下载的 .dmg 文件',
+                    '将应用拖拽到应用程序文件夹',
+                    '右键点击应用 → "打开" → "打开"',
+                    '或：系统偏好设置 → 安全性与隐私 → 允许'
+                ],
+                note: '注意：应用完全安全。代码签名需要 Apple 开发者计划会员资格（每年 $99）。',
+                button: '知道了！'
+            };
+            
+            modal.innerHTML = `
+                <div class="text-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">${content.title}</h3>
+                    <p class="text-sm text-orange-600 font-medium">${content.subtitle}</p>
+                </div>
+                <div class="space-y-3 mb-4">
+                    ${content.steps.map((step, index) => `
+                        <div class="flex items-start space-x-3">
+                            <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">${index + 1}</span>
+                            <span class="text-gray-700 text-sm">${step}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="bg-gray-50 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-gray-600">${content.note}</p>
+                </div>
+                <button onclick="closeMacTip()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200">
+                    ${content.button}
+                </button>
+            `;
+            
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            
+            // 显示动画
+            setTimeout(() => {
+                modal.classList.remove('scale-95');
+                modal.classList.add('scale-100');
+            }, 100);
+            
+            // 设置全局变量以便关闭
+            window.currentMacTipOverlay = overlay;
+        }
+
+        function closeMacTip() {
+            if (window.currentMacTipOverlay) {
+                const modal = window.currentMacTipOverlay.querySelector('div');
+                modal.classList.add('scale-95');
+                setTimeout(() => {
+                    document.body.removeChild(window.currentMacTipOverlay);
+                    window.currentMacTipOverlay = null;
+                }, 300);
+            }
         }
 
         // 页面加载动画和配置加载

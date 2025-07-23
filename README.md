@@ -153,6 +153,18 @@ After building, installers will be available in `src-tauri/target/release/bundle
 | **Windows** | `.msi` installer, `.exe` executable |
 | **Linux** | `.deb`, `.rpm`, `.AppImage` packages |
 
+### 📱 Installation Notes
+
+#### macOS Installation
+The macOS version is currently **unsigned**, which means you may encounter security warnings when first launching the application. To install:
+
+1. **Download the `.dmg` file** from the releases page
+2. **Open the DMG** and drag the app to Applications folder
+3. **First launch**: Right-click the app → "Open" → "Open" (bypass Gatekeeper)
+4. **Alternative**: Go to System Preferences → Security & Privacy → Allow the app to run
+
+> **Note**: Code signing requires an Apple Developer Program membership ($99/year). As this is an open-source project, we currently distribute unsigned builds. The application is completely safe to use.
+
 ## 📖 Usage Guide
 
 1. **🔐 Connect to WebDAV Server**:
