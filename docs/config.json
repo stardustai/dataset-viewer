@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "releases": {
+    "macos": {
+      "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v0.2.0/webdav-viewer-macos-arm64.dmg",
+      "filename": "webdav-viewer-macos-arm64.dmg",
+      "fileSize": "10.2 MB"
+    },
+    "windows": {
+      "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v0.2.0/webdav-viewer-windows-x64.msi",
+      "filename": "webdav-viewer-windows-x64.msi",
+      "fileSize": "8.1 MB"
+    },
+    "linux": {
+      "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v0.2.0/webdav-viewer-linux-x64.AppImage",
+      "filename": "webdav-viewer-linux-x64.AppImage",
+      "fileSize": "12.3 MB"
+    }
+  },
+  "github": {
+    "repoUrl": "https://github.com/stardustai/webdav-viewer"
+  }
+}

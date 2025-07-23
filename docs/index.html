@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebDAV Viewer - 下载</title>
+    <title data-i18n="page.title">WebDAV Viewer - 现代化 WebDAV 浏览器</title>
+    <meta name="description" content="100% AI 生成的现代化 WebDAV 浏览器，支持大文件查看、快速搜索和跨平台使用" data-i18n-attr="content:page.description">
+    <meta name="keywords" content="WebDAV,文件浏览器,大文件查看,AI生成,Tauri,React" data-i18n-attr="content:page.keywords">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/png" href="./public/favicon.png">
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
@@ -15,7 +16,7 @@
         }
         .card-hover:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
         }
         .logo-animation {
             animation: float 3s ease-in-out infinite;
@@ -24,124 +25,252 @@
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
         }
+        .ai-badge {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200px 0; }
+            100% { background-position: 200px 0; }
+        }
+        .download-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        .download-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .download-btn:hover::before {
+            left: 100%;
+        }
+
+        /* 语言切换按钮样式 */
+        .lang-btn {
+            color: #6b7280;
+            background: transparent;
+        }
+        .lang-btn.active {
+            color: #374151;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .lang-btn:hover:not(.active) {
+            color: #374151;
+            background: rgba(255, 255, 255, 0.5);
+        }
     </style>
 </head>
-<body class="gradient-bg min-h-screen overflow-hidden">
-    <div class="h-screen flex items-center justify-center p-4">
+<body class="gradient-bg min-h-screen">
+    <div class="min-h-screen flex items-center justify-center p-4 py-8">
         <div class="max-w-5xl w-full">
             <!-- Header with Logo -->
-            <div class="text-center mb-8">
-                <div class="flex items-center justify-center mb-4">
-                    <img src="./logo.png" alt="WebDAV Viewer Logo" class="logo-animation w-16 h-16 mr-4 rounded-2xl drop-shadow-lg">
-                    <h1 class="text-4xl font-bold text-gray-900">
-                        WebDAV Viewer
-                    </h1>
+            <div class="text-center mb-10">
+                <!-- 语言切换按钮 -->
+                <div class="flex justify-end mb-4">
+                    <div class="bg-white/90 backdrop-blur-sm rounded-xl p-1 shadow-md border border-gray-200/50">
+                        <button onclick="switchLanguage('zh')" id="btn-zh" class="lang-btn active px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200">中文</button>
+                        <button onclick="switchLanguage('en')" id="btn-en" class="lang-btn px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200">English</button>
+                    </div>
                 </div>
-                <p class="text-lg text-gray-600 max-w-xl mx-auto">
-                    现代化的 WebDAV 浏览器，支持大文件查看和快速搜索
-                </p>
+                <div class="flex items-center justify-center mb-6">
+                    <img src="./logo.png" alt="WebDAV Viewer Logo" class="logo-animation w-20 h-20 mr-4 rounded-3xl drop-shadow-xl">
+                    <div class="text-left">
+                        <h1 class="text-5xl font-bold text-gray-900 mb-2" data-i18n="app.title">
+                            WebDAV Viewer
+                        </h1>
+                        <div class="flex items-center space-x-3">
+                            <span class="ai-badge text-xs text-white px-3 py-1.5 rounded-full font-medium" data-i18n="app.ai_badge">
+                                🤖 100% AI 生成
+                            </span>
+                            <span class="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full font-medium" data-i18n="app.open_source">
+                                开源免费
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="max-w-3xl mx-auto">
+                    <p class="text-xl text-gray-700 mb-4 font-medium" data-i18n="app.subtitle">
+                        现代化的 WebDAV 浏览器
+                    </p>
+                    <p class="text-base text-gray-600 leading-relaxed" data-i18n="app.description">
+                        支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能
+                    </p>
+                    <div class="flex items-center justify-center space-x-6 mt-4 text-sm text-gray-500">
+                        <div class="flex items-center space-x-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 12.001c0 6.627-5.373 12-12 12s-12-5.373-12-12c0-6.627 5.373-12 12-12s12 5.373 12 12zm-12-8.5c-4.694 0-8.5 3.806-8.5 8.5s3.806 8.5 8.5 8.5 8.5-3.806 8.5-8.5-3.806-8.5-8.5-8.5zm0 13c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5 4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5z"/>
+                            </svg>
+                            <span>Tauri + Rust</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 14l9-5-9-5-9 5 9 5z"/>
+                                <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                            </svg>
+                            <span>React + TypeScript</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                            </svg>
+                            <span>跨平台</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Download Cards -->
-            <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="grid md:grid-cols-3 gap-8 mb-10">
                 <!-- macOS ARM64 -->
-                <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg card-hover">
-                    <div class="text-center">
-                        <div class="bg-gray-100 rounded-xl p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-                            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                <div class="group bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-lg card-hover border border-gray-200/50 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-gray-100/30 to-transparent rounded-full -mr-16 -mt-16"></div>
+                    <div class="text-center relative z-10">
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                            <svg class="w-8 h-8 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-1">
-                            macOS (Apple Silicon)
+                        <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="platform.macos">
+                            macOS
                         </h3>
-                        <p class="text-sm text-gray-600 mb-4">
-                            适用于 M1/M2/M3 芯片
+                        <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                            <span data-i18n="platform.macos_desc">Apple Silicon 原生优化</span><br>
+                            <span class="text-xs text-green-600 font-medium" data-i18n="platform.macos_chip">✓ M1/M2/M3/M4 芯片</span>
                         </p>
                         <button
                             onclick="downloadMac()"
-                            class="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2"
+                            class="download-btn w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-md hover:shadow-lg"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            <span>下载 macOS</span>
+                            <span data-i18n="download.dmg">下载 .dmg</span>
                         </button>
-                        <div class="mt-2 text-xs text-gray-500">
-                            v1.0.0 • ~10MB
+                        <div class="mt-4 text-xs text-gray-400 font-medium version-info" data-size="10.2 MB">
+                            v1.0.0 • 10.2 MB
                         </div>
                     </div>
                 </div>
 
                 <!-- Windows x64 -->
-                <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg card-hover">
-                    <div class="text-center">
-                        <div class="bg-blue-100 rounded-xl p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-                            <svg class="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                <div class="group bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-lg card-hover border border-blue-200/50 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-100/30 to-transparent rounded-full -mr-16 -mt-16"></div>
+                    <div class="text-center relative z-10">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                            <svg class="w-8 h-8 text-blue-700" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-13.051-1.351"/>
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-1">
-                            Windows 64-bit
+                        <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="platform.windows">
+                            Windows
                         </h3>
-                        <p class="text-sm text-gray-600 mb-4">
-                            Windows 10/11 64位
+                        <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                            <span data-i18n="platform.windows_desc">MSI 安装包</span><br>
+                            <span class="text-xs text-blue-600 font-medium" data-i18n="platform.windows_version">✓ Windows 10/11 64位</span>
                         </p>
                         <button
                             onclick="downloadWindows()"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2"
+                            class="download-btn w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-md hover:shadow-lg"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            <span>下载 Windows</span>
+                            <span data-i18n="download.msi">下载 .msi</span>
                         </button>
-                        <div class="mt-2 text-xs text-gray-500">
-                            v1.0.0 • ~8MB
+                        <div class="mt-4 text-xs text-gray-400 font-medium version-info" data-size="8.1 MB">
+                            v1.0.0 • 8.1 MB
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Features -->
-            <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg mb-6">
-                <div class="grid md:grid-cols-3 gap-4 text-center">
-                    <div>
-                        <div class="bg-green-100 rounded-lg p-2 w-8 h-8 mx-auto mb-2 flex items-center justify-center">
-                            <div class="w-4 h-4 bg-green-600 rounded"></div>
+                <!-- Linux -->
+                <div class="group bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-lg card-hover border border-orange-200/50 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-orange-100/30 to-transparent rounded-full -mr-16 -mt-16"></div>
+                    <div class="text-center relative z-10">
+                        <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M316.9 187.3C317.9 187.8 318.7 189 319.9 189C321 189 322.7 188.6 322.8 187.5C323 186.1 320.9 185.2 319.6 184.6C317.9 183.9 315.7 183.6 314.1 184.5C313.7 184.7 313.3 185.2 313.5 185.6C313.8 186.9 315.8 186.7 316.9 187.3zM295 189C296.2 189 297 187.8 298 187.3C299.1 186.7 301.1 186.9 301.5 185.7C301.7 185.3 301.3 184.8 300.9 184.6C299.3 183.7 297.1 184 295.4 184.7C294.1 185.3 292 186.2 292.2 187.6C292.3 188.6 294 189.1 295 189zM516 467.8C512.4 463.8 510.7 456.2 508.8 448.1C507 440 504.9 431.3 498.3 425.7C497 424.6 495.7 423.6 494.3 422.8C493 422 491.6 421.3 490.2 420.8C499.4 393.5 495.8 366.3 486.5 341.7C475.1 311.6 455.2 285.3 440 267.3C422.9 245.8 406.3 225.4 406.6 195.3C407.1 149.4 411.7 64.1 330.8 64C228.4 63.8 254 167.4 252.9 199.2C251.2 222.6 246.5 241 230.4 263.9C211.5 286.4 184.9 322.7 172.3 360.6C166.3 378.5 163.5 396.7 166.1 413.9C159.6 419.7 154.7 428.6 149.5 434.1C145.3 438.4 139.2 440 132.5 442.4C125.8 444.8 118.5 448.4 114 456.9C111.9 460.8 111.2 465 111.2 469.3C111.2 473.2 111.8 477.2 112.4 481.1C113.6 489.2 114.9 496.8 113.2 501.9C108 516.3 107.3 526.3 111 533.6C114.8 540.9 122.4 544.1 131.1 545.9C148.4 549.5 171.9 548.6 190.4 558.4C210.2 568.8 230.3 572.5 246.3 568.8C257.9 566.2 267.4 559.2 272.2 548.6C284.7 548.5 298.5 543.2 320.5 542C335.4 540.8 354.1 547.3 375.6 546.1C376.2 548.4 377 550.7 378.1 552.8L378.1 552.9C386.4 569.6 401.9 577.2 418.4 575.9C435 574.6 452.5 564.9 466.7 548C480.3 531.6 502.7 524.8 517.6 515.8C525 511.3 531 505.7 531.5 497.5C531.9 489.3 527.1 480.2 516 467.8zM319.8 151.3C329.6 129.1 354 129.5 363.8 150.9C370.3 165.1 367.4 181.8 359.5 191.3C357.9 190.5 353.6 188.7 346.9 186.4C348 185.2 350 183.7 350.8 181.8C355.6 170 350.6 154.8 341.7 154.5C334.4 154 327.8 165.3 329.9 177.5C325.8 175.5 320.5 174 316.9 173.1C315.9 166.2 316.6 158.5 319.8 151.3zM279.1 139.8C289.2 139.8 299.9 154 298.2 173.3C294.7 174.3 291.1 175.8 288 177.9C289.2 169 284.7 157.8 278.4 158.3C270 159 268.6 179.5 276.6 186.4C277.6 187.2 278.5 186.2 270.7 191.9C255.1 177.3 260.2 139.8 279.1 139.8zM265.5 200.5C271.7 195.9 279.1 190.5 279.6 190C284.3 185.6 293.1 175.8 307.5 175.8C314.6 175.8 323.1 178.1 333.4 184.7C339.7 188.8 344.7 189.1 356 194C364.4 197.5 369.7 203.7 366.5 212.2C363.9 219.3 355.5 226.6 343.8 230.3C332.7 233.9 324 246.3 305.6 245.2C301.7 245 298.6 244.2 296 243.1C288 239.6 283.8 232.7 276 228.1C267.4 223.3 262.8 217.7 261.3 212.8C259.9 207.9 261.3 203.8 265.5 200.5zM268.8 534.5C266.1 569.6 224.9 568.9 193.5 552.5C163.6 536.7 124.9 546 117 530.6C114.6 525.9 114.6 517.9 119.6 504.2L119.6 504C122 496.4 120.2 488 119 480.1C117.8 472.3 117.2 465.1 119.9 460.1C123.4 453.4 128.4 451 134.7 448.8C145 445.1 146.5 445.4 154.3 438.9C159.8 433.2 163.8 426 168.6 420.9C173.7 415.4 178.6 412.8 186.3 414C194.4 415.2 201.4 420.8 208.2 430L227.8 465.6C237.3 485.5 270.9 514 268.8 534.5zM267.4 508.6C263.3 502 257.8 495 253 489C260.1 489 267.2 486.8 269.7 480.1C272 473.9 269.7 465.2 262.3 455.2C248.8 437 224 422.7 224 422.7C210.5 414.3 202.9 404 199.4 392.8C195.9 381.6 196.4 369.5 199.1 357.6C204.3 334.7 217.7 312.4 226.3 298.4C228.6 296.7 227.1 301.6 217.6 319.2C209.1 335.3 193.2 372.5 215 401.6C215.6 380.9 220.5 359.8 228.8 340.1C240.8 312.7 266.1 265.2 268.1 227.4C269.2 228.2 272.7 230.6 274.3 231.5C278.9 234.2 282.4 238.2 286.9 241.8C299.3 251.8 315.4 251 329.3 243C335.5 239.5 340.5 235.5 345.2 234C355.1 230.9 363 225.4 367.5 219C375.2 249.4 393.2 293.3 404.7 314.7C410.8 326.1 423 350.2 428.3 379.3C431.6 379.2 435.3 379.7 439.2 380.7C453 345 427.5 306.5 415.9 295.8C411.2 291.2 411 289.2 413.3 289.3C425.9 300.5 442.5 323 448.5 348.3C451.3 359.9 451.8 372 448.9 384C465.3 390.8 484.8 401.9 479.6 418.8C477.4 418.7 476.4 418.8 475.4 418.8C478.6 408.7 471.5 401.2 452.6 392.7C433 384.1 416.6 384.1 414.3 405.2C402.2 409.4 396 419.9 392.9 432.5C390.1 443.7 389.3 457.2 388.5 472.4C388 480.1 384.9 490.4 381.7 501.4C349.6 524.3 305 534.3 267.4 508.6zM524.8 497.1C523.9 513.9 483.6 517 461.6 543.6C448.4 559.3 432.2 568 418 569.1C403.8 570.2 391.5 564.3 384.3 549.8C379.6 538.7 381.9 526.7 385.4 513.5C389.1 499.3 394.6 484.7 395.3 472.9C396.1 457.7 397 444.4 399.5 434.2C402.1 423.9 406.1 417 413.2 413.1C413.5 412.9 413.9 412.8 414.2 412.6C415 425.8 421.5 439.2 433 442.1C445.6 445.4 463.7 434.6 471.4 425.8C480.4 425.5 487.1 424.9 494 430.9C503.9 439.4 501.1 461.2 511.1 472.5C521.7 484.1 525.1 492 524.8 497.1zM269.4 212.7C271.4 214.6 274.1 217.2 277.4 219.8C284 225 293.2 230.4 304.7 230.4C316.3 230.4 327.2 224.5 336.5 219.6C341.4 217 347.4 212.6 351.3 209.2C355.2 205.8 357.2 202.9 354.4 202.6C351.6 202.3 351.8 205.2 348.4 207.7C344 210.9 338.7 215.1 334.5 217.5C327.1 221.7 315 227.7 304.6 227.7C294.2 227.7 285.9 222.9 279.7 218C276.6 215.5 274 213 272 211.1C270.5 209.7 270.1 206.5 267.7 206.2C266.3 206.1 265.9 209.9 269.4 212.7z"/></svg>
                         </div>
-                        <h4 class="font-medium text-gray-900 text-sm mb-1">WebDAV 连接</h4>
-                        <p class="text-xs text-gray-600">安全连接服务器</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="platform.linux">
+                            Linux
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                            <span data-i18n="platform.linux_desc">AppImage 便携版</span><br>
+                            <span class="text-xs text-orange-600 font-medium" data-i18n="platform.linux_version">✓ Ubuntu/Debian x64</span>
+                        </p>
+                        <button
+                            onclick="downloadLinux()"
+                            class="download-btn w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-md hover:shadow-lg"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span data-i18n="download.appimage">下载 .AppImage</span>
+                        </button>
+                        <div class="mt-4 text-xs text-gray-400 font-medium version-info" data-size="12.3 MB">
+                            v1.0.0 • 12.3 MB
+                        </div>
                     </div>
-                    <div>
-                        <div class="bg-purple-100 rounded-lg p-2 w-8 h-8 mx-auto mb-2 flex items-center justify-center">
-                            <div class="w-4 h-4 bg-purple-600 rounded"></div>
+                </div>
+            </div>            <!-- Features -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md mb-6 border border-gray-200/50">
+                <h3 class="text-center text-lg font-semibold text-gray-900 mb-4" data-i18n="features.title">✨ 核心特性</h3>
+                <div class="grid md:grid-cols-4 gap-4 text-center">
+                    <div class="group hover:scale-105 transition-transform duration-200">
+                        <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9-9a9 9 0 00-9 9m0 0l5.25-5.25M15.75 6.75L12 3m0 0l-3.75 3.75M12 3v18"/>
+                            </svg>
                         </div>
-                        <h4 class="font-medium text-gray-900 text-sm mb-1">大文件支持</h4>
-                        <p class="text-xs text-gray-600">高效查看超大文件</p>
+                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.webdav.title">WebDAV 连接</h4>
+                        <p class="text-xs text-gray-600" data-i18n="features.webdav.desc">安全连接任意服务器</p>
                     </div>
-                    <div>
-                        <div class="bg-orange-100 rounded-lg p-2 w-8 h-8 mx-auto mb-2 flex items-center justify-center">
-                            <div class="w-4 h-4 bg-orange-600 rounded"></div>
+                    <div class="group hover:scale-105 transition-transform duration-200">
+                        <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
                         </div>
-                        <h4 class="font-medium text-gray-900 text-sm mb-1">快速搜索</h4>
-                        <p class="text-xs text-gray-600">内容搜索高亮</p>
+                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.largefile.title">大文件支持</h4>
+                        <p class="text-xs text-gray-600" data-i18n="features.largefile.desc">百GB文件秒开查看</p>
+                    </div>
+                    <div class="group hover:scale-105 transition-transform duration-200">
+                        <div class="bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
+                            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </div>
+                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.search.title">快速搜索</h4>
+                        <p class="text-xs text-gray-600" data-i18n="features.search.desc">内容搜索与高亮</p>
+                    </div>
+                    <div class="group hover:scale-105 transition-transform duration-200">
+                        <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                        </div>
+                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.performance.title">原生性能</h4>
+                        <p class="text-xs text-gray-600" data-i18n="features.performance.desc">Tauri + Rust 引擎</p>
                     </div>
                 </div>
             </div>
 
             <!-- Footer -->
             <div class="text-center">
-                <p class="text-sm text-gray-600 mb-3">
-                    开源项目 • 基于 Tauri + React + TypeScript
-                </p>
-                <div class="flex justify-center space-x-4">
-                    <a href="https://github.com/your-username/webdav-viewer"
+                <div class="flex justify-center">
+                    <a href="https://github.com/stardustai/webdav-viewer"
                        target="_blank"
-                       class="text-gray-500 hover:text-gray-700 transition-colors">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                       class="group flex items-center space-x-3 text-gray-500 hover:text-gray-700 transition-all duration-300 hover:bg-white/60 px-6 py-3 rounded-xl">
+                        <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
                         </svg>
+                        <span class="font-medium" data-i18n="footer.source_code">查看源码</span>
                     </a>
                 </div>
             </div>
@@ -149,31 +278,266 @@
     </div>
 
     <script>
-        function downloadMac() {
-            // 替换为实际的 macOS 下载链接
-            const downloadUrl = 'https://github.com/your-username/webdav-viewer/releases/download/v1.0.0/webdav-viewer-macos-arm64.dmg';
+        // 国际化翻译配置
+        const translations = {
+            zh: {
+                'page.title': 'WebDAV Viewer - 现代化 WebDAV 浏览器',
+                'page.description': '100% AI 生成的现代化 WebDAV 浏览器，支持大文件查看、快速搜索和跨平台使用',
+                'page.keywords': 'WebDAV,文件浏览器,大文件查看,AI生成,Tauri,React',
+                'app.title': 'WebDAV Viewer',
+                'app.ai_badge': '🤖 100% AI 生成',
+                'app.open_source': '开源免费',
+                'app.subtitle': '现代化的 WebDAV 浏览器',
+                'app.description': '支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能',
+                'platform.macos': 'macOS',
+                'platform.macos_desc': 'Apple Silicon 原生优化',
+                'platform.macos_chip': '✓ M1/M2/M3/M4 芯片',
+                'platform.windows': 'Windows',
+                'platform.windows_desc': 'MSI 安装包',
+                'platform.windows_version': '✓ Windows 10/11 64位',
+                'platform.linux': 'Linux',
+                'platform.linux_desc': 'AppImage 便携版',
+                'platform.linux_version': '✓ Ubuntu/Debian x64',
+                'download.dmg': '下载 .dmg',
+                'download.msi': '下载 .msi',
+                'download.appimage': '下载 .AppImage',
+                'features.title': '✨ 核心特性',
+                'features.webdav.title': 'WebDAV 连接',
+                'features.webdav.desc': '安全连接任意服务器',
+                'features.largefile.title': '大文件支持',
+                'features.largefile.desc': '百GB文件秒开查看',
+                'features.search.title': '快速搜索',
+                'features.search.desc': '内容搜索与高亮',
+                'features.performance.title': '原生性能',
+                'features.performance.desc': 'Tauri + Rust 引擎',
+                'footer.source_code': '查看源码'
+            },
+            en: {
+                'page.title': 'WebDAV Viewer - Modern WebDAV Browser',
+                'page.description': '100% AI-generated modern WebDAV browser with large file viewing, fast search and cross-platform support',
+                'page.keywords': 'WebDAV,file browser,large file viewing,AI generated,Tauri,React',
+                'app.title': 'WebDAV Viewer',
+                'app.ai_badge': '🤖 100% AI Generated',
+                'app.open_source': 'Open Source',
+                'app.subtitle': 'Modern WebDAV Browser',
+                'app.description': 'Support for real-time viewing of 100GB+ files, intelligent search highlighting, and cross-platform native performance',
+                'platform.macos': 'macOS',
+                'platform.macos_desc': 'Apple Silicon Native Optimized',
+                'platform.macos_chip': '✓ M1/M2/M3/M4 Chips',
+                'platform.windows': 'Windows',
+                'platform.windows_desc': 'MSI Installer',
+                'platform.windows_version': '✓ Windows 10/11 64-bit',
+                'platform.linux': 'Linux',
+                'platform.linux_desc': 'AppImage Portable',
+                'platform.linux_version': '✓ Ubuntu/Debian x64',
+                'download.dmg': 'Download .dmg',
+                'download.msi': 'Download .msi',
+                'download.appimage': 'Download .AppImage',
+                'features.title': '✨ Core Features',
+                'features.webdav.title': 'WebDAV Connection',
+                'features.webdav.desc': 'Secure connection to any server',
+                'features.largefile.title': 'Large File Support',
+                'features.largefile.desc': 'Open 100GB+ files instantly',
+                'features.search.title': 'Fast Search',
+                'features.search.desc': 'Content search with highlighting',
+                'features.performance.title': 'Native Performance',
+                'features.performance.desc': 'Tauri + Rust Engine',
+                'footer.source_code': 'View Source Code'
+            }
+        };
 
-            // 创建一个临时的下载链接
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = 'webdav-viewer-macos-arm64.dmg';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        // 当前语言
+        let currentLang = localStorage.getItem('webdav-viewer-lang') || 'zh';
+
+        // 切换语言
+        function switchLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('webdav-viewer-lang', lang);
+            updateLanguage();
+            updateLanguageButtons();
+        }
+
+        // 更新语言按钮状态
+        function updateLanguageButtons() {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`btn-${currentLang}`).classList.add('active');
+        }
+
+        // 更新页面语言
+        function updateLanguage() {
+            const texts = translations[currentLang];
+
+            // 更新所有带有 data-i18n 属性的元素
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (texts[key]) {
+                    el.textContent = texts[key];
+                }
+            });
+
+            // 更新带有 data-i18n-attr 属性的元素
+            document.querySelectorAll('[data-i18n-attr]').forEach(el => {
+                const attrMap = el.getAttribute('data-i18n-attr');
+                const [attr, key] = attrMap.split(':');
+                if (texts[key]) {
+                    el.setAttribute(attr, texts[key]);
+                }
+            });
+
+            // 更新页面语言属性
+            document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+        }
+
+        // 全局配置对象
+        let appConfig = null;
+
+        // 加载配置文件
+        async function loadConfig() {
+            try {
+                const response = await fetch('./config.json');
+                appConfig = await response.json();
+                updatePageContent();
+            } catch (error) {
+                console.error('Failed to load config:', error);
+                // 使用默认配置
+                appConfig = getDefaultConfig();
+                updatePageContent();
+            }
+        }
+
+        // 默认配置（作为后备）
+        function getDefaultConfig() {
+            return {
+                "version": "1.0.0",
+                "releases": {
+                    "macos": {
+                        "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v1.0.0/webdav-viewer-macos-arm64.dmg",
+                        "filename": "webdav-viewer-macos-arm64.dmg",
+                        "fileSize": "10.2 MB"
+                    },
+                    "windows": {
+                        "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v1.0.0/webdav-viewer-windows-x64.msi",
+                        "filename": "webdav-viewer-windows-x64.msi",
+                        "fileSize": "8.1 MB"
+                    },
+                    "linux": {
+                        "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v1.0.0/webdav-viewer-linux-x64.AppImage",
+                        "filename": "webdav-viewer-linux-x64.AppImage",
+                        "fileSize": "12.3 MB"
+                    }
+                }
+            };
+        }
+
+        // 更新页面内容
+        function updatePageContent() {
+            if (!appConfig) return;
+
+            // 更新版本号和文件大小
+            const versionElements = document.querySelectorAll('.version-info');
+            versionElements.forEach(el => {
+                const size = el.dataset.size;
+                let platform = '';
+
+                // 根据文件大小确定平台
+                if (size === '10.2 MB') platform = 'macos';
+                else if (size === '8.1 MB') platform = 'windows';
+                else if (size === '12.3 MB') platform = 'linux';
+
+                if (platform && appConfig.releases[platform]) {
+                    const release = appConfig.releases[platform];
+                    el.textContent = `v${appConfig.version} • ${release.fileSize}`;
+                }
+            });
+
+            // 更新GitHub链接
+            if (appConfig.github && appConfig.github.repoUrl) {
+                const githubLink = document.querySelector('a[href*="github.com"]');
+                if (githubLink) {
+                    githubLink.href = appConfig.github.repoUrl;
+                }
+            }
+        }
+
+        function downloadMac() {
+            const config = appConfig?.releases?.macos;
+            if (config) {
+                downloadFile(config.downloadUrl, config.filename);
+            }
         }
 
         function downloadWindows() {
-            // 替换为实际的 Windows 下载链接
-            const downloadUrl = 'https://github.com/your-username/webdav-viewer/releases/download/v1.0.0/webdav-viewer-windows-x64.exe';
+            const config = appConfig?.releases?.windows;
+            if (config) {
+                downloadFile(config.downloadUrl, config.filename);
+            }
+        }
 
+        function downloadLinux() {
+            const config = appConfig?.releases?.linux;
+            if (config) {
+                downloadFile(config.downloadUrl, config.filename);
+            }
+        }
+
+        function downloadFile(url, filename) {
             // 创建一个临时的下载链接
             const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = 'webdav-viewer-windows-x64.exe';
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+
+            // 显示下载提示
+            showDownloadToast(`开始下载 ${filename}`);
         }
+
+        function showDownloadToast(message) {
+            // 创建提示框
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // 显示动画
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+
+            // 自动隐藏
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+
+        // 页面加载动画和配置加载
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化语言
+            updateLanguage();
+            updateLanguageButtons();
+
+            // 先加载配置
+            loadConfig();
+
+            // 页面加载动画
+            const cards = document.querySelectorAll('.card-hover');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 150);
+            });
+        });
     </script>
 </body>
 </html>
