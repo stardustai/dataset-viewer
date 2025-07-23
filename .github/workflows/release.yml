@@ -35,28 +35,62 @@ jobs:
 
           # Generate changelog
           if [ -n "$PREVIOUS_TAG" ] && [ "$PREVIOUS_TAG" != "${{ steps.get_version.outputs.VERSION }}" ]; then
+            # Initialize changelog
             echo "## 📋 What's Changed" > CHANGELOG.md
             echo "" >> CHANGELOG.md
 
-            # Get commit information
-            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} >> CHANGELOG.md
+            # Check and add categorized commits by type (only if they exist)
+            SECTIONS_ADDED=0
 
-            # Categorize commits by type (if following conventional commits)
-            echo "" >> CHANGELOG.md
-            echo "### ✨ New Features" >> CHANGELOG.md
-            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+            # New Features
+            FEAT_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat" 2>/dev/null | wc -l)
+            if [ "$FEAT_COMMITS" -gt 0 ]; then
+              if [ "$SECTIONS_ADDED" -gt 0 ]; then
+                echo "" >> CHANGELOG.md
+              fi
+              echo "### ✨ New Features" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat" >> CHANGELOG.md
+              SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
+            fi
 
-            echo "" >> CHANGELOG.md
-            echo "### 🐛 Bug Fixes" >> CHANGELOG.md
-            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+            # Bug Fixes
+            FIX_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix" 2>/dev/null | wc -l)
+            if [ "$FIX_COMMITS" -gt 0 ]; then
+              if [ "$SECTIONS_ADDED" -gt 0 ]; then
+                echo "" >> CHANGELOG.md
+              fi
+              echo "### 🐛 Bug Fixes" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix" >> CHANGELOG.md
+              SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
+            fi
 
-            echo "" >> CHANGELOG.md
-            echo "### 📚 Documentation" >> CHANGELOG.md
-            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+            # Documentation
+            DOCS_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs" 2>/dev/null | wc -l)
+            if [ "$DOCS_COMMITS" -gt 0 ]; then
+              if [ "$SECTIONS_ADDED" -gt 0 ]; then
+                echo "" >> CHANGELOG.md
+              fi
+              echo "### 📚 Documentation" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs" >> CHANGELOG.md
+              SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
+            fi
 
-            echo "" >> CHANGELOG.md
-            echo "### 🔧 Other Improvements" >> CHANGELOG.md
-            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore\|^refactor\|^style\|^perf" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+            # Other Improvements
+            OTHER_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore\|^refactor\|^style\|^perf" 2>/dev/null | wc -l)
+            if [ "$OTHER_COMMITS" -gt 0 ]; then
+              if [ "$SECTIONS_ADDED" -gt 0 ]; then
+                echo "" >> CHANGELOG.md
+              fi
+              echo "### 🔧 Other Improvements" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore\|^refactor\|^style\|^perf" >> CHANGELOG.md
+              SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
+            fi
+
+            # If no categorized commits found, show all commits
+            if [ "$SECTIONS_ADDED" -eq 0 ]; then
+              echo "### 📝 All Changes" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} >> CHANGELOG.md
+            fi
 
           else
             echo "## 📋 What's Changed" > CHANGELOG.md
@@ -65,7 +99,7 @@ jobs:
           fi
 
           # Read template and replace variables
-          RELEASE_BODY=$(cat .github/RELEASE-TEMPLATE.md)
+          RELEASE_BODY=$(cat .github/release-template.md)
           CHANGES=$(cat CHANGELOG.md)
 
           # Replace template variables
