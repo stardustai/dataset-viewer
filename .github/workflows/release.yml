@@ -43,46 +43,46 @@ jobs:
             SECTIONS_ADDED=0
 
             # New Features
-            FEAT_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat" 2>/dev/null | wc -l)
+            FEAT_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat:" 2>/dev/null | wc -l)
             if [ "$FEAT_COMMITS" -gt 0 ]; then
               if [ "$SECTIONS_ADDED" -gt 0 ]; then
                 echo "" >> CHANGELOG.md
               fi
               echo "### ✨ New Features" >> CHANGELOG.md
-              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat:" >> CHANGELOG.md
               SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
             fi
 
             # Bug Fixes
-            FIX_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix" 2>/dev/null | wc -l)
+            FIX_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix:" 2>/dev/null | wc -l)
             if [ "$FIX_COMMITS" -gt 0 ]; then
               if [ "$SECTIONS_ADDED" -gt 0 ]; then
                 echo "" >> CHANGELOG.md
               fi
               echo "### 🐛 Bug Fixes" >> CHANGELOG.md
-              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix:" >> CHANGELOG.md
               SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
             fi
 
             # Documentation
-            DOCS_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs" 2>/dev/null | wc -l)
+            DOCS_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs:" 2>/dev/null | wc -l)
             if [ "$DOCS_COMMITS" -gt 0 ]; then
               if [ "$SECTIONS_ADDED" -gt 0 ]; then
                 echo "" >> CHANGELOG.md
               fi
               echo "### 📚 Documentation" >> CHANGELOG.md
-              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs:" >> CHANGELOG.md
               SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
             fi
 
             # Other Improvements
-            OTHER_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore\|^refactor\|^style\|^perf" 2>/dev/null | wc -l)
+            OTHER_COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore:\|^refactor:\|^style:\|^perf:" 2>/dev/null | wc -l)
             if [ "$OTHER_COMMITS" -gt 0 ]; then
               if [ "$SECTIONS_ADDED" -gt 0 ]; then
                 echo "" >> CHANGELOG.md
               fi
               echo "### 🔧 Other Improvements" >> CHANGELOG.md
-              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore\|^refactor\|^style\|^perf" >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore:\|^refactor:\|^style:\|^perf:" >> CHANGELOG.md
               SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
             fi
 
