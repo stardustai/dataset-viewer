@@ -10,30 +10,30 @@
    - 在 GitHub 项目页面，转到 "Actions" 标签
    - 选择 "Update Package JSON Version" 工作流程
    - 点击 "Run workflow"
-   - 输入新版本号（例如：`0.2.1`）
+   - 输入新版本号（例如：`0.1.1`）
    - 点击运行
 
 2. 工作流程将自动：
    - 更新 `package.json` 和 `src-tauri/tauri.conf.json` 中的版本号
-   - 创建并推送 git tag（例如：`v0.2.1`）
+   - 创建并推送 git tag（例如：`v0.1.1`）
    - 触发构建和发布流程
 
 ### 方法 2: 手动标签
 
 ```bash
 # 更新版本号
-npm version 0.2.1 --no-git-tag-version
+npm version 0.1.1 --no-git-tag-version
 
 # 手动更新 src-tauri/tauri.conf.json 中的版本号
 
 # 提交更改
 git add .
-git commit -m "Bump version to 0.2.1"
+git commit -m "Bump version to 0.1.1"
 
 # 创建标签
-git tag v0.2.1
+git tag v0.1.1
 git push origin main
-git push origin v0.2.1
+git push origin v0.1.1
 ```
 
 ## 构建流程
@@ -67,10 +67,10 @@ git push origin v0.2.1
 
 ```json
 {
-  "version": "0.2.0",
+  "version": "0.1.0",
   "releases": {
     "macos-arm64": {
-      "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v0.2.0/webdav-viewer-macos-arm64.dmg",
+      "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v0.1.0/webdav-viewer-macos-arm64.dmg",
       "filename": "webdav-viewer-macos-arm64.dmg",
       "fileSize": "10.2 MB"
     },
