@@ -82,9 +82,12 @@
                 <div class="flex items-center justify-center mb-6">
                     <img src="./logo.png" alt="WebDAV Viewer Logo" class="logo-animation w-20 h-20 mr-4 rounded-3xl drop-shadow-xl">
                     <div class="text-left">
-                        <h1 class="text-5xl font-bold text-gray-900 mb-2" data-i18n="app.title">
-                            WebDAV Viewer
-                        </h1>
+                        <div class="flex items-baseline">
+                            <h1 class="text-5xl font-bold text-gray-900 mb-2" data-i18n="app.title">
+                                WebDAV Viewer
+                            </h1>
+                            <span id="version-badge" class="ml-3 text-lg font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-md opacity-0 transition-all duration-300 transform scale-95"></span>
+                        </div>
                         <div class="flex items-center space-x-3">
                             <span class="ai-badge text-xs text-white px-3 py-1.5 rounded-full font-medium" data-i18n="app.ai_badge">
                                 🤖 100% AI 生成
@@ -120,7 +123,7 @@
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                             </svg>
-                            <span>跨平台</span>
+                            <span data-i18n="app.crossplatform">跨平台</span>
                         </div>
                     </div>
                 </div>
@@ -153,9 +156,6 @@
                             </svg>
                             <span data-i18n="download.dmg">下载 .dmg</span>
                         </button>
-                        <div class="mt-4 text-xs text-gray-400 font-medium version-info" data-size="10.2 MB">
-                            v1.0.0 • 10.2 MB
-                        </div>
                     </div>
                 </div>
 
@@ -184,9 +184,6 @@
                             </svg>
                             <span data-i18n="download.msi">下载 .msi</span>
                         </button>
-                        <div class="mt-4 text-xs text-gray-400 font-medium version-info" data-size="8.1 MB">
-                            v1.0.0 • 8.1 MB
-                        </div>
                     </div>
                 </div>
 
@@ -201,20 +198,25 @@
                             Linux
                         </h3>
                         <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                            <span data-i18n="platform.linux_desc">AppImage 便携版</span><br>
+                            <span data-i18n="platform.linux_desc">DEB 安装包 (推荐)</span><br>
                             <span class="text-xs text-orange-600 font-medium" data-i18n="platform.linux_version">✓ Ubuntu/Debian x64</span>
                         </p>
-                        <button
-                            onclick="downloadLinux()"
-                            class="download-btn w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-md hover:shadow-lg"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <span data-i18n="download.appimage">下载 .AppImage</span>
-                        </button>
-                        <div class="mt-4 text-xs text-gray-400 font-medium version-info" data-size="12.3 MB">
-                            v1.0.0 • 12.3 MB
+                        <div class="space-y-2">
+                            <button
+                                onclick="downloadLinux()"
+                                class="download-btn w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-md hover:shadow-lg"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span data-i18n="download.deb">下载 .deb</span>
+                            </button>
+                            <button
+                                onclick="downloadLinuxAppImage()"
+                                class="w-full bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-sm"
+                            >
+                                <span data-i18n="download.appimage">便携版 .AppImage</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -289,6 +291,7 @@
                 'app.open_source': '开源免费',
                 'app.subtitle': '现代化的 WebDAV 浏览器',
                 'app.description': '支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能',
+                'app.crossplatform': '跨平台',
                 'platform.macos': 'macOS',
                 'platform.macos_desc': 'Apple Silicon 原生优化',
                 'platform.macos_chip': '✓ M1/M2/M3/M4 芯片',
@@ -296,11 +299,12 @@
                 'platform.windows_desc': 'MSI 安装包',
                 'platform.windows_version': '✓ Windows 10/11 64位',
                 'platform.linux': 'Linux',
-                'platform.linux_desc': 'AppImage 便携版',
+                'platform.linux_desc': 'DEB 安装包 (推荐)',
                 'platform.linux_version': '✓ Ubuntu/Debian x64',
                 'download.dmg': '下载 .dmg',
                 'download.msi': '下载 .msi',
-                'download.appimage': '下载 .AppImage',
+                'download.deb': '下载 .deb',
+                'download.appimage': '便携版 .AppImage',
                 'features.title': '✨ 核心特性',
                 'features.webdav.title': 'WebDAV 连接',
                 'features.webdav.desc': '安全连接任意服务器',
@@ -321,6 +325,7 @@
                 'app.open_source': 'Open Source',
                 'app.subtitle': 'Modern WebDAV Browser',
                 'app.description': 'Support for real-time viewing of 100GB+ files, intelligent search highlighting, and cross-platform native performance',
+                'app.crossplatform': 'Cross-platform',
                 'platform.macos': 'macOS',
                 'platform.macos_desc': 'Apple Silicon Native Optimized',
                 'platform.macos_chip': '✓ M1/M2/M3/M4 Chips',
@@ -328,11 +333,12 @@
                 'platform.windows_desc': 'MSI Installer',
                 'platform.windows_version': '✓ Windows 10/11 64-bit',
                 'platform.linux': 'Linux',
-                'platform.linux_desc': 'AppImage Portable',
+                'platform.linux_desc': 'DEB Package (Recommended)',
                 'platform.linux_version': '✓ Ubuntu/Debian x64',
                 'download.dmg': 'Download .dmg',
                 'download.msi': 'Download .msi',
-                'download.appimage': 'Download .AppImage',
+                'download.deb': 'Download .deb',
+                'download.appimage': 'Portable .AppImage',
                 'features.title': '✨ Core Features',
                 'features.webdav.title': 'WebDAV Connection',
                 'features.webdav.desc': 'Secure connection to any server',
@@ -393,67 +399,72 @@
         // 全局配置对象
         let appConfig = null;
 
-        // 加载配置文件
+        // 从 GitHub API 获取最新版本信息
         async function loadConfig() {
             try {
-                const response = await fetch('./config.json');
-                appConfig = await response.json();
-                updatePageContent();
+                const response = await fetch('https://api.github.com/repos/stardustai/webdav-viewer/releases/latest');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const release = await response.json();
+                const version = release.tag_name.replace('v', ''); // 移除 v 前缀
+                
+                // 根据版本号和文件名模式生成配置
+                appConfig = generateConfig(version);
+                return appConfig;
             } catch (error) {
-                console.error('Failed to load config:', error);
-                // 使用默认配置
-                appConfig = getDefaultConfig();
-                updatePageContent();
+                console.error('Failed to load release info:', error);
+                // 获取失败时，appConfig 保持 null，点击下载会跳转到 releases 页面
+                throw error;
             }
         }
 
-        // 默认配置（作为后备）
-        function getDefaultConfig() {
+        // 根据版本号生成配置
+        function generateConfig(version) {
+            const baseUrl = `https://github.com/stardustai/webdav-viewer/releases/download/v${version}`;
+            
             return {
-                "version": "1.0.0",
-                "releases": {
-                    "macos": {
-                        "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v1.0.0/webdav-viewer-macos-arm64.dmg",
-                        "filename": "webdav-viewer-macos-arm64.dmg",
-                        "fileSize": "10.2 MB"
+                version: version,
+                releases: {
+                    "macos-arm64": {
+                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_aarch64.dmg`,
+                        filename: `WebDAV.Viewer_${version}_aarch64.dmg`
+                    },
+                    "macos-x64": {
+                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_x64.dmg`,
+                        filename: `WebDAV.Viewer_${version}_x64.dmg`
                     },
                     "windows": {
-                        "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v1.0.0/webdav-viewer-windows-x64.msi",
-                        "filename": "webdav-viewer-windows-x64.msi",
-                        "fileSize": "8.1 MB"
+                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_x64_en-US.msi`,
+                        filename: `WebDAV.Viewer_${version}_x64_en-US.msi`
                     },
                     "linux": {
-                        "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v1.0.0/webdav-viewer-linux-x64.AppImage",
-                        "filename": "webdav-viewer-linux-x64.AppImage",
-                        "fileSize": "12.3 MB"
+                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_amd64.deb`,
+                        filename: `WebDAV.Viewer_${version}_amd64.deb`
+                    },
+                    "linux-appimage": {
+                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_amd64.AppImage`,
+                        filename: `WebDAV.Viewer_${version}_amd64.AppImage`
                     }
+                },
+                github: {
+                    repoUrl: "https://github.com/stardustai/webdav-viewer"
                 }
             };
         }
 
         // 更新页面内容
         function updatePageContent() {
-            if (!appConfig) return;
-
-            // 更新版本号和文件大小
-            const versionElements = document.querySelectorAll('.version-info');
-            versionElements.forEach(el => {
-                const size = el.dataset.size;
-                let platform = '';
-
-                // 根据文件大小确定平台
-                if (size === '10.2 MB') platform = 'macos';
-                else if (size === '8.1 MB') platform = 'windows';
-                else if (size === '12.3 MB') platform = 'linux';
-
-                if (platform && appConfig.releases[platform]) {
-                    const release = appConfig.releases[platform];
-                    el.textContent = `v${appConfig.version} • ${release.fileSize}`;
-                }
-            });
+            // 更新版本号显示
+            const versionBadge = document.getElementById('version-badge');
+            if (versionBadge && appConfig && appConfig.version) {
+                versionBadge.textContent = `v${appConfig.version}`;
+                versionBadge.classList.remove('opacity-0', 'scale-95');
+                versionBadge.classList.add('opacity-100', 'scale-100');
+            }
 
             // 更新GitHub链接
-            if (appConfig.github && appConfig.github.repoUrl) {
+            if (appConfig && appConfig.github && appConfig.github.repoUrl) {
                 const githubLink = document.querySelector('a[href*="github.com"]');
                 if (githubLink) {
                     githubLink.href = appConfig.github.repoUrl;
@@ -462,23 +473,73 @@
         }
 
         function downloadMac() {
-            const config = appConfig?.releases?.macos;
+            if (!appConfig) {
+                // 配置加载失败，直接跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                return;
+            }
+
+            // 检测系统架构
+            const isAppleSilicon = navigator.userAgent.includes('Mac') && 
+                                 (navigator.userAgent.includes('ARM') || 
+                                  navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 0);
+            
+            const platform = isAppleSilicon ? 'macos-arm64' : 'macos-x64';
+            const config = appConfig?.releases?.[platform];
+            
             if (config) {
                 downloadFile(config.downloadUrl, config.filename);
+            } else {
+                // 跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
             }
         }
 
         function downloadWindows() {
+            if (!appConfig) {
+                // 配置加载失败，直接跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                return;
+            }
+
             const config = appConfig?.releases?.windows;
             if (config) {
                 downloadFile(config.downloadUrl, config.filename);
+            } else {
+                // 跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
             }
         }
 
         function downloadLinux() {
+            if (!appConfig) {
+                // 配置加载失败，直接跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                return;
+            }
+
             const config = appConfig?.releases?.linux;
             if (config) {
                 downloadFile(config.downloadUrl, config.filename);
+            } else {
+                // 跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+            }
+        }
+
+        function downloadLinuxAppImage() {
+            if (!appConfig) {
+                // 配置加载失败，直接跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                return;
+            }
+
+            const config = appConfig?.releases?.['linux-appimage'];
+            if (config) {
+                downloadFile(config.downloadUrl, config.filename);
+            } else {
+                // 跳转到 GitHub releases
+                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
             }
         }
 
@@ -492,8 +553,10 @@
             link.click();
             document.body.removeChild(link);
 
-            // 显示下载提示
-            showDownloadToast(`开始下载 ${filename}`);
+            // 显示下载提示（只有在成功获取版本号时才显示）
+            if (appConfig && appConfig.version) {
+                showDownloadToast(`开始下载 ${filename}`);
+            }
         }
 
         function showDownloadToast(message) {
@@ -523,8 +586,14 @@
             updateLanguage();
             updateLanguageButtons();
 
-            // 先加载配置
-            loadConfig();
+            // 异步加载配置
+            loadConfig().then(() => {
+                // 配置加载完成后更新页面内容
+                updatePageContent();
+            }).catch(() => {
+                // 加载失败时不显示版本号，保持隐藏状态
+                console.log('Version loading failed, keeping version badge hidden');
+            });
 
             // 页面加载动画
             const cards = document.querySelectorAll('.card-hover');

@@ -86,10 +86,10 @@ jobs:
               SECTIONS_ADDED=$((SECTIONS_ADDED + 1))
             fi
 
-            # If no categorized commits found, show all commits (excluding config updates)
+            # If no categorized commits found, show all commits (excluding version bumps)
             if [ "$SECTIONS_ADDED" -eq 0 ]; then
               echo "### 📝 All Changes" >> CHANGELOG.md
-              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^Update config.json" --invert-grep >> CHANGELOG.md
+              git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^Bump version" --invert-grep >> CHANGELOG.md
             fi
 
           else
@@ -200,112 +200,3 @@ jobs:
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
-
-  update-config:
-    needs: [create-release, build-tauri]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main
-
-      - name: Get release assets
-        id: get_assets
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const release = await github.rest.repos.getReleaseByTag({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag: '${{ needs.create-release.outputs.release_tag }}'
-            });
-
-            const assets = release.data.assets;
-
-            // Find assets for different platforms
-            const macosArm64 = assets.find(asset =>
-              asset.name.includes('aarch64') &&
-              asset.name.includes('apple') &&
-              asset.name.endsWith('.dmg')
-            );
-
-            const macosX64 = assets.find(asset =>
-              asset.name.includes('x86_64') &&
-              asset.name.includes('apple') &&
-              asset.name.endsWith('.dmg')
-            );
-
-            const windows = assets.find(asset =>
-              asset.name.includes('x86_64') &&
-              asset.name.includes('pc-windows') &&
-              asset.name.endsWith('.msi')
-            );
-
-            const linux = assets.find(asset =>
-              asset.name.includes('x86_64') &&
-              asset.name.includes('unknown-linux') &&
-              asset.name.endsWith('.AppImage')
-            );
-
-            const formatSize = (bytes) => {
-              const mb = bytes / (1024 * 1024);
-              return mb.toFixed(1) + ' MB';
-            };
-
-            return {
-              macosArm64: macosArm64 ? {
-                downloadUrl: macosArm64.browser_download_url,
-                filename: macosArm64.name,
-                fileSize: formatSize(macosArm64.size)
-              } : null,
-              macosX64: macosX64 ? {
-                downloadUrl: macosX64.browser_download_url,
-                filename: macosX64.name,
-                fileSize: formatSize(macosX64.size)
-              } : null,
-              windows: windows ? {
-                downloadUrl: windows.browser_download_url,
-                filename: windows.name,
-                fileSize: formatSize(windows.size)
-              } : null,
-              linux: linux ? {
-                downloadUrl: linux.browser_download_url,
-                filename: linux.name,
-                fileSize: formatSize(linux.size)
-              } : null
-            };
-
-      - name: Update config.json
-        run: |
-          VERSION="${{ needs.create-release.outputs.release_tag }}"
-          VERSION_NUMBER="${VERSION#v}"
-
-          ASSETS='${{ steps.get_assets.outputs.result }}'
-
-          cat > docs/config.json << EOF
-          {
-            "version": "$VERSION_NUMBER",
-            "releases": {
-              "macos-arm64": $(echo "$ASSETS" | jq '.macosArm64'),
-              "macos-x64": $(echo "$ASSETS" | jq '.macosX64'),
-              "windows": $(echo "$ASSETS" | jq '.windows'),
-              "linux": $(echo "$ASSETS" | jq '.linux')
-            },
-            "github": {
-              "repoUrl": "https://github.com/${{ github.repository }}"
-            }
-          }
-          EOF
-
-      - name: Commit and push config update
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add docs/config.json
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update config.json for release ${{ needs.create-release.outputs.release_tag }}"
-            git push origin main
-          fi
