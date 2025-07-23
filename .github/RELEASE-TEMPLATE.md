@@ -12,16 +12,16 @@
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [Download DMG]({{macos_arm64_url}}) |
-| macOS (Intel) | [Download DMG]({{macos_x64_url}}) |
-| Windows x64 | [Download MSI]({{windows_url}}) |
-| Linux x64 | [Download AppImage]({{linux_url}}) |
+| macOS (Apple Silicon) | [Download DMG](https://github.com/{{github_repo}}/releases/download/{{tag_name}}/WebDAV.Viewer_{{version}}_aarch64.dmg) |
+| macOS (Intel) | [Download DMG](https://github.com/{{github_repo}}/releases/download/{{tag_name}}/WebDAV.Viewer_{{version}}_x64.dmg) |
+| Windows x64 | [Download MSI](https://github.com/{{github_repo}}/releases/download/{{tag_name}}/WebDAV.Viewer_{{version}}_x64_en-US.msi) |
+| Linux | [Download AppImage](https://github.com/{{github_repo}}/releases/download/{{tag_name}}/WebDAV.Viewer_{{version}}_amd64.AppImage) |
 
 ### 🔧 Installation
 
-- **macOS**: Download DMG → Drag to Applications
+- **macOS**: Download DMG → Drag to Applications → Right-click app → "Open" (for unsigned app)
 - **Windows**: Download MSI → Run installer
-- **Linux**: Download AppImage → `chmod +x` → Run
+- **Linux**: `chmod +x WebDAV.Viewer_*.AppImage` → Run (portable, no installation needed)
 
 ---
 

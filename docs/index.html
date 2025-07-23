@@ -87,7 +87,7 @@
                             <h1 class="text-5xl font-bold text-gray-900 mb-2" data-i18n="app.title">
                                 WebDAV Viewer
                             </h1>
-                            <span id="version-badge" class="ml-3 text-lg font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-md opacity-30 transition-all duration-300 transform scale-95 min-w-[4rem]">v0.0.0</span>
+                            <span id="version-badge" class="ml-3 text-lg font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-md opacity-0 transition-all duration-300 transform scale-95"></span>
                         </div>
                         <div class="flex items-center space-x-3">
                             <span class="ai-badge text-xs text-white px-3 py-1.5 rounded-full font-medium" data-i18n="app.ai_badge">
@@ -462,7 +462,7 @@
             const versionBadge = document.getElementById('version-badge');
             if (versionBadge && appConfig && appConfig.version) {
                 versionBadge.textContent = `v${appConfig.version}`;
-                versionBadge.classList.remove('opacity-30', 'scale-95');
+                versionBadge.classList.remove('opacity-0', 'scale-95');
                 versionBadge.classList.add('opacity-100', 'scale-100');
             }
 

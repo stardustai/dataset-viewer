@@ -101,9 +101,12 @@ jobs:
           # Read template and replace variables
           RELEASE_BODY=$(cat .github/RELEASE-TEMPLATE.md)
           CHANGES=$(cat CHANGELOG.md)
+          VERSION_WITHOUT_V="${{ steps.get_version.outputs.VERSION }}"
+          VERSION_WITHOUT_V="${VERSION_WITHOUT_V#v}"
 
-          # Replace template variables
+          # Replace template variables  
           RELEASE_BODY="${RELEASE_BODY//\{\{tag_name\}\}/${{ steps.get_version.outputs.VERSION }}}"
+          RELEASE_BODY="${RELEASE_BODY//\{\{version\}\}/$VERSION_WITHOUT_V}"
           RELEASE_BODY="${RELEASE_BODY//\{\{changes\}\}/$CHANGES}"
           RELEASE_BODY="${RELEASE_BODY//\{\{github_repo\}\}/${{ github.repository }}}"
 
