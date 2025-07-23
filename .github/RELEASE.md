@@ -1,69 +1,69 @@
-# 发布流程
+# Release Process
 
-本项目使用 GitHub Actions 自动构建和发布应用程序。以下是如何创建新版本的说明。
+This project uses GitHub Actions to automatically build and release the application. Here's how to create a new version.
 
-## 创建新版本
+## Creating a New Release
 
-### 方法 1: 自动发布（推荐）
+### Method 1: Automated Release (Recommended)
 
-1. 手动触发版本更新工作流程：
-   - 在 GitHub 项目页面，转到 "Actions" 标签
-   - 选择 "Update Package JSON Version" 工作流程
-   - 点击 "Run workflow"
-   - 输入新版本号（例如：`0.1.1`）
-   - 点击运行
+1. Manually trigger the version update workflow:
+   - Go to the "Actions" tab on the GitHub project page
+   - Select the "Update Package JSON Version" workflow
+   - Click "Run workflow"
+   - Enter the new version number (e.g., `0.1.1`)
+   - Click run
 
-2. 工作流程将自动：
-   - 更新 `package.json` 和 `src-tauri/tauri.conf.json` 中的版本号
-   - 创建并推送 git tag（例如：`v0.1.1`）
-   - 触发构建和发布流程
+2. The workflow will automatically:
+   - Update version numbers in `package.json` and `src-tauri/tauri.conf.json`
+   - Create and push a git tag (e.g., `v0.1.1`)
+   - Trigger the build and release process
 
-### 方法 2: 手动标签
+### Method 2: Manual Tagging
 
 ```bash
-# 更新版本号
+# Update version number
 npm version 0.1.1 --no-git-tag-version
 
-# 手动更新 src-tauri/tauri.conf.json 中的版本号
+# Manually update version number in src-tauri/tauri.conf.json
 
-# 提交更改
+# Commit changes
 git add .
 git commit -m "Bump version to 0.1.1"
 
-# 创建标签
+# Create tag
 git tag v0.1.1
 git push origin main
 git push origin v0.1.1
 ```
 
-## 构建流程
+## Build Process
 
-当推送新的版本标签时，GitHub Actions 将自动：
+When a new version tag is pushed, GitHub Actions will automatically:
 
-1. **创建 Release**: 在 GitHub 上创建新的 release
-2. **多平台构建**: 为以下平台构建应用程序：
+1. **Create Release**: Create a new release on GitHub
+2. **Multi-platform Build**: Build the application for the following platforms:
    - macOS (ARM64) - Apple Silicon Macs
    - macOS (x64) - Intel Macs
    - Windows (x64)
-   - Linux (x64) - AppImage 格式
-3. **上传资源**: 将构建好的安装包上传到 GitHub Release
-4. **更新配置**: 自动更新 `docs/config.json` 文件，包含：
-   - 新版本号
-   - 各平台的下载链接
-   - 文件大小信息
+   - Linux (x64) - AppImage format
+3. **Upload Assets**: Upload built installation packages to GitHub Release
+4. **Update Configuration**: Automatically update the `docs/config.json` file, including:
+   - New version number
+   - Download links for each platform
+   - File size information
 
-## 自动更新功能
+## Auto-Update Feature
 
-应用程序包含内置的自动更新检查功能：
+The application includes built-in auto-update checking functionality:
 
-- **启动检查**: 应用启动时自动检查新版本
-- **手动检查**: 用户可以在设置中手动检查更新
-- **通知系统**: 发现新版本时显示更新通知
-- **下载引导**: 点击更新按钮跳转到 GitHub Release 页面
+- **Startup Check**: Automatically checks for new versions on app startup
+- **Manual Check**: Users can manually check for updates in settings
+- **Notification System**: Shows update notifications when new versions are found
+- **Download Guide**: Clicking the update button redirects to the GitHub Release page
 
-### 配置文件
+### Configuration File
 
-更新检查使用 `docs/config.json` 文件，该文件在每次发布时自动更新。格式如下：
+Update checking uses the `docs/config.json` file, which is automatically updated with each release. The format is as follows:
 
 ```json
 {
@@ -84,25 +84,25 @@ git push origin v0.1.1
 }
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 构建失败
-- 检查 GitHub Actions 日志
-- 确保所有依赖项都已正确安装
-- 验证 `tauri.conf.json` 配置是否正确
+### Build Failures
+- Check GitHub Actions logs
+- Ensure all dependencies are properly installed
+- Verify that `tauri.conf.json` configuration is correct
 
-### 更新检查失败
-- 确保 `docs/config.json` 文件可访问
-- 检查网络连接
-- 验证 GitHub API 是否可用
+### Update Check Failures
+- Ensure `docs/config.json` file is accessible
+- Check network connectivity
+- Verify GitHub API availability
 
-### 版本号不匹配
-- 确保 `package.json` 和 `src-tauri/tauri.conf.json` 中的版本号一致
-- 检查 git tag 格式是否正确（应该是 `v` + 版本号）
+### Version Number Mismatch
+- Ensure version numbers in `package.json` and `src-tauri/tauri.conf.json` are consistent
+- Check that git tag format is correct (should be `v` + version number)
 
-## 开发注意事项
+## Development Notes
 
-- 版本号应遵循 [语义化版本控制](https://semver.org/lang/zh-CN/)
-- 在创建新版本前，确保所有测试都通过
-- 更新 CHANGELOG.md 文件记录变更
-- 考虑在发布前创建预发布版本进行测试
+- Version numbers should follow [Semantic Versioning](https://semver.org/)
+- Ensure all tests pass before creating a new version
+- Update CHANGELOG.md file to record changes
+- Consider creating pre-release versions for testing before official release

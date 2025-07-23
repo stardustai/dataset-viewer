@@ -1,0 +1,27 @@
+# <type>(<scope>): <description>
+#
+# Types:
+# feat:     A new feature
+# fix:      A bug fix
+# docs:     Documentation only changes
+# style:    Changes that do not affect the meaning of the code
+# refactor: A code change that neither fixes a bug nor adds a feature
+# perf:     A code change that improves performance
+# test:     Adding missing tests or correcting existing tests
+# chore:    Changes to the build process or auxiliary tools
+# ci:       Changes to our CI configuration files and scripts
+#
+# Scope examples:
+# ui, webdav, file-viewer, connection, search, etc.
+#
+# Description:
+# - Use the imperative mood: "add feature" not "added feature"
+# - Use lowercase
+# - No dot (.) at the end
+# - Limit to 50 characters
+#
+# Examples:
+# feat(file-viewer): add syntax highlighting for code files
+# fix(webdav): resolve connection timeout issue
+# docs(readme): update installation instructions
+# refactor(ui): simplify navigation component structure

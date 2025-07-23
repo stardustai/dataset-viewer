@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -16,10 +20,66 @@ jobs:
       release_tag: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full git history for changelog generation
 
       - name: Get version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release body
+        id: generate_body
+        run: |
+          # Get previous tag
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+
+          # Generate changelog
+          if [ -n "$PREVIOUS_TAG" ] && [ "$PREVIOUS_TAG" != "${{ steps.get_version.outputs.VERSION }}" ]; then
+            echo "## 📋 What's Changed" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+
+            # Get commit information
+            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} >> CHANGELOG.md
+
+            # Categorize commits by type (if following conventional commits)
+            echo "" >> CHANGELOG.md
+            echo "### ✨ New Features" >> CHANGELOG.md
+            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^feat" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+
+            echo "" >> CHANGELOG.md
+            echo "### 🐛 Bug Fixes" >> CHANGELOG.md
+            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^fix" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+
+            echo "" >> CHANGELOG.md
+            echo "### 📚 Documentation" >> CHANGELOG.md
+            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^docs" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+
+            echo "" >> CHANGELOG.md
+            echo "### 🔧 Other Improvements" >> CHANGELOG.md
+            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ steps.get_version.outputs.VERSION }} --grep="^chore\|^refactor\|^style\|^perf" >> CHANGELOG.md || echo "None" >> CHANGELOG.md
+
+          else
+            echo "## 📋 What's Changed" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "This is the first release of WebDAV Viewer!" >> CHANGELOG.md
+          fi
+
+          # Read template and replace variables
+          RELEASE_BODY=$(cat .github/RELEASE-TEMPLATE.md)
+          CHANGES=$(cat CHANGELOG.md)
+
+          # Replace template variables
+          RELEASE_BODY="${RELEASE_BODY//\{\{tag_name\}\}/${{ steps.get_version.outputs.VERSION }}}"
+          RELEASE_BODY="${RELEASE_BODY//\{\{changes\}\}/$CHANGES}"
+          RELEASE_BODY="${RELEASE_BODY//\{\{github_repo\}\}/${{ github.repository }}}"
+
+          # Save to file
+          echo "$RELEASE_BODY" > release_body.md
+
+          # Output to GitHub Actions
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_OUTPUT
+          cat release_body.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create-release
@@ -30,16 +90,18 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: '${{ steps.get_version.outputs.VERSION }}',
-              name: 'Release ${{ steps.get_version.outputs.VERSION }}',
-              body: 'Release ${{ steps.get_version.outputs.VERSION }}',
+              name: 'WebDAV Viewer ${{ steps.get_version.outputs.VERSION }}',
+              body: `${{ steps.generate_body.outputs.RELEASE_BODY }}`,
               draft: false,
-              prerelease: false
+              prerelease: false,
+              generate_release_notes: false
             })
 
             return data.id
 
   build-tauri:
     needs: create-release
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -50,7 +112,7 @@ jobs:
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
             arch: 'x64'
-          - platform: 'ubuntu-20.04'
+          - platform: 'ubuntu-22.04'
             args: ''
             arch: 'x64'
           - platform: 'windows-latest'
@@ -84,9 +146,11 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          key: ${{ matrix.platform }}-${{ matrix.arch }}
+          cache-all-crates: true
 
       - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-20.04'
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -122,7 +186,7 @@ jobs:
 
             const assets = release.data.assets;
 
-            // 查找不同平台的资源
+            // Find assets for different platforms
             const macosArm64 = assets.find(asset =>
               asset.name.includes('aarch64') &&
               asset.name.includes('apple') &&
