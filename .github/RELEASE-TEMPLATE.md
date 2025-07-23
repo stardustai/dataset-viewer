@@ -1,5 +1,3 @@
-## 🚀 WebDAV Viewer {{tag_name}}
-
 {{changes}}
 
 ### ✨ Key Features
