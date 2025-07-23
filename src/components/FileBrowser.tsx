@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { WebDAVFile } from '../types';
 import { webdavService } from '../services/webdav';
+import { navigationHistoryService } from '../services/navigationHistory';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
@@ -50,6 +51,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [searchTerm, setSearchTerm] = useState(''); // 文件名搜索
   const containerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLDivElement>(null);
+  const fileListRef = useRef<HTMLDivElement>(null);
+  const scrollSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 计算过滤后的文件数量
   const getFilteredFiles = () => {
@@ -66,10 +69,60 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     return filteredFiles;
   };
 
-  const loadDirectory = async (path: string, isManual = false) => {
+  const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
     // 防止重复请求
     if (loadingRequest === path) {
       return;
+    }
+
+    // 如果不是强制重新加载且路径相同，则直接返回
+    if (!forceReload && !isManual && currentPath === path && files.length > 0) {
+      return;
+    }
+
+    // 尝试从缓存获取数据（除非是手动刷新或强制重新加载）
+    if (!isManual && !forceReload) {
+      const cachedFiles = navigationHistoryService.getCachedDirectory(path);
+      if (cachedFiles) {
+        console.log('Using cached directory data for:', path);
+        setFiles(cachedFiles);
+        setCurrentPath(path);
+        setLoading(false);
+
+        // 记录访问历史
+        navigationHistoryService.addToHistory(path);
+
+        // 通知父组件目录变化
+        onDirectoryChange?.(path);
+
+        // 恢复滚动位置
+        setTimeout(() => {
+          if (fileListRef.current) {
+            const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+            if (scrollElement) {
+              const savedPosition = navigationHistoryService.getScrollPosition(path);
+              if (savedPosition) {
+                scrollElement.scrollTop = savedPosition.scrollTop;
+                scrollElement.scrollLeft = savedPosition.scrollLeft;
+              }
+            }
+          }
+        }, 50); // 缩短等待时间，因为是缓存数据
+
+        return;
+      }
+    }
+
+    // 保存当前目录的滚动位置（如果有的话）
+    if (currentPath !== path && fileListRef.current) {
+      const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+      if (scrollElement) {
+        navigationHistoryService.saveScrollPosition(
+          currentPath,
+          scrollElement.scrollTop,
+          scrollElement.scrollLeft
+        );
+      }
     }
 
     setLoadingRequest(path);
@@ -79,11 +132,34 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     setIsManualRefresh(isManual);
 
     try {
+      console.log('Loading directory from server:', path);
       const fileList = await webdavService.listDirectory(path);
       setFiles(fileList);
       setCurrentPath(path);
+
+      // 缓存目录数据
+      navigationHistoryService.cacheDirectory(path, fileList);
+
+      // 记录访问历史
+      navigationHistoryService.addToHistory(path);
+
       // 通知父组件目录变化
       onDirectoryChange?.(path);
+
+      // 恢复滚动位置
+      setTimeout(() => {
+        if (fileListRef.current) {
+          const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+          if (scrollElement) {
+            const savedPosition = navigationHistoryService.getScrollPosition(path);
+            if (savedPosition) {
+              scrollElement.scrollTop = savedPosition.scrollTop;
+              scrollElement.scrollLeft = savedPosition.scrollLeft;
+            }
+          }
+        }
+      }, 100); // 给一点时间让组件渲染完成
+
     } catch (err) {
       setError('Failed to load directory contents');
       setFailedPath(path); // 记录失败的路径
@@ -115,13 +191,69 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 添加刷新当前目录的函数
   const refreshCurrentDirectory = () => {
-    loadDirectory(currentPath, true); // 标记为手动刷新
+    loadDirectory(currentPath, true, true); // 标记为手动刷新和强制重新加载
   };
 
-  // 初始加载
+  // 初始加载 - 优化避免重复加载
   useEffect(() => {
-    loadDirectory(initialPath);
+    // 如果没有指定初始路径，尝试恢复最后访问的目录
+    const pathToLoad = initialPath || navigationHistoryService.getLastVisitedPath();
+
+    // 只有当目标路径与当前路径不同，或者还没有加载过数据时才加载
+    if (pathToLoad !== currentPath || files.length === 0) {
+      loadDirectory(pathToLoad);
+    }
   }, []); // 只在组件挂载时执行一次
+
+  // 监听滚动事件，实时保存滚动位置
+  useEffect(() => {
+    const fileListElement = fileListRef.current;
+    if (!fileListElement) return;
+
+    const scrollElement = fileListElement.querySelector('[data-virtualized-container]') as HTMLElement;
+    if (!scrollElement) return;
+
+    const handleScroll = () => {
+      // 使用防抖来避免过度频繁的保存
+      if (scrollSaveTimeoutRef.current) {
+        clearTimeout(scrollSaveTimeoutRef.current);
+      }
+
+      scrollSaveTimeoutRef.current = setTimeout(() => {
+        navigationHistoryService.saveScrollPosition(
+          currentPath,
+          scrollElement.scrollTop,
+          scrollElement.scrollLeft
+        );
+      }, 300); // 300ms 防抖
+    };
+
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      scrollElement.removeEventListener('scroll', handleScroll);
+      if (scrollSaveTimeoutRef.current) {
+        clearTimeout(scrollSaveTimeoutRef.current);
+      }
+    };
+  }, [currentPath, files.length]); // 当路径或文件列表变化时重新绑定事件
+
+  // 组件卸载时保存当前滚动位置
+  useEffect(() => {
+    return () => {
+      // 在组件卸载时保存当前滚动位置
+      if (fileListRef.current && currentPath) {
+        const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+        if (scrollElement) {
+          navigationHistoryService.saveScrollPosition(
+            currentPath,
+            scrollElement.scrollTop,
+            scrollElement.scrollLeft
+          );
+        }
+      }
+    };
+  }, [currentPath]);
 
   // 监听容器大小变化
   useEffect(() => {

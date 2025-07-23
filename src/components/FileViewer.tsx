@@ -26,7 +26,7 @@ import { getFileType, isTextFile, isMediaFile } from '../utils/fileTypes';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
-  scrollToLine: (lineNumber: number) => void;
+  scrollToLine: (lineNumber: number, column?: number) => void;
   scrollToPercentage: (percentage: number) => void;
   jumpToFilePosition: (filePosition: number) => void;
 }
@@ -324,9 +324,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
   // 处理全文件搜索结果导航
   const navigateToFullFileSearchResult = useCallback(async (result: { line: number; column: number; text: string; match: string; filePosition: number }) => {
     if (!isLargeFile) {
-      // 小文件直接滚动到行
+      // 小文件直接滚动到行和列
       if (textViewerRef.current) {
-        textViewerRef.current.scrollToLine(result.line);
+        textViewerRef.current.scrollToLine(result.line, result.column);
       }
       return;
     }
@@ -357,7 +357,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       setTimeout(() => {
         if (textViewerRef.current) {
           const targetLineInNewContent = Math.max(1, result.line - estimatedStartLine + 1);
-          textViewerRef.current.scrollToLine(targetLineInNewContent);
+          textViewerRef.current.scrollToLine(targetLineInNewContent, result.column);
         }
         // 导航完成后重置标志
         setTimeout(() => {
@@ -452,7 +452,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
     } else {
       // 当前内容搜索结果导航
       if (textViewerRef.current) {
-        textViewerRef.current.scrollToLine(result.line);
+        textViewerRef.current.scrollToLine(result.line, result.column);
       }
     }
   }, [fullFileSearchMode, fullFileSearchResults, searchResults, navigateToFullFileSearchResult]);
