@@ -20,7 +20,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
   const [error, setError] = useState('');
   const [selectedStoredConnection, setSelectedStoredConnection] = useState<StoredConnection | null>(null);
   const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false); // 密码是否来自存储
-  const [savePassword, setSavePassword] = useState(false); // 是否保存密码
+  const savePassword = true; // 默认保存密码
 
   useEffect(() => {
     // 检查用户是否主动断开了连接
@@ -57,7 +57,6 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
     setUsername(demoUsername);
     setPassword(demoPassword);
     setIsPasswordFromStorage(false); // demo密码可以编辑
-    setSavePassword(false); // demo连接不保存密码
     setSelectedStoredConnection(null);
   };
 
@@ -145,7 +144,6 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
                 onChange={(e) => {
                   setUrl(e.target.value);
                   setSelectedStoredConnection(null); // 清除选中的连接
-                  setSavePassword(false); // 清除保存密码状态
                   if (isPasswordFromStorage) {
                     setPassword(''); // 如果之前是存储的密码，清除它
                     setIsPasswordFromStorage(false);
@@ -170,7 +168,6 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
                   onChange={(e) => {
                     setUsername(e.target.value);
                     setSelectedStoredConnection(null); // 清除选中的连接
-                    setSavePassword(false); // 清除保存密码状态
                     if (isPasswordFromStorage) {
                       setPassword(''); // 如果之前是存储的密码，清除它
                       setIsPasswordFromStorage(false);
@@ -218,28 +215,6 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
                 />
               </div>
             </div>
-
-            {/* 保存密码选项 */}
-            {!selectedStoredConnection && (
-              <div className="flex items-center space-x-2">
-                <input
-                  id="save-password"
-                  type="checkbox"
-                  checked={savePassword}
-                  onChange={(e) => setSavePassword(e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
-                />
-                <label htmlFor="save-password" className="text-sm text-gray-700 dark:text-gray-300">
-                  {t('save.password')}
-                </label>
-              </div>
-            )}
-
-            {savePassword && !selectedStoredConnection && (
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-sm text-yellow-700 dark:text-yellow-300">{t('save.password.warning')}</p>
-              </div>
-            )}
 
             {error && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
