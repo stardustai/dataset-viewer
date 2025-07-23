@@ -1,9 +1,23 @@
 import { fetch } from '@tauri-apps/plugin-http';
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import type { UpdateConfig, UpdateCheckResult, ReleaseInfo } from '../types';
+import type { UpdateCheckResult, ReleaseInfo } from '../types';
 
-const CONFIG_URL = 'https://raw.githubusercontent.com/stardustai/webdav-viewer/main/docs/config.json';
+const GITHUB_API_URL = 'https://api.github.com/repos/stardustai/webdav-viewer/releases/latest';
+
+interface GitHubAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
+interface GitHubRelease {
+  tag_name: string;
+  name: string;
+  body: string;
+  assets: GitHubAsset[];
+  html_url: string;
+}
 
 class UpdateService {
   private lastCheckTime: number = 0;
@@ -25,21 +39,21 @@ class UpdateService {
       // 获取当前版本
       const currentVersion = await getVersion();
 
-      // 获取远程配置
-      const response = await fetch(CONFIG_URL);
+      // 获取 GitHub 最新发布信息
+      const response = await fetch(GITHUB_API_URL);
       if (!response.ok) {
-        throw new Error(`Failed to fetch update config: ${response.status}`);
+        throw new Error(`Failed to fetch GitHub release info: ${response.status}`);
       }
 
-      const config: UpdateConfig = await response.json();
-      const latestVersion = config.version;
+      const release: GitHubRelease = await response.json();
+      const latestVersion = release.tag_name.replace(/^v/, ''); // 移除 v 前缀
 
       // 比较版本
       const hasUpdate = this.compareVersions(latestVersion, currentVersion) > 0;
 
       let downloadInfo: ReleaseInfo | null = null;
       if (hasUpdate) {
-        downloadInfo = await this.getDownloadInfo(config);
+        downloadInfo = this.getDownloadInfoFromAssets(release.assets);
       }
 
       const result: UpdateCheckResult = {
@@ -69,40 +83,94 @@ class UpdateService {
   }
 
   /**
-   * 获取当前平台的下载信息
+   * 从 GitHub Assets 中获取当前平台的下载信息
    */
-  private async getDownloadInfo(config: UpdateConfig): Promise<ReleaseInfo | null> {
+  private getDownloadInfoFromAssets(assets: GitHubAsset[]): ReleaseInfo | null {
     try {
       // 使用用户代理字符串和其他浏览器 API 检测平台
       const userAgent = navigator.userAgent.toLowerCase();
       const platform = navigator.platform.toLowerCase();
 
-      let platformKey: keyof UpdateConfig['releases'];
+      let platformPatterns: string[];
 
       if (userAgent.includes('mac') || platform.includes('mac')) {
         // 检测 Apple Silicon：检查硬件并发数和特定的用户代理特征
         // 这是一个启发式方法，不是 100% 准确，但在大多数情况下有效
         const isLikelyAppleSilicon = navigator.hardwareConcurrency >= 8;
-        platformKey = isLikelyAppleSilicon ? 'macos-arm64' : 'macos-x64';
+        if (isLikelyAppleSilicon) {
+          platformPatterns = ['arm64', 'aarch64', 'universal'];
+        } else {
+          platformPatterns = ['x64', 'x86_64', 'intel', 'universal'];
+        }
       } else if (userAgent.includes('win') || platform.includes('win')) {
-        platformKey = 'windows';
+        platformPatterns = ['windows', 'win', 'x64', 'x86_64'];
       } else if (userAgent.includes('linux') || platform.includes('linux')) {
-        platformKey = 'linux';
+        platformPatterns = ['linux', 'x64', 'x86_64'];
       } else {
-        // 默认使用第一个可用的平台
-        const availablePlatforms = Object.keys(config.releases) as Array<keyof UpdateConfig['releases']>;
-        const firstAvailable = availablePlatforms.find(key => config.releases[key] !== null);
-        platformKey = firstAvailable || 'windows';
+        // 默认尝试通用的模式
+        platformPatterns = ['x64', 'x86_64', 'universal'];
       }
 
-      return config.releases[platformKey];
+      // 查找匹配的 asset
+      for (const pattern of platformPatterns) {
+        const asset = assets.find(asset => 
+          asset.name.toLowerCase().includes(pattern.toLowerCase()) &&
+          (asset.name.endsWith('.dmg') || 
+           asset.name.endsWith('.exe') || 
+           asset.name.endsWith('.AppImage') ||
+           asset.name.endsWith('.deb') ||
+           asset.name.endsWith('.rpm') ||
+           asset.name.endsWith('.tar.gz'))
+        );
+
+        if (asset) {
+          return {
+            downloadUrl: asset.browser_download_url,
+            filename: asset.name,
+            fileSize: this.formatFileSize(asset.size),
+          };
+        }
+      }
+
+      // 如果没有找到匹配的，返回第一个可执行文件
+      const fallbackAsset = assets.find(asset => 
+        asset.name.endsWith('.dmg') || 
+        asset.name.endsWith('.exe') || 
+        asset.name.endsWith('.AppImage') ||
+        asset.name.endsWith('.deb') ||
+        asset.name.endsWith('.rpm') ||
+        asset.name.endsWith('.tar.gz')
+      );
+
+      if (fallbackAsset) {
+        return {
+          downloadUrl: fallbackAsset.browser_download_url,
+          filename: fallbackAsset.name,
+          fileSize: this.formatFileSize(fallbackAsset.size),
+        };
+      }
+
+      return null;
     } catch (error) {
-      console.error('Failed to get platform info:', error);
-      // 如果检测失败，尝试返回一个默认选项
-      const availablePlatforms = Object.keys(config.releases) as Array<keyof UpdateConfig['releases']>;
-      const firstAvailable = availablePlatforms.find(key => config.releases[key] !== null);
-      return firstAvailable ? config.releases[firstAvailable] : null;
+      console.error('Failed to get platform info from assets:', error);
+      return null;
     }
+  }
+
+  /**
+   * 格式化文件大小
+   */
+  private formatFileSize(bytes: number): string {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
   }  /**
    * 比较版本号
    * @param version1 版本1

@@ -47,42 +47,19 @@ When a new version tag is pushed, GitHub Actions will automatically:
    - Windows (x64)
    - Linux (x64) - AppImage format
 3. **Upload Assets**: Upload built installation packages to GitHub Release
-4. **Update Configuration**: Automatically update the `docs/config.json` file, including:
-   - New version number
-   - Download links for each platform
-   - File size information
 
 ## Auto-Update Feature
 
-The application includes built-in auto-update checking functionality:
+The application includes built-in auto-update checking functionality that uses GitHub Releases API:
 
-- **Startup Check**: Automatically checks for new versions on app startup
-- **Manual Check**: Users can manually check for updates in settings
-- **Notification System**: Shows update notifications when new versions are found
-- **Download Guide**: Clicking the update button redirects to the GitHub Release page
-
-### Configuration File
-
-Update checking uses the `docs/config.json` file, which is automatically updated with each release. The format is as follows:
-
-```json
-{
-  "version": "0.1.0",
-  "releases": {
-    "macos-arm64": {
-      "downloadUrl": "https://github.com/stardustai/webdav-viewer/releases/download/v0.1.0/webdav-viewer-macos-arm64.dmg",
-      "filename": "webdav-viewer-macos-arm64.dmg",
-      "fileSize": "10.2 MB"
-    },
-    "macos-x64": { /* ... */ },
-    "windows": { /* ... */ },
-    "linux": { /* ... */ }
-  },
-  "github": {
-    "repoUrl": "https://github.com/stardustai/webdav-viewer"
-  }
-}
-```
+- **GitHub API Integration**: Automatically fetches the latest release information from GitHub
+- **Intelligent Platform Detection**: Automatically detects the user's platform (macOS ARM64/x64, Windows, Linux) and selects the appropriate download file
+- **Startup Check**: Automatically checks for new versions on app startup (with 24-hour caching)
+- **Manual Check**: Users can manually check for updates in settings panel
+- **Notification System**: Shows update notifications when new versions are found with download information
+- **Direct Download**: Clicking the update button redirects to the GitHub Release page
+- **File Format Support**: Supports multiple installation formats (.dmg, .exe, .AppImage, .deb, .rpm, .tar.gz)
+- **Smart Caching**: Caches update check results for 24 hours to reduce API calls
 
 ## Troubleshooting
 
@@ -92,9 +69,11 @@ Update checking uses the `docs/config.json` file, which is automatically updated
 - Verify that `tauri.conf.json` configuration is correct
 
 ### Update Check Failures
-- Ensure `docs/config.json` file is accessible
 - Check network connectivity
-- Verify GitHub API availability
+- Verify GitHub API availability (api.github.com)
+- Ensure GitHub repository is public and accessible
+- Check if rate limiting is affecting API calls
+- Verify release assets include supported file formats
 
 ### Version Number Mismatch
 - Ensure version numbers in `package.json` and `src-tauri/tauri.conf.json` are consistent
