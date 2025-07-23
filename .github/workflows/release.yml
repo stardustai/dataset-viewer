@@ -99,7 +99,7 @@ jobs:
           fi
 
           # Read template and replace variables
-          RELEASE_BODY=$(cat .github/release-template.md)
+          RELEASE_BODY=$(cat .github/RELEASE-TEMPLATE.md)
           CHANGES=$(cat CHANGELOG.md)
 
           # Replace template variables
