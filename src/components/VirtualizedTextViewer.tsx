@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface VirtualizedTextViewerProps {
@@ -28,6 +29,7 @@ const LineContentModal: React.FC<{
   searchTerm?: string;
 }> = ({ isOpen, onClose, lineNumber, content, searchTerm }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   // 处理点击外部关闭
   useEffect(() => {
@@ -85,7 +87,7 @@ const LineContentModal: React.FC<{
         {/* 标题栏 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            第 {lineNumber} 行内容
+            {t('line.content', { line: lineNumber })}
           </h3>
           <button
             onClick={onClose}

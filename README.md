@@ -2,9 +2,9 @@
 
 > 🤖 **This project is 100% AI-generated** using GitHub Copilot and Claude AI
 
-📥 **[Download Latest Release](https://github.com/stardustai/webdav-viewer/releases/latest)**
-
 A modern, high-performance WebDAV browser built with Tauri, React, and TypeScript. Designed to handle large text files (hundreds of GB) with efficient streaming and fast in-file search capabilities.
+
+📥 **[Download Latest Release](https://github.com/stardustai/webdav-viewer/releases/latest)**
 
 ## ✨ Highlights
 
@@ -25,7 +25,17 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 - ⚡ **Virtualized Rendering**: Smooth scrolling for files with millions of lines
 - 🎥 **Media Preview**: Built-in image and video preview capabilities
 
-## 📚 Supported File Types
+## 📸 Screenshots
+
+### File Browser Interface
+![File Browser](screenshots/home.png)
+*Modern file browser with intuitive navigation and theme support*
+
+### Text File Viewer
+![Text Viewer](screenshots/text.png)
+*Advanced text viewer with search capabilities and virtualized rendering*
+
+## 📚 Supported File Typesis
 
 ### Text Files
 - Plain text (`.txt`, `.log`)

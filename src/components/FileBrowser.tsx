@@ -12,7 +12,8 @@ import {
   ChevronDown,
   RefreshCw,
   Search,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 import { WebDAVFile } from '../types';
 import { webdavService } from '../services/webdav';
@@ -21,6 +22,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { ThemeToggle } from './ThemeToggle';
+import { SettingsPanel } from './SettingsPanel';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string) => void;
@@ -49,6 +51,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [containerHeight, setContainerHeight] = useState(600); // 容器高度
   const [tableHeaderHeight, setTableHeaderHeight] = useState(40); // 表头高度
   const [searchTerm, setSearchTerm] = useState(''); // 文件名搜索
+  const [showSettings, setShowSettings] = useState(false); // 设置面板显示状态
   const containerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLDivElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
@@ -397,6 +400,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             <LanguageSwitcher />
             <ThemeToggle />
             <button
+              onClick={() => setShowSettings(true)}
+              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={t('settings')}
+            >
+              <Settings className="w-4 h-4" />
+              <span>{t('settings')}</span>
+            </button>
+            <button
               onClick={onDisconnect}
               className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
@@ -621,6 +632,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           </div>
         )}
       </main>
+
+      {/* 设置面板 */}
+      <SettingsPanel
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 };

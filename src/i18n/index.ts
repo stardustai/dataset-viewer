@@ -18,8 +18,15 @@ const resources = {
       'disconnect': '断开连接',
       'connected.to': '已连接到',
 
+      // 主题切换
+      'theme.light': '浅色',
+      'theme.dark': '深色',
+      'theme.system': '系统',
+
       // 连接管理
       'saved.connections': '已保存的连接',
+      'no.saved.connections': '暂无已保存的连接',
+      'save.connection.hint': '连接成功后可自动保存连接信息',
       'connection.select.saved': '选择已保存的连接',
       'or.new.connection': '或新建连接',
       'save.connection': '保存连接',
@@ -65,6 +72,24 @@ const resources = {
       'clear.search': '清除搜索',
       'search.results.count': '找到 {{count}} 个文件',
 
+      // 设置和更新
+      'settings': '设置',
+      'settings.update': '更新设置',
+      'auto.check.updates': '自动检查更新',
+      'check.updates': '检查更新',
+      'checking.updates': '检查中...',
+      'update.available': '发现新版本',
+      'no.updates': '已是最新版本',
+      'current.version': '当前版本',
+      'latest.version': '最新版本',
+      'download.update': '下载更新',
+      'file.size': '文件大小',
+      'update.check.failed': '检查更新失败',
+      'update.download.failed': '打开下载页面失败',
+      'about': '关于',
+      'app.description': '现代化的 WebDAV 文件浏览器',
+      'app.features': '支持大文件查看和快速搜索',
+
       // 文件查看器
       'file.viewer': '文件查看器',
       'download': '下载',
@@ -83,6 +108,18 @@ const resources = {
       'viewer.search.results': '{{current}} / {{total}}',
       'viewer.previous.result': '上一个结果',
       'viewer.next.result': '下一个结果',
+
+      // 文件内容搜索
+      'search.entire.file': '全文件搜索',
+      'search.entire.file.large': '在整个文件中搜索（至少2个字符）...',
+      'search.loaded.content': '在已加载内容中搜索（至少2个字符）...',
+      'search.results.limited.500': '（已显示前500个）',
+      'search.results.limited.5000': '（已显示前5000个）',
+      'search.sampling.description': '采样结果过多，仅显示前500个匹配项',
+      'search.too.many.results': '结果过多，仅显示前5000个匹配项',
+      'search.sampling': '（采样）',
+      'line.number': '行 {{line}}',
+      'line.content': '第 {{line}} 行内容',
       'viewer.load.more': '加载更多内容',
       'viewer.load.all': '加载全部内容',
       'viewer.fully.loaded': '文件已完全加载',
@@ -143,8 +180,15 @@ const resources = {
       'disconnect': 'Disconnect',
       'connected.to': 'Connected to',
 
+      // Theme toggle
+      'theme.light': 'Light',
+      'theme.dark': 'Dark',
+      'theme.system': 'System',
+
       // Connection management
       'saved.connections': 'Saved Connections',
+      'no.saved.connections': 'No saved connections yet',
+      'save.connection.hint': 'Connection information will be saved automatically after successful connection',
       'connection.select.saved': 'Select a saved connection',
       'or.new.connection': 'or create new connection',
       'save.connection': 'Save connection',
@@ -190,6 +234,24 @@ const resources = {
       'clear.search': 'Clear search',
       'search.results.count': 'Found {{count}} files',
 
+      // Settings and Updates
+      'settings': 'Settings',
+      'settings.update': 'Update Settings',
+      'auto.check.updates': 'Auto check updates',
+      'check.updates': 'Check for updates',
+      'checking.updates': 'Checking...',
+      'update.available': 'Update available',
+      'no.updates': 'Up to date',
+      'current.version': 'Current version',
+      'latest.version': 'Latest version',
+      'download.update': 'Download update',
+      'file.size': 'File size',
+      'update.check.failed': 'Update check failed',
+      'update.download.failed': 'Failed to open download page',
+      'about': 'About',
+      'app.description': 'Modern WebDAV file browser',
+      'app.features': 'Supports large file viewing and fast search',
+
       // File viewer
       'file.viewer': 'File Viewer',
       'download': 'Download',
@@ -208,6 +270,18 @@ const resources = {
       'viewer.search.results': '{{current}} of {{total}}',
       'viewer.previous.result': 'Previous result',
       'viewer.next.result': 'Next result',
+
+      // File content search
+      'search.entire.file': 'Full file search',
+      'search.entire.file.large': 'Search in entire file (at least 2 characters)...',
+      'search.loaded.content': 'Search in loaded content (at least 2 characters)...',
+      'search.results.limited.500': '(Showing first 500)',
+      'search.results.limited.5000': '(Showing first 5000)',
+      'search.sampling.description': 'Too many sampling results, showing only first 500 matches',
+      'search.too.many.results': 'Too many results, showing only first 5000 matches',
+      'search.sampling': '(Sampling)',
+      'line.number': 'Line {{line}}',
+      'line.content': 'Line {{line}} content',
       'viewer.load.more': 'Load More Content',
       'viewer.load.all': 'Load All Content',
       'viewer.fully.loaded': 'File fully loaded',

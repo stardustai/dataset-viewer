@@ -772,8 +772,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={fullFileSearchMode ?
-                  (isLargeFile ? '在整个文件中搜索（至少2个字符）...' : '在文件中搜索（至少2个字符）...') :
-                  '在已加载内容中搜索（至少2个字符）...'
+                  (isLargeFile ? t('search.entire.file.large') : t('search.entire.file')) :
+                  t('search.loaded.content')
                 }
                 className="w-full pl-10 pr-4 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               />
@@ -799,7 +799,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
                     onChange={(e) => setFullFileSearchMode(e.target.checked)}
                     className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
                   />
-                  <span>全文件搜索</span>
+                  <span>{t('search.entire.file')}</span>
                 </label>
               </div>
             )}
@@ -807,8 +807,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
             {(() => {
               const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
               const isCurrentResultsLimited = fullFileSearchMode ? fullFileSearchLimited : searchResultsLimited;
-              const limitText = fullFileSearchMode ? '（已显示前500个）' : '（已显示前5000个）';
-              const limitDescription = fullFileSearchMode ? '采样结果过多，仅显示前500个匹配项' : '结果过多，仅显示前5000个匹配项';
+              const limitText = fullFileSearchMode ? t('search.results.limited.500') : t('search.results.limited.5000');
+              const limitDescription = fullFileSearchMode ? t('search.sampling.description') : t('search.too.many.results');
 
               return currentResults.length > 0 && (
                 <div className="flex items-center space-x-3">
@@ -822,11 +822,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
                       </span>
                       {currentSearchIndex >= 0 && currentResults[currentSearchIndex] && (
                         <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded-full text-xs font-medium">
-                          行 {currentResults[currentSearchIndex].line}
+                          {t('line.number', { line: currentResults[currentSearchIndex].line })}
                         </span>
                       )}
                       {fullFileSearchMode && isLargeFile && (
-                        <span className="text-yellow-600 dark:text-yellow-400 text-xs">（采样）</span>
+                        <span className="text-yellow-600 dark:text-yellow-400 text-xs">{t('search.sampling')}</span>
                       )}
                       {isCurrentResultsLimited && (
                         <span className="text-orange-600 dark:text-orange-400 text-xs">{limitText}</span>

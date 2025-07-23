@@ -1,0 +1,200 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+      release_tag: ${{ steps.get_version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ steps.get_version.outputs.VERSION }}',
+              name: 'Release ${{ steps.get_version.outputs.VERSION }}',
+              body: 'Release ${{ steps.get_version.outputs.VERSION }}',
+              draft: false,
+              prerelease: false
+            })
+
+            return data.id
+
+  build-tauri:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            arch: 'arm64'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            arch: 'x64'
+          - platform: 'ubuntu-20.04'
+            args: ''
+            arch: 'x64'
+          - platform: 'windows-latest'
+            args: ''
+            arch: 'x64'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Rust setup
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-20.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: ${{ matrix.args }}
+
+  update-config:
+    needs: [create-release, build-tauri]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get release assets
+        id: get_assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: '${{ needs.create-release.outputs.release_tag }}'
+            });
+
+            const assets = release.data.assets;
+
+            // 查找不同平台的资源
+            const macosArm64 = assets.find(asset =>
+              asset.name.includes('aarch64') &&
+              asset.name.includes('apple') &&
+              asset.name.endsWith('.dmg')
+            );
+
+            const macosX64 = assets.find(asset =>
+              asset.name.includes('x86_64') &&
+              asset.name.includes('apple') &&
+              asset.name.endsWith('.dmg')
+            );
+
+            const windows = assets.find(asset =>
+              asset.name.includes('x86_64') &&
+              asset.name.includes('pc-windows') &&
+              asset.name.endsWith('.msi')
+            );
+
+            const linux = assets.find(asset =>
+              asset.name.includes('x86_64') &&
+              asset.name.includes('unknown-linux') &&
+              asset.name.endsWith('.AppImage')
+            );
+
+            const formatSize = (bytes) => {
+              const mb = bytes / (1024 * 1024);
+              return mb.toFixed(1) + ' MB';
+            };
+
+            return {
+              macosArm64: macosArm64 ? {
+                downloadUrl: macosArm64.browser_download_url,
+                filename: macosArm64.name,
+                fileSize: formatSize(macosArm64.size)
+              } : null,
+              macosX64: macosX64 ? {
+                downloadUrl: macosX64.browser_download_url,
+                filename: macosX64.name,
+                fileSize: formatSize(macosX64.size)
+              } : null,
+              windows: windows ? {
+                downloadUrl: windows.browser_download_url,
+                filename: windows.name,
+                fileSize: formatSize(windows.size)
+              } : null,
+              linux: linux ? {
+                downloadUrl: linux.browser_download_url,
+                filename: linux.name,
+                fileSize: formatSize(linux.size)
+              } : null
+            };
+
+      - name: Update config.json
+        run: |
+          VERSION="${{ needs.create-release.outputs.release_tag }}"
+          VERSION_NUMBER="${VERSION#v}"
+
+          ASSETS='${{ steps.get_assets.outputs.result }}'
+
+          cat > docs/config.json << EOF
+          {
+            "version": "$VERSION_NUMBER",
+            "releases": {
+              "macos-arm64": $(echo "$ASSETS" | jq '.macosArm64'),
+              "macos-x64": $(echo "$ASSETS" | jq '.macosX64'),
+              "windows": $(echo "$ASSETS" | jq '.windows'),
+              "linux": $(echo "$ASSETS" | jq '.linux')
+            },
+            "github": {
+              "repoUrl": "https://github.com/${{ github.repository }}"
+            }
+          }
+          EOF
+
+      - name: Commit and push config update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/config.json
+          git commit -m "Update config.json for release ${{ needs.create-release.outputs.release_tag }}" || exit 0
+          git push

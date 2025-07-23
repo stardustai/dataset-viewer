@@ -2,9 +2,9 @@
 
 > 🤖 **本项目 100% 由 AI 生成** 使用 GitHub Copilot 和 Claude AI
 
-📥 **[下载最新版本](https://github.com/stardustai/webdav-viewer/releases/latest)**
-
 一个基于 Tauri、React 和 TypeScript 构建的现代化、高性能 WebDAV 浏览器。专为处理大型文本文件（数百 GB）而设计，具有高效的流式处理和快速文件内搜索功能。
+
+📥 **[下载最新版本](https://github.com/stardustai/webdav-viewer/releases/latest)**
 
 ## ✨ 亮点特性
 
@@ -24,6 +24,16 @@
 - 📱 **跨平台**：在 Windows、macOS 和 Linux 上的原生性能
 - ⚡ **虚拟化渲染**：百万行文件的流畅滚动
 - 🎥 **媒体预览**：内置图像和视频预览功能
+
+## 📸 界面截图
+
+### 文件浏览器界面
+![文件浏览器](screenshots/home.png)
+*现代化文件浏览器，具有直观导航和主题支持*
+
+### 文本文件查看器
+![文本查看器](screenshots/text.png)
+*高级文本查看器，具有搜索功能和虚拟化渲染*
 
 ## 📚 支持的文件类型
 

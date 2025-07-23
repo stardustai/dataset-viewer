@@ -27,3 +27,31 @@ export interface SearchResult {
   text: string;
   match: string;
 }
+
+export interface ReleaseInfo {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+}
+
+export interface UpdateConfig {
+  version: string;
+  releases: {
+    'macos-arm64': ReleaseInfo | null;
+    'macos-x64': ReleaseInfo | null;
+    windows: ReleaseInfo | null;
+    linux: ReleaseInfo | null;
+  };
+  github: {
+    repoUrl: string;
+  };
+}
+
+export interface UpdateCheckResult {
+  hasUpdate: boolean;
+  currentVersion: string;
+  latestVersion: string;
+  downloadUrl?: string;
+  filename?: string;
+  fileSize?: string;
+}

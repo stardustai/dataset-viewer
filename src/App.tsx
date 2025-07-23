@@ -3,6 +3,7 @@ import { ConnectionPanel } from './components/ConnectionPanel';
 import { FileBrowser } from './components/FileBrowser';
 import { FileViewer } from './components/FileViewer';
 import { DownloadProgress } from './components/DownloadProgress';
+import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
 import { WebDAVFile } from './types';
 import { webdavService } from './services/webdav';
 import { useTheme } from './hooks/useTheme';
@@ -15,6 +16,9 @@ type AppState = 'initializing' | 'connecting' | 'browsing' | 'viewing';
 function App() {
   // 初始化主题系统
   useTheme();
+
+  // 更新通知功能
+  const { showNotification, hideUpdateDialog } = useUpdateNotification();
 
   const [appState, setAppState] = useState<AppState>('initializing');
   const [selectedFile, setSelectedFile] = useState<WebDAVFile | null>(null);
@@ -113,6 +117,11 @@ function App() {
         isVisible={showDownloadProgress}
         onClose={() => setShowDownloadProgress(false)}
       />
+
+      {/* 更新通知 */}
+      {showNotification && (
+        <UpdateNotification onClose={hideUpdateDialog} />
+      )}
     </div>
   );
 }

@@ -79,7 +79,12 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   };
 
   if (connections.length === 0) {
-    return null;
+    return (
+      <div className="p-4 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="text-sm">{t('no.saved.connections')}</div>
+        <div className="text-xs mt-1">{t('save.connection.hint')}</div>
+      </div>
+    );
   }
 
   return (

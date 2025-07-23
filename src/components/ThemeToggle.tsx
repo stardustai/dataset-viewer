@@ -1,14 +1,16 @@
 import React from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 
 export const ThemeToggle: React.FC = () => {
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
 
   const themes = [
-    { key: 'light' as const, icon: Sun, label: '浅色' },
-    { key: 'dark' as const, icon: Moon, label: '深色' },
-    { key: 'system' as const, icon: Monitor, label: '系统' },
+    { key: 'light' as const, icon: Sun, label: t('theme.light') },
+    { key: 'dark' as const, icon: Moon, label: t('theme.dark') },
+    { key: 'system' as const, icon: Monitor, label: t('theme.system') },
   ];
 
   return (
