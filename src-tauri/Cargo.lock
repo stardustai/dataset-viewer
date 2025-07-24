@@ -5490,6 +5490,7 @@ name = "webdav-viewer"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "async-trait",
  "base64 0.21.7",
  "brotli 3.5.0",
  "bytes",
@@ -5497,6 +5498,7 @@ dependencies = [
  "flate2",
  "futures-util",
  "lz4",
+ "once_cell",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
@@ -5507,6 +5509,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-http",
  "tauri-plugin-opener",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-util",
  "url",

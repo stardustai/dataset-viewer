@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, User, Lock } from 'lucide-react';
-import { webdavService } from '../services/webdav';
+import { StorageServiceManager } from '../services/storage';
 import { DemoServerList } from './DemoServerList';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ConnectionSelector } from './ConnectionSelector';
@@ -28,7 +28,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
 
     // 只有在用户没有主动断开连接的情况下才自动加载默认连接
     if (!wasDisconnected) {
-      const defaultConnection = webdavService.getDefaultConnection();
+      const defaultConnection = StorageServiceManager.getDefaultConnection();
       if (defaultConnection) {
         handleSelectStoredConnection(defaultConnection);
       }
@@ -77,11 +77,11 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
         : password;
 
       // 默认保存连接，如果勾选了保存密码则同时保存密码
-      const success = await webdavService.connect(url, username, actualPassword, true, connectionName, savePassword);
+      const success = await StorageServiceManager.connect(url, username, actualPassword, true, connectionName, savePassword);
       if (success) {
         // 如果是从存储的连接连接成功，设置为默认连接
         if (selectedStoredConnection) {
-          webdavService.setDefaultConnection(selectedStoredConnection.id);
+          StorageServiceManager.setDefaultConnection(selectedStoredConnection.id);
         }
         onConnect();
       } else {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
-import { webdavService } from '../services/webdav';
+import { StorageServiceManager } from '../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common/StatusDisplay';
 import * as XLSX from 'xlsx';
 
@@ -57,7 +57,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       }, 200);
 
       // Get file content as blob
-      const response = await webdavService.getFileBlob(filePath);
+      const response = await StorageServiceManager.getFileBlob(filePath);
 
       // 完成下载，设置进度为100%
       clearInterval(progressInterval);
@@ -137,7 +137,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   const downloadFile = async () => {
     try {
-      const response = await webdavService.getFileBlob(filePath);
+      const response = await StorageServiceManager.getFileBlob(filePath);
       const blob = new Blob([response], { type: getMimeType(fileName) });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -181,7 +181,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     if (sheetIndex === activeSheet) return;
 
     try {
-      const response = await webdavService.getFileBlob(filePath);
+      const response = await StorageServiceManager.getFileBlob(filePath);
       const arrayBuffer = await new Blob([response]).arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 

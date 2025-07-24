@@ -5,7 +5,7 @@ import { FileViewer } from './components/FileViewer';
 import { DownloadProgress } from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
 import { WebDAVFile } from './types';
-import { webdavService } from './services/webdav';
+import { StorageServiceManager } from './services/storage';
 import { useTheme } from './hooks/useTheme';
 import { Loader2 } from 'lucide-react';
 import './i18n';
@@ -30,7 +30,7 @@ function App() {
     // 尝试自动连接到上次的服务
     const tryAutoConnect = async () => {
       try {
-        const success = await webdavService.autoConnect();
+        const success = await StorageServiceManager.autoConnect();
         if (success) {
           setAppState('browsing');
         } else {
@@ -50,7 +50,7 @@ function App() {
   };
 
   const handleDisconnect = () => {
-    webdavService.disconnect();
+    StorageServiceManager.disconnect();
     // 标记用户主动断开了连接
     localStorage.setItem('userDisconnected', 'true');
     setAppState('connecting');

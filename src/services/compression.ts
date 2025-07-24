@@ -5,7 +5,7 @@ export class CompressionService {
   /**
    * 分析压缩文件结构
    */
-  static async analyzeCompressedFile(
+  static async analyzeArchive(
     url: string,
     headers: Record<string, string>,
     filename: string,
@@ -16,21 +16,6 @@ export class CompressionService {
       headers,
       filename,
       maxSize,
-    });
-  }
-
-  /**
-   * 按需加载ZIP文件的详细信息
-   */
-  static async loadZipFileDetails(
-    url: string,
-    headers: Record<string, string>,
-    filename: string
-  ): Promise<ArchiveInfo> {
-    return await invoke('load_zip_file_details', {
-      url,
-      headers,
-      filename,
     });
   }
 
@@ -48,8 +33,8 @@ export class CompressionService {
       url,
       headers,
       filename,
-      entryPath,
-      maxPreviewSize,
+      entry_path: entryPath,
+      max_preview_size: maxPreviewSize,
     });
   }
 
@@ -60,15 +45,13 @@ export class CompressionService {
     url: string,
     headers: Record<string, string>,
     filename: string,
-    entryPath: string,
-    maxPreviewSize?: number
+    entryPath: string
   ): Promise<FilePreview> {
     return await invoke('smart_preview', {
       url,
       headers,
       filename,
-      entryPath,
-      maxPreviewSize,
+      entry_path: entryPath,
     });
   }
 
@@ -86,8 +69,8 @@ export class CompressionService {
       url,
       headers,
       filename,
-      entryPaths,
-      maxPreviewSize,
+      entry_paths: entryPaths,
+      max_preview_size: maxPreviewSize,
     });
   }
 
