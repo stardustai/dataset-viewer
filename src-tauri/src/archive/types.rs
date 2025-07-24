@@ -200,47 +200,6 @@ impl FileType {
     }
 }
 
-/// 流式读取块
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamChunk {
-    pub stream_id: String,
-    pub chunk_index: usize,
-    pub content: String,
-    pub is_final: bool,
-    pub total_chunks: Option<usize>,
-    pub bytes_read: usize,
-    pub offset: u64,
-}
-
-/// 流式读取事件
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamEvent {
-    pub stream_id: String,
-    pub event_type: StreamEventType,
-    pub message: Option<String>,
-    pub progress: Option<StreamProgress>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum StreamEventType {
-    Started,
-    Progress,
-    Completed,
-    Error,
-    Paused,
-    Resumed,
-}
-
-/// 流式读取进度
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamProgress {
-    pub bytes_read: u64,
-    pub total_bytes: Option<u64>,
-    pub chunks_read: usize,
-    pub estimated_total_chunks: Option<usize>,
-    pub speed_bps: Option<u64>,
-}
-
 /// 下载选项
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DownloadOptions {

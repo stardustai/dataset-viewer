@@ -78,15 +78,3 @@ export interface FilePreview {
   file_type: string;
 }
 
-export interface CompressedFileChunk {
-  stream_id: string;
-  chunk_index: number;
-  content: string;
-  is_complete: boolean;
-}
-
-export interface CompressedFileEvent {
-  stream_id: string;
-  error?: string;
-  total_chunks?: number;
-}

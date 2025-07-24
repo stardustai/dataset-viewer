@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Archive, Search, Play, Pause, RotateCcw, Copy } from 'lucide-react';
-import { ArchiveInfo, ArchiveEntry, FilePreview, CompressedFileChunk, CompressedFileEvent } from '../types';
+import { Archive, Search, Copy } from 'lucide-react';
+import { ArchiveInfo, ArchiveEntry, FilePreview } from '../types';
 import { CompressionService } from '../services/compression';
 import { copyToClipboard, showCopyToast } from '../utils/clipboard';
 
@@ -25,15 +25,7 @@ interface ArchiveViewerProps {
   filename: string;
 }
 
-interface StreamingContent {
-  chunks: string[];
-  isComplete: boolean;
-  error?: string;
-  totalChunks?: number;
-  isPaused?: boolean;
-}
-
-interface StreamingProgress {
+interface LoadMoreProgress {
   currentChunk: number;
   totalSize: number;
   loadedSize: number;
@@ -52,20 +44,13 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [streamingContent, setStreamingContent] = useState<StreamingContent | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadMoreProgress, setLoadMoreProgress] = useState<StreamingProgress>({
+  const [loadMoreProgress, setLoadMoreProgress] = useState<LoadMoreProgress>({
     currentChunk: 0,
     totalSize: 0,
     loadedSize: 0
   });
   const [currentLoadedSize, setCurrentLoadedSize] = useState(128 * 1024); // 已加载的内容大小，初始为128KB
-  const [streamProgress, setStreamProgress] = useState<StreamingProgress>({
-    currentChunk: 0,
-    totalSize: 0,
-    loadedSize: 0
-  });
 
   useEffect(() => {
     loadArchiveInfo();
@@ -130,7 +115,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setPreviewLoading(true);
       setSelectedEntry(entry);
       setFilePreview(null);
-      setStreamingContent(null);
       setCurrentLoadedSize(128 * 1024); // 重置为初始加载大小
 
       // 简化预览策略：直接尝试获取预览，后端会智能处理
@@ -214,86 +198,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         });
       }, 1000);
     }
-  };
-
-  const streamFile = async (entry: ArchiveEntry) => {
-    try {
-      setIsStreaming(true);
-      const content: StreamingContent = {
-        chunks: [],
-        isComplete: false,
-        isPaused: false
-      };
-      setStreamingContent(content);
-      setStreamProgress({
-        currentChunk: 0,
-        totalSize: entry.size,
-        loadedSize: 0
-      });
-
-      await CompressionService.streamCompressedFile(
-        url,
-        headers,
-        filename,
-        entry.path,
-        8192, // 8KB chunks
-        (chunk: CompressedFileChunk) => {
-          setStreamingContent(prev => {
-            if (!prev) return null;
-            const newChunks = [...prev.chunks];
-            newChunks[chunk.chunk_index] = chunk.content;
-            return {
-              ...prev,
-              chunks: newChunks
-            };
-          });
-
-          setStreamProgress(prev => ({
-            ...prev,
-            currentChunk: chunk.chunk_index + 1,
-            loadedSize: prev.loadedSize + chunk.content.length
-          }));
-        },
-        (event: CompressedFileEvent) => {
-          setStreamingContent(prev => prev ? {
-            ...prev,
-            isComplete: true,
-            totalChunks: event.total_chunks
-          } : null);
-          setIsStreaming(false);
-        },
-        (event: CompressedFileEvent) => {
-          setStreamingContent(prev => prev ? {
-            ...prev,
-            error: event.error
-          } : null);
-          setIsStreaming(false);
-        }
-      );
-    } catch (err) {
-      setStreamingContent(prev => prev ? {
-        ...prev,
-        error: err instanceof Error ? err.message : '流式读取失败'
-      } : null);
-      setIsStreaming(false);
-    }
-  };
-
-  const pauseResumeStream = () => {
-    setStreamingContent(prev => prev ? {
-      ...prev,
-      isPaused: !prev.isPaused
-    } : null);
-  };
-
-  const resetStream = () => {
-    setStreamingContent(null);
-    setIsStreaming(false);
-    setStreamProgress({
-      currentChunk: 0,
-      totalSize: 0,
-      loadedSize: 0
-    });
   };
 
   // 复制压缩包内文件路径到剪贴板
@@ -409,78 +313,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
               </div>
 
               <div className="flex-1 overflow-auto p-4 min-h-0">
-                {streamingContent ? (
-                  <div className="h-full flex flex-col min-h-0">
-                    {/* 流式控制栏 */}
-                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex-shrink-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">流式加载进度:</span>
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            第 {streamProgress.currentChunk} 块
-                            {streamingContent.totalChunks && ` / ${streamingContent.totalChunks}`}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {isStreaming && (
-                            <button
-                              onClick={pauseResumeStream}
-                              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                              title={streamingContent.isPaused ? "继续" : "暂停"}
-                            >
-                              {streamingContent.isPaused ? <Play size={16} /> : <Pause size={16} />}
-                            </button>
-                          )}
-                          <button
-                            onClick={resetStream}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                            title="重置"
-                          >
-                            <RotateCcw size={16} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* 进度条 */}
-                      {streamProgress.totalSize > 0 && (
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                            style={{
-                              width: `${Math.min(100, (streamProgress.loadedSize / streamProgress.totalSize) * 100)}%`
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {/* 状态信息 */}
-                      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        {isStreaming && !streamingContent.isPaused && (
-                          <span className="text-blue-600 dark:text-blue-400">{t('loading.status')}</span>
-                        )}
-                        {streamingContent.isPaused && (
-                          <span className="text-yellow-600 dark:text-yellow-400">{t('stream.paused')}</span>
-                        )}
-                        {streamingContent.isComplete && (
-                          <span className="text-green-600 dark:text-green-400">{t('stream.completed')}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 内容显示 */}
-                    <div className="flex-1 overflow-auto min-h-0">
-                      {streamingContent.error ? (
-                        <div className="p-4 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-400 rounded">
-                          {t('stream.error')}: {streamingContent.error}
-                        </div>
-                      ) : (
-                        <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded border">
-                          {streamingContent.chunks.join('')}
-                        </pre>
-                      )}
-                    </div>
-                  </div>
-                ) : filePreview ? (
+                {filePreview ? (
                   <div className="h-full flex flex-col min-h-0">
                     <div className="flex-1 overflow-auto min-h-0">
                       <pre className="whitespace-pre-wrap text-sm font-mono p-4 bg-gray-50 dark:bg-gray-900 rounded border">
