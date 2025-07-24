@@ -35,7 +35,7 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 ![Text Viewer](screenshots/text.png)
 *Advanced text viewer with search capabilities and virtualized rendering*
 
-## 📚 Supported File Typesis
+## 📚 Supported File Types
 
 ### Text Files
 - Plain text (`.txt`, `.log`)
@@ -47,7 +47,7 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 
 ### Code Files
 - JavaScript/TypeScript (`.js`, `.ts`, `.jsx`, `.tsx`)
-- Python (`.py`, `.pyx`)
+- Pyth- Python (`.py`, `.pyx`)
 - Java (`.java`)
 - C/C++ (`.c`, `.cpp`, `.h`, `.hpp`)
 - Rust (`.rs`)
@@ -156,14 +156,22 @@ After building, installers will be available in `src-tauri/target/release/bundle
 ### 📱 Installation Notes
 
 #### macOS Installation
-The macOS version is currently **unsigned**, which means you may encounter security warnings when first launching the application. To install:
+The macOS version is currently **unsigned**, which means you may encounter security warnings when first launching the application.
 
-1. **Download the `.dmg` file** from the releases page
-2. **Open the DMG** and drag the app to Applications folder
-3. **First launch**: Right-click the app → "Open" → "Open" (bypass Gatekeeper)
-4. **Alternative**: Go to System Preferences → Security & Privacy → Allow the app to run
+**📥 Download & Install:**
+1. Download the `.dmg` file from the [releases page](https://github.com/stardustai/webdav-viewer/releases/latest)
+2. Open the DMG and drag the app to Applications folder
+3. **Important**: Before first launch, run this command in Terminal:
+   ```bash
+   sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"
+   ```
+4. Now you can launch the app normally from Applications folder
 
-> **Note**: Code signing requires an Apple Developer Program membership ($99/year). As this is an open-source project, we currently distribute unsigned builds. The application is completely safe to use.
+**🔐 Alternative Methods (if the command doesn't work):**
+- **Method 1**: Right-click the app → "Open" → "Open" (bypass Gatekeeper)
+- **Method 2**: System Preferences → Security & Privacy → General → "Open Anyway"
+
+> **💡 Why this is needed**: Code signing requires an Apple Developer Program membership ($99/year). As this is an open-source project, we distribute unsigned builds for free. The application is completely safe to use - you can verify the source code on GitHub.
 
 ## 📖 Usage Guide
 

@@ -19,9 +19,9 @@
 
 ### 🔧 Installation
 
-- **macOS**: Download DMG → Drag to Applications → Right-click app → "Open" (for unsigned app)
+- **macOS**: Download DMG → Drag to Applications → Run: `sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"`
 - **Windows**: Download MSI → Run installer
-- **Linux**: `chmod +x WebDAV.Viewer_*.AppImage` → Run (portable, no installation needed)
+- **Linux**: `chmod +x WebDAV.Viewer_*.AppImage` → Run
 
 ---
 
