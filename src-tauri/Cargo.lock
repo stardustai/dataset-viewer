@@ -584,8 +584,10 @@ checksum = "c469d952047f47f91b68d1cba3f10d63c11d73e4636f24f08daf0278abf01c4d"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -5491,6 +5493,7 @@ dependencies = [
  "base64 0.21.7",
  "brotli 3.5.0",
  "bytes",
+ "chrono",
  "flate2",
  "futures-util",
  "lz4",
@@ -5507,6 +5510,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "url",
+ "uuid",
  "zip",
  "zstd 0.13.3",
 ]

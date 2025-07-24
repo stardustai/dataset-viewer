@@ -489,14 +489,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 <Maximize2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
             </div>
-
-            <button
-              onClick={downloadFile}
-              className="flex items-center space-x-2 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-sm whitespace-nowrap"
-            >
-              <Download className="w-4 h-4" />
-              <span>{t('viewer.download')}</span>
-            </button>
           </div>
         </div>
       )}

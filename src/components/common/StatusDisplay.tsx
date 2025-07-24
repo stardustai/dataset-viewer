@@ -71,7 +71,7 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
   const iconClassName = getIconProps(type);
 
   return (
-    <div className={`flex-1 flex items-center justify-center bg-white dark:bg-gray-800 ${className}`}>
+    <div className={`flex-1 flex items-center justify-center min-h-0 bg-white dark:bg-gray-800 ${className}`}>
       <div className="text-center py-12">
         <IconComponent className={iconClassName} />
         <p className="text-gray-500 dark:text-gray-400">{message}</p>
