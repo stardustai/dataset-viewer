@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Loader2,
   Archive,
@@ -103,25 +104,36 @@ export const LoadingDisplay: React.FC<{
   icon?: LucideIcon;
   className?: string;
 }> = ({
-  message = "正在加载...",
+  message,
   icon,
   className
-}) => (
-  <StatusDisplay type="loading" message={message} icon={icon} className={className} />
-);
+}) => {
+  const { t } = useTranslation();
+  return (
+    <StatusDisplay
+      type="loading"
+      message={message || t('status.loading')}
+      icon={icon}
+      className={className}
+    />
+  );
+};
 
 export const ErrorDisplay: React.FC<{
   message: string;
   onRetry?: () => void;
   className?: string;
-}> = ({ message, onRetry, className }) => (
-  <StatusDisplay
-    type="error"
-    message={message}
-    action={onRetry ? { label: "重试", onClick: onRetry, variant: "secondary" } : undefined}
-    className={className}
-  />
-);
+}> = ({ message, onRetry, className }) => {
+  const { t } = useTranslation();
+  return (
+    <StatusDisplay
+      type="error"
+      message={message}
+      action={onRetry ? { label: t('status.retry'), onClick: onRetry, variant: "secondary" } : undefined}
+      className={className}
+    />
+  );
+};
 
 export const EmptyDisplay: React.FC<{
   message: string;
@@ -141,40 +153,49 @@ export const UnsupportedFormatDisplay: React.FC<{
   secondaryMessage?: string;
   className?: string;
 }> = ({
-  message = "不支持的文件格式",
-  secondaryMessage = "请尝试下载文件以查看内容",
+  message,
+  secondaryMessage,
   className
-}) => (
-  <StatusDisplay
-    type="unsupported"
-    message={message}
-    secondaryMessage={secondaryMessage}
-    className={className}
-  />
-);
+}) => {
+  const { t } = useTranslation();
+  return (
+    <StatusDisplay
+      type="unsupported"
+      message={message || t('status.unsupported.format')}
+      secondaryMessage={secondaryMessage || t('status.unsupported.download')}
+      className={className}
+    />
+  );
+};
 
 export const HiddenFilesDisplay: React.FC<{
   onShowHidden: () => void;
   className?: string;
-}> = ({ onShowHidden, className }) => (
-  <StatusDisplay
-    type="hiddenFiles"
-    message="所有文件都是隐藏文件"
-    action={{ label: "显示隐藏文件", onClick: onShowHidden, variant: "secondary" }}
-    className={className}
-  />
-);
+}> = ({ onShowHidden, className }) => {
+  const { t } = useTranslation();
+  return (
+    <StatusDisplay
+      type="hiddenFiles"
+      message={t('status.all.files.hidden')}
+      action={{ label: t('status.show.hidden.files'), onClick: onShowHidden, variant: "secondary" }}
+      className={className}
+    />
+  );
+};
 
 export const NoSearchResultsDisplay: React.FC<{
   searchTerm: string;
   onClearSearch: () => void;
   className?: string;
-}> = ({ searchTerm, onClearSearch, className }) => (
-  <StatusDisplay
-    type="noSearchResults"
-    message="未找到匹配的文件"
-    secondaryMessage={`请尝试不同的搜索关键词 "${searchTerm}"`}
-    action={{ label: "清除搜索", onClick: onClearSearch, variant: "secondary" }}
-    className={className}
-  />
-);
+}> = ({ searchTerm, onClearSearch, className }) => {
+  const { t } = useTranslation();
+  return (
+    <StatusDisplay
+      type="noSearchResults"
+      message={t('status.no.matching.files')}
+      secondaryMessage={t('status.try.different.keywords', { searchTerm })}
+      action={{ label: t('status.clear.search'), onClick: onClearSearch, variant: "secondary" }}
+      className={className}
+    />
+  );
+};
