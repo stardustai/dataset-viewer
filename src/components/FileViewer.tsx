@@ -19,7 +19,7 @@ import {
   Copy
 } from 'lucide-react';
 import { WebDAVFile, SearchResult } from '../types';
-import { webdavService } from '../services/webdav';
+import { StorageServiceManager } from '../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -93,13 +93,13 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
     setError('');
 
     try {
-      const fileSize = await webdavService.getFileSize(filePath);
+      const fileSize = await StorageServiceManager.getFileSize(filePath);
       setTotalSize(fileSize);
 
       if (fileSize > MAX_INITIAL_LOAD) {
         // Large file - load in chunks
         setIsLargeFile(true);
-        const initialContent = await webdavService.getFileContent(filePath, 0, MAX_INITIAL_LOAD);
+        const initialContent = await StorageServiceManager.getFileContent(filePath, 0, MAX_INITIAL_LOAD);
         setContent(initialContent.content);
         setCurrentFilePosition(0);
         setLoadedContentSize(initialContent.content.length);
@@ -107,7 +107,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
         setBaselineStartLineNumber(null); // 重置基准值
       } else {
         // Small file - load entirely
-        const fileContent = await webdavService.getFileContent(filePath);
+        const fileContent = await StorageServiceManager.getFileContent(filePath);
         setContent(fileContent.content);
         setCurrentFilePosition(0);
         setLoadedContentSize(fileContent.content.length);
@@ -138,7 +138,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       const remainingSize = totalSize - nextPosition;
       const chunkSize = Math.min(CHUNK_SIZE, remainingSize);
 
-      const additionalContent = await webdavService.getFileContent(filePath, nextPosition, chunkSize);
+      const additionalContent = await StorageServiceManager.getFileContent(filePath, nextPosition, chunkSize);
       setContent(prev => prev + additionalContent.content);
       setLoadedContentSize(prev => prev + additionalContent.content.length);
       setLoadedChunks(prev => prev + 1);
@@ -213,7 +213,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       const CHUNK_SIZE_FOR_JUMP = 1024 * 1024 * 2; // 2MB 用于跳转时的显示
       const endPosition = Math.min(totalSize, actualStart + CHUNK_SIZE_FOR_JUMP);
 
-      const jumpContent = await webdavService.getFileContent(filePath, actualStart, endPosition - actualStart);
+      const jumpContent = await StorageServiceManager.getFileContent(filePath, actualStart, endPosition - actualStart);
 
       // 如果我们从文件中间开始，尝试找到第一个完整行的开始
       let processedContent = jumpContent.content;
@@ -291,7 +291,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
         const endPosition = Math.min(currentSamplePosition + sampleSize, totalSize);
 
         try {
-          const sampleContent = await webdavService.getFileContent(filePath, currentSamplePosition, endPosition - currentSamplePosition);
+          const sampleContent = await StorageServiceManager.getFileContent(filePath, currentSamplePosition, endPosition - currentSamplePosition);
           const sampleLines = sampleContent.content.split('\n');
 
           sampleLines.forEach((line, lineIndex) => {
@@ -351,7 +351,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       const targetPosition = Math.max(0, result.filePosition - CHUNK_SIZE / 2); // 在结果前加载一些内容
       const endPosition = Math.min(targetPosition + CHUNK_SIZE * 2, totalSize); // 加载2MB内容
 
-      const newContent = await webdavService.getFileContent(filePath, targetPosition, endPosition - targetPosition);
+      const newContent = await StorageServiceManager.getFileContent(filePath, targetPosition, endPosition - targetPosition);
 
       setContent(newContent.content);
       setCurrentFilePosition(targetPosition);
@@ -701,7 +701,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       console.log('Starting download for file:', file.basename, 'Path:', filePath);
 
       // 统一使用带进度的下载方式
-      const result = await webdavService.downloadFileWithProgress(filePath, file.basename);
+      const result = await StorageServiceManager.downloadFileWithProgress(filePath, file.basename);
       console.log('Download initiated:', result);
 
       // 下载进度将通过事件系统处理，这里不需要显示 alert
@@ -718,7 +718,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
   // 复制完整路径到剪贴板
   const copyFullPath = async () => {
     try {
-      const connection = webdavService.getConnection();
+      const connection = StorageServiceManager.getConnection();
       if (!connection) return;
 
       // 构建完整路径
@@ -991,8 +991,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
               />
             ) : isArchive ? (
               <ArchiveViewer
-                url={webdavService.getFileUrl(filePath)}
-                headers={webdavService.getHeaders()}
+                url={StorageServiceManager.getFileUrl(filePath)}
+                headers={StorageServiceManager.getHeaders()}
                 filename={file.basename}
               />
             ) : (

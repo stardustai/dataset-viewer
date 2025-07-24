@@ -15,7 +15,7 @@ import {
   Copy
 } from 'lucide-react';
 import { WebDAVFile } from '../types';
-import { webdavService } from '../services/webdav';
+import { StorageServiceManager } from '../services/storage';
 import { navigationHistoryService } from '../services/navigationHistory';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
@@ -136,7 +136,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
     try {
       console.log('Loading directory from server:', path);
-      const fileList = await webdavService.listDirectory(path);
+      const fileList = await StorageServiceManager.listDirectory(path);
       setFiles(fileList);
       setCurrentPath(path);
 
@@ -341,7 +341,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
   };
 
-  const connection = webdavService.getConnection();
+  const connection = StorageServiceManager.getConnection();
 
   const getPathSegments = () => {
     if (currentPath === '') return [];
@@ -373,7 +373,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   // 复制完整路径到剪贴板
   const copyFullPath = async () => {
     try {
-      const connection = webdavService.getConnection();
+      const connection = StorageServiceManager.getConnection();
       if (!connection) return;
 
       // 构建完整路径

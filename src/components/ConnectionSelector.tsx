@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
 import { StoredConnection } from '../services/connectionStorage';
-import { webdavService } from '../services/webdav';
+import { StorageServiceManager } from '../services/storage';
 
 interface ConnectionSelectorProps {
   onSelect: (connection: StoredConnection) => void;
@@ -24,20 +24,20 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   }, []);
 
   const loadConnections = () => {
-    setConnections(webdavService.getStoredConnections());
+    setConnections(StorageServiceManager.getStoredConnections());
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(t('confirm.delete.connection'))) {
-      webdavService.deleteStoredConnection(id);
+      StorageServiceManager.deleteStoredConnection(id);
       loadConnections();
     }
   };
 
   const handleSetDefault = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    webdavService.setDefaultConnection(id);
+    StorageServiceManager.setDefaultConnection(id);
     loadConnections();
   };
 
@@ -49,7 +49,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
 
   const handleSaveEdit = (id: string) => {
     if (editName.trim()) {
-      webdavService.renameStoredConnection(id, editName.trim());
+      StorageServiceManager.renameStoredConnection(id, editName.trim());
       loadConnections();
     }
     setEditingId(null);

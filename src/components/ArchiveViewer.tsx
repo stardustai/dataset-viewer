@@ -63,7 +63,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
       // 对于大文件，只加载前几MB来分析结构
       const maxSize = 10 * 1024 * 1024; // 10MB
-      const info = await CompressionService.analyzeCompressedFile(
+      const info = await CompressionService.analyzeArchive(
         url,
         headers,
         filename,
@@ -87,7 +87,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setLoading(true);
       setError(null);
 
-      const detailedInfo = await CompressionService.loadZipFileDetails(
+      const detailedInfo = await CompressionService.analyzeArchive(
         url,
         headers,
         filename

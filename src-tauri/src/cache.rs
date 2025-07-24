@@ -1,6 +1,7 @@
 // 添加智能缓存机制
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use crate::{ArchiveInfo, FilePreview};
 
 #[derive(Clone)]
 pub struct ArchiveCache {
