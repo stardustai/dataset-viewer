@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Folder,
   Eye,
   EyeOff,
   Home,
   ArrowLeft,
   ChevronRight,
-  Loader2,
   ChevronUp,
   ChevronDown,
   RefreshCw,
@@ -21,8 +19,8 @@ import { navigationHistoryService } from '../services/navigationHistory';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
-import { ThemeToggle } from './ThemeToggle';
 import { SettingsPanel } from './SettingsPanel';
+import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from './common';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string) => void;
@@ -398,7 +396,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               <span>{showHidden ? t('hide.hidden') : t('show.hidden')}</span>
             </button>
             <LanguageSwitcher />
-            <ThemeToggle />
             <button
               onClick={() => setShowSettings(true)}
               className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -504,30 +501,27 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       {/* Content */}
       <main ref={containerRef} className="flex-1 overflow-hidden">
-        {loading && (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-          </div>
-        )}
+        <div className="h-full flex flex-col">
+          {loading && (
+            <LoadingDisplay
+              message={`正在加载${currentPath ? ` "${currentPath}" ` : '根'}目录...`}
+            />
+          )}
 
-        {error && (
-          <div className="p-6">
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-600 dark:text-red-400 font-medium">无法加载目录内容</p>
-              {failedPath && (
-                <p className="text-red-500 dark:text-red-400 text-sm mt-1">失败路径: {failedPath}</p>
-              )}
-              <p className="text-gray-600 dark:text-gray-300 text-sm mt-2">
-                请检查路径是否正确，或者尝试返回上级目录。
-              </p>
-            </div>
-          </div>
-        )}
+          {error && (
+            <ErrorDisplay
+              message={failedPath ? `${t('error.load.directory')}。${t('error.failed.path')}: ${failedPath}` : t('error.load.directory')}
+              onRetry={() => {
+                const parentPath = currentPath.split('/').slice(0, -1).join('/');
+                loadDirectory(parentPath);
+              }}
+            />
+          )}
 
-        {!loading && !error && (
-          <div className="h-full flex flex-col">
-            {/* 表头 */}
-            <div ref={tableHeaderRef} className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
+          {!loading && !error && (
+            <>
+              {/* 表头 */}
+              <div ref={tableHeaderRef} className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
               <div className="flex items-center">
                 <div className="flex-1 pr-4">
                   <div
@@ -580,34 +574,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             {/* 文件列表或空状态 */}
             {files.length > 0 ? (
               !showHidden && files.every(file => file.basename.startsWith('.')) ? (
-                <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
-                  <div className="text-center py-12">
-                    <EyeOff className="mx-auto w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">{t('all.files.hidden')}</p>
-                    <button
-                      onClick={() => setShowHidden(true)}
-                      className="mt-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm"
-                    >
-                      {t('show.hidden.files')}
-                    </button>
-                  </div>
-                </div>
+                <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
               ) : getFilteredFiles().length === 0 ? (
-                <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
-                  <div className="text-center py-12">
-                    <Search className="mx-auto w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">{t('no.search.results')}</p>
-                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                      {t('try.different.search')} "{searchTerm}"
-                    </p>
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="mt-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm"
-                    >
-                      {t('clear.search')}
-                    </button>
-                  </div>
-                </div>
+                <NoSearchResultsDisplay
+                  searchTerm={searchTerm}
+                  onClearSearch={() => setSearchTerm('')}
+                />
               ) : (
                 <div className="bg-white dark:bg-gray-800">
                   <VirtualizedFileList
@@ -622,15 +594,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                 </div>
               )
             ) : (
-              <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
-                <div className="text-center py-12">
-                  <Folder className="mx-auto w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">{t('directory.empty')}</p>
-                </div>
-              </div>
+              <EmptyDisplay message={t('directory.empty')} />
             )}
-          </div>
-        )}
+          </>
+          )}
+        </div>
       </main>
 
       {/* 设置面板 */}

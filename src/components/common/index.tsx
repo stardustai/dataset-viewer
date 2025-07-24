@@ -1,6 +1,8 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
+export * from './StatusDisplay';
+
 interface ErrorBoundaryProps {
   error: Error | null;
   onRetry?: () => void;

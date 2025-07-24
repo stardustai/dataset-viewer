@@ -9,7 +9,8 @@ import {
   Film,
   Music,
   FileImage,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Archive
 } from 'lucide-react';
 import { WebDAVFile } from '../types';
 import { getFileType } from '../utils/fileTypes';
@@ -103,6 +104,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
         return <FileImage className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" />;
       case 'spreadsheet':
         return <FileSpreadsheet className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" />;
+      case 'archive':
+        return <Archive className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />;
       case 'text':
         return <FileText className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0" />;
       default:
