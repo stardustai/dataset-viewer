@@ -222,6 +222,32 @@ class WebDAVService {
   isTextFile(filename: string): boolean {
     return configManager.isTextFile({ filename } as WebDAVFile);
   }
+
+  getFileUrl(path: string): string {
+    const connection = this.client.getConnection();
+    if (!connection) {
+      throw new Error('No active connection');
+    }
+
+    // 确保路径以 / 开头
+    const normalizedPath = path.startsWith('/') ? path : '/' + path;
+    // 移除 URL 末尾的 /，然后添加路径
+    const baseUrl = connection.url.replace(/\/$/, '');
+    return baseUrl + normalizedPath;
+  }
+
+  getHeaders(): Record<string, string> {
+    const connection = this.client.getConnection();
+    if (!connection) {
+      throw new Error('No active connection');
+    }
+
+    const credentials = btoa(`${connection.username}:${connection.password}`);
+    return {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Type': 'application/octet-stream',
+    };
+  }
 }
 
 export const webdavService = new WebDAVService();

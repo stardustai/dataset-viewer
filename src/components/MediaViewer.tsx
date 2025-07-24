@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Download, ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
+import { Download, ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
 import { webdavService } from '../services/webdav';
+import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common/StatusDisplay';
 import * as XLSX from 'xlsx';
 
 interface MediaViewerProps {
@@ -204,13 +205,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             style={{ width: `${loadingProgress}%` }}
           />
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400 mx-auto mb-2" />
-            <p className="text-gray-600 dark:text-gray-300 text-sm">
-              {t('loading')} <span className="inline-block max-w-xs truncate align-bottom" title={fileName}>{fileName}</span>
-            </p>
-          </div>
+        <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
+          <LoadingDisplay
+            message={`${t('loading')} ${fileName}`}
+          />
         </div>
       </div>
     );
@@ -218,8 +216,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-red-600 dark:text-red-400">{error}</p>
+      <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
+        <ErrorDisplay message={error} />
       </div>
     );
   }
@@ -437,8 +435,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
       default:
         return (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-gray-600 dark:text-gray-300">{t('viewer.unsupported.format')}</p>
+          <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
+            <UnsupportedFormatDisplay />
           </div>
         );
     }

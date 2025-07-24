@@ -22,7 +22,9 @@ import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
-import { getFileType, isTextFile, isMediaFile } from '../utils/fileTypes';
+import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../utils/fileTypes';
+import { ArchiveViewer } from './ArchiveViewer';
+import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
@@ -70,10 +72,17 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
   const fileType = getFileType(file.basename);
   const isMedia = isMediaFile(file.basename);
   const isText = isTextFile(file.basename);
+  const isArchive = isArchiveFile(file.basename);
 
   const loadFileContent = useCallback(async () => {
     // Only load content for text files
-    if (!isText) {
+    if (!isText && !isArchive) {
+      setLoading(false);
+      return;
+    }
+
+    // For archive files, no need to load content as ArchiveViewer handles it
+    if (isArchive) {
       setLoading(false);
       return;
     }
@@ -901,16 +910,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
             {/* Content */}
       <main className="flex-1 overflow-hidden bg-white dark:bg-gray-800">
         {loading && (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-            <span className="ml-2 text-gray-600 dark:text-gray-300">{t('loading')}</span>
-          </div>
+          <LoadingDisplay message={`正在加载文件 "${file.basename}"...`} />
         )}
 
         {error && (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
-          </div>
+          <ErrorDisplay message={error} />
         )}
 
         {!loading && !error && (
@@ -949,14 +953,17 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
                 fileType={fileType as 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet'}
                 fileSize={file.size}
               />
+            ) : isArchive ? (
+              <ArchiveViewer
+                url={webdavService.getFileUrl(filePath)}
+                headers={webdavService.getHeaders()}
+                filename={file.basename}
+              />
             ) : (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <File className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-300">{t('viewer.unsupported.format')}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('viewer.download.to.view')}</p>
-                </div>
-              </div>
+              <UnsupportedFormatDisplay
+                message={t('viewer.unsupported.format')}
+                secondaryMessage={t('viewer.download.to.view')}
+              />
             )}
           </div>
         )}

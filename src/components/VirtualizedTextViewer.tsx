@@ -82,7 +82,7 @@ const LineContentModal: React.FC<{
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div
         ref={modalRef}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-96 flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[72vh] flex flex-col"
       >
         {/* 标题栏 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">

@@ -50,6 +50,7 @@ const resources = {
       'error.connection.failed': '连接失败，请检查服务器地址和凭据。',
       'error.credentials': '连接失败，请验证服务器地址和凭据。',
       'error.load.directory': '加载目录内容失败',
+      'error.failed.path': '失败路径',
       'error.load.file': '加载文件内容失败',
       'errors.download.failed': '文件下载失败：{{error}}',
 
@@ -74,6 +75,7 @@ const resources = {
 
       // 设置和更新
       'settings': '设置',
+      'settings.theme': '主题设置',
       'settings.update': '更新设置',
       'auto.check.updates': '自动检查更新',
       'check.updates': '检查更新',
@@ -89,6 +91,7 @@ const resources = {
       'about': '关于',
       'app.description': '现代化的 WebDAV 文件浏览器',
       'app.features': '支持大文件查看和快速搜索',
+      'ok': '确定',
 
       // 文件查看器
       'file.viewer': '文件查看器',
@@ -212,6 +215,7 @@ const resources = {
       'error.connection.failed': 'Failed to connect to WebDAV server. Please check your credentials.',
       'error.credentials': 'Connection failed. Please verify the server URL and credentials.',
       'error.load.directory': 'Failed to load directory contents',
+      'error.failed.path': 'Failed path',
       'error.load.file': 'Failed to load file content',
       'errors.download.failed': 'Download failed: {{error}}',
 
@@ -236,6 +240,7 @@ const resources = {
 
       // Settings and Updates
       'settings': 'Settings',
+      'settings.theme': 'Theme Settings',
       'settings.update': 'Update Settings',
       'auto.check.updates': 'Auto check updates',
       'check.updates': 'Check for updates',
@@ -251,6 +256,7 @@ const resources = {
       'about': 'About',
       'app.description': 'Modern WebDAV file browser',
       'app.features': 'Supports large file viewing and fast search',
+      'ok': 'OK',
 
       // File viewer
       'file.viewer': 'File Viewer',

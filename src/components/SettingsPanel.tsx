@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X } from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../services/updateService';
+import { useTheme } from '../hooks/useTheme';
 import type { UpdateCheckResult } from '../types';
 
 interface SettingsPanelProps {
@@ -11,6 +12,7 @@ interface SettingsPanelProps {
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [autoCheck, setAutoCheck] = useState(true);
@@ -44,7 +46,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600">
           <div className="flex items-center space-x-2">
             <Settings className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">设置</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('settings')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -56,6 +58,31 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Theme Settings */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.theme')}</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: 'light', labelKey: 'theme.light', icon: Sun },
+                { value: 'dark', labelKey: 'theme.dark', icon: Moon },
+                { value: 'system', labelKey: 'theme.system', icon: Settings }
+              ].map(({ value, labelKey, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setTheme(value as any)}
+                  className={`flex flex-col items-center justify-center space-y-2 px-3 py-3 rounded-lg transition-colors ${
+                    theme === value
+                      ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
+                      : 'bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-xs font-medium">{t(labelKey)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Update Settings */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.update')}</h3>
@@ -150,7 +177,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             onClick={onClose}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm"
           >
-            确定
+            {t('ok')}
           </button>
         </div>
       </div>
