@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
-import { ArchiveInfo, FilePreview, CompressedFileChunk, CompressedFileEvent } from '../types';
+import { ArchiveInfo, FilePreview } from '../types';
 
 export class CompressionService {
   /**
@@ -52,97 +51,6 @@ export class CompressionService {
       entryPath,
       maxPreviewSize,
     });
-  }
-
-  /**
-   * 流式读取压缩文件中的文件内容
-   */
-  static async streamCompressedFile(
-    url: string,
-    headers: Record<string, string>,
-    filename: string,
-    entryPath: string,
-    chunkSize?: number,
-    onChunk?: (chunk: CompressedFileChunk) => void,
-    onComplete?: (event: CompressedFileEvent) => void,
-    onError?: (event: CompressedFileEvent) => void
-  ): Promise<string> {
-    // 设置事件监听器
-    const unlisten1 = onChunk ? await listen<CompressedFileChunk>('compressed-file-chunk', (event) => {
-      onChunk(event.payload);
-    }) : null;
-
-    const unlisten2 = onComplete ? await listen<CompressedFileEvent>('compressed-file-complete', (event) => {
-      onComplete(event.payload);
-      unlisten1?.();
-      unlisten2?.();
-      unlisten3?.();
-    }) : null;
-
-    const unlisten3 = onError ? await listen<CompressedFileEvent>('compressed-file-error', (event) => {
-      onError(event.payload);
-      unlisten1?.();
-      unlisten2?.();
-      unlisten3?.();
-    }) : null;
-
-    // 开始流式读取
-    const streamId = await invoke<string>('start_file_stream', {
-      url,
-      headers,
-      filename,
-      entryPath,
-      chunkSize,
-    });
-
-    return streamId;
-  }
-
-  /**
-   * 读取压缩文件的指定块
-   */
-  static async readCompressedFileChunk(
-    url: string,
-    headers: Record<string, string>,
-    filename: string,
-    entryPath: string,
-    offset: number,
-    chunkSize: number
-  ): Promise<{
-    content: string;
-    is_eof: boolean;
-    offset: number;
-    bytes_read: number;
-  }> {
-    return await invoke('read_compressed_file_chunk', {
-      url,
-      headers,
-      filename,
-      entryPath,
-      offset,
-      chunkSize,
-    });
-  }
-
-  /**
-   * 暂停流式读取
-   */
-  static async pauseStream(streamId: string): Promise<void> {
-    return await invoke('pause_stream', { streamId });
-  }
-
-  /**
-   * 恢复流式读取
-   */
-  static async resumeStream(streamId: string): Promise<void> {
-    return await invoke('resume_stream', { streamId });
-  }
-
-  /**
-   * 取消流式读取
-   */
-  static async cancelStream(streamId: string): Promise<void> {
-    return await invoke('cancel_stream', { streamId });
   }
 
   /**

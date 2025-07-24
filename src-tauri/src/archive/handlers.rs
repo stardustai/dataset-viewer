@@ -1,17 +1,11 @@
-use crate::archive::{analyzer::StreamingAnalyzer, preview::ArchivePreview, streaming::StreamingManager, types::*};
-use std::sync::Arc;
-use tauri::{AppHandle, Runtime};
+use crate::archive::{analyzer::StreamingAnalyzer, preview::ArchivePreview, types::*};
 
 /// 压缩包处理器的统一入口
-pub struct ArchiveHandler {
-    streaming_manager: Arc<StreamingManager>,
-}
+pub struct ArchiveHandler;
 
 impl ArchiveHandler {
     pub fn new() -> Self {
-        Self {
-            streaming_manager: Arc::new(StreamingManager::new()),
-        }
+        Self
     }
 
     /// 分析压缩包结构
@@ -37,36 +31,6 @@ impl ArchiveHandler {
         ArchivePreview::extract_file_preview(
             &url, &headers, &filename, &entry_path, max_preview_size
         ).await
-    }
-
-    /// 开始流式读取文件
-    pub async fn start_streaming<R: Runtime>(
-        &self,
-        app: AppHandle<R>,
-        url: String,
-        headers: std::collections::HashMap<String, String>,
-        filename: String,
-        entry_path: String,
-        chunk_size: Option<usize>,
-    ) -> Result<String, String> {
-        self.streaming_manager.start_stream(
-            app, url, headers, filename, entry_path, chunk_size
-        ).await
-    }
-
-    /// 暂停流
-    pub fn pause_stream(&self, stream_id: String) -> Result<(), String> {
-        self.streaming_manager.pause_stream(&stream_id)
-    }
-
-    /// 恢复流
-    pub fn resume_stream(&self, stream_id: String) -> Result<(), String> {
-        self.streaming_manager.resume_stream(&stream_id)
-    }
-
-    /// 取消流
-    pub fn cancel_stream(&self, stream_id: String) -> Result<(), String> {
-        self.streaming_manager.cancel_stream(&stream_id)
     }
 
     /// 检查文件是否支持压缩包操作

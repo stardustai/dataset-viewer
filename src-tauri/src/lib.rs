@@ -303,37 +303,6 @@ async fn get_file_preview(
     ARCHIVE_HANDLER.get_file_preview(url, headers, filename, entry_path, max_preview_size).await
 }
 
-/// 开始流式读取文件
-#[tauri::command]
-async fn start_file_stream<R: tauri::Runtime>(
-    app: tauri::AppHandle<R>,
-    url: String,
-    headers: std::collections::HashMap<String, String>,
-    filename: String,
-    entry_path: String,
-    chunk_size: Option<usize>,
-) -> Result<String, String> {
-    ARCHIVE_HANDLER.start_streaming(app, url, headers, filename, entry_path, chunk_size).await
-}
-
-/// 暂停流
-#[tauri::command]
-async fn pause_stream(stream_id: String) -> Result<(), String> {
-    ARCHIVE_HANDLER.pause_stream(stream_id)
-}
-
-/// 恢复流
-#[tauri::command]
-async fn resume_stream(stream_id: String) -> Result<(), String> {
-    ARCHIVE_HANDLER.resume_stream(stream_id)
-}
-
-/// 取消流
-#[tauri::command]
-async fn cancel_stream(stream_id: String) -> Result<(), String> {
-    ARCHIVE_HANDLER.cancel_stream(stream_id)
-}
-
 /// 检查文件是否支持压缩包操作
 #[tauri::command]
 async fn is_supported_archive(filename: String) -> Result<bool, String> {
@@ -435,13 +404,9 @@ pub fn run() {
             webdav_request_binary,
             download_file_with_progress,
             cancel_download,
-            // 新的压缩包处理命令
+            // 压缩包处理命令
             analyze_archive,
             get_file_preview,
-            start_file_stream,
-            pause_stream,
-            resume_stream,
-            cancel_stream,
             is_supported_archive,
             supports_streaming,
             get_compression_info,
