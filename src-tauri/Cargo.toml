@@ -28,12 +28,14 @@ serde_json = "1"
 url = "2.5"
 base64 = "0.21"
 tokio = { version = "1", features = ["full"] }
-tokio-util = "0.7"
+reqwest = { version = "0.11", features = ["json", "stream"] }
 futures-util = "0.3"
-reqwest = { version = "0.11", features = ["stream"] }
 zip = "0.6"
-flate2 = "1.0"
 tar = "0.4"
+flate2 = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio-util = "0.7"
 brotli = "3.4"
 lz4 = "1.24"
 zstd = "0.13"

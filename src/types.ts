@@ -57,13 +57,25 @@ export interface ArchiveInfo {
   compression_type: string;
   total_uncompressed_size: number;
   total_compressed_size: number;
+  supports_streaming?: boolean;
+  supports_random_access?: boolean;
+  analysis_status?: AnalysisStatus;
+}
+
+export interface AnalysisStatus {
+  Complete?: {};
+  Partial?: { analyzed_entries: number };
+  Streaming?: { estimated_entries: number | null };
+  Failed?: { error: string };
 }
 
 export interface FilePreview {
   content: string;
   is_truncated: boolean;
   total_size: number;
+  preview_size: number;
   encoding: string;
+  file_type: string;
 }
 
 export interface CompressedFileChunk {

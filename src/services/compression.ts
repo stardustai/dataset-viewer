@@ -12,7 +12,7 @@ export class CompressionService {
     filename: string,
     maxSize?: number
   ): Promise<ArchiveInfo> {
-    return await invoke('analyze_compressed_file', {
+    return await invoke('analyze_archive', {
       url,
       headers,
       filename,
@@ -45,7 +45,7 @@ export class CompressionService {
     entryPath: string,
     maxPreviewSize?: number
   ): Promise<FilePreview> {
-    return await invoke('extract_file_preview_from_archive', {
+    return await invoke('get_file_preview', {
       url,
       headers,
       filename,
@@ -87,7 +87,7 @@ export class CompressionService {
     }) : null;
 
     // 开始流式读取
-    const streamId = await invoke<string>('stream_compressed_file', {
+    const streamId = await invoke<string>('start_file_stream', {
       url,
       headers,
       filename,
@@ -125,47 +125,96 @@ export class CompressionService {
   }
 
   /**
+   * 暂停流式读取
+   */
+  static async pauseStream(streamId: string): Promise<void> {
+    return await invoke('pause_stream', { streamId });
+  }
+
+  /**
+   * 恢复流式读取
+   */
+  static async resumeStream(streamId: string): Promise<void> {
+    return await invoke('resume_stream', { streamId });
+  }
+
+  /**
+   * 取消流式读取
+   */
+  static async cancelStream(streamId: string): Promise<void> {
+    return await invoke('cancel_stream', { streamId });
+  }
+
+  /**
+   * 智能预览文件
+   */
+  static async smartPreview(
+    url: string,
+    headers: Record<string, string>,
+    filename: string,
+    entryPath: string,
+    maxPreviewSize?: number
+  ): Promise<FilePreview> {
+    return await invoke('smart_preview', {
+      url,
+      headers,
+      filename,
+      entryPath,
+      maxPreviewSize,
+    });
+  }
+
+  /**
+   * 批量预览多个文件
+   */
+  static async batchPreview(
+    url: string,
+    headers: Record<string, string>,
+    filename: string,
+    entryPaths: string[],
+    maxPreviewSize?: number
+  ): Promise<Array<[string, FilePreview | string]>> {
+    return await invoke('batch_preview', {
+      url,
+      headers,
+      filename,
+      entryPaths,
+      maxPreviewSize,
+    });
+  }
+
+  /**
+   * 获取支持的压缩格式列表
+   */
+  static async getSupportedFormats(): Promise<string[]> {
+    return await invoke('get_supported_formats');
+  }
+
+  /**
    * 检查文件是否为支持的压缩格式
    */
-  static isSupportedArchive(filename: string): boolean {
-    const lower = filename.toLowerCase();
-    return lower.endsWith('.zip') ||
-           lower.endsWith('.tar') ||
-           lower.endsWith('.gz') ||
-           lower.endsWith('.tar.gz') ||
-           lower.endsWith('.tgz');
+  static async isSupportedArchive(filename: string): Promise<boolean> {
+    return await invoke('is_supported_archive', { filename });
   }
 
   /**
    * 检查压缩文件是否支持流式读取
    */
-  static isStreamableArchive(filename: string): boolean {
-    const lower = filename.toLowerCase();
-    return lower.endsWith('.zip') ||
-           lower.endsWith('.gz') ||
-           lower.endsWith('.tar.gz') ||
-           lower.endsWith('.tgz');
+  static async isStreamableArchive(filename: string): Promise<boolean> {
+    return await invoke('supports_streaming', { filename });
   }
 
   /**
    * 格式化文件大小
    */
-  static formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  static async formatFileSize(bytes: number): Promise<string> {
+    return await invoke('format_file_size', { bytes });
   }
 
   /**
    * 获取压缩率
    */
-  static getCompressionRatio(uncompressed: number, compressed: number): string {
-    if (compressed === 0) return '0%';
-    const ratio = ((uncompressed - compressed) / uncompressed) * 100;
-    return `${Math.round(ratio)}%`;
+  static async getCompressionRatio(uncompressed: number, compressed: number): Promise<string> {
+    return await invoke('get_compression_ratio', { uncompressed, compressed });
   }
 }

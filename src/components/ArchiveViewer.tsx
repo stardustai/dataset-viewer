@@ -2,15 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Archive, Search, Play, Pause, RotateCcw } from 'lucide-react';
 import { ArchiveInfo, ArchiveEntry, FilePreview, CompressedFileChunk, CompressedFileEvent } from '../types';
 import { CompressionService } from '../services/compression';
-import { isStreamableArchive } from '../utils/fileTypes';
+
 import { VirtualizedArchiveList } from './VirtualizedArchiveList';
 import { LoadingDisplay, ErrorDisplay, StatusDisplay } from './common';
+
+// 文件大小格式化工具函数
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
 
 interface ArchiveViewerProps {
   url: string;
   headers: Record<string, string>;
   filename: string;
-  onClose?: () => void;
 }
 
 interface StreamingContent {
@@ -30,8 +40,7 @@ interface StreamingProgress {
 export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   url,
   headers,
-  filename,
-  onClose
+  filename
 }) => {
   const [archiveInfo, setArchiveInfo] = useState<ArchiveInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +51,13 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [streamingContent, setStreamingContent] = useState<StreamingContent | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreProgress, setLoadMoreProgress] = useState<StreamingProgress>({
+    currentChunk: 0,
+    totalSize: 0,
+    loadedSize: 0
+  });
+  const [currentLoadedSize, setCurrentLoadedSize] = useState(128 * 1024); // 已加载的内容大小，初始为128KB
   const [streamProgress, setStreamProgress] = useState<StreamingProgress>({
     currentChunk: 0,
     totalSize: 0,
@@ -98,8 +114,9 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   };
 
   const previewFile = async (entry: ArchiveEntry) => {
-    // 检查是否为占位符条目（需要加载详细信息）
-    if (entry.is_dir && entry.path.includes('📁 ZIP Archive')) {
+    // 检查是否为占位符条目（大文件的流式处理条目）
+    // 占位符条目特征：is_dir=true, size=0, 且分析状态为Streaming
+    if (entry.is_dir && entry.size === 0 && archiveInfo?.analysis_status?.Streaming !== undefined) {
       await loadDetailedArchiveInfo();
       return;
     }
@@ -111,33 +128,88 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setSelectedEntry(entry);
       setFilePreview(null);
       setStreamingContent(null);
+      setCurrentLoadedSize(128 * 1024); // 重置为初始加载大小
 
-      // 对于小文件，直接获取预览
-      if (entry.size < 1024 * 1024) { // 1MB以下
-        const preview = await CompressionService.extractFilePreview(
-          url,
-          headers,
-          filename,
-          entry.path,
-          64 * 1024 // 64KB预览
-        );
-        setFilePreview(preview);
-      } else if (isStreamableArchive(filename)) {
-        // 对于大文件，使用流式读取
-        await streamFile(entry);
-      } else {
-        // 对于不支持流式读取的大文件，只显示基本信息
-        setFilePreview({
-          content: `文件太大，无法预览 (${CompressionService.formatFileSize(entry.size)})`,
-          is_truncated: true,
-          total_size: entry.size,
-          encoding: 'utf-8'
-        });
-      }
+      // 简化预览策略：直接尝试获取预览，后端会智能处理
+      const preview = await CompressionService.extractFilePreview(
+        url,
+        headers,
+        filename,
+        entry.path,
+        128 * 1024 // 128KB预览
+      );
+      setFilePreview(preview);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : '预览文件失败');
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const loadMoreContent = async (entry: ArchiveEntry) => {
+    if (!filePreview || isLoadingMore) return;
+
+    try {
+      setIsLoadingMore(true);
+
+      // 计算下一块要加载的大小（每次加载512KB或剩余大小）
+      const chunkSize = 512 * 1024; // 512KB
+      const nextLoadSize = Math.min(currentLoadedSize + chunkSize, entry.size);
+
+      setLoadMoreProgress({
+        currentChunk: 0,
+        totalSize: entry.size,
+        loadedSize: currentLoadedSize
+      });
+
+      // 模拟加载进度
+      const startSize = currentLoadedSize;
+      let currentProgress = startSize;
+      const targetSize = nextLoadSize;
+
+      const interval = setInterval(() => {
+        currentProgress += (targetSize - startSize) * 0.1;
+        if (currentProgress >= targetSize) {
+          currentProgress = targetSize;
+          clearInterval(interval);
+        }
+        setLoadMoreProgress(prev => ({
+          ...prev,
+          loadedSize: currentProgress
+        }));
+      }, 100);
+
+      // 加载更多内容
+      const expandedPreview = await CompressionService.extractFilePreview(
+        url,
+        headers,
+        filename,
+        entry.path,
+        nextLoadSize // 加载到新的大小
+      );
+
+      clearInterval(interval);
+      setFilePreview(expandedPreview);
+      setCurrentLoadedSize(nextLoadSize);
+
+      setLoadMoreProgress(prev => ({
+        ...prev,
+        loadedSize: nextLoadSize
+      }));
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载更多内容失败');
+    } finally {
+      setIsLoadingMore(false);
+      // 延迟重置进度，让用户看到加载完成状态
+      setTimeout(() => {
+        setLoadMoreProgress({
+          currentChunk: 0,
+          totalSize: 0,
+          loadedSize: 0
+        });
+      }, 1000);
     }
   };
 
@@ -245,53 +317,10 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* 头部信息 */}
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Archive size={24} className="text-blue-500" />
-            <h2 className="text-lg font-semibold">{filename}</h2>
-          </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="px-3 py-1 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {archiveInfo && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">类型:</span>
-              <span className="ml-2 font-medium">{archiveInfo.compression_type.toUpperCase()}</span>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">文件数:</span>
-              <span className="ml-2 font-medium">{archiveInfo.total_entries}</span>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">压缩后:</span>
-              <span className="ml-2 font-medium">
-                {CompressionService.formatFileSize(archiveInfo.total_compressed_size)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">解压后:</span>
-              <span className="ml-2 font-medium">
-                {CompressionService.formatFileSize(archiveInfo.total_uncompressed_size)}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 flex">
+      <div className="flex-1 flex min-h-0">
         {/* 文件列表 */}
-        <div className="w-1/2 border-r flex flex-col">
-          <div className="p-4 border-b">
+        <div className="w-1/2 border-r flex flex-col min-h-0">
+          <div className="p-4 border-b flex-shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -304,7 +333,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden min-h-0">
             {filteredEntries.length > 0 ? (
               <VirtualizedArchiveList
                 entries={filteredEntries}
@@ -329,15 +358,15 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         </div>
 
         {/* 文件预览 */}
-        <div className="w-1/2 flex flex-col">
+        <div className="w-1/2 flex flex-col min-h-0">
           {previewLoading ? (
             <LoadingDisplay message="加载预览..." />
           ) : selectedEntry ? (
-            <div className="flex-1 flex flex-col">
-              <div className="p-4 border-b bg-gray-50 dark:bg-gray-800">
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="p-4 border-b bg-gray-50 dark:bg-gray-800 flex-shrink-0">
                 <h3 className="font-medium">{selectedEntry.path}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  大小: {CompressionService.formatFileSize(selectedEntry.size)}
+                  大小: {formatFileSize(selectedEntry.size)}
                   {selectedEntry.modified_time && (
                     <span className="ml-4">
                       修改时间: {new Date(selectedEntry.modified_time).toLocaleString()}
@@ -346,11 +375,11 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                 </p>
               </div>
 
-              <div className="flex-1 overflow-auto p-4">
+              <div className="flex-1 overflow-auto p-4 min-h-0">
                 {streamingContent ? (
-                  <div>
+                  <div className="h-full flex flex-col min-h-0">
                     {/* 流式控制栏 */}
-                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex-shrink-0">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">流式加载进度:</span>
@@ -406,34 +435,64 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                     </div>
 
                     {/* 内容显示 */}
-                    {streamingContent.error ? (
-                      <div className="p-4 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-400 rounded">
-                        错误: {streamingContent.error}
-                      </div>
-                    ) : (
-                      <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded border">
-                        {streamingContent.chunks.join('')}
-                      </pre>
-                    )}
+                    <div className="flex-1 overflow-auto min-h-0">
+                      {streamingContent.error ? (
+                        <div className="p-4 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-400 rounded">
+                          错误: {streamingContent.error}
+                        </div>
+                      ) : (
+                        <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded border">
+                          {streamingContent.chunks.join('')}
+                        </pre>
+                      )}
+                    </div>
                   </div>
                 ) : filePreview ? (
-                  <div>
-                    <pre className="whitespace-pre-wrap text-sm">
-                      {filePreview.content}
-                    </pre>
+                  <div className="h-full flex flex-col min-h-0">
+                    <div className="flex-1 overflow-auto min-h-0">
+                      <pre className="whitespace-pre-wrap text-sm font-mono p-4 bg-gray-50 dark:bg-gray-900 rounded border">
+                        {filePreview.content}
+                      </pre>
+                    </div>
 
-                    {filePreview.is_truncated && (
-                      <div className="mt-4 p-2 bg-yellow-50 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400 rounded text-sm">
-                        内容已截断，显示前 {CompressionService.formatFileSize(filePreview.content.length)} 字节
-                        {isStreamableArchive(filename) && selectedEntry.size > 1024 * 1024 && (
-                          <button
-                            onClick={() => streamFile(selectedEntry)}
-                            className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-                            disabled={isStreaming}
-                          >
-                            {isStreaming ? '加载中...' : '流式加载完整内容'}
-                          </button>
+                    {selectedEntry && currentLoadedSize < selectedEntry.size && (
+                      <div className="p-3 border-t bg-gray-50 dark:bg-gray-800 flex-shrink-0">
+                        {isLoadingMore && (
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">正在加载更多内容...</span>
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {formatFileSize(loadMoreProgress.loadedSize)} / {formatFileSize(loadMoreProgress.totalSize)}
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                              <div
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${loadMoreProgress.totalSize > 0 ? Math.min(100, (loadMoreProgress.loadedSize / loadMoreProgress.totalSize) * 100) : 0}%`
+                                }}
+                              />
+                            </div>
+                          </div>
                         )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            已显示 {formatFileSize(currentLoadedSize)}，完整文件 {formatFileSize(selectedEntry.size)}
+                            {currentLoadedSize < selectedEntry.size && (
+                              <span className="text-gray-500">
+                                {' '}（剩余 {formatFileSize(selectedEntry.size - currentLoadedSize)}）
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => loadMoreContent(selectedEntry)}
+                            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isLoadingMore}
+                          >
+                            {isLoadingMore ? '加载中...' :
+                             (selectedEntry.size - currentLoadedSize > 512 * 1024 ? '加载更多 (512KB)' : '加载完整内容')}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

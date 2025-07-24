@@ -14,14 +14,14 @@ import {
   Image,
   Film,
   Music,
-  File
+  File,
+  Archive
 } from 'lucide-react';
 import { WebDAVFile, SearchResult } from '../types';
 import { webdavService } from '../services/webdav';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { ThemeToggle } from './ThemeToggle';
 import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../utils/fileTypes';
 import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common';
@@ -733,6 +733,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
               {fileType === 'audio' && <Music className="w-6 h-6 text-pink-500" />}
               {fileType === 'pdf' && <File className="w-6 h-6 text-red-500" />}
               {fileType === 'text' && <FileText className="w-6 h-6 text-green-500" />}
+              {fileType === 'archive' && <Archive className="w-6 h-6 text-orange-500" />}
               {fileType === 'unknown' && <File className="w-6 h-6 text-gray-500" />}
               <div className="min-w-0 flex-1">
                 <h1
@@ -760,7 +761,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
 
           <div className="flex items-center space-x-4">
             <LanguageSwitcher />
-            <ThemeToggle />
             <button
               onClick={downloadFile}
               className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
@@ -908,13 +908,16 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       </header>
 
             {/* Content */}
-      <main className="flex-1 overflow-hidden bg-white dark:bg-gray-800">
+      <main className="flex-1 overflow-hidden bg-white dark:bg-gray-800 flex flex-col">
         {loading && (
-          <LoadingDisplay message={`正在加载文件 "${file.basename}"...`} />
+          <LoadingDisplay
+            message={`正在加载文件 "${file.basename}"...`}
+            className="flex-1"
+          />
         )}
 
         {error && (
-          <ErrorDisplay message={error} />
+          <ErrorDisplay message={error} className="flex-1" />
         )}
 
         {!loading && !error && (
