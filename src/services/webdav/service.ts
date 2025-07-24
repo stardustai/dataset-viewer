@@ -1,6 +1,7 @@
 import { WebDAVConnection, WebDAVFile, FileContent } from '../../types';
 import { configManager } from '../../config';
 import { connectionStorage, StoredConnection } from '../connectionStorage';
+import { navigationHistoryService } from '../navigationHistory';
 import { WebDAVClient } from './client';
 import { WebDAVDirectoryService } from './directory';
 import { WebDAVFileService } from './file';
@@ -117,6 +118,11 @@ class WebDAVService {
       preferredMethod: 'AUTO',
       lastDetected: 0
     });
+
+    // 清理路径和文件缓存
+    navigationHistoryService.clearHistory();
+    navigationHistoryService.clearDirectoryCache();
+    navigationHistoryService.clearScrollPositions();
   }
 
   // 连接管理方法
