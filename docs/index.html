@@ -148,12 +148,13 @@
                         </p>
                         <button
                             onclick="downloadMac()"
-                            class="download-btn w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-md hover:shadow-lg"
+                            class="download-btn w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-md hover:shadow-lg relative"
                         >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <span data-i18n="download.dmg">下载 .dmg</span>
+                            <span id="macos-size" class="text-xs text-white/70 transition-opacity duration-500 w-16 text-left opacity-0"></span>
                         </button>
                     </div>
                 </div>
@@ -182,6 +183,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <span data-i18n="download.msi">下载 .msi</span>
+                            <span id="windows-size" class="text-xs text-white/70 transition-opacity duration-500 w-16 text-left opacity-0"></span>
                         </button>
                     </div>
                 </div>
@@ -209,6 +211,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                                 <span data-i18n="download.deb">下载 .deb</span>
+                                <span id="linux-size" class="text-xs text-white/70 transition-opacity duration-500 w-16 text-left opacity-0"></span>
                             </button>
                             <button
                                 onclick="downloadLinuxAppImage()"
@@ -353,8 +356,25 @@
             }
         };
 
-        // 当前语言
-        let currentLang = localStorage.getItem('webdav-viewer-lang') || 'zh';
+        // 当前语言 - 根据浏览器语言自动设置
+        let currentLang = getDefaultLanguage();
+
+        // 获取默认语言
+        function getDefaultLanguage() {
+            // 首先检查本地存储
+            const savedLang = localStorage.getItem('webdav-viewer-lang');
+            if (savedLang) {
+                return savedLang;
+            }
+
+            // 检查浏览器语言
+            const browserLang = navigator.language || navigator.userLanguage;
+            if (browserLang.startsWith('zh')) {
+                return 'zh';
+            } else {
+                return 'en';
+            }
+        }
 
         // 切换语言
         function switchLanguage(lang) {
@@ -409,9 +429,15 @@
                 }
                 const release = await response.json();
                 const version = release.tag_name.replace('v', ''); // 移除 v 前缀
-                
+
+                // 获取文件大小信息
+                const fileSizes = {};
+                release.assets.forEach(asset => {
+                    fileSizes[asset.name] = asset.size;
+                });
+
                 // 根据版本号和文件名模式生成配置
-                appConfig = generateConfig(version);
+                appConfig = generateConfig(version, fileSizes);
                 return appConfig;
             } catch (error) {
                 console.error('Failed to load release info:', error);
@@ -421,37 +447,57 @@
         }
 
         // 根据版本号生成配置
-        function generateConfig(version) {
+        function generateConfig(version, fileSizes = {}) {
             const baseUrl = `https://github.com/stardustai/webdav-viewer/releases/download/v${version}`;
-            
+
+            const getFileSize = (filename) => {
+                const size = fileSizes[filename];
+                if (!size) return null;
+                return formatFileSize(size);
+            };
+
             return {
                 version: version,
                 releases: {
                     "macos-arm64": {
                         downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_aarch64.dmg`,
-                        filename: `WebDAV.Viewer_${version}_aarch64.dmg`
+                        filename: `WebDAV.Viewer_${version}_aarch64.dmg`,
+                        size: getFileSize(`WebDAV.Viewer_${version}_aarch64.dmg`)
                     },
                     "macos-x64": {
                         downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_x64.dmg`,
-                        filename: `WebDAV.Viewer_${version}_x64.dmg`
+                        filename: `WebDAV.Viewer_${version}_x64.dmg`,
+                        size: getFileSize(`WebDAV.Viewer_${version}_x64.dmg`)
                     },
                     "windows": {
                         downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_x64_en-US.msi`,
-                        filename: `WebDAV.Viewer_${version}_x64_en-US.msi`
+                        filename: `WebDAV.Viewer_${version}_x64_en-US.msi`,
+                        size: getFileSize(`WebDAV.Viewer_${version}_x64_en-US.msi`)
                     },
                     "linux": {
                         downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_amd64.deb`,
-                        filename: `WebDAV.Viewer_${version}_amd64.deb`
+                        filename: `WebDAV.Viewer_${version}_amd64.deb`,
+                        size: getFileSize(`WebDAV.Viewer_${version}_amd64.deb`)
                     },
                     "linux-appimage": {
                         downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_amd64.AppImage`,
-                        filename: `WebDAV.Viewer_${version}_amd64.AppImage`
+                        filename: `WebDAV.Viewer_${version}_amd64.AppImage`,
+                        size: getFileSize(`WebDAV.Viewer_${version}_amd64.AppImage`)
                     }
                 },
                 github: {
                     repoUrl: "https://github.com/stardustai/webdav-viewer"
                 }
             };
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
         // 更新页面内容
@@ -464,6 +510,9 @@
                 versionBadge.classList.add('opacity-100', 'scale-100');
             }
 
+            // 更新文件大小显示
+            updateFileSizes();
+
             // 更新GitHub链接
             if (appConfig && appConfig.github && appConfig.github.repoUrl) {
                 const githubLink = document.querySelector('a[href*="github.com"]');
@@ -471,6 +520,35 @@
                     githubLink.href = appConfig.github.repoUrl;
                 }
             }
+        }
+
+        // 更新文件大小显示
+        function updateFileSizes() {
+            if (!appConfig) return;
+
+            // 检测系统架构
+            const isAppleSilicon = navigator.userAgent.includes('Mac') &&
+                                 (navigator.userAgent.includes('ARM') ||
+                                  navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 0);
+
+            const macPlatform = isAppleSilicon ? 'macos-arm64' : 'macos-x64';
+
+            // 更新各平台文件大小
+            const updates = [
+                { id: 'macos-size', platform: macPlatform },
+                { id: 'windows-size', platform: 'windows' },
+                { id: 'linux-size', platform: 'linux' }
+            ];
+
+            updates.forEach(({ id, platform }) => {
+                const element = document.getElementById(id);
+                const config = appConfig.releases[platform];
+                if (element && config && config.size) {
+                    element.textContent = `(${config.size})`;
+                    element.classList.remove('opacity-0');
+                    element.classList.add('opacity-100');
+                }
+            });
         }
 
         function downloadMac() {
@@ -481,13 +559,13 @@
             }
 
             // 检测系统架构
-            const isAppleSilicon = navigator.userAgent.includes('Mac') && 
-                                 (navigator.userAgent.includes('ARM') || 
+            const isAppleSilicon = navigator.userAgent.includes('Mac') &&
+                                 (navigator.userAgent.includes('ARM') ||
                                   navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 0);
-            
+
             const platform = isAppleSilicon ? 'macos-arm64' : 'macos-x64';
             const config = appConfig?.releases?.[platform];
-            
+
             if (config) {
                 downloadFile(config.downloadUrl, config.filename);
                 // 显示 macOS 安装提示
@@ -586,15 +664,15 @@
         function showMacInstallationTip() {
             // 检查当前语言
             const currentLang = localStorage.getItem('language') || 'zh';
-            
+
             // 创建模态框背景
             const overlay = document.createElement('div');
             overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
-            
+
             // 创建模态框内容
             const modal = document.createElement('div');
             modal.className = 'bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300';
-            
+
             const content = currentLang === 'en' ? {
                 title: '🍎 macOS Installation Guide',
                 subtitle: 'Unsigned App Notice',
@@ -618,7 +696,7 @@
                 note: '注意：应用完全安全。代码签名需要 Apple 开发者计划会员资格（每年 $99）。',
                 button: '知道了！'
             };
-            
+
             modal.innerHTML = `
                 <div class="text-center mb-4">
                     <h3 class="text-xl font-bold text-gray-900 mb-2">${content.title}</h3>
@@ -639,16 +717,16 @@
                     ${content.button}
                 </button>
             `;
-            
+
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
-            
+
             // 显示动画
             setTimeout(() => {
                 modal.classList.remove('scale-95');
                 modal.classList.add('scale-100');
             }, 100);
-            
+
             // 设置全局变量以便关闭
             window.currentMacTipOverlay = overlay;
         }
@@ -666,6 +744,9 @@
 
         // 页面加载动画和配置加载
         document.addEventListener('DOMContentLoaded', function() {
+            // 预设语言，避免闪动
+            document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+
             // 初始化语言
             updateLanguage();
             updateLanguageButtons();
