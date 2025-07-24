@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Search,
   X,
-  Settings
+  Settings,
+  Copy
 } from 'lucide-react';
 import { WebDAVFile } from '../types';
 import { webdavService } from '../services/webdav';
@@ -21,6 +22,7 @@ import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from './common';
+import { copyToClipboard, showCopyToast } from '../utils/clipboard';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string) => void;
@@ -357,7 +359,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     loadDirectory(newPath);
   };
 
-  // 处理列标题点击排序
   const handleSort = (field: 'name' | 'size' | 'modified') => {
     if (sortField === field) {
       // 如果点击的是当前排序字段，则切换排序方向
@@ -366,6 +367,29 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 如果点击的是新字段，则设置为该字段并使用升序
       setSortField(field);
       setSortDirection('asc');
+    }
+  };
+
+  // 复制完整路径到剪贴板
+  const copyFullPath = async () => {
+    try {
+      const connection = webdavService.getConnection();
+      if (!connection) return;
+
+      // 构建完整路径
+      const fullPath = currentPath === ''
+        ? connection.url
+        : `${connection.url}/${currentPath}`;
+
+      const success = await copyToClipboard(fullPath);
+      if (success) {
+        showCopyToast(t('copied.to.clipboard'));
+      } else {
+        showCopyToast(t('copy.failed'));
+      }
+    } catch (err) {
+      console.error('复制路径失败:', err);
+      showCopyToast(t('copy.failed'));
     }
   };
 
@@ -456,6 +480,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                   </span>
                 </React.Fragment>
               ))}
+
+              {/* 复制完整路径按钮 */}
+              <button
+                onClick={copyFullPath}
+                className="ml-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                title={t('copy.full.path')}
+              >
+                <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              </button>
             </div>
           </div>
 
@@ -504,7 +537,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         <div className="h-full flex flex-col">
           {loading && (
             <LoadingDisplay
-              message={`正在加载${currentPath ? ` "${currentPath}" ` : '根'}目录...`}
+              message={currentPath
+                ? t('loading.directory', { path: ` "${currentPath}" ` })
+                : t('loading.directory.root')
+              }
             />
           )}
 

@@ -145,6 +145,13 @@ const resources = {
       'viewer.rotate': '旋转',
       'viewer.reset': '重置视图',
 
+      // 复制路径功能
+      'copy.full.path': '复制完整路径',
+      'copy.line.content': '复制行内容',
+      'copied.to.clipboard': '已复制到剪贴板',
+      'copy.failed': '复制失败',
+      'characters': '字符数',
+
       // 快速开始
       'quick.start': '快速开始',
       'quick.start.desc': '要测试 WebDAV 浏览器，您可以使用本地 WebDAV 服务器或连接到您自己的服务器。',
@@ -165,6 +172,35 @@ const resources = {
       'language': '语言',
       'language.chinese': '中文',
       'language.english': 'English',
+
+      // 状态显示组件
+      'status.loading': '正在加载...',
+      'status.retry': '重试',
+      'status.unsupported.format': '不支持的文件格式',
+      'status.unsupported.download': '请尝试下载文件以查看内容',
+      'status.all.files.hidden': '所有文件都是隐藏文件',
+      'status.show.hidden.files': '显示隐藏文件',
+      'status.no.matching.files': '未找到匹配的文件',
+      'status.try.different.keywords': '请尝试不同的搜索关键词 "{{searchTerm}}"',
+      'status.clear.search': '清除搜索',
+
+      // 文件加载状态
+      'loading.directory': '正在加载 {{path}} 目录...',
+      'loading.directory.root': '正在加载根目录...',
+      'loading.file': '正在加载文件 "{{filename}}"...',
+      'loading.analyzing.archive': '正在分析压缩文件...',
+      'loading.preview': '加载预览...',
+      'loading.more.content': '正在加载更多内容...',
+      'loading.status': '正在加载...',
+      // 文件信息
+      'file.size.label': '大小',
+      'file.modified.time': '修改时间',
+      'search.files.placeholder': '搜索文件...',
+
+      // 流状态
+      'stream.paused': '已暂停',
+      'stream.completed': '加载完成',
+      'stream.error': '错误',
     }
   },
   en: {
@@ -310,6 +346,13 @@ const resources = {
       'viewer.rotate': 'Rotate',
       'viewer.reset': 'Reset view',
 
+      // Copy path functionality
+      'copy.full.path': 'Copy full path',
+      'copy.line.content': 'Copy line content',
+      'copied.to.clipboard': 'Copied to clipboard',
+      'copy.failed': 'Copy failed',
+      'characters': 'Characters',
+
       // Quick start
       'quick.start': 'Quick Start',
       'quick.start.desc': 'To test the WebDAV browser, you can use a local WebDAV server or connect to your own server.',
@@ -330,6 +373,36 @@ const resources = {
       'language': 'Language',
       'language.chinese': '中文',
       'language.english': 'English',
+
+      // Status display components
+      'status.loading': 'Loading...',
+      'status.retry': 'Retry',
+      'status.unsupported.format': 'Unsupported file format',
+      'status.unsupported.download': 'Please try downloading the file to view its content',
+      'status.all.files.hidden': 'All files are hidden files',
+      'status.show.hidden.files': 'Show hidden files',
+      'status.no.matching.files': 'No matching files found',
+      'status.try.different.keywords': 'Try different search keywords "{{searchTerm}}"',
+      'status.clear.search': 'Clear search',
+
+      // File loading status
+      'loading.directory': 'Loading{{path}} directory...',
+      'loading.directory.root': 'Loading root directory...',
+      'loading.file': 'Loading file "{{filename}}"...',
+      'loading.analyzing.archive': 'Analyzing archive...',
+      'loading.preview': 'Loading preview...',
+      'loading.more.content': 'Loading more content...',
+      'loading.status': 'Loading...',
+
+      // File information
+      'file.size.label': 'Size',
+      'file.modified.time': 'Modified time',
+      'search.files.placeholder': 'Search files...',
+
+      // Stream status
+      'stream.paused': 'Paused',
+      'stream.completed': 'Loading completed',
+      'stream.error': 'Error',
     }
   }
 };

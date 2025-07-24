@@ -15,7 +15,8 @@ import {
   Film,
   Music,
   File,
-  Archive
+  Archive,
+  Copy
 } from 'lucide-react';
 import { WebDAVFile, SearchResult } from '../types';
 import { webdavService } from '../services/webdav';
@@ -25,6 +26,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../utils/fileTypes';
 import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common';
+import { copyToClipboard, showCopyToast } from '../utils/clipboard';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
@@ -713,6 +715,27 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
     }
   };
 
+  // 复制完整路径到剪贴板
+  const copyFullPath = async () => {
+    try {
+      const connection = webdavService.getConnection();
+      if (!connection) return;
+
+      // 构建完整路径
+      const fullPath = `${connection.url}/${filePath}`;
+
+      const success = await copyToClipboard(fullPath);
+      if (success) {
+        showCopyToast(t('copied.to.clipboard'));
+      } else {
+        showCopyToast(t('copy.failed'));
+      }
+    } catch (err) {
+      console.error('复制路径失败:', err);
+      showCopyToast(t('copy.failed'));
+    }
+  };
+
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header */}
@@ -736,12 +759,22 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
               {fileType === 'archive' && <Archive className="w-6 h-6 text-orange-500" />}
               {fileType === 'unknown' && <File className="w-6 h-6 text-gray-500" />}
               <div className="min-w-0 flex-1">
-                <h1
-                  className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-lg"
-                  title={file.basename}
-                >
-                  {file.basename}
-                </h1>
+                <div className="flex items-center space-x-2">
+                  <h1
+                    className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-lg"
+                    title={file.basename}
+                  >
+                    {file.basename}
+                  </h1>
+                  {/* 复制完整路径按钮 */}
+                  <button
+                    onClick={copyFullPath}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                    title={t('copy.full.path')}
+                  >
+                    <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {formatFileSize(file.size)} • {isText ? getLanguageFromExtension(getFileExtension(file.basename)) : fileType}
                   {isLargeFile && (
@@ -911,7 +944,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       <main className="flex-1 overflow-hidden bg-white dark:bg-gray-800 flex flex-col">
         {loading && (
           <LoadingDisplay
-            message={`正在加载文件 "${file.basename}"...`}
+            message={t('loading.file', { filename: file.basename })}
             className="flex-1"
           />
         )}

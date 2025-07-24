@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { Copy } from 'lucide-react';
+import { copyToClipboard, showCopyToast } from '../utils/clipboard';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -106,12 +108,20 @@ const LineContentModal: React.FC<{
 
         {/* 底部操作栏 */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
-          <span>字符数: {content.length}</span>
+          <span>{t('characters')}: {content.length}</span>
           <button
-            onClick={() => navigator.clipboard.writeText(content)}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            onClick={async () => {
+              const success = await copyToClipboard(content);
+              if (success) {
+                showCopyToast(t('copied.to.clipboard'));
+              } else {
+                showCopyToast(t('copy.failed'));
+              }
+            }}
+            className="flex items-center space-x-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
-            复制内容
+            <Copy className="w-4 h-4" />
+            <span>{t('copy.line.content')}</span>
           </button>
         </div>
       </div>

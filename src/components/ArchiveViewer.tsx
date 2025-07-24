@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Archive, Search, Play, Pause, RotateCcw } from 'lucide-react';
+import { Archive, Search, Play, Pause, RotateCcw, Copy } from 'lucide-react';
 import { ArchiveInfo, ArchiveEntry, FilePreview, CompressedFileChunk, CompressedFileEvent } from '../types';
 import { CompressionService } from '../services/compression';
+import { copyToClipboard, showCopyToast } from '../utils/clipboard';
 
 import { VirtualizedArchiveList } from './VirtualizedArchiveList';
 import { LoadingDisplay, ErrorDisplay, StatusDisplay } from './common';
+import { useTranslation } from 'react-i18next';
 
 // 文件大小格式化工具函数
 const formatFileSize = (bytes: number): string => {
@@ -42,6 +44,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   headers,
   filename
 }) => {
+  const { t } = useTranslation();
   const [archiveInfo, setArchiveInfo] = useState<ArchiveInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -293,6 +296,22 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     });
   };
 
+  // 复制压缩包内文件路径到剪贴板
+  const copyFilePath = async (entry: ArchiveEntry) => {
+    try {
+      const fullPath = `${filename}:/${entry.path}`;
+      const success = await copyToClipboard(fullPath);
+      if (success) {
+        showCopyToast(t('copied.to.clipboard'));
+      } else {
+        showCopyToast(t('copy.failed'));
+      }
+    } catch (err) {
+      console.error('复制路径失败:', err);
+      showCopyToast(t('copy.failed'));
+    }
+  };
+
   const filteredEntries = archiveInfo?.entries.filter(entry =>
     entry.path.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
@@ -300,7 +319,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   if (loading) {
     return (
       <LoadingDisplay
-        message="正在分析压缩文件..."
+        message={t('loading.analyzing.archive')}
         icon={Archive}
       />
     );
@@ -325,7 +344,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
-                placeholder="搜索文件..."
+                placeholder={t('search.files.placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
@@ -360,19 +379,33 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         {/* 文件预览 */}
         <div className="w-1/2 flex flex-col min-h-0">
           {previewLoading ? (
-            <LoadingDisplay message="加载预览..." />
+            <LoadingDisplay message={t('loading.preview')} />
           ) : selectedEntry ? (
             <div className="flex-1 flex flex-col min-h-0">
               <div className="p-4 border-b bg-gray-50 dark:bg-gray-800 flex-shrink-0">
-                <h3 className="font-medium">{selectedEntry.path}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  大小: {formatFileSize(selectedEntry.size)}
-                  {selectedEntry.modified_time && (
-                    <span className="ml-4">
-                      修改时间: {new Date(selectedEntry.modified_time).toLocaleString()}
-                    </span>
-                  )}
-                </p>
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-medium truncate">{selectedEntry.path}</h3>
+                      {/* 复制文件路径按钮 */}
+                      <button
+                        onClick={() => copyFilePath(selectedEntry)}
+                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                        title={t('copy.full.path')}
+                      >
+                        <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {t('file.size.label')}: {formatFileSize(selectedEntry.size)}
+                      {selectedEntry.modified_time && (
+                        <span className="ml-4">
+                          {t('file.modified.time')}: {new Date(selectedEntry.modified_time).toLocaleString()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex-1 overflow-auto p-4 min-h-0">
@@ -423,13 +456,13 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                       {/* 状态信息 */}
                       <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                         {isStreaming && !streamingContent.isPaused && (
-                          <span className="text-blue-600 dark:text-blue-400">正在加载...</span>
+                          <span className="text-blue-600 dark:text-blue-400">{t('loading.status')}</span>
                         )}
                         {streamingContent.isPaused && (
-                          <span className="text-yellow-600 dark:text-yellow-400">已暂停</span>
+                          <span className="text-yellow-600 dark:text-yellow-400">{t('stream.paused')}</span>
                         )}
                         {streamingContent.isComplete && (
-                          <span className="text-green-600 dark:text-green-400">加载完成</span>
+                          <span className="text-green-600 dark:text-green-400">{t('stream.completed')}</span>
                         )}
                       </div>
                     </div>
@@ -438,7 +471,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                     <div className="flex-1 overflow-auto min-h-0">
                       {streamingContent.error ? (
                         <div className="p-4 bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-400 rounded">
-                          错误: {streamingContent.error}
+                          {t('stream.error')}: {streamingContent.error}
                         </div>
                       ) : (
                         <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded border">
@@ -460,7 +493,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                         {isLoadingMore && (
                           <div className="mb-3">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">正在加载更多内容...</span>
+                              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{t('loading.more.content')}</span>
                               <span className="text-sm text-gray-600 dark:text-gray-400">
                                 {formatFileSize(loadMoreProgress.loadedSize)} / {formatFileSize(loadMoreProgress.totalSize)}
                               </span>
