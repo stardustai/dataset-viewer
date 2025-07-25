@@ -8,9 +8,11 @@ mod download; // 下载管理功能
 mod cache;    // 智能缓存机制 - 暂未使用
 
 use archive::{handlers::ArchiveHandler, types::*};
-use storage::{StorageRequest, ConnectionConfig, get_storage_manager};
+use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
+
+// 移除参数结构体，直接在命令中使用 serde rename 属性
 
 // 全局下载管理器
 static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
@@ -150,6 +152,20 @@ async fn storage_get_supported_protocols() -> Result<Vec<String>, String> {
     Ok(manager.supported_protocols().iter().map(|s| s.to_string()).collect())
 }
 
+#[tauri::command]
+async fn storage_list_directory(
+    path: String,
+    options: Option<ListOptions>,
+) -> Result<serde_json::Value, String> {
+    let manager = get_storage_manager().await;
+    let manager = manager.lock().await;
+
+    match manager.list_directory(&path, options.as_ref()).await {
+        Ok(result) => Ok(serde_json::to_value(result).unwrap()),
+        Err(e) => Err(format!("List directory failed: {}", e))
+    }
+}
+
 // 下载进度命令
 
 #[tauri::command]
@@ -189,15 +205,21 @@ async fn analyze_archive(
 }
 
 /// 获取文件预览
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 async fn get_file_preview(
     url: String,
     headers: std::collections::HashMap<String, String>,
     filename: String,
     entry_path: String,
-    max_preview_size: Option<usize>,
+    max_preview_size: Option<usize>
 ) -> Result<FilePreview, String> {
-    ARCHIVE_HANDLER.get_file_preview(url, headers, filename, entry_path, max_preview_size).await
+    ARCHIVE_HANDLER.get_file_preview(
+        url,
+        headers,
+        filename,
+        entry_path,
+        max_preview_size
+    ).await
 }
 
 /// 检查文件是否支持压缩包操作
@@ -218,27 +240,38 @@ async fn get_compression_info(filename: String) -> Result<CompressionType, Strin
     Ok(ARCHIVE_HANDLER.get_compression_info(&filename))
 }
 
-/// 智能预览文件
-#[tauri::command]
+/// 智能预览 - 自动检测最佳预览方式
+#[tauri::command(rename_all = "camelCase")]
 async fn smart_preview(
     url: String,
     headers: std::collections::HashMap<String, String>,
     filename: String,
-    entry_path: String,
+    entry_path: String
 ) -> Result<FilePreview, String> {
-    ARCHIVE_HANDLER.smart_preview(url, headers, filename, entry_path).await
+    ARCHIVE_HANDLER.smart_preview(
+        url,
+        headers,
+        filename,
+        entry_path
+    ).await
 }
 
 /// 批量预览文件
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 async fn batch_preview(
     url: String,
     headers: std::collections::HashMap<String, String>,
     filename: String,
     entry_paths: Vec<String>,
-    max_preview_size: Option<usize>,
+    max_preview_size: Option<usize>
 ) -> Result<Vec<(String, Result<FilePreview, String>)>, String> {
-    ARCHIVE_HANDLER.batch_preview(url, headers, filename, entry_paths, max_preview_size).await
+    ARCHIVE_HANDLER.batch_preview(
+        url,
+        headers,
+        filename,
+        entry_paths,
+        max_preview_size
+    ).await
 }
 
 /// 验证压缩包完整性
@@ -292,6 +325,7 @@ pub fn run() {
             storage_is_connected,
             storage_get_capabilities,
             storage_get_supported_protocols,
+            storage_list_directory,
             // 下载进度命令
             download_file_with_progress,
             cancel_download,

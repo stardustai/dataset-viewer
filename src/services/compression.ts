@@ -33,8 +33,8 @@ export class CompressionService {
       url,
       headers,
       filename,
-      entry_path: entryPath,
-      max_preview_size: maxPreviewSize,
+      entryPath,
+      maxPreviewSize,
     });
   }
 
@@ -51,7 +51,7 @@ export class CompressionService {
       url,
       headers,
       filename,
-      entry_path: entryPath,
+      entryPath,
     });
   }
 
@@ -69,8 +69,8 @@ export class CompressionService {
       url,
       headers,
       filename,
-      entry_paths: entryPaths,
-      max_preview_size: maxPreviewSize,
+      entryPaths,
+      maxPreviewSize,
     });
   }
 

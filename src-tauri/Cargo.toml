@@ -44,4 +44,6 @@ lz4 = "1.24"
 zstd = "0.13"
 async-stream = "0.3"
 bytes = "1.5"
+quick-xml = "0.31"
+urlencoding = "2.1"
 

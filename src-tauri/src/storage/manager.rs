@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 use std::sync::Arc;
-use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, StorageCapabilities};
+use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, StorageCapabilities, DirectoryResult, ListOptions};
 use super::webdav_client::WebDAVClient;
 
 pub struct StorageManager {
@@ -63,6 +63,15 @@ impl StorageManager {
             .ok_or(StorageError::NotConnected)?;
 
         client.request_binary(request).await
+    }
+
+    pub async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+        let client_id = self.active_client.as_ref()
+            .ok_or(StorageError::NotConnected)?;
+        let client = self.clients.get(client_id)
+            .ok_or(StorageError::NotConnected)?;
+
+        client.list_directory(path, options).await
     }
 
     pub fn current_capabilities(&self) -> Option<StorageCapabilities> {
