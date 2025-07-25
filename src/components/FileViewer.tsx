@@ -26,7 +26,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../utils/fileTypes';
 import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common';
-import { copyToClipboard, showCopyToast } from '../utils/clipboard';
+import { copyToClipboard, showCopyToast, normalizePath } from '../utils/clipboard';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
@@ -721,8 +721,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
       const connection = StorageServiceManager.getConnection();
       if (!connection) return;
 
-      // 构建完整路径
-      const fullPath = `${connection.url}/${filePath}`;
+      // 构建完整路径，使用规范化函数避免重复斜杠
+      const fullPath = normalizePath(connection.url, filePath);
 
       const success = await copyToClipboard(fullPath);
       if (success) {

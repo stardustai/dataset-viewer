@@ -2,6 +2,40 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// 统一的文件信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StorageFile {
+    pub filename: String,
+    pub basename: String,
+    pub lastmod: String,
+    pub size: u64,
+    #[serde(rename = "type")]
+    pub file_type: String, // "file" or "directory"
+    pub mime: Option<String>,
+    pub etag: Option<String>,
+}
+
+/// 统一的目录列表结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DirectoryResult {
+    pub files: Vec<StorageFile>,
+    pub has_more: bool,
+    pub next_marker: Option<String>,
+    pub total_count: Option<u64>,
+    pub path: String,
+}
+
+/// 统一的列表选项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListOptions {
+    pub page_size: Option<u32>,
+    pub marker: Option<String>,
+    pub prefix: Option<String>,
+    pub recursive: Option<bool>,
+    pub sort_by: Option<String>, // "name", "size", "modified"
+    pub sort_order: Option<String>, // "asc", "desc"
+}
+
 /// 统一的存储响应结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageResponse {
@@ -81,6 +115,9 @@ pub trait StorageClient: Send + Sync {
     /// 检查是否已连接
     #[allow(dead_code)]
     fn is_connected(&self) -> bool;
+
+    /// 列出目录内容
+    async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError>;
 
     /// 发起请求
     async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError>;

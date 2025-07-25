@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Archive, Search, Copy } from 'lucide-react';
+import { Archive, Search, Copy, AlertCircle } from 'lucide-react';
 import { ArchiveInfo, ArchiveEntry, FilePreview } from '../types';
 import { CompressionService } from '../services/compression';
 import { copyToClipboard, showCopyToast } from '../utils/clipboard';
@@ -43,6 +43,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   const [selectedEntry, setSelectedEntry] = useState<ArchiveEntry | null>(null);
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null); // 新增：专门用于预览错误
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreProgress, setLoadMoreProgress] = useState<LoadMoreProgress>({
@@ -115,6 +116,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setPreviewLoading(true);
       setSelectedEntry(entry);
       setFilePreview(null);
+      setPreviewError(null); // 清除之前的预览错误
       setCurrentLoadedSize(128 * 1024); // 重置为初始加载大小
 
       // 简化预览策略：直接尝试获取预览，后端会智能处理
@@ -128,7 +130,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setFilePreview(preview);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : '预览文件失败');
+      setPreviewError(err instanceof Error ? err.message : '预览文件失败');
     } finally {
       setPreviewLoading(false);
     }
@@ -179,6 +181,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       clearInterval(interval);
       setFilePreview(expandedPreview);
       setCurrentLoadedSize(nextLoadSize);
+      setPreviewError(null); // 清除预览错误
 
       setLoadMoreProgress(prev => ({
         ...prev,
@@ -186,7 +189,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       }));
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载更多内容失败');
+      setPreviewError(err instanceof Error ? err.message : '加载更多内容失败');
     } finally {
       setIsLoadingMore(false);
       // 延迟重置进度，让用户看到加载完成状态
@@ -313,7 +316,34 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
               </div>
 
               <div className="flex-1 overflow-auto p-4 min-h-0">
-                {filePreview ? (
+                {previewError ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="mb-4">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                          <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                          预览失败
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
+                          {previewError}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPreviewError(null);
+                          if (selectedEntry) {
+                            previewFile(selectedEntry);
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+                      >
+                        重试预览
+                      </button>
+                    </div>
+                  </div>
+                ) : filePreview ? (
                   <div className="h-full flex flex-col min-h-0">
                     <div className="flex-1 overflow-auto min-h-0">
                       <pre className="whitespace-pre-wrap text-sm font-mono p-4 bg-gray-50 dark:bg-gray-900 rounded border">
@@ -362,7 +392,12 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                       </div>
                     )}
                   </div>
-                ) : null}
+                ) : (
+                  <StatusDisplay
+                    type="previewEmpty"
+                    message="正在准备预览..."
+                  />
+                )}
               </div>
             </div>
           ) : (

@@ -22,7 +22,7 @@ import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from './common';
-import { copyToClipboard, showCopyToast } from '../utils/clipboard';
+import { copyToClipboard, normalizePath, showCopyToast } from '../utils/clipboard';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string) => void;
@@ -376,10 +376,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       const connection = StorageServiceManager.getConnection();
       if (!connection) return;
 
-      // 构建完整路径
-      const fullPath = currentPath === ''
-        ? connection.url
-        : `${connection.url}/${currentPath}`;
+      // 构建完整路径，使用规范化函数避免重复斜杠
+      const fullPath = normalizePath(connection.url, currentPath);
 
       const success = await copyToClipboard(fullPath);
       if (success) {
