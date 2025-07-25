@@ -77,6 +77,8 @@ impl CompressionType {
         CompressionType::Unknown
     }
 
+    /// 获取压缩类型的字符串表示
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             CompressionType::Zip => "zip",
