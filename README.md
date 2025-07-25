@@ -4,7 +4,7 @@
 
 A modern, high-performance WebDAV browser built with Tauri, React, and TypeScript. Designed to handle large text files (hundreds of GB) with efficient streaming and fast in-file search capabilities.
 
-📥 **[Download Latest Release](https://github.com/stardustai/webdav-viewer/releases/latest)**
+[中文文档](README_zh.md) · **[Download Latest Release](https://github.com/stardustai/webdav-viewer/releases/latest)**
 
 ## ✨ Highlights
 
@@ -18,6 +18,7 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 - 🌐 **WebDAV Server Connection**: Secure connection to any WebDAV server with credential storage
 - 📁 **Intelligent File Browser**: Intuitive navigation with thumbnail previews and sorting
 - 📄 **Large File Support**: Efficiently view massive text files (100GB+) using chunked loading
+- 📦 **Archive Streaming**: Stream and preview large compressed files (ZIP, TAR, etc.) without full extraction
 - 🔍 **Lightning-Fast Search**: Real-time in-file search with regex support and navigation
 - 🎨 **Modern UI**: Clean, responsive interface with dark/light theme support
 - 🌍 **Multi-Language**: Built-in internationalization support
@@ -27,13 +28,10 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 
 ## 📸 Screenshots
 
-### File Browser Interface
-![File Browser](screenshots/home.png)
-*Modern file browser with intuitive navigation and theme support*
-
-### Text File Viewer
-![Text Viewer](screenshots/text.png)
-*Advanced text viewer with search capabilities and virtualized rendering*
+| File Browser | Text Viewer | Archive Viewer |
+|:------------:|:----------:|:-------------:|
+| ![File Browser](screenshots/home.png) | ![Text Viewer](screenshots/text.png) | ![Archive Viewer](screenshots/archive.png) |
+| *Modern file browser with intuitive navigation and theme support* | *Advanced text viewer with search capabilities and virtualized rendering* | *Archive streaming with file preview and efficient content browsing* |
 
 ## 📚 Supported File Types
 
@@ -47,13 +45,19 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 
 ### Code Files
 - JavaScript/TypeScript (`.js`, `.ts`, `.jsx`, `.tsx`)
-- Pyth- Python (`.py`, `.pyx`)
+- Python (`.py`, `.pyx`)
 - Java (`.java`)
 - C/C++ (`.c`, `.cpp`, `.h`, `.hpp`)
 - Rust (`.rs`)
 - Go (`.go`)
 - PHP (`.php`)
 - And many more...
+
+### Archive Files (Streaming Preview)
+- ZIP archives (`.zip`) - Browse and preview contents without extraction
+- TAR archives (`.tar`, `.tar.gz`, `.tar.bz2`) - Streaming file browser
+- RAR archives (`.rar`) - Content listing and file preview
+- 7-Zip archives (`.7z`) - Efficient streaming access
 
 ### Document Files
 - PDF (`.pdf`) - Document viewer
@@ -93,85 +97,27 @@ The application will open automatically in development mode.
 
 ### 📦 Building for Production
 
-Create optimized builds and installers for distribution:
-
 ```bash
-# One-command build and package
+# Build and package (recommended)
 pnpm package
 
-# Or build step by step
-pnpm build              # Build frontend
-pnpm tauri:build        # Create platform installer
+# Development mode
+pnpm tauri dev
 
-# Quick debug build (faster compilation)
+# Debug build (faster compilation)
 pnpm package:debug
 ```
 
-### 🎯 Available Commands
+**Build Scripts:**
+- Unix/Linux/macOS: `./build.sh` or `./build.sh --debug`
+- Windows: `build.bat` or `build.bat --debug`
 
-| Command | Description |
-|---------|-------------|
-| `pnpm tauri:dev` | Start development mode with hot reload |
-| `pnpm tauri:build` | Build optimized release version |
-| `pnpm tauri:build:debug` | Build debug version (faster) |
-| `pnpm build:all` | Build frontend and create installer |
-| `pnpm package` | One-command build and package |
-| `pnpm package:debug` | Quick debug package |
-| `pnpm clean` | Clean all build artifacts and cache |
-| `pnpm clean:build` | Clean only Tauri build artifacts |
-| `pnpm lint` | Run TypeScript type checking |
+**Output Formats:**
+- **macOS**: `.dmg` installer, `.app` bundle
+- **Windows**: `.msi` installer, `.exe` executable
+- **Linux**: `.deb`, `.rpm`, `.AppImage` packages
 
-### 🚀 Quick Build Scripts
-
-For convenience, use the provided build scripts:
-
-**Unix/Linux/macOS:**
-```bash
-# Release build with optimizations
-./build.sh
-
-# Debug build (faster compilation)
-./build.sh --debug
-```
-
-**Windows:**
-```cmd
-# Release build with optimizations
-build.bat
-
-# Debug build (faster compilation)
-build.bat --debug
-```
-
-### 📦 Platform-Specific Outputs
-
-After building, installers will be available in `src-tauri/target/release/bundle/`:
-
-| Platform | Output Formats |
-|----------|----------------|
-| **macOS** | `.dmg` installer, `.app` bundle |
-| **Windows** | `.msi` installer, `.exe` executable |
-| **Linux** | `.deb`, `.rpm`, `.AppImage` packages |
-
-### 📱 Installation Notes
-
-#### macOS Installation
-The macOS version is currently **unsigned**, which means you may encounter security warnings when first launching the application.
-
-**📥 Download & Install:**
-1. Download the `.dmg` file from the [releases page](https://github.com/stardustai/webdav-viewer/releases/latest)
-2. Open the DMG and drag the app to Applications folder
-3. **Important**: Before first launch, run this command in Terminal:
-   ```bash
-   sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"
-   ```
-4. Now you can launch the app normally from Applications folder
-
-**🔐 Alternative Methods (if the command doesn't work):**
-- **Method 1**: Right-click the app → "Open" → "Open" (bypass Gatekeeper)
-- **Method 2**: System Preferences → Security & Privacy → General → "Open Anyway"
-
-> **💡 Why this is needed**: Code signing requires an Apple Developer Program membership ($99/year). As this is an open-source project, we distribute unsigned builds for free. The application is completely safe to use - you can verify the source code on GitHub.
+> **📱 macOS Note**: The app is unsigned. If you get security warnings, run: `sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"` or right-click → "Open" → "Open".
 
 ## 📖 Usage Guide
 
@@ -200,99 +146,36 @@ The macOS version is currently **unsigned**, which means you may encounter secur
    - Monitor download progress with built-in progress indicator
    - Resume interrupted downloads
 
-## 🏗 Architecture
+6. **📦 Browse Archives**:
+   - Stream and preview compressed files without full extraction
+   - Navigate through archive contents like regular directories
+   - Preview text files inside archives instantly
 
-This application follows a modern, scalable architecture:
+## 🏗 Architecture & Performance
 
-- **🎨 Frontend**: React 18 with TypeScript for type safety and modern development
-- **💅 Styling**: Tailwind CSS for utility-first, responsive design
-- **⚡ Backend**: Tauri framework combining Rust performance with web technologies
-- **🌐 WebDAV Client**: Custom WebDAV implementation optimized for large files
-- **🗄 State Management**: React Context and custom hooks for efficient state handling
-- **🎯 Build System**: Vite for fast development and optimized production builds
+**Tech Stack:**
+- **Frontend**: React 18 + TypeScript + Tailwind CSS
+- **Backend**: Tauri (Rust) + Custom WebDAV client
+- **Build**: Vite for fast development and optimized builds
 
-## ⚡ Performance Optimizations
-
-- **📊 Chunked Loading**: Large files loaded in manageable 10MB chunks
-- **🖥 Virtual Scrolling**: Efficient rendering of millions of lines without performance impact
-- **🔍 Debounced Search**: Intelligent search optimization to prevent excessive API calls
-- **🧠 Memory Management**: Smart content loading and disposal for optimal resource usage
-- **⚡ Lazy Loading**: Components and content loaded on-demand
-- **📱 Responsive Design**: Optimized for all screen sizes from mobile to desktop
+**Key Optimizations:**
+- **📊 Chunked Loading**: Large files in 10MB chunks
+- **📦 Archive Streaming**: Process compressed files without full extraction
+- **🖥 Virtual Scrolling**: Millions of lines without performance impact
+- **🧠 Smart Memory Management**: Efficient loading and disposal
+- **🔍 Debounced Search**: Optimized search to prevent excessive API calls
 
 ## 💻 Development
 
-### 📁 Project Structure
+**Recommended IDE**: VS Code with Tauri, rust-analyzer, and Tailwind CSS extensions
 
-```
-src/
-├── components/              # React components
-│   ├── ConnectionPanel.tsx  # WebDAV connection management
-│   ├── FileBrowser.tsx     # File system navigation
-│   ├── FileViewer.tsx      # Text file viewer with syntax highlighting
-│   ├── MediaViewer.tsx     # Image and video preview
-│   ├── VirtualizedTextViewer.tsx  # High-performance text rendering
-│   └── common/             # Shared UI components
-├── services/               # Business logic and API layer
-│   ├── webdav/            # WebDAV client implementation
-│   ├── connectionStorage.ts  # Connection persistence
-│   └── navigationHistory.ts  # Browser history management
-├── hooks/                  # Custom React hooks
-│   └── useTheme.ts        # Theme management
-├── i18n/                  # Internationalization
-├── utils/                 # Utility functions
-├── types.ts              # TypeScript type definitions
-├── App.tsx               # Main application component
-└── main.tsx              # Application entry point
-```
-
-### 🛠 Recommended IDE Setup
-
-- **[VS Code](https://code.visualstudio.com/)** - Primary editor
-- **[Tauri Extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)** - Tauri development support
-- **[rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)** - Rust language server
-- **[Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)** - CSS class suggestions
-- **[ES7+ React/Redux/React-Native snippets](https://marketplace.visualstudio.com/items?itemName=dsznajder.es7-react-js-snippets)** - React snippets
-
-### 🧪 Testing
-
-```bash
-# Run frontend tests
-pnpm test
-
-# Run with coverage
-pnpm test:coverage
-
-# Run Rust tests
-cd src-tauri
-cargo test
-```
+**Testing**: `pnpm test` (frontend) · `cargo test` (Rust)
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Here's how you can help:
-
-1. **🍴 Fork the repository**
-2. **🌿 Create a feature branch** (`git checkout -b feature/amazing-feature`)
-3. **✨ Make your changes** with clear, descriptive commits
-4. **🧪 Add tests** if applicable and ensure existing tests pass
-5. **📝 Update documentation** if needed
-6. **🚀 Submit a pull request** with a detailed description
-
-### 🐛 Bug Reports
-
-Found a bug? Please open an issue with:
-- Clear description of the problem
-- Steps to reproduce
-- Expected vs actual behavior
-- System information (OS, browser, etc.)
-
-### 💡 Feature Requests
-
-Have an idea? We'd love to hear it! Open an issue describing:
-- The feature you'd like to see
-- Why it would be useful
-- Any implementation ideas
+1. Fork → Create feature branch → Make changes → Submit PR
+2. **Bug Reports**: [Open an issue](https://github.com/stardustai/webdav-viewer/issues) with clear description and steps to reproduce
+3. **Feature Requests**: Describe the feature and why it would be useful
 
 ## 📄 License
 
@@ -311,6 +194,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **Made with ❤️ and 🤖 AI**
 
-[中文](README_zh.md) · [Report Bug](https://github.com/stardustai/webdav-viewer/issues) · [Request Feature](https://github.com/stardustai/webdav-viewer/issues) · [Documentation](https://github.com/stardustai/webdav-viewer/wiki)
+[Report Bug](https://github.com/stardustai/webdav-viewer/issues) · [Request Feature](https://github.com/stardustai/webdav-viewer/issues) · [Documentation](https://github.com/stardustai/webdav-viewer/wiki)
 
 </div>

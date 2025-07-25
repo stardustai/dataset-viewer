@@ -4,7 +4,7 @@
 
 一个基于 Tauri、React 和 TypeScript 构建的现代化、高性能 WebDAV 浏览器。专为处理大型文本文件（数百 GB）而设计，具有高效的流式处理和快速文件内搜索功能。
 
-📥 **[下载最新版本](https://github.com/stardustai/webdav-viewer/releases/latest)**
+[English](README.md) · **[下载最新版本](https://github.com/stardustai/webdav-viewer/releases/latest)**
 
 ## ✨ 亮点特性
 
@@ -18,6 +18,7 @@
 - 🌐 **WebDAV 服务器连接**：安全连接任意 WebDAV 服务器，支持凭据存储
 - 📁 **智能文件浏览器**：直观的导航界面，支持缩略图预览和排序
 - 📄 **大文件支持**：使用分块加载高效查看超大文本文件（100GB+）
+- 📦 **压缩包流式预览**：无需完整解压即可流式浏览大型压缩文件（ZIP、TAR等）
 - 🔍 **闪电搜索**：实时文件内搜索，支持正则表达式和导航
 - 🎨 **现代化界面**：简洁响应式界面，支持深色/浅色主题
 - 🌍 **多语言支持**：内置国际化支持
@@ -27,13 +28,10 @@
 
 ## 📸 界面截图
 
-### 文件浏览器界面
-![文件浏览器](screenshots/home.png)
-*现代化文件浏览器，具有直观导航和主题支持*
-
-### 文本文件查看器
-![文本查看器](screenshots/text.png)
-*高级文本查看器，具有搜索功能和虚拟化渲染*
+| 文件浏览器 | 文本查看器 | 压缩包查看器 |
+|:----------:|:----------:|:------------:|
+| ![文件浏览器](screenshots/home.png) | ![文本查看器](screenshots/text.png) | ![压缩包查看器](screenshots/archive.png) |
+| *现代化文件浏览器，具有直观导航和主题支持* | *高级文本查看器，具有搜索功能和虚拟化渲染* | *压缩包流式预览，支持文件预览和高效内容浏览* |
 
 ## 📚 支持的文件类型
 
@@ -54,6 +52,12 @@
 - Go（`.go`）
 - PHP（`.php`）
 - 以及更多...
+
+### 压缩包文件（流式预览）
+- ZIP 压缩包（`.zip`）- 无需解压即可浏览和预览内容
+- TAR 压缩包（`.tar`、`.tar.gz`、`.tar.bz2`）- 流式文件浏览器
+- RAR 压缩包（`.rar`）- 内容列表和文件预览
+- 7-Zip 压缩包（`.7z`）- 高效流式访问
 
 ### 文档文件
 - PDF（`.pdf`）- 文档查看器
@@ -93,85 +97,27 @@ pnpm tauri dev
 
 ### 📦 生产构建
 
-创建优化的构建版本和安装包：
-
 ```bash
-# 一键构建和打包
+# 构建和打包（推荐）
 pnpm package
 
-# 或分步构建
-pnpm build              # 构建前端
-pnpm tauri:build        # 创建平台安装包
+# 开发模式
+pnpm tauri dev
 
-# 快速调试构建（编译更快）
+# 调试构建（编译更快）
 pnpm package:debug
 ```
 
-### 🎯 可用命令
+**构建脚本：**
+- Unix/Linux/macOS：`./build.sh` 或 `./build.sh --debug`
+- Windows：`build.bat` 或 `build.bat --debug`
 
-| 命令 | 描述 |
-|---------|-------------|
-| `pnpm tauri:dev` | 启动开发模式（热重载） |
-| `pnpm tauri:build` | 构建优化的发布版本 |
-| `pnpm tauri:build:debug` | 构建调试版本（更快） |
-| `pnpm build:all` | 构建前端并创建安装包 |
-| `pnpm package` | 一键构建和打包 |
-| `pnpm package:debug` | 快速调试打包 |
-| `pnpm clean` | 清理所有构建产物和缓存 |
-| `pnpm clean:build` | 仅清理 Tauri 构建产物 |
-| `pnpm lint` | 运行 TypeScript 类型检查 |
+**输出格式：**
+- **macOS**：`.dmg` 安装包、`.app` 应用包
+- **Windows**：`.msi` 安装包、`.exe` 可执行文件
+- **Linux**：`.deb`、`.rpm`、`.AppImage` 包
 
-### 🚀 快速构建脚本
-
-为了方便使用，提供了构建脚本：
-
-**Unix/Linux/macOS：**
-```bash
-# 发布构建（优化）
-./build.sh
-
-# 调试构建（更快编译）
-./build.sh --debug
-```
-
-**Windows：**
-```cmd
-# 发布构建（优化）
-build.bat
-
-# 调试构建（更快编译）
-build.bat --debug
-```
-
-### 📦 平台特定输出
-
-构建后，安装包将在 `src-tauri/target/release/bundle/` 中：
-
-| 平台 | 输出格式 |
-|----------|----------------|
-| **macOS** | `.dmg` 安装包、`.app` 应用包 |
-| **Windows** | `.msi` 安装包、`.exe` 可执行文件 |
-| **Linux** | `.deb`、`.rpm`、`.AppImage` 包 |
-
-### 📱 安装说明
-
-#### macOS 安装
-macOS 版本目前是**未签名**的，这意味着您在首次启动应用程序时可能会遇到安全警告。
-
-**📥 下载与安装：**
-1. 从 [发布页面](https://github.com/stardustai/webdav-viewer/releases/latest) 下载 `.dmg` 文件
-2. 打开 DMG 并将应用拖拽到应用程序文件夹
-3. **重要**：首次启动前，在终端中运行以下命令：
-   ```bash
-   sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"
-   ```
-4. 现在可以从应用程序文件夹正常启动应用
-
-**🔐 替代方法（如果命令无效）：**
-- **方法 1**：右键点击应用 → "打开" → "打开"（绕过 Gatekeeper）
-- **方法 2**：系统偏好设置 → 安全性与隐私 → 通用 → "仍要打开"
-
-> **💡 为什么需要这样做**：代码签名需要 Apple 开发者计划会员资格（每年 $99）。作为开源项目，我们免费发布未签名的构建版本。应用程序完全安全 - 您可以在 GitHub 上验证源代码。
+> **📱 macOS 说明**：应用未签名。如遇到安全警告，运行：`sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"` 或右键点击 → "打开" → "打开"。
 
 ## 📖 使用指南
 
@@ -181,14 +127,14 @@ macOS 版本目前是**未签名**的，这意味着您在首次启动应用程�
    - 保存前测试连接
 
 2. **📁 浏览文件**：
-   - 使用直观的文件浏览器导航目录
+   - 使用直观的文件浏览器浏览目录
    - 按名称、大小或修改日期排序文件
    - 预览支持格式的文件缩略图
 
 3. **📄 查看文本文件**：
-   - 点击任意支持的文本文件在查看器中打开
+   - 点击任何支持的文本文件在查看器中打开
    - 享受代码文件的语法高亮
-   - 使用虚拟化滚动导航大文件
+   - 使用虚拟化滚动浏览大文件
 
 4. **🔍 搜索内容**：
    - 使用搜索栏在文件中查找内容
@@ -200,110 +146,47 @@ macOS 版本目前是**未签名**的，这意味着您在首次启动应用程�
    - 使用内置进度指示器监控下载进度
    - 恢复中断的下载
 
-## 🏗 架构设计
+6. **📦 浏览压缩包**：
+   - 无需完整解压即可流式预览压缩文件
+   - 像普通目录一样浏览压缩包内容
+   - 即时预览压缩包内的文本文件
 
-本应用遵循现代化、可扩展的架构：
+## 🏗 架构与性能
 
-- **🎨 前端**：React 18 配合 TypeScript 提供类型安全和现代开发体验
-- **💅 样式**：Tailwind CSS 实用优先的响应式设计
-- **⚡ 后端**：Tauri 框架结合 Rust 性能与 Web 技术
-- **🌐 WebDAV 客户端**：为大文件优化的自定义 WebDAV 实现
-- **🗄 状态管理**：React Context 和自定义 hooks 实现高效状态处理
-- **🎯 构建系统**：Vite 提供快速开发和优化的生产构建
+**技术栈：**
+- **前端**：React 18 + TypeScript + Tailwind CSS
+- **后端**：Tauri (Rust) + 自定义 WebDAV 客户端
+- **构建**：Vite 提供快速开发和优化构建
 
-## ⚡ 性能优化
-
-- **📊 分块加载**：大文件以可管理的 10MB 块加载
-- **🖥 虚拟滚动**：高效渲染百万行而不影响性能
-- **🔍 防抖搜索**：智能搜索优化防止过多 API 调用
-- **🧠 内存管理**：智能内容加载和释放优化资源使用
-- **⚡ 懒加载**：组件和内容按需加载
-- **📱 响应式设计**：从移动设备到桌面的全屏幕尺寸优化
+**关键优化：**
+- **📊 分块加载**：大文件以 10MB 块加载
+- **📦 压缩包流式处理**：无需完整解压即可处理压缩文件
+- **🖥 虚拟滚动**：百万行而不影响性能
+- **🧠 智能内存管理**：高效的加载和释放
+- **🔍 防抖搜索**：优化搜索防止过多 API 调用
 
 ## 💻 开发指南
 
-### 📁 项目结构
+**推荐 IDE**：VS Code，配合 Tauri、rust-analyzer 和 Tailwind CSS 扩展
 
-```
-src/
-├── components/              # React 组件
-│   ├── ConnectionPanel.tsx  # WebDAV 连接管理
-│   ├── FileBrowser.tsx     # 文件系统导航
-│   ├── FileViewer.tsx      # 文本文件查看器（语法高亮）
-│   ├── MediaViewer.tsx     # 图像和视频预览
-│   ├── VirtualizedTextViewer.tsx  # 高性能文本渲染
-│   └── common/             # 共享 UI 组件
-├── services/               # 业务逻辑和 API 层
-│   ├── webdav/            # WebDAV 客户端实现
-│   ├── connectionStorage.ts  # 连接持久化
-│   └── navigationHistory.ts  # 浏览器历史管理
-├── hooks/                  # 自定义 React hooks
-│   └── useTheme.ts        # 主题管理
-├── i18n/                  # 国际化
-├── utils/                 # 工具函数
-├── types.ts              # TypeScript 类型定义
-├── App.tsx               # 主应用组件
-└── main.tsx              # 应用入口点
-```
-
-### 🛠 推荐 IDE 设置
-
-- **[VS Code](https://code.visualstudio.com/)** - 主要编辑器
-- **[Tauri Extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)** - Tauri 开发支持
-- **[rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)** - Rust 语言服务器
-- **[Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)** - CSS 类建议
-- **[ES7+ React/Redux/React-Native snippets](https://marketplace.visualstudio.com/items?itemName=dsznajder.es7-react-js-snippets)** - React 代码片段
-
-### 🧪 测试
-
-```bash
-# 运行前端测试
-pnpm test
-
-# 带覆盖率运行
-pnpm test:coverage
-
-# 运行 Rust 测试
-cd src-tauri
-cargo test
-```
+**测试**：`pnpm test`（前端）· `cargo test`（Rust）
 
 ## 🤝 贡献
 
-我们欢迎社区贡献！以下是您可以帮助的方式：
-
-1. **🍴 Fork 仓库**
-2. **🌿 创建功能分支**（`git checkout -b feature/amazing-feature`）
-3. **✨ 进行更改**，使用清晰的描述性提交
-4. **🧪 添加测试**（如适用）并确保现有测试通过
-5. **📝 更新文档**（如需要）
-6. **🚀 提交 Pull Request**，包含详细描述
-
-### 🐛 错误报告
-
-发现了错误？请提交 issue 包含：
-- 问题的清晰描述
-- 重现步骤
-- 预期与实际行为
-- 系统信息（操作系统、浏览器等）
-
-### 💡 功能请求
-
-有想法？我们很乐意听到！提交 issue 描述：
-- 您希望看到的功能
-- 为什么它会有用
-- 任何实现想法
+1. Fork → 创建功能分支 → 进行更改 → 提交 PR
+2. **Bug 报告**：[提交 issue](https://github.com/stardustai/webdav-viewer/issues) 并提供清晰描述和重现步骤
+3. **功能请求**：描述功能以及为什么有用
 
 ## 📄 许可证
 
-本项目基于 **MIT 许可证** - 详情请参阅 [LICENSE](LICENSE) 文件。
+本项目根据 **MIT 许可证** 授权 - 详见 [LICENSE](LICENSE) 文件。
 
 ## 🙏 致谢
 
-- **🤖 AI 开发**：本项目展示了 AI 辅助开发的强大能力
-- **🛠 Tauri 团队**：创造了出色的框架
-- **⚛️ React 社区**：提供了优秀的生态系统
-- **🦀 Rust 社区**：提供了强大的语言和工具
+- **🤖 AI 开发**：本项目展示了 AI 辅助开发的强大力量
+- **🛠 Tauri 团队**：创造了令人惊叹的框架
+- **⚛️ React 社区**：优秀的生态系统
+- **🦀 Rust 社区**：强大的语言和工具
 
 ---
 
@@ -311,6 +194,6 @@ cargo test
 
 **用 ❤️ 和 🤖 AI 制作**
 
-[English](README.md) · [报告错误](https://github.com/stardustai/webdav-viewer/issues) · [功能请求](https://github.com/stardustai/webdav-viewer/issues) · [文档](https://github.com/stardustai/webdav-viewer/wiki)
+[报告 Bug](https://github.com/stardustai/webdav-viewer/issues) · [请求功能](https://github.com/stardustai/webdav-viewer/issues) · [文档](https://github.com/stardustai/webdav-viewer/wiki)
 
 </div>

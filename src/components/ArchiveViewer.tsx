@@ -73,7 +73,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
       setArchiveInfo(info);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载压缩文件失败');
+      setError(err instanceof Error ? err.message : t('error.load.archive'));
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
       setArchiveInfo(detailedInfo);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载详细信息失败');
+      setError(err instanceof Error ? err.message : t('error.load.details'));
     } finally {
       setLoading(false);
     }
@@ -130,7 +130,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setFilePreview(preview);
 
     } catch (err) {
-      setPreviewError(err instanceof Error ? err.message : '预览文件失败');
+      setPreviewError(err instanceof Error ? err.message : t('error.preview.file'));
     } finally {
       setPreviewLoading(false);
     }
@@ -189,7 +189,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       }));
 
     } catch (err) {
-      setPreviewError(err instanceof Error ? err.message : '加载更多内容失败');
+      setPreviewError(err instanceof Error ? err.message : t('error.load.more.content'));
     } finally {
       setIsLoadingMore(false);
       // 延迟重置进度，让用户看到加载完成状态
@@ -214,7 +214,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         showCopyToast(t('copy.failed'));
       }
     } catch (err) {
-      console.error('复制路径失败:', err);
+      console.error('Failed to copy path:', err);
       showCopyToast(t('copy.failed'));
     }
   };
@@ -271,13 +271,13 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
             ) : searchTerm ? (
               <StatusDisplay
                 type="noSearchResults"
-                message="未找到匹配的文件"
-                secondaryMessage={`请尝试不同的搜索关键词 "${searchTerm}"`}
+                message={t('no.matching.files')}
+                secondaryMessage={`${t('try.different.keywords')} "${searchTerm}"`}
               />
             ) : (
               <StatusDisplay
                 type="archiveEmpty"
-                message="压缩文件为空"
+                message={t('archive.empty')}
               />
             )}
           </div>
@@ -324,7 +324,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                           <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                          预览失败
+                          {t('preview.failed')}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
                           {previewError}
@@ -339,7 +339,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                         }}
                         className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
                       >
-                        重试预览
+                        {t('retry.preview')}
                       </button>
                     </div>
                   </div>
@@ -373,10 +373,10 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                         )}
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600 dark:text-gray-400">
-                            已显示 {formatFileSize(currentLoadedSize)}，完整文件 {formatFileSize(selectedEntry.size)}
+                            {t('file.shown')} {formatFileSize(currentLoadedSize)}，{t('file.complete')} {formatFileSize(selectedEntry.size)}
                             {currentLoadedSize < selectedEntry.size && (
                               <span className="text-gray-500">
-                                {' '}（剩余 {formatFileSize(selectedEntry.size - currentLoadedSize)}）
+                                {' '}（{t('file.remaining')} {formatFileSize(selectedEntry.size - currentLoadedSize)}）
                               </span>
                             )}
                           </span>
@@ -385,8 +385,8 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                             className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={isLoadingMore}
                           >
-                            {isLoadingMore ? '加载中...' :
-                             (selectedEntry.size - currentLoadedSize > 512 * 1024 ? '加载更多 (512KB)' : '加载完整内容')}
+                            {isLoadingMore ? t('loading.text') :
+                             (selectedEntry.size - currentLoadedSize > 512 * 1024 ? t('load.more.chunk') : t('load.complete.content'))}
                           </button>
                         </div>
                       </div>
@@ -395,7 +395,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                 ) : (
                   <StatusDisplay
                     type="previewEmpty"
-                    message="正在准备预览..."
+                    message={t('preparing.preview')}
                   />
                 )}
               </div>
@@ -403,7 +403,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           ) : (
             <StatusDisplay
               type="previewEmpty"
-              message="选择一个文件进行预览"
+              message={t('select.file.for.preview')}
             />
           )}
         </div>

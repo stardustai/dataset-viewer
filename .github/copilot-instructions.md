@@ -2,38 +2,48 @@
 
 # WebDAV Browser Project Instructions
 
-This is a Tauri application that provides a modern WebDAV browser with the following key features:
+🤖 **This project is 100% AI-generated** using GitHub Copilot and Claude AI
 
-## Architecture
-- **Frontend**: React with TypeScript and Tailwind CSS
-- **Backend**: Tauri (Rust)
-- **WebDAV Client**: JavaScript webdav library
-- **UI Framework**: Tailwind CSS for modern, responsive design
+Cross-platform Tauri application for WebDAV browsing with massive file streaming capabilities.
+
+## Tech Stack
+- **Frontend**: React 18 + TypeScript + Tailwind CSS
+- **Backend**: Tauri 2.0 (Rust) + HTTP/FS plugins
+- **UI**: @tanstack/react-virtual + Lucide icons
+- **I18n**: i18next (Chinese/English)
+- **Build**: Vite 6 + PNPM
 
 ## Key Features
-1. **WebDAV Connection Management**: Secure connection to WebDAV servers
-2. **File Browser**: Navigate through directories and files on WebDAV servers
-3. **Large File Support**: Efficient viewing of large text files (hundreds of GB) using chunked loading
-4. **Text File Viewer**: Support for various text formats (txt, json, md, code files, etc.)
-5. **Fast Search**: In-file search with highlighting and navigation
-6. **Responsive Design**: Modern UI with Tailwind CSS
+- **Large File Support**: Stream 100GB+ files with chunked loading
+- **Archive Preview**: Stream ZIP/TAR files without extraction
+- **Virtual Scrolling**: Handle millions of lines efficiently
+- **Real-time Search**: Regex search with highlighting
+- **Connection Management**: Secure credential storage
+
+## Project Structure
+```
+src/
+├── App.tsx                 # Main app with state management
+├── types.ts               # TypeScript definitions
+├── components/            # React components by feature
+├── services/              # Business logic
+│   └── storage/          # Storage abstraction layer
+├── hooks/                 # Custom React hooks
+├── i18n/                 # Internationalization
+└── utils/                # Utility functions
+
+src-tauri/src/
+├── lib.rs                # Tauri commands
+├── storage/              # Storage implementations
+├── archive/              # Archive streaming
+└── download/             # Download management
+```
 
 ## Development Guidelines
-- Use TypeScript for type safety
-- Follow React best practices with functional components and hooks
-- Use Tailwind CSS classes for styling
-- Implement efficient memory management for large files
-- Use chunked loading for files larger than 10MB
-- Provide responsive and accessible UI components
-
-## File Structure
-- `src/types.ts` - TypeScript interfaces and types
-- `src/services/webdav.ts` - WebDAV client service
-- `src/components/` - React components
-- `src/App.tsx` - Main application component
-
-## Performance Considerations
-- Implement virtual scrolling for large files
-- Use debounced search to avoid excessive API calls
-- Load content in chunks to manage memory usage
-- Provide loading states and error handling
+- **TypeScript**: Use strict typing for all code
+- **Components**: Organize by feature, use composition
+- **Styling**: Tailwind CSS utility classes
+- **Performance**: Virtual scrolling for >100 items, chunked loading for >10MB files
+- **I18n**: Wrap all UI text in translation functions
+- **State**: React hooks + localStorage persistence
+- **Tauri**: Use async commands, official plugins, follow security practices
