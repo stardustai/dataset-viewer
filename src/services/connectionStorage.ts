@@ -13,11 +13,41 @@ export interface StoredConnection {
 class ConnectionStorageService {
   private readonly STORAGE_KEY = 'webdav-connections';
 
+  // 标准化 WebDAV URL 格式 - 统一以斜杠结尾
+  private normalizeUrl(url: string): string {
+    try {
+      // 移除尾部的多个斜杠，然后统一添加单个斜杠
+      return url.replace(/\/+$/, '') + '/';
+    } catch (error) {
+      console.warn('Failed to normalize URL:', url, error);
+      return url;
+    }
+  }
+
   // 获取所有保存的连接
   getStoredConnections(): StoredConnection[] {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      const connections = stored ? JSON.parse(stored) : [];
+
+      // 迁移现有连接的 URL 格式（一次性处理）
+      let needsSave = false;
+      const migratedConnections = connections.map((conn: StoredConnection) => {
+        const normalizedUrl = this.normalizeUrl(conn.url);
+        if (conn.url !== normalizedUrl) {
+          needsSave = true;
+          return { ...conn, url: normalizedUrl };
+        }
+        return conn;
+      });
+
+      // 如果有 URL 被标准化，保存更新后的连接
+      if (needsSave) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(migratedConnections));
+        return migratedConnections;
+      }
+
+      return connections;
     } catch (error) {
       console.error('Failed to load stored connections:', error);
       return [];
@@ -27,13 +57,28 @@ class ConnectionStorageService {
   // 保存连接配置（可选择保存密码）
   saveConnection(connection: WebDAVConnection, name?: string, savePassword: boolean = false): string {
     const connections = this.getStoredConnections();
+
+    // 标准化 URL 格式
+    const normalizedUrl = this.normalizeUrl(connection.url);
+
+    // 检查是否已存在相同的连接（基于标准化的 URL 和用户名）
+    const existingConnection = this.findConnection(normalizedUrl, connection.username);
+    if (existingConnection) {
+      // 如果连接已存在，更新最后连接时间和密码（如果需要）
+      this.updateLastConnected(existingConnection.id);
+      if (savePassword && connection.password) {
+        this.updatePassword(existingConnection.id, connection.password);
+      }
+      return existingConnection.id;
+    }
+
     const id = this.generateId();
-    const connectionName = name || this.extractNameFromUrl(connection.url);
+    const connectionName = name || this.extractNameFromUrl(normalizedUrl);
 
     const storedConnection: StoredConnection = {
       id,
       name: connectionName,
-      url: connection.url,
+      url: normalizedUrl, // 使用标准化的 URL
       username: connection.username,
       lastConnected: new Date().toISOString(),
     };
@@ -95,10 +140,13 @@ class ConnectionStorageService {
     return connections.find(c => c.isDefault) || connections[0] || null;
   }
 
-  // 查找连接
+  // 查找连接 - 使用标准化的 URL 进行比较
   findConnection(url: string, username: string): StoredConnection | null {
     const connections = this.getStoredConnections();
-    return connections.find(c => c.url === url && c.username === username) || null;
+    const normalizedUrl = this.normalizeUrl(url);
+    return connections.find(c =>
+      this.normalizeUrl(c.url) === normalizedUrl && c.username === username
+    ) || null;
   }
 
   // 重命名连接
@@ -124,16 +172,18 @@ class ConnectionStorageService {
 
   private extractNameFromUrl(url: string): string {
     try {
-      const urlObj = new URL(url);
+      // 使用标准化后的 URL 生成名称
+      const normalizedUrl = this.normalizeUrl(url);
+      const urlObj = new URL(normalizedUrl);
       const hostname = urlObj.hostname;
       const pathname = urlObj.pathname;
 
       if (pathname && pathname !== '/') {
-        return `${hostname}${pathname}`;
+        return `${hostname}${pathname.replace(/\/$/, '')}`;
       }
       return hostname;
     } catch (error) {
-      return url;
+      return url.replace(/\/+$/, '');
     }
   }
 }

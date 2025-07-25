@@ -40,9 +40,49 @@ impl WebDAVClient {
 #[async_trait]
 impl StorageClient for WebDAVClient {
     async fn connect(&self) -> Result<(), StorageError> {
-        // 这里可以添加连接测试逻辑
-        // 比如发送一个 OPTIONS 或 PROPFIND 请求来验证连接
-        Ok(())
+        let base_url = self.config.url.as_ref()
+            .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL is required".to_string()))?;
+
+        // 标准化基础 URL - 确保以斜杠结尾
+        let normalized_url = if base_url.ends_with('/') {
+            base_url.clone()
+        } else {
+            format!("{}/", base_url)
+        };
+
+        // 发送简单的 PROPFIND 请求测试连接
+        let propfind_body = r#"<?xml version="1.0" encoding="utf-8"?>
+<propfind xmlns="DAV:">
+  <prop>
+    <resourcetype/>
+  </prop>
+</propfind>"#;
+
+        let mut req_builder = self.client.request(
+            reqwest::Method::from_bytes(b"PROPFIND").unwrap(),
+            &normalized_url
+        );
+
+        if let Some(auth) = &self.auth_header {
+            req_builder = req_builder.header("Authorization", auth);
+        }
+
+        req_builder = req_builder
+            .header("Depth", "0")
+            .header("Content-Type", "application/xml; charset=utf-8")
+            .body(propfind_body);
+
+        let response = req_builder.send().await
+            .map_err(|e| StorageError::NetworkError(format!("Connection test failed: {}", e)))?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(StorageError::RequestFailed(format!(
+                "WebDAV connection test failed with status: {}",
+                response.status()
+            )))
+        }
     }
 
     async fn disconnect(&self) -> Result<(), StorageError> {
@@ -58,18 +98,19 @@ impl StorageClient for WebDAVClient {
         let base_url = self.config.url.as_ref()
             .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL is required".to_string()))?;
 
-        // 构建完整URL
-        let url = if path.is_empty() || path == "/" {
-            base_url.clone()
+        // 标准化基础 URL - 统一处理尾部斜杠
+        let normalized_base_url = if base_url.ends_with('/') {
+            base_url.trim_end_matches('/').to_string()
         } else {
-            format!("{}/{}", base_url.trim_end_matches('/'), path.trim_start_matches('/'))
+            base_url.clone()
         };
 
-        // 确保URL以/结尾（对于目录）
-        let url = if !url.ends_with('/') {
-            format!("{}/", url)
+        // 构建完整URL - 确保路径正确处理
+        let url = if path.is_empty() || path == "/" {
+            format!("{}/", normalized_base_url)
         } else {
-            url
+            let clean_path = path.trim_start_matches('/').trim_end_matches('/');
+            format!("{}/{}/", normalized_base_url, clean_path)
         };
 
         // 创建PROPFIND请求
@@ -104,7 +145,7 @@ impl StorageClient for WebDAVClient {
 
         let status = response.status().as_u16();
         if status < 200 || status >= 300 {
-            return Err(StorageError::RequestFailed(format!("PROPFIND failed with status: {}", status)));
+            return Err(StorageError::RequestFailed(format!("PROPFIND failed with status: {}. Check URL format and trailing slash", status)));
         }
 
         let body = response.text().await

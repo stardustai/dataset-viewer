@@ -36,10 +36,13 @@ export class WebDAVStorageClient extends BaseStorageClient {
     }
 
     try {
+      // 简单的 URL 标准化 - 由后端统一处理具体格式
+      const cleanUrl = config.url.trim();
+
       // First establish connection in the Rust backend
       const connected = await invoke<boolean>('storage_connect', {
         protocol: 'webdav',
-        url: config.url,
+        url: cleanUrl,
         username: config.username,
         password: config.password,
         accessKey: null,
@@ -52,7 +55,7 @@ export class WebDAVStorageClient extends BaseStorageClient {
 
       if (connected) {
         this.connection = {
-          url: config.url,
+          url: cleanUrl,
           username: config.username,
           password: config.password,
           connected: true,
@@ -71,7 +74,13 @@ export class WebDAVStorageClient extends BaseStorageClient {
     } catch (error) {
       console.error('WebDAV connection failed:', error);
       this.connected = false;
-      return false;
+
+      // 提供更详细的错误信息
+      if (error instanceof Error && error.message.includes('URL format')) {
+        throw new Error('Server connection failed. Please check the URL format and credentials.');
+      }
+
+      throw error;
     }
   }
 
@@ -188,7 +197,9 @@ export class WebDAVStorageClient extends BaseStorageClient {
     if (!this.connection) throw new Error('Not connected');
 
     if (path.startsWith('http')) return path;
-    const baseUrl = this.connection.url.replace(/\/$/, '');
+
+    // 简单的 URL 构建 - 避免过度处理
+    const baseUrl = this.connection.url.replace(/\/+$/, '');
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return `${baseUrl}${normalizedPath}`;
   }
