@@ -113,10 +113,10 @@ class UpdateService {
 
       // 查找匹配的 asset
       for (const pattern of platformPatterns) {
-        const asset = assets.find(asset => 
+        const asset = assets.find(asset =>
           asset.name.toLowerCase().includes(pattern.toLowerCase()) &&
-          (asset.name.endsWith('.dmg') || 
-           asset.name.endsWith('.exe') || 
+          (asset.name.endsWith('.dmg') ||
+           asset.name.endsWith('.exe') ||
            asset.name.endsWith('.AppImage') ||
            asset.name.endsWith('.deb') ||
            asset.name.endsWith('.rpm') ||
@@ -133,9 +133,9 @@ class UpdateService {
       }
 
       // 如果没有找到匹配的，返回第一个可执行文件
-      const fallbackAsset = assets.find(asset => 
-        asset.name.endsWith('.dmg') || 
-        asset.name.endsWith('.exe') || 
+      const fallbackAsset = assets.find(asset =>
+        asset.name.endsWith('.dmg') ||
+        asset.name.endsWith('.exe') ||
         asset.name.endsWith('.AppImage') ||
         asset.name.endsWith('.deb') ||
         asset.name.endsWith('.rpm') ||
@@ -224,7 +224,7 @@ class UpdateService {
    * 打开下载页面
    */
   async openDownloadPage(): Promise<void> {
-    await openUrl('https://github.com/stardustai/webdav-viewer/releases/latest');
+    await openUrl('https://stardustai.github.io/webdav-viewer');
   }
 }
 
