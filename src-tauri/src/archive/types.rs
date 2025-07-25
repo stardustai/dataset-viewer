@@ -93,7 +93,7 @@ impl CompressionType {
     }
 
     pub fn supports_streaming(&self) -> bool {
-        matches!(self, CompressionType::Zip | CompressionType::TarGz | CompressionType::Tar)
+        matches!(self, CompressionType::Zip | CompressionType::TarGz | CompressionType::Tar | CompressionType::Gzip)
     }
 
     #[allow(dead_code)]

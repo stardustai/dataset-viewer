@@ -280,6 +280,14 @@ impl ArchivePreview {
         headers: &std::collections::HashMap<String, String>,
         max_size: usize,
     ) -> Result<FilePreview, String> {
+        // 首先尝试流式预览（适用于大文件）
+        if let Ok(preview) = Self::extract_gzip_preview_streaming(url, headers, max_size).await {
+            return Ok(preview);
+        }
+
+        println!("GZIP流式预览失败，回退到完整下载模式");
+
+        // 回退到完整下载模式（仅适用于小文件）
         let gzip_data = Self::download_file(url, headers).await?;
 
         let cursor = Cursor::new(&gzip_data);
@@ -303,6 +311,120 @@ impl ArchivePreview {
             encoding: "utf-8".to_string(),
             file_type: FileType::Text,
         })
+    }
+
+    /// 流式GZIP预览（分块下载和解压）
+    async fn extract_gzip_preview_streaming(
+        url: &str,
+        headers: &std::collections::HashMap<String, String>,
+        max_size: usize,
+    ) -> Result<FilePreview, String> {
+        println!("尝试GZIP流式预览，最大预览大小: {} 字节", max_size);
+
+        // 下载前面的数据块进行流式解压
+        let chunk_size = 32 * 1024; // 32KB 块
+        let max_chunks = 10; // 最多尝试10个块
+        
+        let mut compressed_buffer = Vec::new();
+        let mut offset = 0u64;
+        
+        // 首先下载足够的数据用于解压
+        for i in 0..max_chunks {
+            println!("下载GZIP块 {}: 偏移 {}, 大小 {}", i, offset, chunk_size);
+            
+            match Self::download_range(url, headers, offset, chunk_size as u64).await {
+                Ok(chunk_data) => {
+                    if chunk_data.is_empty() {
+                        break;
+                    }
+                    compressed_buffer.extend_from_slice(&chunk_data);
+                    offset += chunk_data.len() as u64;
+                }
+                Err(e) => {
+                    println!("下载GZIP块失败: {}", e);
+                    if i == 0 {
+                        return Err(e);
+                    }
+                    break;
+                }
+            }
+            
+            // 尝试解压当前已下载的数据
+            if compressed_buffer.len() >= 1024 { // 至少有1KB数据才尝试解压
+                match Self::try_decompress_gzip(&compressed_buffer, max_size) {
+                    Ok(decompressed) => {
+                        if !decompressed.is_empty() {
+                            // 尝试将解压后的数据转换为文本
+                            let content = match String::from_utf8(decompressed.clone()) {
+                                Ok(text) => text,
+                                Err(_) => Self::try_decode_text(decompressed.clone())?,
+                            };
+
+                            println!("GZIP流式预览成功，解压了 {} 字节", decompressed.len());
+
+                            return Ok(FilePreview {
+                                content,
+                                is_truncated: decompressed.len() >= max_size,
+                                total_size: 0, // 实际大小未知
+                                preview_size: decompressed.len(),
+                                encoding: "utf-8".to_string(),
+                                file_type: FileType::Text,
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        println!("GZIP解压尝试失败: {}", e);
+                        // 继续下载更多数据
+                    }
+                }
+            }
+        }
+
+        Err("Failed to decompress GZIP data after multiple attempts".to_string())
+    }
+
+    /// 尝试解压GZIP数据
+    fn try_decompress_gzip(compressed_data: &[u8], max_size: usize) -> Result<Vec<u8>, String> {
+        // 验证GZIP头部
+        if compressed_data.len() < 3 || compressed_data[0] != 0x1f || compressed_data[1] != 0x8b {
+            return Err("Invalid GZIP signature".to_string());
+        }
+
+        let cursor = std::io::Cursor::new(compressed_data);
+        let mut decoder = flate2::read::GzDecoder::new(cursor);
+        
+        let mut decompressed = Vec::new();
+        
+        // 分块读取，避免内存问题
+        let mut buffer = vec![0; 8192]; // 8KB 缓冲区
+        
+        loop {
+            match decoder.read(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(bytes_read) => {
+                    decompressed.extend_from_slice(&buffer[..bytes_read]);
+                    if decompressed.len() >= max_size {
+                        decompressed.truncate(max_size);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    if decompressed.is_empty() {
+                        return Err(format!("GZIP decompression error: {}", e));
+                    } else {
+                        // 如果已经解压了一些数据，返回已有数据
+                        println!("GZIP解压遇到错误但已有部分数据: {}", e);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if decompressed.is_empty() {
+            Err("No data decompressed".to_string())
+        } else {
+            Ok(decompressed)
+        }
     }
 
     /// 下载文件
@@ -456,7 +578,7 @@ impl ArchivePreview {
         base_time + (file_size / (1024 * 1024)) * 50
     }
 
-    /// 获取文件大小
+    /// 获取文件大小（改进版本，支持更多错误处理）
     async fn get_file_size(
         url: &str,
         headers: &std::collections::HashMap<String, String>,
@@ -477,7 +599,18 @@ impl ArchivePreview {
                 .parse::<u64>()
                 .map_err(|_| "Failed to parse content-length".to_string())
         } else {
-            Err("No content-length header found".to_string())
+            // 如果没有 content-length，尝试使用 GET 请求的前几个字节来估算
+            println!("No content-length header found, trying alternative method");
+            
+            // 尝试部分下载来估算文件大小
+            if let Ok(range_response) = Self::download_range(url, headers, 0, 1).await {
+                if !range_response.is_empty() {
+                    // 如果支持范围请求，说明是大文件，返回一个估算值
+                    return Ok(u64::MAX); // 表示未知大小但是大文件
+                }
+            }
+            
+            Err("No content-length header found and cannot determine file size".to_string())
         }
     }
 
