@@ -95,7 +95,14 @@ impl CompressionType {
     }
 
     pub fn supports_streaming(&self) -> bool {
-        matches!(self, CompressionType::Zip | CompressionType::TarGz | CompressionType::Tar | CompressionType::Gzip)
+        matches!(
+            self,
+            CompressionType::Zip |
+            CompressionType::TarGz |
+            CompressionType::Tar |
+            CompressionType::Gzip
+        )
+        // 7z 和 RAR 不支持流式处理，需要完整文件下载
     }
 
     #[allow(dead_code)]
@@ -177,7 +184,8 @@ impl FileType {
         let ext = lower.split('.').last().unwrap_or("");
 
         match ext {
-            "txt" | "md" | "json" | "xml" | "html" | "css" | "js" | "ts" | "py" | "rs" | "go" | "java" | "c" | "cpp" | "h" => FileType::Text,
+            "txt" | "md" | "json" | "jsonl" | "xml" | "html" | "css" | "js" | "ts" | "jsx" | "tsx" | "py" | "rs" | "go" | "java" | "c" | "cpp" | "h" |
+            "php" | "rb" | "yaml" | "yml" | "sql" | "sh" | "bat" | "ps1" | "log" | "config" | "ini" | "tsv" | "csv" | "scss" | "less" => FileType::Text,
             "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" | "webp" => FileType::Image,
             "mp3" | "wav" | "flac" | "ogg" | "aac" => FileType::Audio,
             "mp4" | "avi" | "mov" | "wmv" | "mkv" => FileType::Video,

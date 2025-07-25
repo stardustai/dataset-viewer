@@ -33,4 +33,7 @@ export const common = {
   'file.size.label': 'Size',
   'file.modified.time': 'Modified time',
   'characters': 'Characters',
+
+  // Status related
+  'status.retry': 'Retry',
 };

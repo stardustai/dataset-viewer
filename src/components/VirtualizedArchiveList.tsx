@@ -96,10 +96,15 @@ export const VirtualizedArchiveList: React.FC<VirtualizedArchiveListProps> = ({
                 <FileText size={16} className="text-gray-500" />
               )}
               <span className="flex-1 truncate" title={entry.path}>
-                {entry.path.split('/').pop()}
+                {(() => {
+                  // 获取文件/文件夹名称，处理末尾的斜杠
+                  const path = entry.path.endsWith('/') ? entry.path.slice(0, -1) : entry.path;
+                  const parts = path.split('/');
+                  return parts[parts.length - 1] || entry.path;
+                })()}
               </span>
               <span className="text-sm text-gray-500">
-                {formatFileSize(entry.size)}
+                {entry.is_dir ? '' : formatFileSize(entry.size)}
               </span>
             </div>
           );

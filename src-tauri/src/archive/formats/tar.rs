@@ -80,7 +80,16 @@ impl TarHandler {
                         size,
                         compressed_size: None, // TAR没有压缩
                         is_dir,
-                        modified_time: header.mtime().ok().map(|t| t.to_string()),
+                        modified_time: header.mtime().ok().and_then(|timestamp| {
+                            // 将Unix时间戳转换为ISO格式的日期字符串
+                            use std::time::{UNIX_EPOCH, Duration};
+                            use chrono::{DateTime, Utc};
+
+                            let duration = Duration::from_secs(timestamp);
+                            let datetime = UNIX_EPOCH + duration;
+                            let datetime: DateTime<Utc> = datetime.into();
+                            Some(datetime.to_rfc3339())
+                        }),
                         crc32: None,
                         index,
                         metadata: HashMap::new(),
@@ -265,7 +274,16 @@ impl TarHandler {
                         size,
                         compressed_size: None,
                         is_dir,
-                        modified_time: header.mtime().ok().map(|t| t.to_string()),
+                        modified_time: header.mtime().ok().and_then(|timestamp| {
+                            // 将Unix时间戳转换为ISO格式的日期字符串
+                            use std::time::{UNIX_EPOCH, Duration};
+                            use chrono::{DateTime, Utc};
+
+                            let duration = Duration::from_secs(timestamp);
+                            let datetime = UNIX_EPOCH + duration;
+                            let datetime: DateTime<Utc> = datetime.into();
+                            Some(datetime.to_rfc3339())
+                        }),
                         crc32: None,
                         index,
                         metadata: HashMap::new(),

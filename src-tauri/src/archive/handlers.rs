@@ -26,6 +26,26 @@ impl ArchiveHandler {
             formats::detect_format_and_get_handler(&header_data)
                 .ok_or_else(|| "Unsupported archive format".to_string())?
         } else {
+            // 检查是否支持该格式
+            match compression_type {
+                CompressionType::SevenZip => {
+                    return Err("archive.format.7z.not.supported".to_string());
+                }
+                CompressionType::Rar => {
+                    return Err("archive.format.rar.not.supported".to_string());
+                }
+                CompressionType::Brotli => {
+                    return Err("archive.format.brotli.not.supported".to_string());
+                }
+                CompressionType::Lz4 => {
+                    return Err("archive.format.lz4.not.supported".to_string());
+                }
+                CompressionType::Zstd => {
+                    return Err("archive.format.zstd.not.supported".to_string());
+                }
+                _ => {}
+            }
+
             formats::get_handler(&compression_type)
                 .ok_or_else(|| "Unsupported archive format".to_string())?
         };
@@ -67,6 +87,26 @@ impl ArchiveHandler {
             formats::detect_format_and_get_handler(&header_data)
                 .ok_or_else(|| "Unsupported archive format".to_string())?
         } else {
+            // 检查是否支持该格式
+            match compression_type {
+                CompressionType::SevenZip => {
+                    return Err("archive.format.7z.not.supported".to_string());
+                }
+                CompressionType::Rar => {
+                    return Err("archive.format.rar.not.supported".to_string());
+                }
+                CompressionType::Brotli => {
+                    return Err("archive.format.brotli.not.supported".to_string());
+                }
+                CompressionType::Lz4 => {
+                    return Err("archive.format.lz4.not.supported".to_string());
+                }
+                CompressionType::Zstd => {
+                    return Err("archive.format.zstd.not.supported".to_string());
+                }
+                _ => {}
+            }
+
             formats::get_handler(&compression_type)
                 .ok_or_else(|| "Unsupported archive format".to_string())?
         };

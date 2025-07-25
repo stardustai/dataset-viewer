@@ -33,4 +33,7 @@ export const common = {
   'file.size.label': '大小',
   'file.modified.time': '修改时间',
   'characters': '字符数',
+
+  // 状态相关
+  'status.retry': '重试',
 };

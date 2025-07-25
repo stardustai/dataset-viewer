@@ -15,16 +15,11 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 
 ## 🚀 Features
 
-- 🌐 **WebDAV Server Connection**: Secure connection to any WebDAV server with credential storage
-- 📁 **Intelligent File Browser**: Intuitive navigation with thumbnail previews and sorting
-- 📄 **Large File Support**: Efficiently view massive text files (100GB+) using chunked loading
-- 📦 **Archive Streaming**: Stream and preview large compressed files (ZIP, TAR, etc.) without full extraction
-- 🔍 **Lightning-Fast Search**: Real-time in-file search with regex support and navigation
-- 🎨 **Modern UI**: Clean, responsive interface with dark/light theme support
-- 🌍 **Multi-Language**: Built-in internationalization support
-- 📱 **Cross-Platform**: Native performance on Windows, macOS, and Linux
-- ⚡ **Virtualized Rendering**: Smooth scrolling for files with millions of lines
-- 🎥 **Media Preview**: Built-in image and video preview capabilities
+-  **Large File Support**: Stream massive text files (100GB+) with virtualized rendering for millions of lines
+- 📦 **Archive Streaming**: Browse ZIP, TAR files without extraction using streaming preview
+- 🔍 **Lightning-Fast Search**: Real-time in-file search with regex support
+- � **WebDAV Connection**: Secure connection to any WebDAV server with credential storage
+- 🎨 **Modern UI**: Responsive design with dark/light themes and multi-language support
 
 ## 📸 Screenshots
 
@@ -56,8 +51,6 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 ### Archive Files (Streaming Preview)
 - ZIP archives (`.zip`) - Browse and preview contents without extraction
 - TAR archives (`.tar`, `.tar.gz`, `.tar.bz2`) - Streaming file browser
-- RAR archives (`.rar`) - Content listing and file preview
-- 7-Zip archives (`.7z`) - Efficient streaming access
 
 ### Document Files
 - PDF (`.pdf`) - Document viewer
@@ -118,38 +111,6 @@ pnpm package:debug
 - **Linux**: `.deb`, `.rpm`, `.AppImage` packages
 
 > **📱 macOS Note**: The app is unsigned. If you get security warnings, run: `sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"` or right-click → "Open" → "Open".
-
-## 📖 Usage Guide
-
-1. **🔐 Connect to WebDAV Server**:
-   - Enter your server URL, username, and password
-   - Save connections for quick access
-   - Test connection before saving
-
-2. **📁 Browse Files**:
-   - Navigate through directories with the intuitive file browser
-   - Sort files by name, size, or modification date
-   - Preview file thumbnails for supported formats
-
-3. **📄 View Text Files**:
-   - Click on any supported text file to open in the viewer
-   - Enjoy syntax highlighting for code files
-   - Navigate large files with virtualized scrolling
-
-4. **🔍 Search Content**:
-   - Use the search bar to find content within files
-   - Support for regex patterns and case-sensitive search
-   - Navigate between search results with hotkeys
-
-5. **📥 Download Files**:
-   - Download individual files or entire directories
-   - Monitor download progress with built-in progress indicator
-   - Resume interrupted downloads
-
-6. **📦 Browse Archives**:
-   - Stream and preview compressed files without full extraction
-   - Navigate through archive contents like regular directories
-   - Preview text files inside archives instantly
 
 ## 🏗 Architecture & Performance
 

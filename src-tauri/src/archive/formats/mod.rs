@@ -85,7 +85,12 @@ pub fn get_handler(compression_type: &CompressionType) -> Option<Box<dyn Compres
         CompressionType::Gzip => Some(Box::new(gzip::GzipHandler)),
         CompressionType::Tar => Some(Box::new(tar::TarHandler)),
         CompressionType::TarGz => Some(Box::new(tar_gz::TarGzHandler)),
-        _ => None,
+        CompressionType::SevenZip => None, // 7Z 格式不支持流式处理
+        CompressionType::Rar => None, // RAR 格式不支持流式处理
+        CompressionType::Brotli => None, // Brotli 格式暂不支持
+        CompressionType::Lz4 => None, // LZ4 格式暂不支持
+        CompressionType::Zstd => None, // Zstd 格式暂不支持
+        CompressionType::Unknown => None,
     }
 }
 

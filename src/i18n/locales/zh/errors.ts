@@ -28,4 +28,12 @@ export const errors = {
   // 预览错误
   'preview.failed': '预览失败',
   'retry.preview': '重试预览',
+
+  // 压缩文件格式错误
+  'archive.format.7z.not.supported': '7Z 格式不支持在线预览。7Z 的文件结构信息位于文件末尾，无法实现流式处理，需要下载完整文件才能分析。建议使用专门的解压工具。',
+  'archive.format.rar.not.supported': 'RAR 格式不支持在线预览。RAR 是专有格式，其文件头位于末尾且使用复杂的压缩算法，无法实现流式处理。建议使用 WinRAR 等专门工具。',
+  'archive.format.brotli.not.supported': '暂不支持 Brotli 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
+  'archive.format.lz4.not.supported': '暂不支持 LZ4 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
+  'archive.format.zstd.not.supported': '暂不支持 Zstd 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
+  'archive.format.unsupported': '不支持的压缩文件格式',
 };

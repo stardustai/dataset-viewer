@@ -75,4 +75,6 @@ export const fileViewer = {
 
   // Archive files
   'archive.empty': 'Archive is empty',
+  'folder.selected': 'Folder Selected',
+  'folder.info.message': 'This is a folder. Folders in archives are used for organizing file structure and cannot be entered or previewed.',
 };
