@@ -17,17 +17,25 @@ impl StreamingAnalyzer {
     ) -> Result<ArchiveInfo, String> {
         let compression_type = CompressionType::from_filename(filename);
 
-        // 获取文件大小
-        let file_size = Self::get_file_size(url, headers).await?;
-        println!("Analyzing archive '{}' of size {} bytes", filename, file_size);
+        // 尝试获取文件大小，如果失败则使用流式分析
+        match Self::get_file_size(url, headers).await {
+            Ok(file_size) => {
+                println!("Analyzing archive '{}' of size {} bytes", filename, file_size);
 
-        // 如果文件很小，直接完整下载分析
-        if file_size <= max_size.unwrap_or(10 * 1024 * 1024) as u64 {
-            return Self::analyze_complete_file(url, headers, compression_type).await;
+                // 如果文件很小，直接完整下载分析
+                if file_size <= max_size.unwrap_or(10 * 1024 * 1024) as u64 {
+                    return Self::analyze_complete_file(url, headers, compression_type).await;
+                }
+
+                // 对于大文件，使用流式分析
+                Self::analyze_streaming(url, headers, filename, compression_type, file_size).await
+            }
+            Err(e) => {
+                println!("Failed to get file size for '{}': {}. Using streaming analysis without size.", filename, e);
+                // 如果无法获取文件大小，直接使用流式分析
+                Self::analyze_streaming_without_size(url, headers, filename, compression_type).await
+            }
         }
-
-        // 对于大文件，使用流式分析
-        Self::analyze_streaming(url, headers, filename, compression_type, file_size).await
     }
 
     /// 获取文件大小
@@ -308,6 +316,22 @@ impl StreamingAnalyzer {
         match compression_type {
             CompressionType::Zip => Self::analyze_zip_streaming(url, headers, filename, file_size).await,
             CompressionType::TarGz => Self::analyze_tar_gz_streaming(url, headers, filename, file_size).await,
+            CompressionType::Gzip => Self::analyze_gzip_streaming(url, headers, filename, file_size).await,
+            _ => Err(format!("Streaming analysis not supported for {}", compression_type.as_str())),
+        }
+    }
+
+    /// 流式分析（无文件大小信息）
+    async fn analyze_streaming_without_size(
+        url: &str,
+        headers: &std::collections::HashMap<String, String>,
+        filename: &str,
+        compression_type: CompressionType,
+    ) -> Result<ArchiveInfo, String> {
+        match compression_type {
+            CompressionType::Zip => Self::analyze_zip_streaming_without_size(url, headers, filename).await,
+            CompressionType::TarGz => Self::analyze_tar_gz_streaming_without_size(url, headers, filename).await,
+            CompressionType::Gzip => Self::analyze_gzip_streaming_without_size(url, headers, filename).await,
             _ => Err(format!("Streaming analysis not supported for {}", compression_type.as_str())),
         }
     }
@@ -433,6 +457,188 @@ impl StreamingAnalyzer {
             total_compressed_size: file_size,
             supports_streaming: true,
             supports_random_access: false,
+            analysis_status: AnalysisStatus::Streaming { estimated_entries: None },
+        })
+    }
+
+    /// 流式分析GZIP文件
+    async fn analyze_gzip_streaming(
+        url: &str,
+        headers: &std::collections::HashMap<String, String>,
+        filename: &str,
+        file_size: u64,
+    ) -> Result<ArchiveInfo, String> {
+        println!("开始分析GZIP文件: {} (大小: {} 字节)", filename, file_size);
+
+        // 读取GZIP文件头部来获取更多信息
+        let header_size = (1024).min(file_size);
+        let header_data = Self::download_range(url, headers, 0, header_size).await?;
+
+        // 验证GZIP签名
+        if header_data.len() < 3 || header_data[0] != 0x1f || header_data[1] != 0x8b {
+            return Err("Invalid GZIP signature".to_string());
+        }
+
+        // 读取文件尾部获取原始大小
+        let mut original_size = None;
+        if file_size >= 8 {
+            let tail_data = Self::download_range(url, headers, file_size - 8, 8).await?;
+            if tail_data.len() >= 4 {
+                original_size = Some(u32::from_le_bytes([
+                    tail_data[tail_data.len() - 4],
+                    tail_data[tail_data.len() - 3],
+                    tail_data[tail_data.len() - 2],
+                    tail_data[tail_data.len() - 1],
+                ]) as u64);
+            }
+        }
+
+        // 尝试从文件名推断原始文件名
+        let original_filename = if filename.ends_with(".gz") {
+            filename.strip_suffix(".gz").unwrap_or(filename).to_string()
+        } else {
+            "decompressed_file".to_string()
+        };
+
+        let entry = ArchiveEntry {
+            path: original_filename,
+            size: original_size.unwrap_or(0),
+            compressed_size: Some(file_size),
+            is_dir: false,
+            modified_time: None,
+            crc32: None,
+            index: 0,
+            metadata: std::collections::HashMap::new(),
+        };
+
+        Ok(ArchiveInfo {
+            compression_type: CompressionType::Gzip,
+            entries: vec![entry],
+            total_entries: 1,
+            total_uncompressed_size: original_size.unwrap_or(0),
+            total_compressed_size: file_size,
+            supports_streaming: true,
+            supports_random_access: false,
+            analysis_status: AnalysisStatus::Streaming { estimated_entries: Some(1) },
+        })
+    }
+
+    /// 流式分析TAR.GZ文件（无文件大小）
+    async fn analyze_tar_gz_streaming_without_size(
+        _url: &str,
+        _headers: &std::collections::HashMap<String, String>,
+        filename: &str,
+    ) -> Result<ArchiveInfo, String> {
+        // 创建占位符条目
+        let entry = ArchiveEntry {
+            path: filename.to_string(),
+            size: 0,
+            compressed_size: None,
+            is_dir: true,
+            modified_time: None,
+            crc32: None,
+            index: 0,
+            metadata: std::collections::HashMap::new(),
+        };
+
+        Ok(ArchiveInfo {
+            compression_type: CompressionType::TarGz,
+            entries: vec![entry],
+            total_entries: 1,
+            total_uncompressed_size: 0,
+            total_compressed_size: 0,
+            supports_streaming: true,
+            supports_random_access: false,
+            analysis_status: AnalysisStatus::Streaming { estimated_entries: None },
+        })
+    }
+
+    /// 流式分析GZIP文件（无文件大小）
+    async fn analyze_gzip_streaming_without_size(
+        url: &str,
+        headers: &std::collections::HashMap<String, String>,
+        filename: &str,
+    ) -> Result<ArchiveInfo, String> {
+        println!("开始分析GZIP文件（无文件大小信息）: {}", filename);
+
+        // 尝试读取少量头部数据来验证格式
+        let header_data = Self::download_range(url, headers, 0, 1024).await?;
+
+        // 验证GZIP签名
+        if header_data.len() < 3 || header_data[0] != 0x1f || header_data[1] != 0x8b {
+            return Err("Invalid GZIP signature".to_string());
+        }
+
+        // 尝试从文件名推断原始文件名
+        let original_filename = if filename.ends_with(".gz") {
+            filename.strip_suffix(".gz").unwrap_or(filename).to_string()
+        } else {
+            "decompressed_file".to_string()
+        };
+
+        let entry = ArchiveEntry {
+            path: original_filename,
+            size: 0,
+            compressed_size: None,
+            is_dir: false,
+            modified_time: None,
+            crc32: None,
+            index: 0,
+            metadata: std::collections::HashMap::new(),
+        };
+
+        Ok(ArchiveInfo {
+            compression_type: CompressionType::Gzip,
+            entries: vec![entry],
+            total_entries: 1,
+            total_uncompressed_size: 0,
+            total_compressed_size: 0,
+            supports_streaming: true,
+            supports_random_access: false,
+            analysis_status: AnalysisStatus::Streaming { estimated_entries: Some(1) },
+        })
+    }
+
+    /// 流式分析ZIP文件（无文件大小）
+    async fn analyze_zip_streaming_without_size(
+        url: &str,
+        headers: &std::collections::HashMap<String, String>,
+        filename: &str,
+    ) -> Result<ArchiveInfo, String> {
+        println!("开始分析ZIP文件（无文件大小信息）: {}", filename);
+
+        // 读取文件头部验证格式
+        let header_data = Self::download_range(url, headers, 0, 1024).await?;
+
+        // 验证ZIP签名
+        if header_data.len() < 4 {
+            return Err("File too small to be a valid ZIP".to_string());
+        }
+        let signature = u32::from_le_bytes([header_data[0], header_data[1], header_data[2], header_data[3]]);
+        if signature != 0x04034b50 {
+            return Err("Invalid ZIP signature".to_string());
+        }
+
+        // 创建占位符条目
+        let entry = ArchiveEntry {
+            path: filename.to_string(),
+            size: 0,
+            compressed_size: None,
+            is_dir: true,
+            modified_time: None,
+            crc32: None,
+            index: 0,
+            metadata: std::collections::HashMap::new(),
+        };
+
+        Ok(ArchiveInfo {
+            compression_type: CompressionType::Zip,
+            entries: vec![entry],
+            total_entries: 1,
+            total_uncompressed_size: 0,
+            total_compressed_size: 0,
+            supports_streaming: true,
+            supports_random_access: true,
             analysis_status: AnalysisStatus::Streaming { estimated_entries: None },
         })
     }
