@@ -41,15 +41,12 @@ export class LocalStorageClient extends BaseStorageClient {
 
   async connect(config: ConnectionConfig): Promise<boolean> {
     try {
-      console.log('LocalStorageClient: Attempting to connect with config:', config);
-
       // 验证本机文件系统配置
       if (!config.url && !config.rootPath) {
         throw new Error('Root path is required for local file system');
       }
 
       const rootPath = config.url || config.rootPath!;
-      console.log('LocalStorageClient: Using root path:', rootPath);
 
       // 通过 Tauri 后端验证路径是否存在且可访问
       const response = await this.makeRequest({
@@ -60,8 +57,6 @@ export class LocalStorageClient extends BaseStorageClient {
         }
       });
 
-      console.log('LocalStorageClient: CHECK_ACCESS response:', response);
-
       if (response.status !== 200) {
         throw new Error(`Cannot access path: ${rootPath}`);
       }
@@ -70,7 +65,6 @@ export class LocalStorageClient extends BaseStorageClient {
       this.displayPath = rootPath;
       this.rootPath = rootPath; // 保留完整路径，不要设置为空
       this.connected = true;
-      console.log('LocalStorageClient: Connected successfully');
       return true;
     } catch (error) {
       console.error('Local storage connection failed:', error);
@@ -209,6 +203,11 @@ export class LocalStorageClient extends BaseStorageClient {
    * 构建完整的文件路径
    */
   private buildFullPath(relativePath: string): string {
+    // 防止路径遍历攻击
+    if (relativePath.includes('..')) {
+      throw new Error('Path traversal detected');
+    }
+
     // 清理相对路径
     const cleanPath = relativePath.replace(/^\/+/, '').replace(/\/+/g, '/');
 

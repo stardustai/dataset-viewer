@@ -30,15 +30,11 @@ async fn storage_request(
     body: Option<String>,
     options: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    println!("storage_request called with protocol: {}, method: {}, url: {}", protocol, method, url);
-
     let manager = get_storage_manager().await;
     let mut manager = manager.lock().await;
 
     // 如果是本地文件系统的连接检查，需要先创建临时客户端
     if protocol == "local" && method == "CHECK_ACCESS" {
-        println!("Creating temporary local client for CHECK_ACCESS");
-
         // 创建连接配置
         let config = ConnectionConfig {
             protocol: "local".to_string(),
@@ -53,13 +49,9 @@ async fn storage_request(
             extra_options: None,
         };
 
-        println!("Attempting to connect with config: {:?}", config);
-
         // 使用 StorageManager 的 connect 方法
         match manager.connect(&config).await {
             Ok(_) => {
-                println!("Local client connected successfully");
-
                 // 返回成功响应
                 return Ok(serde_json::json!({
                     "status": 200,
@@ -69,7 +61,6 @@ async fn storage_request(
                 }));
             }
             Err(e) => {
-                println!("Local client connection failed: {}", e);
                 return Err(format!("Local storage connection failed: {}", e));
             }
         }
@@ -96,13 +87,11 @@ async fn storage_request(
 
 #[tauri::command]
 async fn analyze_archive_with_client(
-    protocol: String,
+    _protocol: String,
     file_path: String,
     filename: String,
     max_size: Option<usize>,
 ) -> Result<ArchiveInfo, String> {
-    println!("analyze_archive_with_client called with protocol: {}, file_path: {}, filename: {}", protocol, file_path, filename);
-
     let manager = get_storage_manager().await;
     let manager = manager.lock().await;
 
@@ -121,14 +110,12 @@ async fn analyze_archive_with_client(
 
 #[tauri::command]
 async fn get_archive_preview_with_client(
-    protocol: String,
+    _protocol: String,
     file_path: String,
     filename: String,
     entry_path: String,
     max_preview_size: Option<usize>,
 ) -> Result<FilePreview, String> {
-    println!("get_archive_preview_with_client called with protocol: {}, file_path: {}, filename: {}, entry_path: {}", protocol, file_path, filename, entry_path);
-
     let manager = get_storage_manager().await;
     let manager = manager.lock().await;
 

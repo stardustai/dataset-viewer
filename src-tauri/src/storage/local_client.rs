@@ -24,11 +24,8 @@ impl LocalFileSystemClient {
     /// 构建完整路径并进行安全检查
     /// 支持绝对路径和相对路径两种模式
     fn build_safe_path(&self, path: &str) -> Result<PathBuf, StorageError> {
-        println!("LocalFileSystemClient::build_safe_path - Input path: {}", path);
-
         // 如果路径以 ~ 开头，直接展开
         if path.starts_with('~') {
-            println!("LocalFileSystemClient::build_safe_path - Expanding tilde path: {}", path);
             if let Some(home_dir) = dirs::home_dir() {
                 let expanded_path = if path == "~" {
                     home_dir
@@ -37,7 +34,6 @@ impl LocalFileSystemClient {
                 } else {
                     PathBuf::from(path)
                 };
-                println!("LocalFileSystemClient::build_safe_path - Expanded path: {:?}", expanded_path);
                 return Ok(expanded_path);
             } else {
                 return Err(StorageError::ConnectionFailed(
@@ -49,7 +45,6 @@ impl LocalFileSystemClient {
         // 检查是否为绝对路径
         let path_buf = PathBuf::from(path);
         if path_buf.is_absolute() {
-            println!("LocalFileSystemClient::build_safe_path - Using absolute path: {:?}", path_buf);
             return Ok(path_buf);
         }
 
@@ -68,7 +63,6 @@ impl LocalFileSystemClient {
             root.join(clean_path)
         };
 
-        println!("LocalFileSystemClient::build_safe_path - Built path: {:?}", full_path);
         Ok(full_path)
     }
 
@@ -117,11 +111,8 @@ impl LocalFileSystemClient {
 #[async_trait]
 impl StorageClient for LocalFileSystemClient {
     async fn connect(&mut self, config: &super::traits::ConnectionConfig) -> Result<(), StorageError> {
-        println!("LocalFileSystemClient::connect - Starting connection with config: {:?}", config);
-
         // 检查是否是本机文件系统协议
         if config.protocol != "local" {
-            println!("LocalFileSystemClient::connect - Invalid protocol: {}", config.protocol);
             return Err(StorageError::ProtocolNotSupported(config.protocol.clone()));
         }
 
@@ -129,17 +120,12 @@ impl StorageClient for LocalFileSystemClient {
         let root_path = config.url
             .as_ref()
             .ok_or_else(|| {
-                println!("LocalFileSystemClient::connect - No root path provided");
                 StorageError::InvalidConfig("Root path is required".to_string())
             })?;
 
-        println!("LocalFileSystemClient::connect - Root path from config: {}", root_path);
-
         // 展开 ~ 为用户主目录
         let expanded_path = if root_path.starts_with('~') {
-            println!("LocalFileSystemClient::connect - Expanding tilde path: {}", root_path);
             if let Some(home_dir) = dirs::home_dir() {
-                println!("LocalFileSystemClient::connect - Home directory: {:?}", home_dir);
                 if root_path == "~" {
                     home_dir
                 } else if let Some(stripped) = root_path.strip_prefix("~/") {
@@ -148,34 +134,27 @@ impl StorageClient for LocalFileSystemClient {
                     PathBuf::from(root_path)
                 }
             } else {
-                println!("LocalFileSystemClient::connect - Cannot determine home directory");
                 return Err(StorageError::ConnectionFailed(
                     "Cannot determine home directory".to_string()
                 ));
             }
         } else {
-            println!("LocalFileSystemClient::connect - Using absolute path: {}", root_path);
             PathBuf::from(root_path)
         };
 
-        println!("LocalFileSystemClient::connect - Expanded path: {:?}", expanded_path);
-
         // 验证路径是否存在
         if !expanded_path.exists() {
-            println!("LocalFileSystemClient::connect - Path does not exist: {:?}", expanded_path);
             return Err(StorageError::ConnectionFailed(
                 format!("Path does not exist: {}", expanded_path.display())
             ));
         }
 
         if !expanded_path.is_dir() {
-            println!("LocalFileSystemClient::connect - Path is not a directory: {:?}", expanded_path);
             return Err(StorageError::ConnectionFailed(
                 format!("Path is not a directory: {}", expanded_path.display())
             ));
         }
 
-        println!("LocalFileSystemClient::connect - Connection successful, setting root path: {:?}", expanded_path);
         self.root_path = Some(expanded_path);
         self.connected = true;
 

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { WebDAVFile } from '../types';
 import { StorageServiceManager } from '../services/storage';
+import { BaseStorageClient } from '../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../services/navigationHistory';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
@@ -25,7 +26,7 @@ import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDispla
 import { copyToClipboard, normalizePath, showCopyToast } from '../utils/clipboard';
 
 interface FileBrowserProps {
-  onFileSelect: (file: WebDAVFile, path: string, storageClient?: any) => void;
+  onFileSelect: (file: WebDAVFile, path: string, storageClient?: BaseStorageClient) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
@@ -340,7 +341,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       // 获取当前的存储客户端
       const storageClient = StorageServiceManager.getCurrentClient();
-      onFileSelect(file, fullPath, storageClient);
+      if (storageClient) {
+        onFileSelect(file, fullPath, storageClient);
+      } else {
+        console.warn('No storage client available');
+        onFileSelect(file, fullPath);
+      }
     }
   };
 

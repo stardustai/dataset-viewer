@@ -127,31 +127,24 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
   };
 
   const handleLocalConnect = async (rootPath: string) => {
-    console.log('ConnectionPanel: Starting local connection with path:', rootPath);
     setConnecting(true);
     setError('');
 
     try {
       // 先断开任何现有连接
       if (StorageServiceManager.isConnected()) {
-        console.log('ConnectionPanel: Disconnecting existing connection');
         StorageServiceManager.disconnect();
       }
 
       // 对于本机文件系统，直接使用用户输入的路径
       // 路径展开应该在后端处理
-      console.log('ConnectionPanel: Using path:', rootPath);
-
       const success = await StorageServiceManager.connectToLocal(
         rootPath,
         true,
         t('local.connection.name', '本机文件 ({{path}})', { path: rootPath })
       );
 
-      console.log('ConnectionPanel: Connection result:', success);
-
       if (success) {
-        console.log('ConnectionPanel: Local connection successful, calling onConnect');
         // 本地连接成功后，查找并设置为默认连接
         const connections = StorageServiceManager.getStoredConnections();
         const localConnection = connections.find(conn =>
@@ -165,7 +158,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
         setError(t('local.error.access', '无法访问指定路径，请检查路径是否存在且有权限访问'));
       }
     } catch (err) {
-      console.error('ConnectionPanel: Local connection error:', err);
+      console.error('Local connection error:', err);
       setError(t('local.error.connection', '连接本机文件系统失败'));
     } finally {
       setConnecting(false);
