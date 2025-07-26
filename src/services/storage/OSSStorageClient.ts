@@ -323,24 +323,7 @@ export class OSSStorageClient extends BaseStorageClient {
   ): Promise<ArchiveInfo> {
     try {
       // OSS使用统一的StorageClient流式分析接口
-      let objectKey = path;
-
-      // 如果传入的是完整URL，提取对象键
-      if (path.startsWith('http')) {
-        try {
-          const url = new URL(path);
-          objectKey = decodeURIComponent(url.pathname.substring(1)); // 去掉开头的'/'并解码
-
-          // 如果对象键还包含另一个URL，进一步提取
-          if (objectKey.startsWith('http')) {
-            const innerUrl = new URL(objectKey);
-            objectKey = decodeURIComponent(innerUrl.pathname.substring(1));
-          }
-        } catch (error) {
-          console.warn('Failed to parse URL, using as-is:', path);
-          objectKey = path;
-        }
-      }
+      const objectKey = this.extractObjectKeyFromUrl(path);
 
       console.log('OSS使用统一流式分析:', { originalPath: path, extractedObjectKey: objectKey, filename });
 
@@ -365,23 +348,7 @@ export class OSSStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     try {
       // 对于OSS，使用存储客户端接口而不是HTTP接口进行流式预览
-      let objectKey = path;
-
-      // 如果传入的是完整URL，提取对象键
-      if (path.startsWith('http')) {
-        try {
-          const url = new URL(path);
-          objectKey = decodeURIComponent(url.pathname.substring(1));
-
-          if (objectKey.startsWith('http')) {
-            const innerUrl = new URL(objectKey);
-            objectKey = decodeURIComponent(innerUrl.pathname.substring(1));
-          }
-        } catch (error) {
-          console.warn('Failed to parse URL, using as-is:', path);
-          objectKey = path;
-        }
-      }
+      const objectKey = this.extractObjectKeyFromUrl(path);
 
       console.log('OSS获取压缩文件预览（流式）:', {
         originalPath: path,
@@ -401,6 +368,34 @@ export class OSSStorageClient extends BaseStorageClient {
       console.error('Failed to get OSS archive file preview:', error);
       throw error;
     }
+  }
+
+  /**
+   * 从 OSS URL 或路径中提取对象 key
+   * @param path OSS 路径或 URL
+   * @returns 对象 key 或原始 path
+   */
+  private extractObjectKeyFromUrl(path: string): string {
+    let objectKey = path;
+
+    // 如果传入的是完整URL，提取对象键
+    if (path.startsWith('http')) {
+      try {
+        const url = new URL(path);
+        objectKey = decodeURIComponent(url.pathname.substring(1)); // 去掉开头的'/'并解码
+
+        // 如果对象键还包含另一个URL，进一步提取
+        if (objectKey.startsWith('http')) {
+          const innerUrl = new URL(objectKey);
+          objectKey = decodeURIComponent(innerUrl.pathname.substring(1));
+        }
+      } catch (error) {
+        console.warn('Failed to parse URL, using as-is:', path);
+        objectKey = path;
+      }
+    }
+
+    return objectKey;
   }
 
   /**
