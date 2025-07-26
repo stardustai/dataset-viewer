@@ -161,18 +161,27 @@ export function monitorPerformance(operation: string) {
       try {
         const result = await method.apply(this, args);
 
-        // 尝试从参数或结果中推断文件大小
+        // 更健壮的文件大小推断逻辑
         let fileSize = 0;
         let isStreaming = true;
 
+        // 根据操作类型推断文件大小的位置
         if (operation.includes('analyze') && result?.totalCompressedSize) {
           fileSize = result.totalCompressedSize;
-        } else if (args.length > 0 && typeof args[0] === 'string') {
-          // 如果有文件路径参数，尝试获取文件大小
-          try {
-            fileSize = await this.getFileSize?.(args[0]) || 0;
-          } catch {
-            fileSize = 0;
+        } else if (operation.includes('preview') && result?.total_size) {
+          fileSize = result.total_size;
+        } else if (args.length > 0) {
+          // 尝试从参数中获取文件大小信息
+          const fileSizeArg = args.find(arg => typeof arg === 'number' && arg > 0);
+          if (fileSizeArg) {
+            fileSize = fileSizeArg;
+          } else if (typeof args[0] === 'string' && typeof this.getFileSize === 'function') {
+            // 如果有文件路径参数且存在获取文件大小的方法
+            try {
+              fileSize = await this.getFileSize(args[0]) || 0;
+            } catch {
+              fileSize = 0;
+            }
           }
         }
 

@@ -308,7 +308,7 @@ impl StorageClient for LocalFileSystemClient {
             return Err(StorageError::NotConnected);
         }
 
-        println!("本地文件读取范围: path={}, start={}, length={}", path, start, length);
+        log::debug!("本地文件读取范围: path={}, start={}, length={}", path, start, length);
 
         let file_path = self.build_safe_path(path)?;
 
@@ -331,7 +331,7 @@ impl StorageClient for LocalFileSystemClient {
             .map_err(|e| StorageError::IoError(format!("Failed to read file: {}", e)))?;
 
         buffer.truncate(bytes_read);
-        println!("本地文件实际读取到 {} 字节", buffer.len());
+        log::debug!("本地文件实际读取到 {} 字节", buffer.len());
         Ok(buffer)
     }
 

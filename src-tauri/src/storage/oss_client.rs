@@ -88,13 +88,7 @@ impl OSSClient {
 
         // Canonicalized Resource
         // 根据OSS文档，签名中的URI应该是解码后的UTF-8形式
-        let normalized_uri = match urlencoding::decode(&uri) {
-            Ok(decoded) => decoded.to_string(),
-            Err(_) => {
-                // 如果解码失败，可能路径本身就没有编码，直接使用
-                uri.to_string()
-            }
-        };
+        let normalized_uri = self.normalize_uri_for_signing(&uri);
 
         let canonicalized_resource = if normalized_uri == "/" {
             format!("/{}/", self.bucket)
@@ -111,18 +105,8 @@ impl OSSClient {
             println!("{}", string_to_sign);
             println!("DEBUG: StringToSign bytes: {:?}", string_to_sign.as_bytes());
 
-            // 手动测试特定的签名
-            let test_string = "GET\n\n\nSat, 26 Jul 2025 09:53:45 GMT\n/stardust-data/";
-            let test_key = "U0ti2tRNyocMyg0V1GnfuwoMkg6itP";
-
-            type TestHmacSha1 = Hmac<sha1::Sha1>;
-            let mut test_mac = TestHmacSha1::new_from_slice(test_key.as_bytes()).unwrap();
-            test_mac.update(test_string.as_bytes());
-            let test_result = test_mac.finalize();
-            let test_signature = base64::engine::general_purpose::STANDARD.encode(test_result.into_bytes());
-
-            println!("DEBUG: Test signature for exact OSS string: {}", test_signature);
-            println!("DEBUG: Expected by OSS: (will be shown in error)");
+            // 如果需要测试签名生成，应该使用环境变量或测试配置文件
+            // 而不是硬编码凭据
         }
 
         // 计算 HMAC-SHA1 签名
@@ -295,6 +279,21 @@ impl OSSClient {
             path: prefix.to_string(),
         })
     }
+
+    /// 标准化 URI 路径，处理编码/解码
+    fn normalize_uri_for_signing(&self, uri: &str) -> String {
+        match urlencoding::decode(uri) {
+            Ok(decoded) => decoded.to_string(),
+            Err(_) => {
+                // 如果解码失败，可能路径本身就没有编码
+                if uri.starts_with('/') {
+                    uri.to_string()
+                } else {
+                    format!("/{}", uri)
+                }
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -372,17 +371,7 @@ impl StorageClient for OSSClient {
         };
 
         // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
-        let signing_uri = match urlencoding::decode(&uri) {
-            Ok(decoded) => decoded.to_string(),
-            Err(_) => {
-                // 如果解码失败，可能路径本身就没有编码，直接使用
-                if uri.starts_with('/') {
-                    uri
-                } else {
-                    format!("/{}", uri)
-                }
-            }
-        };
+        let signing_uri = self.normalize_uri_for_signing(&uri);
 
         // 构建认证头
         // 对于 LIST 请求，实际的 HTTP 方法是 GET

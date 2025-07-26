@@ -5546,6 +5546,7 @@ dependencies = [
  "flate2",
  "futures-util",
  "hmac",
+ "log",
  "lz4",
  "once_cell",
  "quick-xml 0.31.0",
