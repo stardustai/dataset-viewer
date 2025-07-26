@@ -3,6 +3,7 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use reqwest::Client;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
@@ -13,7 +14,7 @@ pub struct WebDAVClient {
     #[allow(dead_code)]
     config: ConnectionConfig,
     auth_header: Option<String>,
-    connected: bool,
+    connected: AtomicBool,
 }
 
 impl WebDAVClient {
@@ -32,7 +33,7 @@ impl WebDAVClient {
             client: Client::new(),
             config,
             auth_header,
-            connected: false,
+            connected: AtomicBool::new(false),
         })
     }
 }
@@ -85,7 +86,7 @@ impl StorageClient for WebDAVClient {
             .map_err(|e| StorageError::NetworkError(format!("Connection test failed: {}", e)))?;
 
         if response.status().is_success() {
-            self.connected = true;
+            self.connected.store(true, Ordering::Relaxed);
             Ok(())
         } else {
             Err(StorageError::RequestFailed(format!(
@@ -96,13 +97,12 @@ impl StorageClient for WebDAVClient {
     }
 
     async fn disconnect(&self) {
-        // WebDAV 是无状态的，不需要显式断开连接
-        // 注意：由于现在是 &self，我们不能修改 connected 字段
-        // 在实际应用中，可能需要使用内部可变性
+        // WebDAV 是无状态的，不需要显式断开连接，只需要更新连接状态
+        self.connected.store(false, Ordering::Relaxed);
     }
 
     async fn is_connected(&self) -> bool {
-        self.connected
+        self.connected.load(Ordering::Relaxed)
     }
 
     async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
@@ -296,7 +296,7 @@ impl StorageClient for WebDAVClient {
 
     /// 读取文件的指定范围
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
@@ -327,7 +327,7 @@ impl StorageClient for WebDAVClient {
 
     /// 读取完整文件
     async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
@@ -355,7 +355,7 @@ impl StorageClient for WebDAVClient {
 
     /// 获取文件大小
     async fn get_file_size(&self, path: &str) -> Result<u64, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 

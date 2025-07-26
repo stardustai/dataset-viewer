@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
@@ -10,14 +11,14 @@ use super::traits::{StorageClient, StorageError, StorageRequest, StorageResponse
 /// 本机文件系统存储客户端
 pub struct LocalFileSystemClient {
     root_path: Option<PathBuf>,
-    connected: bool,
+    connected: AtomicBool,
 }
 
 impl LocalFileSystemClient {
     pub fn new() -> Self {
         Self {
             root_path: None,
-            connected: false,
+            connected: AtomicBool::new(false),
         }
     }
 
@@ -156,19 +157,18 @@ impl StorageClient for LocalFileSystemClient {
         }
 
         self.root_path = Some(expanded_path);
-        self.connected = true;
+        self.connected.store(true, Ordering::Relaxed);
 
         Ok(())
     }
 
     async fn disconnect(&self) {
-        // 本地文件系统连接无需特殊清理
-        // 注意：由于现在是 &self，我们不能修改 connected 字段
-        // 在实际应用中，可能需要使用内部可变性
+        // 本地文件系统连接无需特殊清理，只需要更新连接状态
+        self.connected.store(false, Ordering::Relaxed);
     }
 
     async fn is_connected(&self) -> bool {
-        self.connected
+        self.connected.load(Ordering::Relaxed)
     }
 
     async fn list_directory(&self, path: &str, _options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
@@ -241,7 +241,7 @@ impl StorageClient for LocalFileSystemClient {
     }
 
     async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
@@ -275,7 +275,7 @@ impl StorageClient for LocalFileSystemClient {
     }
 
     async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
@@ -304,7 +304,7 @@ impl StorageClient for LocalFileSystemClient {
 
     /// 读取文件的指定范围
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
@@ -334,7 +334,7 @@ impl StorageClient for LocalFileSystemClient {
 
     /// 读取完整文件
     async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
@@ -350,7 +350,7 @@ impl StorageClient for LocalFileSystemClient {
 
     /// 获取文件大小
     async fn get_file_size(&self, path: &str) -> Result<u64, StorageError> {
-        if !self.connected {
+        if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
