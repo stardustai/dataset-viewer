@@ -7,6 +7,9 @@ import {
   ReadOptions,
   StorageFile
 } from './types';
+import { ArchiveInfo, FilePreview } from '../../types';
+import { performanceMonitor } from '../../utils/performanceMonitor';
+import { compressionOptimizer, logOptimizationInfo } from '../../utils/compressionOptimizer';
 
 /**
  * 本机文件系统存储客户端
@@ -76,6 +79,7 @@ export class LocalStorageClient extends BaseStorageClient {
   disconnect(): void {
     this.connected = false;
     this.rootPath = '';
+    this.displayPath = ''; // 清理显示路径
   }
 
   async listDirectory(path: string = '', options?: ListOptions): Promise<DirectoryResult> {
@@ -219,6 +223,81 @@ export class LocalStorageClient extends BaseStorageClient {
     // 拼接完整路径
     const separator = this.rootPath.endsWith('/') || this.rootPath.endsWith('\\') ? '' : '/';
     return `${this.rootPath}${separator}${cleanPath}`;
+  }
+
+  /**
+   * 分析压缩文件结构（本地文件统一流式实现）
+   */
+  async analyzeArchive(
+    path: string,
+    filename: string,
+    maxSize?: number
+  ): Promise<ArchiveInfo> {
+    const timer = performanceMonitor.startOperation('analyzeArchive', 'local');
+
+    try {
+      // 本地文件使用统一的StorageClient流式分析接口
+      console.log('本地文件使用统一流式分析:', { path, filename });
+
+      // 获取文件大小并应用优化策略
+      let fileSize = 0;
+      try {
+        fileSize = await this.getFileSize(path);
+
+        // 应用优化策略
+        const strategy = compressionOptimizer.getProcessingStrategy(fileSize, 'local');
+        logOptimizationInfo('analyzeArchive', 'local', fileSize, strategy);
+
+        if (strategy.showWarning) {
+          console.warn(`[本地文件性能警告] 正在分析大型压缩文件 (${(fileSize / 1024 / 1024).toFixed(1)}MB)，使用流式处理`);
+        }
+      } catch (error) {
+        console.warn('Failed to get file size for optimization:', error);
+      }
+
+      const result = await this.analyzeArchiveWithClient(path, filename, maxSize);
+
+      timer.end(fileSize, {
+        isStreaming: true,
+        bytesTransferred: fileSize > 0 ? Math.min(fileSize, 65536) : undefined // 大概估算传输字节数
+      });
+
+      return result;
+    } catch (error) {
+      timer.end(0, { isStreaming: false });
+      console.error('Failed to analyze local archive:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取压缩文件中的文件预览（本地文件特定实现）
+   */
+  async getArchiveFilePreview(
+    path: string,
+    filename: string,
+    entryPath: string,
+    maxPreviewSize?: number
+  ): Promise<FilePreview> {
+    try {
+      // 对于本地文件，使用存储客户端接口进行流式预览
+      console.log('本地文件获取压缩文件预览:', {
+        path,
+        filename,
+        entryPath
+      });
+
+      // 使用流式预览接口，只读取需要的部分
+      return await this.getArchiveFilePreviewWithClient(
+        path,
+        filename,
+        entryPath,
+        maxPreviewSize
+      );
+    } catch (error) {
+      console.error('Failed to get local archive file preview:', error);
+      throw error;
+    }
   }
 
   /**
