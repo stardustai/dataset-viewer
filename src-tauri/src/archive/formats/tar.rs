@@ -1,9 +1,12 @@
 /// TAR 格式处理器
 use crate::archive::types::*;
 use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
+use crate::storage::traits::StorageClient;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::io::{Cursor, Read};
 use tar::Archive;
+use base64::{Engine as _, engine::general_purpose};
 
 pub struct TarHandler;
 
@@ -40,6 +43,34 @@ impl CompressionHandlerDispatcher for TarHandler {
         max_size: usize,
     ) -> Result<FilePreview, String> {
         Self::extract_tar_preview(url, headers, entry_path, max_size).await
+    }
+
+    async fn analyze_with_client(
+        &self,
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        _filename: &str,
+        _max_size: Option<usize>,
+    ) -> Result<ArchiveInfo, String> {
+        // TAR文件需要读取完整内容来分析结构
+        let data = client.read_full_file(file_path).await
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+
+        Self::analyze_tar_complete(&data)
+    }
+
+    async fn extract_preview_with_client(
+        &self,
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        entry_path: &str,
+        max_size: usize,
+    ) -> Result<FilePreview, String> {
+        // TAR文件需要读取完整内容来提取特定文件
+        let data = client.read_full_file(file_path).await
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+
+        Self::extract_tar_preview_from_data(&data, entry_path, max_size)
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -80,7 +111,7 @@ impl TarHandler {
                         size,
                         compressed_size: None, // TAR没有压缩
                         is_dir,
-                        modified_time: header.mtime().ok().and_then(|timestamp| {
+                        modified_time: header.mtime().ok().map(|timestamp| {
                             // 将Unix时间戳转换为ISO格式的日期字符串
                             use std::time::{UNIX_EPOCH, Duration};
                             use chrono::{DateTime, Utc};
@@ -88,7 +119,7 @@ impl TarHandler {
                             let duration = Duration::from_secs(timestamp);
                             let datetime = UNIX_EPOCH + duration;
                             let datetime: DateTime<Utc> = datetime.into();
-                            Some(datetime.to_rfc3339())
+                            datetime.to_rfc3339()
                         }),
                         crc32: None,
                         index,
@@ -223,7 +254,7 @@ impl TarHandler {
 
                         return Ok(PreviewBuilder::new()
                             .content(content)
-                            .is_truncated(bytes_read < total_size as usize)
+                            .with_truncated(bytes_read < total_size as usize)
                             .total_size(total_size)
                             .file_type(file_type)
                             .build());
@@ -274,7 +305,7 @@ impl TarHandler {
                         size,
                         compressed_size: None,
                         is_dir,
-                        modified_time: header.mtime().ok().and_then(|timestamp| {
+                        modified_time: header.mtime().ok().map(|timestamp| {
                             // 将Unix时间戳转换为ISO格式的日期字符串
                             use std::time::{UNIX_EPOCH, Duration};
                             use chrono::{DateTime, Utc};
@@ -282,7 +313,7 @@ impl TarHandler {
                             let duration = Duration::from_secs(timestamp);
                             let datetime = UNIX_EPOCH + duration;
                             let datetime: DateTime<Utc> = datetime.into();
-                            Some(datetime.to_rfc3339())
+                            datetime.to_rfc3339()
                         }),
                         crc32: None,
                         index,
@@ -363,7 +394,7 @@ impl TarHandler {
 
                         return Ok(PreviewBuilder::new()
                             .content(content)
-                            .is_truncated(bytes_read < total_size as usize)
+                            .with_truncated(bytes_read < total_size as usize)
                             .total_size(total_size)
                             .file_type(file_type)
                             .build());
@@ -377,5 +408,46 @@ impl TarHandler {
         }
 
         Err("File not found in this chunk".to_string())
+    }
+
+    /// 从TAR数据中提取文件预览
+    fn extract_tar_preview_from_data(data: &[u8], entry_path: &str, max_size: usize) -> Result<FilePreview, String> {
+        let cursor = Cursor::new(data);
+        let mut archive = Archive::new(cursor);
+
+        for entry_result in archive.entries().map_err(|e| e.to_string())? {
+            match entry_result {
+                Ok(mut entry) => {
+                    let path = entry.path().map_err(|e| e.to_string())?;
+                    if path.to_string_lossy() == entry_path {
+                        let total_size = entry.header().size().map_err(|e| e.to_string())?;
+                        let preview_size = max_size.min(total_size as usize);
+                        let mut buffer = vec![0u8; preview_size];
+                        let bytes_read = entry.read(&mut buffer).map_err(|e| e.to_string())?;
+                        buffer.truncate(bytes_read);
+
+                        let _mime_type = detect_mime_type(&buffer);
+                        let is_text = is_text_content(&buffer);
+
+                        let content = if is_text {
+                            String::from_utf8_lossy(&buffer).into_owned()
+                        } else {
+                            general_purpose::STANDARD.encode(&buffer)
+                        };
+
+                        return Ok(PreviewBuilder::new()
+                            .content(content)
+                            .total_size(total_size)
+                            .file_type(if is_text { FileType::Text } else { FileType::Binary })
+                            .encoding(if is_text { "utf-8".to_string() } else { "base64".to_string() })
+                            .with_truncated(bytes_read >= max_size || (bytes_read as u64) < total_size)
+                            .build());
+                    }
+                }
+                Err(_) => continue,
+            }
+        }
+
+        Err("File not found in archive".to_string())
     }
 }

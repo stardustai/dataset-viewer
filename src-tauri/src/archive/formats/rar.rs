@@ -226,7 +226,7 @@ impl RarHandler {
 
                         return Ok(PreviewBuilder::new()
                             .content(content)
-                            .is_truncated(preview_size < total_size as usize)
+                            .with_truncated(preview_size < total_size as usize)
                             .total_size(total_size)
                             .file_type(file_type)
                             .build());

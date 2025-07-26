@@ -28,15 +28,4 @@ export const connection = {
   'set.default': 'Set as default',
   'unset.default': 'Remove default',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
-
-  // Quick start
-  'quick.start': 'Quick Start',
-  'quick.start.desc': 'To test the WebDAV browser, you can use a local WebDAV server or connect to your own server.',
-  'local.test.server': 'Local Test Server',
-  'local.test.desc': 'For testing with a local WebDAV server',
-  'custom.server': 'Custom Server',
-  'custom.server.desc': 'Enter your own WebDAV server details',
-  'use.demo': 'Use Demo',
-  'setup.local.server': 'Setting up a local WebDAV server:',
-  'setup.desc': 'You can use tools like caddy, nginx, or apache to set up a local WebDAV server for testing.',
 };

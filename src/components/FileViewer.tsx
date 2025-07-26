@@ -38,13 +38,14 @@ interface VirtualizedTextViewerRef {
 interface FileViewerProps {
   file: WebDAVFile;
   filePath: string;
+  storageClient?: any;
   onBack: () => void;
 }
 
 const CHUNK_SIZE = 1024 * 1024; // 1MB chunks for large files
 const MAX_INITIAL_LOAD = 1024 * 1024 * 10; // 10MB initial load
 
-export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }) => {
+export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageClient, onBack }) => {
   const { t } = useTranslation();
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -994,6 +995,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, onBack }
                 url={StorageServiceManager.getFileUrl(filePath)}
                 headers={StorageServiceManager.getHeaders()}
                 filename={file.basename}
+                storageClient={storageClient}
               />
             ) : (
               <UnsupportedFormatDisplay

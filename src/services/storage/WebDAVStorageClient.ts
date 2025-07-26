@@ -30,6 +30,19 @@ export class WebDAVStorageClient extends BaseStorageClient {
     supportsPagination: false,
   };
 
+  /**
+   * 获取连接的显示名称
+   */
+  getDisplayName(): string {
+    if (!this.connection?.url) return 'WebDAV';
+
+    try {
+      return new URL(this.connection.url).hostname;
+    } catch {
+      return this.connection.url;
+    }
+  }
+
   async connect(config: ConnectionConfig): Promise<boolean> {
     if (config.type !== 'webdav' || !config.url || !config.username || !config.password) {
       throw new Error('Invalid WebDAV configuration');
@@ -82,6 +95,34 @@ export class WebDAVStorageClient extends BaseStorageClient {
 
       throw error;
     }
+  }
+
+  /**
+   * 构建文件URL（WebDAV文件URL）
+   */
+  protected buildFileUrl(path: string): string {
+    if (!this.connection?.url) {
+      throw new Error('Not connected to WebDAV server');
+    }
+
+    const baseUrl = this.connection.url.replace(/\/$/, '');
+    const cleanPath = path.replace(/^\/+/, '');
+
+    return cleanPath ? `${baseUrl}/${cleanPath}` : baseUrl;
+  }
+
+  /**
+   * 获取认证头
+   */
+  protected getAuthHeaders(): Record<string, string> {
+    if (!this.connection?.username || !this.connection?.password) {
+      return {};
+    }
+
+    const credentials = btoa(`${this.connection.username}:${this.connection.password}`);
+    return {
+      'Authorization': `Basic ${credentials}`
+    };
   }
 
   disconnect(): void {

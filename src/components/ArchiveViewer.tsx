@@ -65,6 +65,8 @@ interface ArchiveViewerProps {
   url: string;
   headers: Record<string, string>;
   filename: string;
+  // 新增：可选的存储客户端，用于本地文件处理
+  storageClient?: any;
 }
 
 interface LoadMoreProgress {
@@ -76,7 +78,8 @@ interface LoadMoreProgress {
 export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   url,
   headers,
-  filename
+  filename,
+  storageClient
 }) => {
   const { t } = useTranslation();
   const [archiveInfo, setArchiveInfo] = useState<ArchiveInfo | null>(null);
@@ -104,14 +107,23 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setLoading(true);
       setError(null);
 
-      // 对于大文件，只加载前几MB来分析结构
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      const info = await CompressionService.analyzeArchive(
-        url,
-        headers,
-        filename,
-        maxSize
-      );
+      let info: ArchiveInfo;
+
+      // 检查是否有存储客户端，如果有则优先使用存储客户端接口
+      if (storageClient && storageClient.analyzeArchive) {
+        // 使用存储客户端的统一接口
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        info = await storageClient.analyzeArchive(url, filename, maxSize);
+      } else {
+        // 回退到直接的压缩服务接口
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        info = await CompressionService.analyzeArchive(
+          url,
+          headers,
+          filename,
+          maxSize
+        );
+      }
 
       setArchiveInfo(info);
     } catch (err) {
@@ -131,11 +143,19 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setLoading(true);
       setError(null);
 
-      const detailedInfo = await CompressionService.analyzeArchive(
-        url,
-        headers,
-        filename
-      );
+      let detailedInfo: ArchiveInfo;
+
+      if (storageClient && storageClient.analyzeArchive) {
+        // 使用存储客户端的统一接口，不限制大小以获取详细信息
+        detailedInfo = await storageClient.analyzeArchive(url, filename);
+      } else {
+        // 回退到直接的压缩服务接口
+        detailedInfo = await CompressionService.analyzeArchive(
+          url,
+          headers,
+          filename
+        );
+      }
 
       setArchiveInfo(detailedInfo);
     } catch (err) {
@@ -171,14 +191,27 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setPreviewError(null); // 清除之前的预览错误
       setCurrentLoadedSize(128 * 1024); // 重置为初始加载大小
 
-      // 简化预览策略：直接尝试获取预览，后端会智能处理
-      const preview = await CompressionService.extractFilePreview(
-        url,
-        headers,
-        filename,
-        entry.path,
-        128 * 1024 // 128KB预览
-      );
+      let preview: FilePreview;
+
+      if (storageClient && storageClient.getArchiveFilePreview) {
+        // 使用存储客户端的统一接口
+        preview = await storageClient.getArchiveFilePreview(
+          url,
+          filename,
+          entry.path,
+          currentLoadedSize
+        );
+      } else {
+        // 简化预览策略：直接尝试获取预览，后端会智能处理
+        preview = await CompressionService.extractFilePreview(
+          url,
+          headers,
+          filename,
+          entry.path,
+          128 * 1024 // 128KB预览
+        );
+      }
+
       setFilePreview(preview);
 
     } catch (err) {

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { WebDAVFile } from '../types';
 import { StorageServiceManager } from '../services/storage';
+import { BaseStorageClient } from '../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../services/navigationHistory';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
@@ -25,7 +26,7 @@ import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDispla
 import { copyToClipboard, normalizePath, showCopyToast } from '../utils/clipboard';
 
 interface FileBrowserProps {
-  onFileSelect: (file: WebDAVFile, path: string) => void;
+  onFileSelect: (file: WebDAVFile, path: string, storageClient?: BaseStorageClient) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
@@ -61,11 +62,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const getFilteredFiles = () => {
     let filteredFiles = showHidden
       ? files
-      : files.filter(file => !file.basename.startsWith('.'));
+      : files.filter(file => file.basename && !file.basename.startsWith('.'));
 
     if (searchTerm.trim()) {
       filteredFiles = filteredFiles.filter(file =>
-        file.basename.toLowerCase().includes(searchTerm.toLowerCase())
+        file.basename && file.basename.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -337,7 +338,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       const fullPath = currentPath === ''
         ? file.basename
         : `${currentPath}/${file.basename}`;
-      onFileSelect(file, fullPath);
+
+      // 获取当前的存储客户端
+      const storageClient = StorageServiceManager.getCurrentClient();
+      if (storageClient) {
+        onFileSelect(file, fullPath, storageClient);
+      } else {
+        console.warn('No storage client available');
+        onFileSelect(file, fullPath);
+      }
     }
   };
 
@@ -399,8 +408,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           <div className="flex items-center space-x-4">
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('webdav.browser')}</h1>
             {connection && (
-              <span className="text-sm text-gray-500 dark:text-gray-400 max-w-48 truncate" title={new URL(connection.url).hostname}>
-                {t('connected.to')} {new URL(connection.url).hostname}
+              <span
+                className="text-sm text-gray-500 dark:text-gray-400 max-w-48 truncate"
+                title={StorageServiceManager.getConnectionDisplayName()}
+              >
+                {t('connected.to')} {StorageServiceManager.getConnectionDisplayName()}
               </span>
             )}
           </div>
@@ -607,7 +619,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
             {/* 文件列表或空状态 */}
             {files.length > 0 ? (
-              !showHidden && files.every(file => file.basename.startsWith('.')) ? (
+              !showHidden && files.every(file => file.basename && file.basename.startsWith('.')) ? (
                 <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
               ) : getFilteredFiles().length === 0 ? (
                 <NoSearchResultsDisplay

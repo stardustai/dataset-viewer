@@ -28,15 +28,4 @@ export const connection = {
   'set.default': '设为默认',
   'unset.default': '取消默认',
   'confirm.delete.connection': '确定要删除这个连接吗？',
-
-  // 快速开始
-  'quick.start': '快速开始',
-  'quick.start.desc': '要测试 WebDAV 浏览器，您可以使用本地 WebDAV 服务器或连接到您自己的服务器。',
-  'local.test.server': '本地测试服务器',
-  'local.test.desc': '用于与本地 WebDAV 服务器测试',
-  'custom.server': '自定义服务器',
-  'custom.server.desc': '输入您自己的 WebDAV 服务器详细信息',
-  'use.demo': '使用演示',
-  'setup.local.server': '设置本地 WebDAV 服务器：',
-  'setup.desc': '您可以使用工具如 caddy、nginx 或 apache 来设置本地 WebDAV 服务器进行测试。',
 };

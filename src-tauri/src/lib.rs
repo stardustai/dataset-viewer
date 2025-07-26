@@ -1,4 +1,3 @@
-use tauri_plugin_http;
 use base64::{Engine as _, engine::general_purpose};
 
 mod storage;
@@ -16,7 +15,7 @@ use std::sync::{Arc, LazyLock};
 
 // 全局下载管理器
 static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
-    LazyLock::new(|| DownloadManager::new());
+    LazyLock::new(DownloadManager::new);
 
 // 全局压缩包处理器
 static ARCHIVE_HANDLER: LazyLock<Arc<ArchiveHandler>> =
@@ -24,7 +23,7 @@ static ARCHIVE_HANDLER: LazyLock<Arc<ArchiveHandler>> =
 
 #[tauri::command]
 async fn storage_request(
-    _protocol: String,
+    protocol: String,
     method: String,
     url: String,
     headers: std::collections::HashMap<String, String>,
@@ -32,7 +31,40 @@ async fn storage_request(
     options: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
     let manager = get_storage_manager().await;
-    let manager = manager.lock().await;
+    let mut manager = manager.lock().await;
+
+    // 如果是本地文件系统的连接检查，需要先创建临时客户端
+    if protocol == "local" && method == "CHECK_ACCESS" {
+        // 创建连接配置
+        let config = ConnectionConfig {
+            protocol: "local".to_string(),
+            url: Some(url.clone()),
+            access_key: None,
+            secret_key: None,
+            region: None,
+            bucket: None,
+            endpoint: None,
+            username: None,
+            password: None,
+            extra_options: None,
+        };
+
+        // 使用 StorageManager 的 connect 方法
+        match manager.connect(&config).await {
+            Ok(_) => {
+                // 返回成功响应
+                return Ok(serde_json::json!({
+                    "status": 200,
+                    "headers": {},
+                    "body": "OK",
+                    "metadata": null
+                }));
+            }
+            Err(e) => {
+                return Err(format!("Local storage connection failed: {}", e));
+            }
+        }
+    }
 
     let request = StorageRequest {
         method,
@@ -51,6 +83,54 @@ async fn storage_request(
         })),
         Err(e) => Err(format!("Storage request failed: {}", e))
     }
+}
+
+#[tauri::command]
+async fn analyze_archive_with_client(
+    _protocol: String,
+    file_path: String,
+    filename: String,
+    max_size: Option<usize>,
+) -> Result<ArchiveInfo, String> {
+    let manager = get_storage_manager().await;
+    let manager = manager.lock().await;
+
+    // 获取对应的存储客户端
+    let client = manager.get_current_client()
+        .ok_or_else(|| "No storage client connected".to_string())?;
+
+    // 使用压缩包处理器分析文件
+    ARCHIVE_HANDLER.analyze_archive_with_client(
+        client,
+        file_path,
+        filename,
+        max_size,
+    ).await
+}
+
+#[tauri::command]
+async fn get_archive_preview_with_client(
+    _protocol: String,
+    file_path: String,
+    filename: String,
+    entry_path: String,
+    max_preview_size: Option<usize>,
+) -> Result<FilePreview, String> {
+    let manager = get_storage_manager().await;
+    let manager = manager.lock().await;
+
+    // 获取对应的存储客户端
+    let client = manager.get_current_client()
+        .ok_or_else(|| "No storage client connected".to_string())?;
+
+    // 使用压缩包处理器获取文件预览
+    ARCHIVE_HANDLER.get_file_preview_with_client(
+        client,
+        file_path,
+        filename,
+        entry_path,
+        max_preview_size,
+    ).await
 }
 
 #[tauri::command]
@@ -80,33 +160,9 @@ async fn storage_request_binary(
 
 // 存储连接管理命令
 #[tauri::command]
-async fn storage_connect(
-    protocol: String,
-    url: Option<String>,
-    username: Option<String>,
-    password: Option<String>,
-    access_key: Option<String>,
-    secret_key: Option<String>,
-    region: Option<String>,
-    bucket: Option<String>,
-    endpoint: Option<String>,
-    extra_options: Option<std::collections::HashMap<String, String>>,
-) -> Result<bool, String> {
+async fn storage_connect(config: ConnectionConfig) -> Result<bool, String> {
     let manager = get_storage_manager().await;
     let mut manager = manager.lock().await;
-
-    let config = ConnectionConfig {
-        protocol: protocol.clone(),
-        url,
-        access_key,
-        secret_key,
-        region,
-        bucket,
-        endpoint,
-        username,
-        password,
-        extra_options,
-    };
 
     match manager.connect(&config).await {
         Ok(_) => Ok(true),
@@ -191,6 +247,29 @@ async fn cancel_download(filename: String) -> Result<String, String> {
     DOWNLOAD_MANAGER.cancel_download(&filename)
 }
 
+// 系统对话框命令
+
+/// 显示文件夹选择对话框
+#[tauri::command]
+async fn show_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let folder = app
+        .dialog()
+        .file()
+        .set_title("选择目录")
+        .blocking_pick_folder();
+
+    match folder {
+        Some(path) => {
+            let path_buf = path.into_path()
+                .map_err(|e| format!("Failed to get path: {}", e))?;
+            Ok(Some(path_buf.to_string_lossy().to_string()))
+        },
+        None => Ok(None),
+    }
+}
+
 // 压缩包处理命令
 
 /// 分析压缩包结构
@@ -201,7 +280,26 @@ async fn analyze_archive(
     filename: String,
     max_size: Option<usize>,
 ) -> Result<ArchiveInfo, String> {
-    ARCHIVE_HANDLER.analyze_archive(url, headers, filename, max_size).await
+    // 检查是否是本地文件路径
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        // 本地文件，通过当前存储客户端处理
+        let manager = get_storage_manager().await;
+        let manager = manager.lock().await;
+
+        if let Some(client) = manager.get_current_client() {
+            return ARCHIVE_HANDLER.analyze_archive_with_client(
+                client.clone(),
+                url,
+                filename,
+                max_size
+            ).await;
+        } else {
+            Err("No storage client available".to_string())
+        }
+    } else {
+        // HTTP/HTTPS URL，使用原有逻辑
+        return ARCHIVE_HANDLER.analyze_archive(url, headers, filename, max_size).await;
+    }
 }
 
 /// 获取文件预览
@@ -213,13 +311,33 @@ async fn get_file_preview(
     entry_path: String,
     max_preview_size: Option<usize>
 ) -> Result<FilePreview, String> {
-    ARCHIVE_HANDLER.get_file_preview(
-        url,
-        headers,
-        filename,
-        entry_path,
-        max_preview_size
-    ).await
+    // 检查是否是本地文件路径
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        // 本地文件，通过当前存储客户端处理
+        let manager = get_storage_manager().await;
+        let manager = manager.lock().await;
+
+        if let Some(client) = manager.get_current_client() {
+            return ARCHIVE_HANDLER.get_file_preview_with_client(
+                client.clone(),
+                url,
+                filename,
+                entry_path,
+                max_preview_size
+            ).await;
+        } else {
+            Err("No storage client available".to_string())
+        }
+    } else {
+        // HTTP/HTTPS URL，使用原有逻辑
+        return ARCHIVE_HANDLER.get_file_preview(
+            url,
+            headers,
+            filename,
+            entry_path,
+            max_preview_size
+        ).await;
+    }
 }
 
 /// 检查文件是否支持压缩包操作
@@ -316,7 +434,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-                .invoke_handler(tauri::generate_handler![
+        .invoke_handler(tauri::generate_handler![
             // 统一存储接口命令
             storage_request,
             storage_request_binary,
@@ -329,6 +447,8 @@ pub fn run() {
             // 下载进度命令
             download_file_with_progress,
             cancel_download,
+            // 系统对话框命令
+            show_folder_dialog,
             // 压缩包处理命令
             analyze_archive,
             get_file_preview,
@@ -341,7 +461,10 @@ pub fn run() {
             get_supported_formats,
             format_file_size,
             get_compression_ratio,
-            get_recommended_chunk_size
+            get_recommended_chunk_size,
+            // 新增：通过存储客户端的压缩包处理命令
+            analyze_archive_with_client,
+            get_archive_preview_with_client
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

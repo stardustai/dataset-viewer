@@ -3,9 +3,10 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, StorageCapabilities, DirectoryResult, ListOptions};
 use super::webdav_client::WebDAVClient;
+use super::local_client::LocalFileSystemClient;
 
 pub struct StorageManager {
-    clients: HashMap<String, Box<dyn StorageClient + Send + Sync>>,
+    clients: HashMap<String, Arc<dyn StorageClient + Send + Sync>>,
     active_client: Option<String>,
 }
 
@@ -18,13 +19,21 @@ impl StorageManager {
     }
 
     pub async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError> {
-        let client: Box<dyn StorageClient + Send + Sync> = match config.protocol.as_str() {
-            "webdav" => Box::new(WebDAVClient::new(config.clone())?),
+        let client: Arc<dyn StorageClient + Send + Sync> = match config.protocol.as_str() {
+            "webdav" => {
+                let mut client = WebDAVClient::new(config.clone())?;
+                client.connect(config).await?;
+                Arc::new(client)
+            },
+            "local" => {
+                let mut client = LocalFileSystemClient::new();
+                client.connect(config).await?;
+                Arc::new(client)
+            },
             _ => return Err(StorageError::UnsupportedProtocol(config.protocol.clone())),
         };
 
         let client_id = format!("{}_{}", config.protocol, chrono::Utc::now().timestamp());
-        client.connect().await?;
 
         self.clients.insert(client_id.clone(), client);
         self.active_client = Some(client_id);
@@ -34,10 +43,9 @@ impl StorageManager {
 
     pub async fn disconnect(&mut self) -> Result<(), StorageError> {
         if let Some(client_id) = &self.active_client {
-            if let Some(client) = self.clients.get(client_id) {
-                client.disconnect().await?;
+            if let Some(client) = self.clients.remove(client_id) {
+                client.disconnect().await;
             }
-            self.clients.remove(client_id);
             self.active_client = None;
         }
         Ok(())
@@ -80,8 +88,14 @@ impl StorageManager {
         Some(client.capabilities())
     }
 
+    pub fn get_current_client(&self) -> Option<Arc<dyn StorageClient>> {
+        let client_id = self.active_client.as_ref()?;
+        let client = self.clients.get(client_id)?;
+        Some(client.clone())
+    }
+
     pub fn supported_protocols(&self) -> Vec<&str> {
-        vec!["webdav"] // 目前只支持 WebDAV
+        vec!["webdav", "local"] // 支持 WebDAV 和本机文件系统
     }
 }
 

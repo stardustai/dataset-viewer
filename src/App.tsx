@@ -6,6 +6,7 @@ import { DownloadProgress } from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
 import { WebDAVFile } from './types';
 import { StorageServiceManager } from './services/storage';
+import { navigationHistoryService } from './services/navigationHistory';
 import { useTheme } from './hooks/useTheme';
 import { Loader2 } from 'lucide-react';
 import './i18n';
@@ -23,6 +24,7 @@ function App() {
   const [appState, setAppState] = useState<AppState>('initializing');
   const [selectedFile, setSelectedFile] = useState<WebDAVFile | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
+  const [selectedStorageClient, setSelectedStorageClient] = useState<any>(null);
   const [currentDirectory, setCurrentDirectory] = useState<string>('');
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
 
@@ -30,6 +32,15 @@ function App() {
     // 尝试自动连接到上次的服务
     const tryAutoConnect = async () => {
       try {
+        // 检查用户是否主动断开了连接
+        const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
+
+        if (wasDisconnected) {
+          // 如果用户主动断开过连接，直接显示连接页面
+          setAppState('connecting');
+          return;
+        }
+
         const success = await StorageServiceManager.autoConnect();
         if (success) {
           setAppState('browsing');
@@ -46,22 +57,34 @@ function App() {
   }, []);
 
   const handleConnect = () => {
+    // 连接成功时清除断开连接标记
+    localStorage.removeItem('userDisconnected');
     setAppState('browsing');
   };
 
   const handleDisconnect = () => {
+    // 断开存储连接
     StorageServiceManager.disconnect();
+
+    // 清理导航历史和缓存
+    navigationHistoryService.clearHistory();
+    navigationHistoryService.clearScrollPositions();
+    navigationHistoryService.clearDirectoryCache();
+
     // 标记用户主动断开了连接
     localStorage.setItem('userDisconnected', 'true');
+
+    // 重置应用状态
     setAppState('connecting');
     setSelectedFile(null);
     setSelectedFilePath('');
     setCurrentDirectory('');
   };
 
-  const handleFileSelect = (file: WebDAVFile, path: string) => {
+  const handleFileSelect = (file: WebDAVFile, path: string, storageClient?: any) => {
     setSelectedFile(file);
     setSelectedFilePath(path);
+    setSelectedStorageClient(storageClient); // 保存存储客户端引用
     setAppState('viewing');
   };
 
@@ -69,6 +92,7 @@ function App() {
     setAppState('browsing');
     setSelectedFile(null);
     setSelectedFilePath('');
+    setSelectedStorageClient(null);
   };
 
   const handleDirectoryChange = (path: string) => {
@@ -108,6 +132,7 @@ function App() {
         <FileViewer
           file={selectedFile}
           filePath={selectedFilePath}
+          storageClient={selectedStorageClient}
           onBack={handleBackToBrowser}
         />
       )}

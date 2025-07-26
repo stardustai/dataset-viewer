@@ -1,5 +1,6 @@
 import { BaseStorageClient } from './BaseStorageClient';
 import { WebDAVStorageClient } from './WebDAVStorageClient';
+import { LocalStorageClient } from './LocalStorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
 import { connectionStorage } from '../connectionStorage';
 
@@ -17,6 +18,8 @@ export class StorageClientFactory {
     switch (type) {
       case 'webdav':
         return new WebDAVStorageClient();
+      case 'local':
+        return new LocalStorageClient();
       default:
         throw new Error(`Unsupported storage type: ${type}`);
     }
@@ -79,7 +82,7 @@ export class StorageClientFactory {
    * 检查是否支持指定的存储类型
    */
   static isSupportedType(type: string): type is StorageClientType {
-    return ['webdav'].includes(type);
+    return ['webdav', 'local'].includes(type);
   }
 }
 
@@ -103,6 +106,16 @@ export class StorageServiceManager {
     // 连接新的存储
     this.currentClient = await StorageClientFactory.connectToStorage(config);
     this.currentConnection = config;
+  }
+
+  /**
+   * 获取当前连接的显示名称
+   */
+  static getConnectionDisplayName(): string {
+    if (!this.currentClient) {
+      return 'Unknown';
+    }
+    return this.currentClient.getDisplayName();
   }
 
   /**
@@ -180,6 +193,13 @@ export class StorageServiceManager {
           supportsRangeRequests: true,
           supportsSearch: false, // 大多数 WebDAV 服务器不支持搜索
         };
+      case 'local':
+        return {
+          type: 'local',
+          supportsPagination: false, // 本机文件系统不需要分页
+          supportsRangeRequests: true,
+          supportsSearch: true, // 本机文件系统支持文件名搜索
+        };
       default:
         throw new Error(`Unknown storage type: ${this.currentConnection.type}`);
     }
@@ -238,13 +258,22 @@ export class StorageServiceManager {
     if (!defaultConnection) return false;
 
     try {
-      return await this.connect(
-        defaultConnection.url,
-        defaultConnection.username,
-        defaultConnection.password || '',
-        false
-      );
-    } catch {
+      // 根据连接类型进行不同的处理
+      if (defaultConnection.url.startsWith('local://')) {
+        // 本地文件系统连接
+        const rootPath = defaultConnection.url.replace('local://', '');
+        return await this.connectToLocal(rootPath, false, defaultConnection.name);
+      } else {
+        // WebDAV 连接
+        return await this.connect(
+          defaultConnection.url,
+          defaultConnection.username,
+          defaultConnection.password || '',
+          false // 不重复保存连接
+        );
+      }
+    } catch (error) {
+      console.warn('Auto connect failed:', error);
       return false;
     }
   }
@@ -320,6 +349,26 @@ export class StorageServiceManager {
     const connection = this.getCurrentConnection();
     if (!connection || !connection.url) throw new Error('Not connected');
 
+    // 处理本地文件系统
+    if (connection.url.startsWith('local://')) {
+      // 对于本地文件，通过 client 获取实际文件路径
+      const client = this.getCurrentClient();
+      if (client instanceof LocalStorageClient) {
+        return client.getActualFilePath(path);
+      }
+      // 降级处理：构建文件系统路径
+      const rootPath = connection.url.replace('local://', '');
+      const cleanPath = path.replace(/^\/+/, '').replace(/\/+/g, '/');
+
+      if (!cleanPath) {
+        return rootPath;
+      }
+
+      const separator = rootPath.endsWith('/') || rootPath.endsWith('\\') ? '' : '/';
+      return `${rootPath}${separator}${cleanPath}`;
+    }
+
+    // WebDAV URL 处理
     const baseUrl = connection.url.replace(/\/$/, '');
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return `${baseUrl}${normalizedPath}`;
@@ -377,5 +426,49 @@ export class StorageServiceManager {
 
   static setDefaultConnection(id: string) {
     connectionStorage.setDefaultConnection(id);
+  }
+
+  // ========== 本机文件系统连接方法 ==========
+
+  /**
+   * 连接到本机文件系统
+   */
+  static async connectToLocal(
+    rootPath: string,
+    saveConnection: boolean = true,
+    connectionName?: string
+  ): Promise<boolean> {
+    try {
+      console.log('StorageServiceManager: Connecting to local storage:', rootPath);
+
+      const config: ConnectionConfig = {
+        type: 'local',
+        url: rootPath, // 使用 url 字段传递根路径
+        rootPath, // 保留 rootPath 字段用于前端显示
+        name: connectionName || `本机文件 (${rootPath})`
+      };
+
+      console.log('StorageServiceManager: Using config:', config);
+      await this.setCurrentStorage(config);
+      console.log('StorageServiceManager: Successfully connected to local storage');
+
+      // 保存连接信息（如果需要）
+      if (saveConnection) {
+        // 为本机文件系统创建特殊的连接记录
+        // 对于本地路径，使用 local:// 协议而不是 file://，避免 URL 解析问题
+        const connection = {
+          url: `local://${rootPath}`,
+          username: 'local',
+          password: '',
+          connected: true
+        };
+        connectionStorage.saveConnection(connection, config.name, false);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Local storage connection failed:', error);
+      return false;
+    }
   }
 }
