@@ -1,5 +1,5 @@
 // 存储类型定义
-export type StorageClientType = 'webdav' | 'oss' | 's3';
+export type StorageClientType = 'webdav' | 'oss' | 's3' | 'local';
 export interface StorageClient {
   connect(config: ConnectionConfig): Promise<boolean>;
   disconnect(): void;
@@ -19,6 +19,8 @@ export interface ConnectionConfig {
   username?: string;
   password?: string;
   name?: string; // 连接名称，用于显示和保存
+  // 本机文件系统特定配置
+  rootPath?: string; // 本机文件系统的根目录路径
 }
 
 // 统一的分页选项

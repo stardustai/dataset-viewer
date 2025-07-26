@@ -8,6 +8,8 @@ import {
   ReadOptions,
   StorageResponse
 } from './types';
+import { CompressionService } from '../compression';
+import { ArchiveInfo, FilePreview } from '../../types';
 
 /**
  * 统一存储客户端基类
@@ -16,6 +18,11 @@ import {
 export abstract class BaseStorageClient implements StorageClient {
   protected abstract protocol: string;
   protected connected: boolean = false;
+
+  /**
+   * 获取连接的显示名称
+   */
+  abstract getDisplayName(): string;
 
   /**
    * 发起存储请求的统一接口
@@ -80,6 +87,122 @@ export abstract class BaseStorageClient implements StorageClient {
       filename,
     });
   }
+
+  /**
+   * 分析压缩文件
+   */
+  async analyzeArchive(
+    path: string,
+    filename: string,
+    maxSize?: number
+  ): Promise<ArchiveInfo> {
+    try {
+      // 对于本地文件，使用存储客户端接口
+      if (this.protocol === 'local') {
+        return await this.analyzeArchiveWithClient(path, filename, maxSize);
+      }
+
+      // 对于WebDAV等远程存储，使用HTTP接口
+      const url = this.buildFileUrl(path);
+      const headers = this.getAuthHeaders();
+
+      return await CompressionService.analyzeArchive(
+        url,
+        headers,
+        filename,
+        maxSize
+      );
+    } catch (error) {
+      console.error('Failed to analyze archive:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取压缩文件中的文件预览
+   */
+  async getArchiveFilePreview(
+    path: string,
+    filename: string,
+    entryPath: string,
+    maxPreviewSize?: number
+  ): Promise<FilePreview> {
+    try {
+      // 对于本地文件，使用存储客户端接口
+      if (this.protocol === 'local') {
+        return await this.getArchiveFilePreviewWithClient(path, filename, entryPath, maxPreviewSize);
+      }
+
+      // 对于WebDAV等远程存储，使用HTTP接口
+      const url = this.buildFileUrl(path);
+      const headers = this.getAuthHeaders();
+
+      return await CompressionService.extractFilePreview(
+        url,
+        headers,
+        filename,
+        entryPath,
+        maxPreviewSize
+      );
+    } catch (error) {
+      console.error('Failed to get archive file preview:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查文件是否为支持的压缩格式
+   */
+  async isSupportedArchive(filename: string): Promise<boolean> {
+    return await CompressionService.isSupportedArchive(filename);
+  }
+
+  /**
+   * 通过存储客户端分析压缩文件（用于本地文件）
+   */
+  protected async analyzeArchiveWithClient(
+    path: string,
+    filename: string,
+    maxSize?: number
+  ): Promise<ArchiveInfo> {
+    // 通过Tauri命令调用后端的存储客户端接口
+    return await invoke('analyze_archive_with_client', {
+      protocol: this.protocol,
+      filePath: path,
+      filename,
+      maxSize
+    });
+  }
+
+  /**
+   * 通过存储客户端获取压缩文件预览（用于本地文件）
+   */
+  protected async getArchiveFilePreviewWithClient(
+    path: string,
+    filename: string,
+    entryPath: string,
+    maxPreviewSize?: number
+  ): Promise<FilePreview> {
+    // 通过Tauri命令调用后端的存储客户端接口
+    return await invoke('get_archive_preview_with_client', {
+      protocol: this.protocol,
+      filePath: path,
+      filename,
+      entryPath,
+      maxPreviewSize
+    });
+  }
+
+  /**
+   * 构建文件URL（子类实现）
+   */
+  protected abstract buildFileUrl(path: string): string;
+
+  /**
+   * 获取认证头（子类实现）
+   */
+  protected abstract getAuthHeaders(): Record<string, string>;
+
 	// 抽象方法，由具体实现定义
   abstract connect(config: ConnectionConfig): Promise<boolean>;
   abstract disconnect(): void;

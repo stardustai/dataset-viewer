@@ -107,14 +107,14 @@ pub enum StorageError {
 #[async_trait]
 pub trait StorageClient: Send + Sync {
     /// 连接到存储服务
-    async fn connect(&self) -> Result<(), StorageError>;
+    async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError>;
 
     /// 断开连接
-    async fn disconnect(&self) -> Result<(), StorageError>;
+    async fn disconnect(&self);
 
     /// 检查是否已连接
     #[allow(dead_code)]
-    fn is_connected(&self) -> bool;
+    async fn is_connected(&self) -> bool;
 
     /// 列出目录内容
     async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError>;
@@ -124,6 +124,15 @@ pub trait StorageClient: Send + Sync {
 
     /// 发起二进制请求
     async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError>;
+
+    /// 读取文件的指定范围（用于压缩包等需要随机访问的场景）
+    async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError>;
+
+    /// 读取完整文件（用于小文件或完整下载）
+    async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError>;
+
+    /// 获取文件大小
+    async fn get_file_size(&self, path: &str) -> Result<u64, StorageError>;
 
     /// 获取客户端能力
     fn capabilities(&self) -> StorageCapabilities;

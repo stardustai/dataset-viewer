@@ -39,8 +39,17 @@ impl WebDAVClient {
 
 #[async_trait]
 impl StorageClient for WebDAVClient {
-    async fn connect(&self) -> Result<(), StorageError> {
-        let base_url = self.config.url.as_ref()
+    async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError> {
+        // 更新内部配置
+        self.config = config.clone();
+        self.auth_header = if let (Some(username), Some(password)) = (&config.username, &config.password) {
+            let credentials = general_purpose::STANDARD.encode(format!("{}:{}", username, password));
+            Some(format!("Basic {}", credentials))
+        } else {
+            None
+        };
+
+        let base_url = config.url.as_ref()
             .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL is required".to_string()))?;
 
         // 标准化基础 URL - 确保以斜杠结尾
@@ -76,6 +85,7 @@ impl StorageClient for WebDAVClient {
             .map_err(|e| StorageError::NetworkError(format!("Connection test failed: {}", e)))?;
 
         if response.status().is_success() {
+            self.connected = true;
             Ok(())
         } else {
             Err(StorageError::RequestFailed(format!(
@@ -85,12 +95,13 @@ impl StorageClient for WebDAVClient {
         }
     }
 
-    async fn disconnect(&self) -> Result<(), StorageError> {
+    async fn disconnect(&self) {
         // WebDAV 是无状态的，不需要显式断开连接
-        Ok(())
+        // 注意：由于现在是 &self，我们不能修改 connected 字段
+        // 在实际应用中，可能需要使用内部可变性
     }
 
-    fn is_connected(&self) -> bool {
+    async fn is_connected(&self) -> bool {
         self.connected
     }
 
@@ -144,7 +155,7 @@ impl StorageClient for WebDAVClient {
             .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
         let status = response.status().as_u16();
-        if status < 200 || status >= 300 {
+        if !(200..300).contains(&status) {
             return Err(StorageError::RequestFailed(format!("PROPFIND failed with status: {}. Check URL format and trailing slash", status)));
         }
 
@@ -281,6 +292,99 @@ impl StorageClient for WebDAVClient {
 
     fn protocol(&self) -> &str {
         "webdav"
+    }
+
+    /// 读取文件的指定范围
+    async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
+        if !self.connected {
+            return Err(StorageError::NotConnected);
+        }
+
+        let url = format!("{}/{}", self.config.url.as_ref().unwrap().trim_end_matches('/'), path.trim_start_matches('/'));
+
+        let mut request = self.client.get(&url);
+        if let Some(auth) = &self.auth_header {
+            request = request.header("Authorization", auth);
+        }
+
+        // 设置 Range 头
+        request = request.header("Range", format!("bytes={}-{}", start, start + length - 1));
+
+        let response = request.send().await
+            .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(StorageError::RequestFailed(
+                format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown"))
+            ));
+        }
+
+        let bytes = response.bytes().await
+            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+
+        Ok(bytes.to_vec())
+    }
+
+    /// 读取完整文件
+    async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError> {
+        if !self.connected {
+            return Err(StorageError::NotConnected);
+        }
+
+        let url = format!("{}/{}", self.config.url.as_ref().unwrap().trim_end_matches('/'), path.trim_start_matches('/'));
+
+        let mut request = self.client.get(&url);
+        if let Some(auth) = &self.auth_header {
+            request = request.header("Authorization", auth);
+        }
+
+        let response = request.send().await
+            .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(StorageError::RequestFailed(
+                format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown"))
+            ));
+        }
+
+        let bytes = response.bytes().await
+            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+
+        Ok(bytes.to_vec())
+    }
+
+    /// 获取文件大小
+    async fn get_file_size(&self, path: &str) -> Result<u64, StorageError> {
+        if !self.connected {
+            return Err(StorageError::NotConnected);
+        }
+
+        let url = format!("{}/{}", self.config.url.as_ref().unwrap().trim_end_matches('/'), path.trim_start_matches('/'));
+
+        let mut request = self.client.head(&url);
+        if let Some(auth) = &self.auth_header {
+            request = request.header("Authorization", auth);
+        }
+
+        let response = request.send().await
+            .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(StorageError::RequestFailed(
+                format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown"))
+            ));
+        }
+
+        // 尝试从 Content-Length 头获取文件大小
+        if let Some(content_length) = response.headers().get("content-length") {
+            if let Ok(length_str) = content_length.to_str() {
+                if let Ok(length) = length_str.parse::<u64>() {
+                    return Ok(length);
+                }
+            }
+        }
+
+        Err(StorageError::RequestFailed("Unable to determine file size".to_string()))
     }
 
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {

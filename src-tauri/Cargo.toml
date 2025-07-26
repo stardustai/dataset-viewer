@@ -46,4 +46,5 @@ async-stream = "0.3"
 bytes = "1.5"
 quick-xml = "0.31"
 urlencoding = "2.1"
+dirs = "5.0"
 

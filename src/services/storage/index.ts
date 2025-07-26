@@ -1,6 +1,7 @@
 // 统一存储服务入口点
 export { BaseStorageClient } from './BaseStorageClient';
 export { WebDAVStorageClient } from './WebDAVStorageClient';
+export { LocalStorageClient } from './LocalStorageClient';
 export { StorageClientFactory, StorageServiceManager } from './StorageManager';
 export * from './types';
 

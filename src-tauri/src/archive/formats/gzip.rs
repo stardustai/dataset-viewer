@@ -1,9 +1,12 @@
 /// GZIP 格式处理器
 use crate::archive::types::*;
 use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
+use crate::storage::traits::StorageClient;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::io::{Cursor, Read};
 use flate2::read::GzDecoder;
+use base64::{Engine as _, engine::general_purpose};
 
 pub struct GzipHandler;
 
@@ -40,6 +43,41 @@ impl CompressionHandlerDispatcher for GzipHandler {
         max_size: usize,
     ) -> Result<FilePreview, String> {
         Self::extract_gzip_preview(url, headers, max_size).await
+    }
+
+    async fn analyze_with_client(
+        &self,
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        _filename: &str,
+        max_size: Option<usize>,
+    ) -> Result<ArchiveInfo, String> {
+        // 对于GZIP文件，读取完整内容进行分析
+        let data = if let Some(limit) = max_size {
+            // 如果有大小限制，只读取指定大小
+            client.read_file_range(file_path, 0, limit as u64).await
+                .map_err(|e| format!("Failed to read file: {}", e))?
+        } else {
+            // 读取完整文件
+            client.read_full_file(file_path).await
+                .map_err(|e| format!("Failed to read file: {}", e))?
+        };
+
+        Self::analyze_gzip_complete(&data).await
+    }
+
+    async fn extract_preview_with_client(
+        &self,
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        _entry_path: &str,
+        max_size: usize,
+    ) -> Result<FilePreview, String> {
+        // 读取文件并解压缩
+        let data = client.read_full_file(file_path).await
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+
+        Self::extract_gzip_preview_from_data(&data, max_size)
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -249,7 +287,7 @@ impl GzipHandler {
 
         Ok(PreviewBuilder::new()
             .content(content)
-            .is_truncated(bytes_read < estimated_total_size as usize)
+            .with_truncated(bytes_read < estimated_total_size as usize)
             .total_size(estimated_total_size)
             .file_type(file_type)
             .build())
@@ -317,5 +355,33 @@ impl GzipHandler {
             }
             _ => compressed_size * 3, // 默认压缩比
         }
+    }
+
+    /// 从数据中提取GZIP预览
+    fn extract_gzip_preview_from_data(data: &[u8], max_size: usize) -> Result<FilePreview, String> {
+        let mut decoder = GzDecoder::new(Cursor::new(data));
+        let mut preview_data = vec![0u8; max_size];
+
+        let bytes_read = decoder.read(&mut preview_data)
+            .map_err(|e| format!("Failed to decompress data: {}", e))?;
+
+        preview_data.truncate(bytes_read);
+
+        // 检测内容类型
+        let _mime_type = detect_mime_type(&preview_data);
+        let is_text = is_text_content(&preview_data);
+
+        let content = if is_text {
+            String::from_utf8_lossy(&preview_data).into_owned()
+        } else {
+            general_purpose::STANDARD.encode(&preview_data)
+        };
+
+        Ok(PreviewBuilder::new()
+            .content(content)
+            .file_type(if is_text { FileType::Text } else { FileType::Binary })
+            .encoding(if is_text { "utf-8".to_string() } else { "base64".to_string() })
+            .with_truncated(bytes_read >= max_size)
+            .build())
     }
 }
