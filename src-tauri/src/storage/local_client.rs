@@ -22,10 +22,8 @@ impl LocalFileSystemClient {
     }
 
     /// 构建完整路径并进行安全检查
+    /// 支持绝对路径和相对路径两种模式
     fn build_safe_path(&self, path: &str) -> Result<PathBuf, StorageError> {
-        // 对于本地文件系统，如果传入的是绝对路径（特别是包含 ~ 的路径），
-        // 我们需要直接处理而不是作为相对路径
-
         println!("LocalFileSystemClient::build_safe_path - Input path: {}", path);
 
         // 如果路径以 ~ 开头，直接展开
@@ -48,18 +46,19 @@ impl LocalFileSystemClient {
             }
         }
 
-        // 如果是绝对路径，直接使用
-        if Path::new(path).is_absolute() {
-            println!("LocalFileSystemClient::build_safe_path - Using absolute path: {}", path);
-            return Ok(PathBuf::from(path));
+        // 检查是否为绝对路径
+        let path_buf = PathBuf::from(path);
+        if path_buf.is_absolute() {
+            println!("LocalFileSystemClient::build_safe_path - Using absolute path: {:?}", path_buf);
+            return Ok(path_buf);
         }
 
-        // 否则，作为相对路径处理
+        // 获取根路径
         let root = self.root_path
             .as_ref()
             .ok_or(StorageError::NotConnected)?;
 
-        // 清理相对路径
+        // 对于相对路径，与根目录拼接
         let clean_path = path.trim_start_matches('/');
 
         // 构建完整路径

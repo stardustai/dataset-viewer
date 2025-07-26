@@ -50,6 +50,7 @@ export const common = {
   'local.path.desktop': '桌面',
   'local.path.home': '用户目录',
   'local.connect': '连接到本机文件',
+  'local.select.directory': '选择目录',
   'local.permission.notice': '权限说明',
   'local.permission.description': '应用只能访问您明确选择的目录及其子目录。建议选择文档、下载等常用目录。',
   'local.error.access': '无法访问指定路径，请检查路径是否存在且有权限访问',

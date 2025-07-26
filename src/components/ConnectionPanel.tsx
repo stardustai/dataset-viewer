@@ -29,6 +29,28 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
   const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false); // 密码是否来自存储
   const savePassword = true; // 默认保存密码
 
+  // 本地文件系统连接状态
+  const [defaultLocalPath, setDefaultLocalPath] = useState('');
+
+  // 获取最近的本地连接路径
+  const getRecentLocalPath = () => {
+    const connections = StorageServiceManager.getStoredConnections();
+    const localConnections = connections.filter(conn => conn.url.startsWith('local://'));
+
+    if (localConnections.length > 0) {
+      // 按最后连接时间排序，获取最近的连接
+      const sorted = localConnections.sort((a, b) => {
+        const aTime = new Date(a.lastConnected || 0).getTime();
+        const bTime = new Date(b.lastConnected || 0).getTime();
+        return bTime - aTime;
+      });
+
+      return sorted[0].url.replace('local://', '');
+    }
+
+    return '';
+  };
+
   useEffect(() => {
     // 检查用户是否主动断开了连接
     const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
@@ -40,6 +62,9 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
         // 根据连接类型设置存储类型
         if (defaultConnection.url.startsWith('local://')) {
           setStorageType('local');
+          // 提取本地路径（移除 local:// 前缀）
+          const localPath = defaultConnection.url.replace('local://', '');
+          setDefaultLocalPath(localPath);
         } else {
           setStorageType('webdav');
           handleSelectStoredConnection(defaultConnection);
@@ -176,6 +201,14 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
                   setUsername('');
                   setPassword('');
                   setIsPasswordFromStorage(false);
+
+                  // 如果切换到本地存储，尝试填充最近使用的路径
+                  if (type === 'local' && !defaultLocalPath) {
+                    const recentPath = getRecentLocalPath();
+                    if (recentPath) {
+                      setDefaultLocalPath(recentPath);
+                    }
+                  }
                 }
               }}
             />
@@ -306,6 +339,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
                 onConnect={handleLocalConnect}
                 connecting={connecting}
                 error={error}
+                defaultPath={defaultLocalPath}
               />
             )}
           </div>

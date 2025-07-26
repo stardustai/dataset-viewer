@@ -260,6 +260,29 @@ async fn cancel_download(filename: String) -> Result<String, String> {
     DOWNLOAD_MANAGER.cancel_download(&filename)
 }
 
+// 系统对话框命令
+
+/// 显示文件夹选择对话框
+#[tauri::command]
+async fn show_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let folder = app
+        .dialog()
+        .file()
+        .set_title("选择目录")
+        .blocking_pick_folder();
+
+    match folder {
+        Some(path) => {
+            let path_buf = path.into_path()
+                .map_err(|e| format!("Failed to get path: {}", e))?;
+            Ok(Some(path_buf.to_string_lossy().to_string()))
+        },
+        None => Ok(None),
+    }
+}
+
 // 压缩包处理命令
 
 /// 分析压缩包结构
@@ -437,6 +460,8 @@ pub fn run() {
             // 下载进度命令
             download_file_with_progress,
             cancel_download,
+            // 系统对话框命令
+            show_folder_dialog,
             // 压缩包处理命令
             analyze_archive,
             get_file_preview,

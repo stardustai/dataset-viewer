@@ -28,7 +28,8 @@ export class LocalStorageClient extends BaseStorageClient {
    * 构建文件URL（本地文件路径）
    */
   protected buildFileUrl(path: string): string {
-    return this.buildFullPath(path);
+    // 对于本地文件，返回相对路径，让后端处理完整路径构建
+    return path;
   }
 
   /**
@@ -65,10 +66,9 @@ export class LocalStorageClient extends BaseStorageClient {
         throw new Error(`Cannot access path: ${rootPath}`);
       }
 
-      // 保存原始路径用于显示，使用空字符串作为根路径来进行列表操作
-      // 因为后端已经设置了正确的根目录
+      // 保存根路径用于后续的路径构建
       this.displayPath = rootPath;
-      this.rootPath = '';
+      this.rootPath = rootPath; // 保留完整路径，不要设置为空
       this.connected = true;
       console.log('LocalStorageClient: Connected successfully');
       return true;
@@ -89,12 +89,11 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    // 构建完整路径
-    const fullPath = this.buildFullPath(path);
-
+    // 对于本地文件系统，直接传递相对路径给后端
+    // 后端会自动与根目录拼接
     const response = await this.makeRequest({
       method: 'LIST_DIRECTORY',
-      url: fullPath,
+      url: path, // 直接传递路径，不需要构建完整路径
       options: {
         protocol: 'local',
         ...options
@@ -131,11 +130,9 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const fullPath = this.buildFullPath(path);
-
     const response = await this.makeRequest({
       method: 'READ_FILE',
-      url: fullPath,
+      url: path, // 直接传递路径
       options: {
         protocol: 'local',
         start: options?.start,
@@ -161,11 +158,9 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const fullPath = this.buildFullPath(path);
-
     const response = await this.makeRequest({
       method: 'GET_FILE_SIZE',
-      url: fullPath,
+      url: path, // 直接传递路径
       options: {
         protocol: 'local'
       }
@@ -184,12 +179,10 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const fullPath = this.buildFullPath(path);
-
     // 对于本机文件，直接读取为二进制数据
     const arrayBuffer = await this.makeRequestBinary({
       method: 'READ_FILE_BINARY',
-      url: fullPath,
+      url: path, // 直接传递路径
       options: {
         protocol: 'local'
       }
@@ -203,12 +196,10 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const fullPath = this.buildFullPath(path);
-
     // 对于本机文件，可以直接复制而不需要下载
     return await this.downloadWithProgress(
       'COPY_FILE',
-      fullPath,
+      path, // 直接传递路径
       filename,
       {}
     );
@@ -242,6 +233,7 @@ export class LocalStorageClient extends BaseStorageClient {
    * 获取文件的实际路径（用于压缩包处理等需要直接访问文件的场景）
    */
   getActualFilePath(relativePath: string): string {
+    // 对于压缩包处理，我们需要返回完整路径
     return this.buildFullPath(relativePath);
   }
 }
