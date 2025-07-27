@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Settings, Download, RefreshCw, Check, X, Sun, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { updateService } from '../services/updateService';
-import { useTheme } from '../hooks/useTheme';
-import type { UpdateCheckResult } from '../types';
+import { updateService } from '../../services/updateService';
+import { useTheme } from '../../hooks/useTheme';
+import type { UpdateCheckResult } from '../../types';
 
 interface SettingsPanelProps {
   isOpen: boolean;

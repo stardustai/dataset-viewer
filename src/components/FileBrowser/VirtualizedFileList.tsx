@@ -12,8 +12,8 @@ import {
   FileSpreadsheet,
   Archive
 } from 'lucide-react';
-import { WebDAVFile } from '../types';
-import { getFileType } from '../utils/fileTypes';
+import { WebDAVFile } from '../../types';
+import { getFileType } from '../../utils/fileTypes';
 
 interface VirtualizedFileListProps {
   files: WebDAVFile[];

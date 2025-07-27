@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Archive, Search, Copy, AlertCircle, Folder } from 'lucide-react';
-import { ArchiveInfo, ArchiveEntry, FilePreview } from '../types';
-import { CompressionService } from '../services/compression';
-import { copyToClipboard, showCopyToast } from '../utils/clipboard';
+import { ArchiveInfo, ArchiveEntry, FilePreview } from '../../types';
+import { CompressionService } from '../../services/compression';
+import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 
 import { VirtualizedArchiveList } from './VirtualizedArchiveList';
-import { LoadingDisplay, ErrorDisplay, StatusDisplay } from './common';
+import { LoadingDisplay, ErrorDisplay, StatusDisplay } from '../common';
 import { useTranslation } from 'react-i18next';
 
 // 文件大小格式化工具函数

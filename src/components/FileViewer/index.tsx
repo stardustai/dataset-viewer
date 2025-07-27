@@ -18,15 +18,15 @@ import {
   Archive,
   Copy
 } from 'lucide-react';
-import { WebDAVFile, SearchResult } from '../types';
-import { StorageServiceManager } from '../services/storage';
+import { WebDAVFile, SearchResult } from '../../types';
+import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
-import { LanguageSwitcher } from './LanguageSwitcher';
-import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../utils/fileTypes';
+import { LanguageSwitcher } from '../LanguageSwitcher';
+import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../../utils/fileTypes';
 import { ArchiveViewer } from './ArchiveViewer';
-import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common';
-import { copyToClipboard, showCopyToast, normalizePath } from '../utils/clipboard';
+import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common';
+import { copyToClipboard, showCopyToast, normalizePath } from '../../utils/clipboard';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {

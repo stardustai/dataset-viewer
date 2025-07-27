@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
-import { StorageServiceManager } from '../services/storage';
-import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common/StatusDisplay';
+import { StorageServiceManager } from '../../services/storage';
+import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common/StatusDisplay';
 import * as XLSX from 'xlsx';
 
 interface MediaViewerProps {

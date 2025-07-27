@@ -14,16 +14,16 @@ import {
   Settings,
   Copy
 } from 'lucide-react';
-import { WebDAVFile } from '../types';
-import { StorageServiceManager } from '../services/storage';
-import { BaseStorageClient } from '../services/storage/BaseStorageClient';
-import { navigationHistoryService } from '../services/navigationHistory';
-import { LanguageSwitcher } from './LanguageSwitcher';
+import { WebDAVFile } from '../../types';
+import { StorageServiceManager } from '../../services/storage';
+import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
+import { navigationHistoryService } from '../../services/navigationHistory';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
-import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from './common';
-import { copyToClipboard, normalizePath, showCopyToast } from '../utils/clipboard';
+import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from '../common';
+import { copyToClipboard, normalizePath, showCopyToast } from '../../utils/clipboard';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string, storageClient?: BaseStorageClient) => void;
