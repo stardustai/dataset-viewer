@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle,
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Copy } from 'lucide-react';
-import { copyToClipboard, showCopyToast } from '../utils/clipboard';
+import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 
 interface VirtualizedTextViewerProps {
   content: string;

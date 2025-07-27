@@ -12,8 +12,9 @@ import {
   FileSpreadsheet,
   Archive
 } from 'lucide-react';
-import { WebDAVFile } from '../types';
-import { getFileType } from '../utils/fileTypes';
+import { WebDAVFile } from '../../types';
+import { getFileType } from '../../utils/fileTypes';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface VirtualizedFileListProps {
   files: WebDAVFile[];
@@ -34,6 +35,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   height,
   searchTerm = ''
 }) => {
+  // Use custom hook for responsive behavior
+  const isMobile = useIsMobile();
 
   // 过滤和排序文件
   const processedFiles = useMemo(() => {
@@ -127,9 +130,26 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 格式化日期
+  // 格式化日期 - 移动端显示简洁格式
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString();
+    const date = new Date(dateString);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const isThisYear = date.getFullYear() === now.getFullYear();
+
+    // 移动端使用简洁格式
+    if (isMobile) {
+      if (isToday) {
+        return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      } else if (isThisYear) {
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      } else {
+        return date.toLocaleDateString(undefined, { year: '2-digit', month: 'short' });
+      }
+    }
+
+    // 桌面端使用完整格式
+    return date.toLocaleString();
   };
 
   return (
@@ -137,6 +157,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
       ref={parentRef}
       style={{ height: `${height}px` }}
       className="overflow-auto"
+      data-virtualized-container
     >
       <div
         style={{
@@ -163,13 +184,13 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
             >
               <div
                 onClick={() => onFileClick(file)}
-                className="flex items-center px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
+                className="flex items-center px-4 lg:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
               >
                 {/* 文件图标和名称 */}
-                <div className="flex items-center flex-1 min-w-0 pr-4">
+                <div className="flex items-center flex-1 min-w-0 pr-2 lg:pr-4">
                   {renderFileIcon(file)}
                   <span
-                    className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-md"
+                    className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-32 sm:max-w-48 lg:max-w-md"
                     title={file.basename}
                   >
                     {file.basename}
@@ -180,12 +201,12 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
                 </div>
 
                 {/* 文件大小 */}
-                <div className="w-24 text-sm text-gray-500 dark:text-gray-400 text-right pr-4 flex-shrink-0">
+                <div className="w-16 sm:w-20 lg:w-24 text-sm text-gray-500 dark:text-gray-400 text-right pr-2 lg:pr-4 flex-shrink-0">
                   {file.type === 'file' ? formatFileSize(file.size) : '—'}
                 </div>
 
                 {/* 修改时间 */}
-                <div className="w-48 text-sm text-gray-500 dark:text-gray-400 text-right flex-shrink-0">
+                <div className="w-24 sm:w-32 lg:w-48 text-sm text-gray-500 dark:text-gray-400 text-right flex-shrink-0">
                   {formatDate(file.lastmod)}
                 </div>
               </div>

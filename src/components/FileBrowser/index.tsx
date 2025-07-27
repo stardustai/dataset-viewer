@@ -14,16 +14,16 @@ import {
   Settings,
   Copy
 } from 'lucide-react';
-import { WebDAVFile } from '../types';
-import { StorageServiceManager } from '../services/storage';
-import { BaseStorageClient } from '../services/storage/BaseStorageClient';
-import { navigationHistoryService } from '../services/navigationHistory';
-import { LanguageSwitcher } from './LanguageSwitcher';
+import { WebDAVFile } from '../../types';
+import { StorageServiceManager } from '../../services/storage';
+import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
+import { navigationHistoryService } from '../../services/navigationHistory';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
-import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from './common';
-import { copyToClipboard, normalizePath, showCopyToast } from '../utils/clipboard';
+import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from '../common';
+import { copyToClipboard, normalizePath, showCopyToast } from '../../utils/clipboard';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string, storageClient?: BaseStorageClient) => void;
@@ -100,18 +100,31 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         onDirectoryChange?.(path);
 
         // 恢复滚动位置
-        setTimeout(() => {
+        const restoreScrollPosition = () => {
           if (fileListRef.current) {
             const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
             if (scrollElement) {
               const savedPosition = navigationHistoryService.getScrollPosition(path);
               if (savedPosition) {
+                console.log('Restoring cached scroll position for path:', path, savedPosition);
                 scrollElement.scrollTop = savedPosition.scrollTop;
                 scrollElement.scrollLeft = savedPosition.scrollLeft;
+                return true;
               }
             }
           }
-        }, 50); // 缩短等待时间，因为是缓存数据
+          return false;
+        };
+
+        // 尝试立即恢复，如果失败则延迟重试
+        setTimeout(() => {
+          if (!restoreScrollPosition()) {
+            // 如果第一次尝试失败，再次尝试
+            setTimeout(() => {
+              restoreScrollPosition();
+            }, 50);
+          }
+        }, 20); // 缩短等待时间，因为是缓存数据
 
         return;
       }
@@ -151,18 +164,31 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       onDirectoryChange?.(path);
 
       // 恢复滚动位置
-      setTimeout(() => {
+      const restoreScrollPosition = () => {
         if (fileListRef.current) {
           const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
           if (scrollElement) {
             const savedPosition = navigationHistoryService.getScrollPosition(path);
             if (savedPosition) {
+              console.log('Restoring scroll position for path:', path, savedPosition);
               scrollElement.scrollTop = savedPosition.scrollTop;
               scrollElement.scrollLeft = savedPosition.scrollLeft;
+              return true;
             }
           }
         }
-      }, 100); // 给一点时间让组件渲染完成
+        return false;
+      };
+
+      // 尝试立即恢复，如果失败则延迟重试
+      setTimeout(() => {
+        if (!restoreScrollPosition()) {
+          // 如果第一次尝试失败，再次尝试
+          setTimeout(() => {
+            restoreScrollPosition();
+          }, 100);
+        }
+      }, 50);
 
     } catch (err) {
       setError('Failed to load directory contents');
@@ -200,14 +226,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 初始加载 - 优化避免重复加载
   useEffect(() => {
-    // 如果没有指定初始路径，尝试恢复最后访问的目录
-    const pathToLoad = initialPath || navigationHistoryService.getLastVisitedPath();
-
-    // 只有当目标路径与当前路径不同，或者还没有加载过数据时才加载
-    if (pathToLoad !== currentPath || files.length === 0) {
-      loadDirectory(pathToLoad);
+    // 只在 initialPath 与当前路径不同时才加载
+    if (initialPath !== currentPath) {
+      loadDirectory(initialPath);
     }
-  }, []); // 只在组件挂载时执行一次
+  }, [initialPath, currentPath]);
 
   // 监听滚动事件，实时保存滚动位置
   useEffect(() => {
@@ -403,44 +426,55 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('webdav.browser')}</h1>
+          <div className="flex items-center space-x-2 lg:space-x-4 min-w-0 flex-1">
+            <h1 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{t('webdav.browser')}</h1>
             {connection && (
               <span
-                className="text-sm text-gray-500 dark:text-gray-400 max-w-48 truncate"
+                className="hidden md:block text-sm text-gray-500 dark:text-gray-400 max-w-32 lg:max-w-48 truncate"
                 title={StorageServiceManager.getConnectionDisplayName()}
               >
                 {t('connected.to')} {StorageServiceManager.getConnectionDisplayName()}
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 lg:space-x-4">
             <PerformanceIndicator
               fileCount={files.length}
               isVirtualized={true}
             />
+            {/* 响应式显示/隐藏文件按钮 */}
             <button
               onClick={() => setShowHidden(!showHidden)}
-              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="flex items-center space-x-2 p-2 sm:px-3 sm:py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title={showHidden ? t('hide.hidden.files') : t('show.hidden.files')}
             >
               {showHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span>{showHidden ? t('hide.hidden') : t('show.hidden')}</span>
+              <span className="hidden lg:inline">{showHidden ? t('hide.hidden') : t('show.hidden')}</span>
             </button>
             <LanguageSwitcher />
+            {/* 响应式设置按钮 */}
             <button
               onClick={() => setShowSettings(true)}
-              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="flex items-center space-x-2 p-2 sm:px-3 sm:py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title={t('settings')}
             >
               <Settings className="w-4 h-4" />
-              <span>{t('settings')}</span>
+              <span className="hidden lg:inline">{t('settings')}</span>
             </button>
+            {/* 移动端断开连接按钮 */}
             <button
               onClick={onDisconnect}
-              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="sm:hidden p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              title={t('disconnect')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+            {/* 桌面端断开连接按钮 */}
+            <button
+              onClick={onDisconnect}
+              className="hidden sm:flex items-center px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               {t('disconnect')}
             </button>
@@ -449,12 +483,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2 min-w-0 flex-1">
             <button
               onClick={navigateToHome}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
               title={t('home')}
             >
               <Home className="w-4 h-4 text-gray-600 dark:text-gray-300" />
@@ -463,27 +497,28 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             {currentPath !== '' && (
               <button
                 onClick={navigateUp}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
                 title={t('go.up')}
               >
                 <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
             )}
 
-            <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-300">
+            {/* 面包屑导航 - 移动端优化 */}
+            <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-300 min-w-0 flex-1 overflow-hidden">
               <span
                 onClick={navigateToHome}
-                className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex-shrink-0"
               >
                 {t('home')}
               </span>
 
               {getPathSegments().map((segment, index) => (
                 <React.Fragment key={index}>
-                  <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                  <ChevronRight className="w-3 h-3 lg:w-4 lg:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                   <span
                     onClick={() => navigateToSegment(index)}
-                    className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors inline-block max-w-32 truncate"
+                    className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate max-w-16 sm:max-w-24 lg:max-w-32"
                     title={segment}
                   >
                     {segment}
@@ -494,30 +529,30 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               {/* 复制完整路径按钮 */}
               <button
                 onClick={copyFullPath}
-                className="ml-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                className="ml-1 lg:ml-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
                 title={t('copy.full.path')}
               >
-                <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <Copy className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500 dark:text-gray-400" />
               </button>
             </div>
           </div>
 
           {/* 搜索框和刷新按钮 */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
             {searchTerm && (
-              <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              <div className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                 {t('search.results.count', { count: getFilteredFiles().length })}
               </div>
             )}
 
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <Search className="absolute left-2 lg:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t('search.files')}
-                className="w-64 pl-10 pr-8 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                className="w-32 sm:w-48 lg:w-64 pl-8 lg:pl-10 pr-6 lg:pr-8 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               />
               {searchTerm && (
                 <button
@@ -533,7 +568,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             <button
               onClick={refreshCurrentDirectory}
               disabled={loading}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               title="刷新当前目录"
             >
             <RefreshCw className={`w-4 h-4 text-gray-600 dark:text-gray-300 ${loading && isManualRefresh ? 'animate-spin' : ''}`} />
@@ -567,9 +602,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           {!loading && !error && (
             <>
               {/* 表头 */}
-              <div ref={tableHeaderRef} className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
+              <div ref={tableHeaderRef} className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3">
               <div className="flex items-center">
-                <div className="flex-1 pr-4">
+                <div className="flex-1 pr-2 lg:pr-4">
                   <div
                     className="flex items-center cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
                     onClick={() => handleSort('name')}
@@ -584,7 +619,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="w-24 text-right pr-4">
+                <div className="w-16 sm:w-20 lg:w-24 text-right pr-2 lg:pr-4">
                   <div
                     className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
                     onClick={() => handleSort('size')}
@@ -599,7 +634,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="w-48 text-right">
+                <div className="w-24 sm:w-32 lg:w-48 text-right">
                   <div
                     className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
                     onClick={() => handleSort('modified')}
@@ -627,7 +662,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                   onClearSearch={() => setSearchTerm('')}
                 />
               ) : (
-                <div className="bg-white dark:bg-gray-800">
+                <div ref={fileListRef} className="bg-white dark:bg-gray-800">
                   <VirtualizedFileList
                     files={files}
                     onFileClick={handleItemClick}

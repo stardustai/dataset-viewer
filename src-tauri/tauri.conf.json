@@ -15,7 +15,7 @@
         "title": "WebDAV Viewer 🐝",
         "width": 1200,
         "height": 800,
-        "minWidth": 800,
+        "minWidth": 400,
         "minHeight": 600
       }
     ],

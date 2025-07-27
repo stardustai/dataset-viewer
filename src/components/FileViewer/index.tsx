@@ -18,15 +18,15 @@ import {
   Archive,
   Copy
 } from 'lucide-react';
-import { WebDAVFile, SearchResult } from '../types';
-import { StorageServiceManager } from '../services/storage';
+import { WebDAVFile, SearchResult } from '../../types';
+import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
-import { LanguageSwitcher } from './LanguageSwitcher';
-import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../utils/fileTypes';
+import { LanguageSwitcher } from '../LanguageSwitcher';
+import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../../utils/fileTypes';
 import { ArchiveViewer } from './ArchiveViewer';
-import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from './common';
-import { copyToClipboard, showCopyToast, normalizePath } from '../utils/clipboard';
+import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common';
+import { copyToClipboard, showCopyToast, normalizePath } from '../../utils/clipboard';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
@@ -740,29 +740,29 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 lg:space-x-4 min-w-0 flex-1">
             <button
               onClick={onBack}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
               title={t('viewer.go.back')}
             >
               <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
 
-            <div className="flex items-center space-x-3">
-              {fileType === 'image' && <Image className="w-6 h-6 text-blue-500" />}
-              {fileType === 'video' && <Film className="w-6 h-6 text-purple-500" />}
-              {fileType === 'audio' && <Music className="w-6 h-6 text-pink-500" />}
-              {fileType === 'pdf' && <File className="w-6 h-6 text-red-500" />}
-              {fileType === 'text' && <FileText className="w-6 h-6 text-green-500" />}
-              {fileType === 'archive' && <Archive className="w-6 h-6 text-orange-500" />}
-              {fileType === 'unknown' && <File className="w-6 h-6 text-gray-500" />}
+            <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
+              {fileType === 'image' && <Image className="w-5 h-5 lg:w-6 lg:h-6 text-blue-500 flex-shrink-0" />}
+              {fileType === 'video' && <Film className="w-5 h-5 lg:w-6 lg:h-6 text-purple-500 flex-shrink-0" />}
+              {fileType === 'audio' && <Music className="w-5 h-5 lg:w-6 lg:h-6 text-pink-500 flex-shrink-0" />}
+              {fileType === 'pdf' && <File className="w-5 h-5 lg:w-6 lg:h-6 text-red-500 flex-shrink-0" />}
+              {fileType === 'text' && <FileText className="w-5 h-5 lg:w-6 lg:h-6 text-green-500 flex-shrink-0" />}
+              {fileType === 'archive' && <Archive className="w-5 h-5 lg:w-6 lg:h-6 text-orange-500 flex-shrink-0" />}
+              {fileType === 'unknown' && <File className="w-5 h-5 lg:w-6 lg:h-6 text-gray-500 flex-shrink-0" />}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 lg:space-x-2">
                   <h1
-                    className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-lg"
+                    className="text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-32 sm:max-w-48 lg:max-w-lg"
                     title={file.basename}
                   >
                     {file.basename}
@@ -770,16 +770,16 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                   {/* 复制完整路径按钮 */}
                   <button
                     onClick={copyFullPath}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
                     title={t('copy.full.path')}
                   >
-                    <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <Copy className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500 dark:text-gray-400" />
                   </button>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">
                   {formatFileSize(file.size)} • {isText ? getLanguageFromExtension(getFileExtension(file.basename)) : fileType}
                   {isLargeFile && (
-                    <span>
+                    <span className="hidden sm:inline">
                       {' • '}
                       {t('viewer.position.info', {
                         current: formatFileSize(currentFilePosition + loadedContentSize),
@@ -793,21 +793,23 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0">
             <LanguageSwitcher />
+            {/* 响应式下载按钮 */}
             <button
               onClick={downloadFile}
-              className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
+              className="flex items-center space-x-2 p-2 sm:px-4 sm:py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
+              title={t('viewer.download')}
             >
               <Download className="w-4 h-4" />
-              <span>{t('viewer.download')}</span>
+              <span className="hidden lg:inline">{t('viewer.download')}</span>
             </button>
           </div>
         </div>
 
         {/* Search Bar - Only for text files */}
         {isText && (
-          <div className="mt-4 flex items-center space-x-4">
+          <div className="mt-4 flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0 lg:space-x-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
@@ -830,114 +832,116 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
               )}
             </div>
 
-            {searchLoading && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
-            {fullFileSearchLoading && <Loader2 className="w-4 h-4 animate-spin text-green-600" />}
+            <div className="flex items-center justify-between lg:justify-start space-x-2 lg:space-x-4">
+              {searchLoading && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
+              {fullFileSearchLoading && <Loader2 className="w-4 h-4 animate-spin text-green-600" />}
 
-            {isLargeFile && (
-              <div className="flex items-center space-x-2">
-                <label className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                  <input
-                    type="checkbox"
-                    checked={fullFileSearchMode}
-                    onChange={(e) => setFullFileSearchMode(e.target.checked)}
-                    className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
-                  />
-                  <span>{t('search.entire.file')}</span>
-                </label>
-              </div>
-            )}
+              {isLargeFile && (
+                <div className="flex items-center space-x-2">
+                  <label className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={fullFileSearchMode}
+                      onChange={(e) => setFullFileSearchMode(e.target.checked)}
+                      className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
+                    />
+                    <span className="whitespace-nowrap">{t('search.entire.file')}</span>
+                  </label>
+                </div>
+              )}
 
-            {(() => {
-              const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
-              const isCurrentResultsLimited = fullFileSearchMode ? fullFileSearchLimited : searchResultsLimited;
-              const limitText = fullFileSearchMode ? t('search.results.limited.500') : t('search.results.limited.5000');
-              const limitDescription = fullFileSearchMode ? t('search.sampling.description') : t('search.too.many.results');
+              {(() => {
+                const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
+                const isCurrentResultsLimited = fullFileSearchMode ? fullFileSearchLimited : searchResultsLimited;
+                const limitText = fullFileSearchMode ? t('search.results.limited.500') : t('search.results.limited.5000');
+                const limitDescription = fullFileSearchMode ? t('search.sampling.description') : t('search.too.many.results');
 
-              return currentResults.length > 0 && (
-                <div className="flex items-center space-x-3">
-                  <div className="flex flex-col">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {t('viewer.search.results', {
-                          current: currentSearchIndex + 1,
-                          total: currentResults.length
-                        })}
-                      </span>
-                      {currentSearchIndex >= 0 && currentResults[currentSearchIndex] && (
-                        <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded-full text-xs font-medium">
-                          {t('line.number', { line: currentResults[currentSearchIndex].line })}
+                return currentResults.length > 0 && (
+                  <div className="flex items-center space-x-2 lg:space-x-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center space-x-1 lg:space-x-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {t('viewer.search.results', {
+                            current: currentSearchIndex + 1,
+                            total: currentResults.length
+                          })}
+                        </span>
+                        {currentSearchIndex >= 0 && currentResults[currentSearchIndex] && (
+                          <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded-full text-xs font-medium">
+                            {t('line.number', { line: currentResults[currentSearchIndex].line })}
+                          </span>
+                        )}
+                        {fullFileSearchMode && isLargeFile && (
+                          <span className="hidden sm:inline text-yellow-600 dark:text-yellow-400 text-xs">{t('search.sampling')}</span>
+                        )}
+                        {isCurrentResultsLimited && (
+                          <span className="hidden sm:inline text-orange-600 dark:text-orange-400 text-xs">{limitText}</span>
+                        )}
+                      </div>
+                      {isCurrentResultsLimited && (
+                        <span className="hidden sm:block text-xs text-orange-500 dark:text-orange-400 mt-1">
+                          {limitDescription}
                         </span>
                       )}
-                      {fullFileSearchMode && isLargeFile && (
-                        <span className="text-yellow-600 dark:text-yellow-400 text-xs">{t('search.sampling')}</span>
-                      )}
-                      {isCurrentResultsLimited && (
-                        <span className="text-orange-600 dark:text-orange-400 text-xs">{limitText}</span>
-                      )}
                     </div>
-                    {isCurrentResultsLimited && (
-                      <span className="text-xs text-orange-500 dark:text-orange-400 mt-1">
-                        {limitDescription}
-                      </span>
-                    )}
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={prevResult}
+                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={t('viewer.previous.result')}
+                        disabled={currentResults.length === 0}
+                      >
+                        <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                      </button>
+                      <button
+                        onClick={nextResult}
+                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={t('viewer.next.result')}
+                        disabled={currentResults.length === 0}
+                      >
+                        <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={prevResult}
-                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={t('viewer.previous.result')}
-                      disabled={currentResults.length === 0}
-                    >
-                      <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                    </button>
-                    <button
-                      onClick={nextResult}
-                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={t('viewer.next.result')}
-                      disabled={currentResults.length === 0}
-                    >
-                      <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
 
-          {/* Navigation controls */}
-          <div className="flex items-center space-x-2">
-            {!showPercentInput ? (
-              <button
-                onClick={() => setShowPercentInput(true)}
-                className="px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
-                title={isLargeFile ? t('viewer.jump.percent.large') : t('viewer.jump.percent')}
-              >
-                <Percent className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
-            ) : (
-              <div className="flex items-center space-x-1">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={percentValue}
-                  onChange={(e) => setPercentValue(e.target.value)}
-                  onKeyDown={handlePercentKeyPress}
-                  placeholder="0-100"
-                  className="w-20 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  autoFocus
-                />
-                <span className="text-sm text-gray-500 dark:text-gray-400">%</span>
-                <button
-                  onClick={handlePercentageJump}
-                  className="px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border border-gray-300 dark:border-gray-600"
-                  title={t('viewer.jump')}
-                >
-                  <Move className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                </button>
+              {/* Navigation controls */}
+              <div className="flex items-center space-x-2">
+                {!showPercentInput ? (
+                  <button
+                    onClick={() => setShowPercentInput(true)}
+                    className="px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    title={isLargeFile ? t('viewer.jump.percent.large') : t('viewer.jump.percent')}
+                  >
+                    <Percent className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                  </button>
+                ) : (
+                  <div className="flex items-center space-x-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={percentValue}
+                      onChange={(e) => setPercentValue(e.target.value)}
+                      onKeyDown={handlePercentKeyPress}
+                      placeholder="0-100"
+                      className="w-16 lg:w-20 px-2 lg:px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      autoFocus
+                    />
+                    <span className="text-sm text-gray-500 dark:text-gray-400">%</span>
+                    <button
+                      onClick={handlePercentageJump}
+                      className="px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border border-gray-300 dark:border-gray-600"
+                      title={t('viewer.jump')}
+                    >
+                      <Move className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
         )}
       </header>
 

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Folder, FileText } from 'lucide-react';
-import { ArchiveEntry } from '../types';
+import { ArchiveEntry } from '../../types';
 
 // 文件大小格式化工具函数
 const formatFileSize = (bytes: number): string => {
