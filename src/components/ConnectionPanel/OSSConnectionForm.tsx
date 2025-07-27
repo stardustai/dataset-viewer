@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConnectionConfig } from '../services/storage/types';
-import { StoredConnection } from '../services/connectionStorage';
+import { ConnectionConfig } from '../../services/storage/types';
+import { StoredConnection } from '../../services/connectionStorage';
 
 interface OSSConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;

@@ -230,7 +230,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             <img
               src={mediaUrl}
               alt={fileName}
-              className="max-w-none transition-transform duration-200"
+              className="max-w-full max-h-full object-contain transition-transform duration-200"
               style={{
                 transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
                 transformOrigin: 'center'

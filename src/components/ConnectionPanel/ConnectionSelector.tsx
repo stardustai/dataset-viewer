@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
-import { StoredConnection } from '../services/connectionStorage';
-import { StorageServiceManager } from '../services/storage';
+import { StoredConnection } from '../../services/connectionStorage';
+import { StorageServiceManager } from '../../services/storage';
 
 interface ConnectionSelectorProps {
   onSelect: (connection: StoredConnection) => void;
