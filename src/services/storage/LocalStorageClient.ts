@@ -26,6 +26,26 @@ export class LocalStorageClient extends BaseStorageClient {
   }
 
   /**
+   * 根据连接配置生成连接名称
+   */
+  generateConnectionName(config: ConnectionConfig): string {
+    try {
+      const path = config.url || config.rootPath;
+      if (!path) {
+        return 'Local Files';
+      }
+
+      // 提取路径的最后一部分作为显示名称
+      const pathParts = path.replace(/[\/\\]+$/, '').split(/[\/\\]/);
+      const lastPart = pathParts[pathParts.length - 1] || path;
+
+      return `Local Files(${lastPart})`;
+    } catch (error) {
+      return 'Local Files';
+    }
+  }
+
+  /**
    * 构建文件URL（本地文件路径）
    */
   protected buildFileUrl(path: string): string {

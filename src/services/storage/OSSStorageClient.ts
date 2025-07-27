@@ -34,9 +34,76 @@ export class OSSStorageClient extends BaseStorageClient {
 
     try {
       const url = new URL(this.connection.endpoint);
-      return `${this.connection.bucket}.${url.hostname}`;
+      const hostname = url.hostname;
+
+      // 如果hostname已经包含bucket名称（虚拟主机格式），直接使用hostname
+      if (hostname.startsWith(`${this.connection.bucket}.`)) {
+        return hostname;
+      }
+
+      // 否则添加bucket前缀
+      return `${this.connection.bucket}.${hostname}`;
     } catch {
       return `${this.connection.bucket} (OSS)`;
+    }
+  }
+
+  /**
+   * 根据连接配置生成连接名称
+   */
+  generateConnectionName(config: ConnectionConfig): string {
+    try {
+      const url = config.url;
+
+      if (!url) {
+        return 'OSS';
+      }
+
+      // 处理 oss:// 协议
+      if (url.startsWith('oss://')) {
+        const ossUrl = url.replace('oss://', '');
+        const [host, bucket] = ossUrl.split('/');
+
+        if (bucket && host) {
+          // 提取顶级域名 (最后两部分: domain.com)
+          const hostParts = host.split('.');
+          const topLevelDomain = hostParts.slice(-2).join('.');
+          return `OSS(${bucket}-${topLevelDomain})`;
+        } else {
+          return `OSS(${host})`;
+        }
+      }
+
+      // 处理 HTTPS 格式的 OSS 端点
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+
+      // 检测 OSS 服务 (格式如: bucket.oss-region.domain.com 或 bucket.s3.region.amazonaws.com)
+      if (hostname.includes('.oss') || hostname.includes('.s3.')) {
+        // 尝试提取bucket名称和顶级域名
+        const parts = hostname.split('.');
+
+        if (parts.length >= 3) {
+          const bucket = parts[0]; // 第一部分通常是bucket名称
+
+          // 提取顶级域名 (最后两部分: domain.com)
+          const topLevelDomain = parts.slice(-2).join('.');
+
+          // 检查是否为有效的bucket格式 (bucket.service.*)
+          if (parts[1].includes('oss') || parts[1].includes('s3')) {
+            return `OSS(${bucket}-${topLevelDomain})`;
+          }
+        }
+
+        // 如果无法解析bucket，使用简化格式
+        const topLevelDomain = hostname.split('.').slice(-2).join('.');
+        return `OSS(${topLevelDomain})`;
+      }
+
+      // 默认格式
+      return `OSS(${hostname})`;
+    } catch (error) {
+      return 'OSS';
     }
   }
 

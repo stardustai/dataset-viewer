@@ -43,6 +43,22 @@ export class WebDAVStorageClient extends BaseStorageClient {
     }
   }
 
+  /**
+   * 根据连接配置生成连接名称
+   */
+  generateConnectionName(config: ConnectionConfig): string {
+    try {
+      if (!config.url) {
+        return 'WebDAV';
+      }
+
+      const urlObj = new URL(config.url);
+      return `WebDAV(${urlObj.hostname})`;
+    } catch (error) {
+      return 'WebDAV';
+    }
+  }
+
   async connect(config: ConnectionConfig): Promise<boolean> {
     if (config.type !== 'webdav' || !config.url || !config.username || !config.password) {
       throw new Error('Invalid WebDAV configuration');

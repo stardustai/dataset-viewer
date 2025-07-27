@@ -25,6 +25,11 @@ export abstract class BaseStorageClient implements StorageClient {
   abstract getDisplayName(): string;
 
   /**
+   * 根据连接配置生成连接名称
+   */
+  abstract generateConnectionName(config: ConnectionConfig): string;
+
+  /**
    * 发起存储请求的统一接口
    */
   protected async makeRequest(params: {

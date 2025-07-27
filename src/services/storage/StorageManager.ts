@@ -87,6 +87,20 @@ export class StorageClientFactory {
   static isSupportedType(type: string): type is StorageClientType {
     return ['webdav', 'local', 'oss'].includes(type);
   }
+
+  /**
+   * 生成连接名称
+   */
+  static generateConnectionName(config: ConnectionConfig): string {
+    try {
+      const client = this.createClient(config.type);
+      return client.generateConnectionName(config);
+    } catch (error) {
+      // 如果出错，回退到简单的名称生成
+      console.warn('Failed to generate connection name:', error);
+      return config.type.toUpperCase();
+    }
+  }
 }
 
 /**
@@ -249,7 +263,7 @@ export class StorageServiceManager {
           }
         } else {
           const connection = { url, username, password, connected: true };
-          connectionStorage.saveConnection(connection, connectionName, savePassword);
+          await connectionStorage.saveConnection(connection, connectionName, savePassword);
         }
       }
 
@@ -491,7 +505,7 @@ export class StorageServiceManager {
           password: '',
           connected: true
         };
-        connectionStorage.saveConnection(connection, config.name, false);
+        await connectionStorage.saveConnection(connection, config.name, false);
       }
 
       return true;
@@ -529,7 +543,7 @@ export class StorageServiceManager {
           password: config.password,
           connected: true
         };
-        connectionStorage.saveConnection(connection, config.name || 'OSS(Unknown)', true);
+        await connectionStorage.saveConnection(connection, config.name, true);
       } catch (urlError) {
         // 如果 URL 解析失败，使用备选格式
         const ossUrl = `oss://${config.url.replace(/^https?:\/\//, '')}${config.bucket ? '/' + config.bucket : ''}`;
@@ -539,7 +553,7 @@ export class StorageServiceManager {
           password: config.password,
           connected: true
         };
-        connectionStorage.saveConnection(connection, config.name || 'OSS(Unknown)', true);
+        await connectionStorage.saveConnection(connection, config.name, true);
       }
 
       return true;

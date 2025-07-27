@@ -8,7 +8,7 @@ export interface WebDAVFile {
   etag?: string;
 }
 
-export interface WebDAVConnection {
+export interface StorageConnection {
   url: string;
   username: string;
   password: string;
