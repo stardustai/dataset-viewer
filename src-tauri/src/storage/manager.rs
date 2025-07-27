@@ -5,6 +5,7 @@ use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError
 use super::webdav_client::WebDAVClient;
 use super::local_client::LocalFileSystemClient;
 use super::oss_client::OSSClient;
+use super::huggingface_client::HuggingFaceClient;
 
 pub struct StorageManager {
     clients: HashMap<String, Arc<dyn StorageClient + Send + Sync>>,
@@ -33,6 +34,11 @@ impl StorageManager {
             },
             "oss" => {
                 let mut client = OSSClient::new(config.clone())?;
+                client.connect(config).await?;
+                Arc::new(client)
+            },
+            "huggingface" => {
+                let mut client = HuggingFaceClient::new(config.clone())?;
                 client.connect(config).await?;
                 Arc::new(client)
             },

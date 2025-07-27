@@ -30,6 +30,27 @@ export abstract class BaseStorageClient implements StorageClient {
   abstract generateConnectionName(config: ConnectionConfig): string;
 
   /**
+   * 检查是否支持搜索功能
+   */
+  supportsSearch(): boolean {
+    return false; // 默认不支持，由子类重写
+  }
+
+  /**
+   * 检查是否支持自定义根路径展示
+   */
+  supportsCustomRootDisplay(): boolean {
+    return false; // 默认不支持，由子类重写
+  }
+
+  /**
+   * 获取根路径的显示信息
+   */
+  getRootDisplayInfo(): { showWelcome?: boolean; customMessage?: string } {
+    return {}; // 默认空，由子类重写
+  }
+
+  /**
    * 发起存储请求的统一接口
    */
   protected async makeRequest(params: {
@@ -171,6 +192,32 @@ export abstract class BaseStorageClient implements StorageClient {
       entryPath,
       maxPreviewSize
     });
+  }
+
+  /**
+   * 标准化路径格式 - 所有子类统一使用
+   * @param path 原始路径
+   * @returns 标准化后的路径
+   */
+  protected normalizePath(path: string): string {
+    if (!path) return '';
+
+    // 移除开头的斜杠，确保路径格式一致
+    let cleanPath = path.trim();
+    while (cleanPath.startsWith('/')) {
+      cleanPath = cleanPath.substring(1);
+    }
+
+    return cleanPath;
+  }
+
+  /**
+   * 解析路径信息 - 由子类重写以处理特定格式
+   * @param path 路径字符串
+   * @returns 解析后的路径信息
+   */
+  protected parsePath(path: string): any {
+    return { normalizedPath: this.normalizePath(path) };
   }
 
   /**

@@ -13,6 +13,8 @@ export const fileBrowser = {
   // 搜索功能
   'search.files': '搜索文件名...',
   'search.files.placeholder': '搜索文件...',
+  'search.global': '搜索数据集',
+  'search.datasets': '搜索',
   'no.search.results': '没有找到匹配的文件',
   'try.different.search': '尝试其他搜索词或清除搜索',
   'clear.search': '清除搜索',

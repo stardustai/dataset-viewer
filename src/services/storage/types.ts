@@ -1,5 +1,5 @@
 // 存储类型定义
-export type StorageClientType = 'webdav' | 'oss' | 's3' | 'local';
+export type StorageClientType = 'webdav' | 'oss' | 's3' | 'local' | 'huggingface';
 export interface StorageClient {
   connect(config: ConnectionConfig): Promise<boolean>;
   disconnect(): void;
@@ -25,6 +25,9 @@ export interface ConnectionConfig {
   bucket?: string;  // OSS bucket 名称
   region?: string;  // OSS 区域
   endpoint?: string; // OSS 端点地址（可选，通常从 url 解析）
+  // HuggingFace 特定配置
+  apiToken?: string; // HF API token for private datasets
+  organization?: string; // 组织名称 (可选)
 }
 
 // 统一的分页选项
@@ -48,13 +51,15 @@ export interface DirectoryResult {
 
 // 统一的文件信息接口
 export interface StorageFile {
-  filename: string;
-  basename: string;
+  filename: string;   // 用于内部路径导航和API调用的标识符（如 HF 的 owner:dataset）
+  basename: string;   // 用于UI显示的文件/目录名称（如 owner/dataset）
   lastmod: string;
   size: number;
   type: 'file' | 'directory';
   mime?: string;
   etag?: string;
+  // 扩展元数据
+  metadata?: Record<string, any>;
 }
 
 // 文件内容接口
@@ -62,12 +67,14 @@ export interface FileContent {
   content: string;
   size: number;
   encoding: string;
+  totalSize?: number; // 总文件大小（用于范围请求）
 }
 
 // 读取选项
 export interface ReadOptions {
   start?: number;
   length?: number;
+  end?: number; // 结束位置 (包含)
 }
 
 // 后端请求参数

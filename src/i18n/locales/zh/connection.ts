@@ -19,17 +19,20 @@ export const connection = {
 
   // 存储类型
   'storage.type.select': '选择数据源类型',
-  'storage.type.webdav': 'WebDAV 服务器',
-  'storage.type.webdav.description': '连接到 WebDAV 服务器浏览数据集',
+  'storage.type.webdav': 'WebDAV',
+  'storage.type.webdav.description': 'WebDAV 服务器',
   'storage.type.local': '本机文件',
   'storage.type.local.description': '浏览本机文件系统',
   'storage.type.oss': 'OSS',
   'storage.type.oss.description': '连接到对象存储服务',
+  'storage.type.huggingface': 'HuggingFace',
+  'storage.type.huggingface.description': 'AI 数据集',
 
   // 连接名称格式
   'connection.name.webdav': 'WebDAV({{host}})',
   'connection.name.local': '本机文件({{path}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
+  'connection.name.huggingface': 'Hugging Face({{org}})',
 
   // 表单字段
   'server.url': '服务器地址',
@@ -80,6 +83,8 @@ export const connection = {
   'set.default': '设为默认',
   'unset.default': '取消默认',
   'confirm.delete.connection': '确定要删除这个连接吗？',
+  'deleted': '连接已删除',
+  'undo': '撤销',
 
   // 本地文件系统
   'local.root.path': '根目录路径',
@@ -98,4 +103,24 @@ export const connection = {
 
   // OSS 错误
   'error.oss.connection.failed': 'OSS 连接失败',
+
+  // OSS 帮助信息
+  'oss.help.credentials.title': 'Access Key 获取方式：',
+  'oss.help.step1': '登录对象存储服务控制台（阿里云、AWS、MinIO 等）',
+  'oss.help.step2': '在访问控制或安全凭证页面创建 Access Key',
+  'oss.help.step3': '记录生成的 Access Key ID 和 Secret Access Key',
+  'oss.help.step4': '确保该密钥有访问目标存储桶的权限',
+
+  // Hugging Face 字段
+  'huggingface.apiToken': 'API Token',
+  'huggingface.apiToken.placeholder': 'hf_xxxxxxxx',
+  'huggingface.apiToken.help': '仅在访问私有数据集时需要',
+  'huggingface.organization': '组织',
+  'huggingface.organization.placeholder': 'microsoft, openai, etc.',
+  'huggingface.organization.help': '可选，指定特定组织的数据集',
+  'huggingface.help.token.title': 'API Token 获取方式：',
+  'huggingface.help.token.step1': '访问',
+  'huggingface.help.token.step2': '创建新的访问令牌',
+  'huggingface.help.token.step3': '选择 "Read" 权限即可',
+  'error.huggingface.connection.failed': '连接 Hugging Face 失败',
 };

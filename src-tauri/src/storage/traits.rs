@@ -57,6 +57,7 @@ pub struct StorageRequest {
 
 /// 连接配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConnectionConfig {
     pub protocol: String,
     pub url: Option<String>,

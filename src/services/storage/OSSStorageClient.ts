@@ -191,13 +191,13 @@ export class OSSStorageClient extends BaseStorageClient {
         config: {
           protocol: 'oss',
           url: normalizedEndpoint,
-          access_key: accessKey,
-          secret_key: secretKey,
+          accessKey: accessKey,
+          secretKey: secretKey,
           bucket: bucket,
           region: region,
           username: null,
           password: null,
-          extra_options: null,
+          extraOptions: null,
         }
       });
 

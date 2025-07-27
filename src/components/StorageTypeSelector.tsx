@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Server, Folder, Cloud } from 'lucide-react';
+import { Server, Folder, Cloud, Bot } from 'lucide-react';
 import { StorageClientType } from '../services/storage/types';
 
 interface StorageTypeSelectorProps {
@@ -17,31 +17,37 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
   const storageTypes = [
     {
       type: 'webdav' as StorageClientType,
-      label: t('storage.type.webdav', 'WebDAV'),
+      label: t('storage.type.webdav'),
       icon: Server,
-      description: t('storage.type.webdav.description', '连接到 WebDAV 服务器')
+      description: t('storage.type.webdav.description')
     },
     {
       type: 'oss' as StorageClientType,
-      label: t('storage.type.oss', 'OSS 存储'),
+      label: t('storage.type.oss'),
       icon: Cloud,
-      description: t('storage.type.oss.description', '连接到对象存储服务')
+      description: t('storage.type.oss.description')
+    },
+    {
+      type: 'huggingface' as StorageClientType,
+      label: t('storage.type.huggingface'),
+      icon: Bot,
+      description: t('storage.type.huggingface.description')
     },
     {
       type: 'local' as StorageClientType,
-      label: t('storage.type.local', '本机文件'),
+      label: t('storage.type.local'),
       icon: Folder,
-      description: t('storage.type.local.description', '浏览本机文件系统')
+      description: t('storage.type.local.description')
     }
   ];
 
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        {t('storage.type.select', '选择存储类型')}
+        {t('storage.type.select')}
       </label>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {storageTypes.map(({ type, label, icon: Icon, description }) => (
           <button
             key={type}

@@ -59,7 +59,7 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">{/* 统一使用 space-y-4 */}
       <div>
         <label htmlFor="rootPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {t('local.root.path')}
@@ -108,23 +108,6 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
         </div>
       </div>
 
-      {/* 说明文字 */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <Folder className="h-5 w-5 text-blue-400" />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-              {t('local.permission.notice')}
-            </h3>
-            <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
-              <p>{t('local.permission.description')}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {error && (
         <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -134,10 +117,21 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
       <button
         type="submit"
         disabled={connecting || !rootPath.trim()}
-        className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
+                 text-white font-medium py-2 px-4 rounded-md transition-colors
+                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                 disabled:cursor-not-allowed"
       >
         {connecting ? t('connecting') : t('local.connect')}
       </button>
+
+      {/* 权限说明 */}
+      <div className="text-xs text-gray-500 dark:text-gray-400">
+        <p>
+          <span className="font-medium">{t('local.permission.notice')}：</span>
+          {t('local.permission.description')}
+        </p>
+      </div>
     </form>
   );
 };

@@ -70,16 +70,18 @@ export class WebDAVStorageClient extends BaseStorageClient {
 
       // First establish connection in the Rust backend
       const connected = await invoke<boolean>('storage_connect', {
-        protocol: 'webdav',
-        url: cleanUrl,
-        username: config.username,
-        password: config.password,
-        accessKey: null,
-        secretKey: null,
-        region: null,
-        bucket: null,
-        endpoint: null,
-        extraOptions: null,
+        config: {
+          protocol: 'webdav',
+          url: cleanUrl,
+          username: config.username,
+          password: config.password,
+          accessKey: null,
+          secretKey: null,
+          region: null,
+          bucket: null,
+          endpoint: null,
+          extraOptions: null,
+        }
       });
 
       if (connected) {

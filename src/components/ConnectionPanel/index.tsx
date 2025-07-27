@@ -40,6 +40,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
             onWebDAVConnect={connectionLogic.handleWebDAVConnect}
             onLocalConnect={connectionLogic.handleLocalConnect}
             onOSSConnect={connectionLogic.handleOSSConnect}
+            onHuggingFaceConnect={connectionLogic.handleHuggingFaceConnect}
             onUrlChange={connectionLogic.handleUrlChange}
             onUsernameChange={connectionLogic.handleUsernameChange}
             onPasswordChange={connectionLogic.handlePasswordChange}
