@@ -1,4 +1,4 @@
-import { WebDAVConnection } from '../types';
+import { StorageConnection } from '../types';
 
 export interface StoredConnection {
   id: string;
@@ -11,9 +11,9 @@ export interface StoredConnection {
 }
 
 class ConnectionStorageService {
-  private readonly STORAGE_KEY = 'webdav-connections';
+  private readonly STORAGE_KEY = 'storage-connections';
 
-  // 标准化 WebDAV URL 格式 - 统一以斜杠结尾
+  // 标准化 URL 格式 - 统一以斜杠结尾
   private normalizeUrl(url: string): string {
     try {
       // 移除尾部的多个斜杠，然后统一添加单个斜杠
@@ -55,7 +55,7 @@ class ConnectionStorageService {
   }
 
   // 保存连接配置（可选择保存密码）
-  saveConnection(connection: WebDAVConnection, name?: string, savePassword: boolean = false): string {
+  async saveConnection(connection: StorageConnection, name?: string, savePassword: boolean = false): Promise<string> {
     const connections = this.getStoredConnections();
 
     // 标准化 URL 格式
@@ -73,7 +73,33 @@ class ConnectionStorageService {
     }
 
     const id = this.generateId();
-    const connectionName = name || this.extractNameFromUrl(normalizedUrl);
+
+    // 如果没有提供名称，使用 client 生成名称
+    let connectionName = name;
+    if (!connectionName) {
+      try {
+        // 动态导入避免循环依赖
+        const { StorageClientFactory } = await import('./storage/StorageManager');
+
+        // 确定连接类型
+        let type: 'webdav' | 'oss' | 'local' = 'webdav';
+        if (normalizedUrl.startsWith('local://')) {
+          type = 'local';
+        } else if (normalizedUrl.startsWith('oss://') || this.isOSSEndpoint(normalizedUrl)) {
+          type = 'oss';
+        }
+
+        connectionName = StorageClientFactory.generateConnectionName({
+          type,
+          url: normalizedUrl,
+          username: connection.username,
+          password: connection.password,
+        });
+      } catch (error) {
+        console.warn('Failed to generate connection name with client, using fallback:', error);
+				connectionName = normalizedUrl
+      }
+    }
 
     const storedConnection: StoredConnection = {
       id,
@@ -96,9 +122,7 @@ class ConnectionStorageService {
     connections.push(storedConnection);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
     return id;
-  }
-
-  // 更新最后连接时间
+  }  // 更新最后连接时间
   updateLastConnected(id: string): void {
     const connections = this.getStoredConnections();
     const connection = connections.find(c => c.id === id);
@@ -170,20 +194,14 @@ class ConnectionStorageService {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
-  private extractNameFromUrl(url: string): string {
+  // 检测是否为 OSS 端点
+  private isOSSEndpoint(url: string): boolean {
     try {
-      // 使用标准化后的 URL 生成名称
-      const normalizedUrl = this.normalizeUrl(url);
-      const urlObj = new URL(normalizedUrl);
+      const urlObj = new URL(url);
       const hostname = urlObj.hostname;
-      const pathname = urlObj.pathname;
-
-      if (pathname && pathname !== '/') {
-        return `${hostname}${pathname.replace(/\/$/, '')}`;
-      }
-      return hostname;
-    } catch (error) {
-      return url.replace(/\/+$/, '');
+      return hostname.includes('.oss') || hostname.includes('.s3.') || hostname.includes('amazonaws.com');
+    } catch {
+      return false;
     }
   }
 }
