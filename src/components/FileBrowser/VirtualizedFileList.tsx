@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { WebDAVFile } from '../../types';
 import { getFileType } from '../../utils/fileTypes';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface VirtualizedFileListProps {
   files: WebDAVFile[];
@@ -34,6 +35,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   height,
   searchTerm = ''
 }) => {
+  // Use custom hook for responsive behavior
+  const isMobile = useIsMobile();
 
   // 过滤和排序文件
   const processedFiles = useMemo(() => {
@@ -135,7 +138,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     const isThisYear = date.getFullYear() === now.getFullYear();
 
     // 移动端使用简洁格式
-    if (window.innerWidth < 640) { // sm breakpoint
+    if (isMobile) {
       if (isToday) {
         return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
       } else if (isThisYear) {
