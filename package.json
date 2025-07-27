@@ -1,6 +1,6 @@
 {
-  "name": "webdav-viewer",
-  "displayName": "WebDAV Viewer",
+  "name": "dataset-viewer",
+  "displayName": "Dataset Viewer",
   "private": true,
   "version": "0.3.0",
   "type": "module",

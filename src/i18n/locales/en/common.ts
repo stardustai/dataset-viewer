@@ -35,9 +35,9 @@ export const common = {
   'characters': 'Characters',
 
   // Storage types
-  'storage.type.select': 'Select Storage Type',
-  'storage.type.webdav': 'WebDAV',
-  'storage.type.webdav.description': 'Connect to WebDAV server',
+  'storage.type.select': 'Select Data Source Type',
+  'storage.type.webdav': 'WebDAV Server',
+  'storage.type.webdav.description': 'Connect to WebDAV server for dataset browsing',
   'storage.type.local': 'Local Files',
   'storage.type.local.description': 'Browse local file system',
 

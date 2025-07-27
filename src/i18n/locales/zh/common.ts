@@ -35,9 +35,9 @@ export const common = {
   'characters': '字符数',
 
   // 存储类型
-  'storage.type.select': '选择存储类型',
-  'storage.type.webdav': 'WebDAV',
-  'storage.type.webdav.description': '连接到 WebDAV 服务器',
+  'storage.type.select': '选择数据源类型',
+  'storage.type.webdav': 'WebDAV 服务器',
+  'storage.type.webdav.description': '连接到 WebDAV 服务器浏览数据集',
   'storage.type.local': '本机文件',
   'storage.type.local.description': '浏览本机文件系统',
 

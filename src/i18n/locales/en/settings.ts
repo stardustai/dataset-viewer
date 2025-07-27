@@ -19,6 +19,6 @@ export const settings = {
 
   // About
   'about': 'About',
-  'app.description': 'Modern WebDAV file browser',
+  'app.description': 'Modern dataset viewer tool',
   'app.features': 'Supports large file viewing and fast search',
 };

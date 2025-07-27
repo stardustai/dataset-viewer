@@ -833,6 +833,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c297a1c74b71ae29df00c3e22dd9534821d60eb9af5a0192823fa2acea70c2a"
 
 [[package]]
+name = "dataset-viewer"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "base64 0.21.7",
+ "brotli 3.5.0",
+ "bytes",
+ "chrono",
+ "dirs 5.0.1",
+ "flate2",
+ "futures-util",
+ "hmac",
+ "log",
+ "lz4",
+ "once_cell",
+ "quick-xml 0.31.0",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "tar",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-http",
+ "tauri-plugin-opener",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-util",
+ "url",
+ "urlencoding",
+ "uuid",
+ "zip",
+ "zstd 0.13.3",
+]
+
+[[package]]
 name = "deranged"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5530,46 +5570,6 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "webdav-viewer"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "async-trait",
- "base64 0.21.7",
- "brotli 3.5.0",
- "bytes",
- "chrono",
- "dirs 5.0.1",
- "flate2",
- "futures-util",
- "hmac",
- "log",
- "lz4",
- "once_cell",
- "quick-xml 0.31.0",
- "reqwest 0.11.27",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "tar",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-http",
- "tauri-plugin-opener",
- "thiserror 1.0.69",
- "tokio",
- "tokio-util",
- "url",
- "urlencoding",
- "uuid",
- "zip",
- "zstd 0.13.3",
 ]
 
 [[package]]

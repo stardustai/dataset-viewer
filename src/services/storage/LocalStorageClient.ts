@@ -4,10 +4,10 @@ import {
   DirectoryResult,
   FileContent,
   ListOptions,
-  ReadOptions,
-  StorageFile
+  ReadOptions
 } from './types';
 import { ArchiveInfo, FilePreview } from '../../types';
+import { invoke } from '@tauri-apps/api/core';
 
 /**
  * 本机文件系统存储客户端
@@ -69,23 +69,31 @@ export class LocalStorageClient extends BaseStorageClient {
 
       const rootPath = config.url || config.rootPath!;
 
-      // 通过 Tauri 后端验证路径是否存在且可访问
-      const response = await this.makeRequest({
-        method: 'CHECK_ACCESS',
-        url: rootPath,
-        options: {
-          protocol: 'local'
+      // 使用统一的后端连接命令建立连接
+      const connected = await invoke<boolean>('storage_connect', {
+        config: {
+          protocol: 'local',
+          url: rootPath,
+          accessKey: null,
+          secretKey: null,
+          region: null,
+          bucket: null,
+          endpoint: null,
+          username: null,
+          password: null,
+          extraOptions: null,
         }
       });
 
-      if (response.status !== 200) {
+      if (!connected) {
         throw new Error(`Cannot access path: ${rootPath}`);
       }
 
       // 保存根路径用于后续的路径构建
       this.displayPath = rootPath;
-      this.rootPath = rootPath; // 保留完整路径，不要设置为空
+      this.rootPath = rootPath;
       this.connected = true;
+
       return true;
     } catch (error) {
       console.error('Local storage connection failed:', error);
@@ -95,9 +103,14 @@ export class LocalStorageClient extends BaseStorageClient {
   }
 
   disconnect(): void {
+    // 调用后端断开连接
+    invoke('storage_disconnect').catch(error => {
+      console.error('Failed to disconnect storage:', error);
+    });
+
     this.connected = false;
     this.rootPath = '';
-    this.displayPath = ''; // 清理显示路径
+    this.displayPath = '';
   }
 
   async listDirectory(path: string = '', options?: ListOptions): Promise<DirectoryResult> {
@@ -105,40 +118,25 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    // 对于本地文件系统，直接传递相对路径给后端
-    // 后端会自动与根目录拼接
-    const response = await this.makeRequest({
-      method: 'LIST_DIRECTORY',
-      url: path, // 直接传递路径，不需要构建完整路径
-      options: {
-        protocol: 'local',
-        ...options
-      }
-    });
+    try {
+      // 使用统一的后端命令，直接调用 storage_list_directory
+      const result = await invoke<DirectoryResult>('storage_list_directory', {
+        path,
+        options: options ? {
+          pageSize: options.pageSize,
+          marker: options.marker,
+          prefix: options.prefix,
+          recursive: options.recursive,
+          sortBy: options.sortBy,
+          sortOrder: options.sortOrder,
+        } : null,
+      });
 
-    if (response.status !== 200) {
-      throw new Error(`Failed to list directory: ${response.body}`);
+      return result;
+    } catch (error) {
+      console.error('Failed to list directory:', error);
+      throw new Error(`Failed to list directory: ${error}`);
     }
-
-    const data = JSON.parse(response.body);
-
-    // 转换为统一的文件格式
-    const files: StorageFile[] = data.files.map((file: any) => ({
-      filename: file.filename || file.name || 'Unknown',
-      basename: file.basename || file.filename || file.name || 'Unknown',
-      lastmod: file.lastmod || file.modified || new Date().toISOString(),
-      size: file.size || 0,
-      type: file.type || (file.file_type === 'directory' || file.is_dir ? 'directory' : 'file'),
-      mime: file.mime || file.mime_type,
-      etag: file.etag
-    }));
-
-    return {
-      files,
-      hasMore: false, // 本机文件系统一次返回所有文件
-      path: path,
-      totalCount: files.length
-    };
   }
 
   async getFileContent(path: string, options?: ReadOptions): Promise<FileContent> {

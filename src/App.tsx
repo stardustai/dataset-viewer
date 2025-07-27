@@ -125,7 +125,7 @@ function App() {
   // 主应用区域 - FileBrowser 和 FileViewer 都存在，但只显示其中一个
   return (
     <div className="h-screen page-transition">
-      {/* 文件浏览器 - 始终渲染但可能隐藏 */}
+      {/* 数据浏览器 - 始终渲染但可能隐藏 */}
       <div className={appState === 'viewing' ? 'hidden' : ''}>
         <FileBrowser
           onFileSelect={handleFileSelect}

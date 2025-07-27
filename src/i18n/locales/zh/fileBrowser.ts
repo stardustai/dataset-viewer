@@ -1,6 +1,6 @@
 export const fileBrowser = {
-  // 文件浏览器界面
-  'file.browser': '文件浏览器',
+  // 数据浏览器界面
+  'file.browser': '数据浏览器',
   'go.back': '返回',
   'go.home': '主页',
   'directory.empty': '此目录为空',

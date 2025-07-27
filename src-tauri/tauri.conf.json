@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "WebDAV Viewer",
+  "productName": "Dataset Viewer",
   "version": "0.3.0",
-  "identifier": "ai.stardust.webdav-viewer",
+  "identifier": "ai.stardust.dataset-viewer",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "WebDAV Viewer 🐝",
+        "title": "Dataset Viewer",
         "width": 1200,
         "height": 800,
         "minWidth": 400,
@@ -40,7 +40,7 @@
     "publisher": "Stardust AI",
     "copyright": "Copyright © 2025 Stardust AI. All rights reserved.",
     "category": "Productivity",
-    "shortDescription": "Modern WebDAV file browser with large file support",
-    "longDescription": "A powerful WebDAV browser that supports viewing and searching large text files with efficient memory management and modern UI."
+    "shortDescription": "Modern dataset viewer with large file streaming support",
+    "longDescription": "A powerful dataset viewer that supports multiple storage types (WebDAV, local files, OSS) with efficient streaming for large text files and archives."
   }
 }

@@ -482,8 +482,6 @@ export class StorageServiceManager {
     connectionName?: string
   ): Promise<boolean> {
     try {
-      console.log('StorageServiceManager: Connecting to local storage:', rootPath);
-
       const config: ConnectionConfig = {
         type: 'local',
         url: rootPath, // 使用 url 字段传递根路径
@@ -491,9 +489,7 @@ export class StorageServiceManager {
         name: connectionName || `Local Files(${rootPath})`
       };
 
-      console.log('StorageServiceManager: Using config:', config);
       await this.setCurrentStorage(config);
-      console.log('StorageServiceManager: Successfully connected to local storage');
 
       // 保存连接信息（如果需要）
       if (saveConnection) {
@@ -522,15 +518,12 @@ export class StorageServiceManager {
    */
   static async connectToOSS(config: ConnectionConfig): Promise<boolean> {
     try {
-      console.log('StorageServiceManager: Connecting to OSS storage');
-
       // 验证配置
       if (!config.url || !config.username || !config.password) {
         throw new Error('OSS connection requires endpoint, access key, and secret key');
       }
 
       await this.setCurrentStorage(config);
-      console.log('StorageServiceManager: Successfully connected to OSS storage');
 
       // 保存连接信息 - 使用 oss:// 协议格式
       try {

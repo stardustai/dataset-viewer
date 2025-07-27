@@ -224,13 +224,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     loadDirectory(currentPath, true, true); // 标记为手动刷新和强制重新加载
   };
 
-  // 初始加载 - 优化避免重复加载
+  // 初始加载 - 修复避免重复加载的逻辑
   useEffect(() => {
-    // 只在 initialPath 与当前路径不同时才加载
-    if (initialPath !== currentPath) {
+    // 如果是首次加载（currentPath 为空）或者 initialPath 与当前路径不同时才加载
+    if (!currentPath || initialPath !== currentPath) {
       loadDirectory(initialPath);
     }
-  }, [initialPath, currentPath]);
+  }, [initialPath]);
 
   // 监听滚动事件，实时保存滚动位置
   useEffect(() => {

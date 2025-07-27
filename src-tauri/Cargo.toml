@@ -1,7 +1,7 @@
 [package]
-name = "webdav-viewer"
+name = "dataset-viewer"
 version = "0.1.0"
-description = "WebDAV Viewer - A modern WebDAV file browser"
+description = "Dataset Viewer - A modern multi-source dataset browser"
 authors = ["you"]
 edition = "2021"
 
