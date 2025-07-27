@@ -25,17 +25,32 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 ## 📸 Screenshots
 
 <div align="center">
-
-| Connection Setup | File Browser |
-|:---------------:|:------------:|
-| ![Connection Setup](screenshots/connect.png) | ![File Browser](screenshots/home.png) |
-| *Easy connection management with multiple storage types* | *Modern file browser with intuitive navigation and theme support* |
-
-| Text Viewer | Archive Viewer |
-|:-----------:|:-------------:|
-| ![Text Viewer](screenshots/text.png) | ![Archive Viewer](screenshots/archive.png) |
-| *Advanced text viewer with search capabilities and virtualized rendering* | *Archive streaming with file preview and efficient content browsing* |
-
+<table width="100%">
+  <tr>
+    <td align="center" width="50%">
+      <b>Connection Setup</b><br>
+      <img src="screenshots/connect.png" alt="Connection Setup" style="max-width:100%;">
+      <br><em>Easy connection management with multiple storage types</em>
+    </td>
+    <td align="center" width="50%">
+      <b>File Browser</b><br>
+      <img src="screenshots/home.png" alt="File Browser" style="max-width:100%;">
+      <br><em>Modern file browser with intuitive navigation and theme support</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <b>Text Viewer</b><br>
+      <img src="screenshots/text.png" alt="Text Viewer" style="max-width:100%;">
+      <br><em>Advanced text viewer with search capabilities and virtualized rendering</em>
+    </td>
+    <td align="center" width="50%">
+      <b>Archive Viewer</b><br>
+      <img src="screenshots/archive.png" alt="Archive Viewer" style="max-width:100%;">
+      <br><em>Archive streaming with file preview and efficient content browsing</em>
+    </td>
+  </tr>
+</table>
 </div>
 
 ## 📚 Supported File Types

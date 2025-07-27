@@ -25,17 +25,32 @@
 ## 📸 界面截图
 
 <div align="center">
-
-| 连接设置 | 数据浏览器 |
-|:--------:|:----------:|
-| ![连接设置](screenshots/connect.png) | ![数据浏览器](screenshots/home.png) |
-| *简便的连接管理，支持多种存储类型* | *现代化数据浏览器，具有直观导航和主题支持* |
-
-| 文本查看器 | 压缩包查看器 |
-|:----------:|:------------:|
-| ![文本查看器](screenshots/text.png) | ![压缩包查看器](screenshots/archive.png) |
-| *高级文本查看器，具有搜索功能和虚拟化渲染* | *压缩包流式预览，支持文件预览和高效内容浏览* |
-
+<table width="100%">
+  <tr>
+    <td align="center" width="50%">
+      <b>连接设置</b><br>
+      <img src="screenshots/connect.png" alt="连接设置" style="max-width:100%;">
+      <br><em>简便的连接管理，支持多种存储类型</em>
+    </td>
+    <td align="center" width="50%">
+      <b>数据浏览器</b><br>
+      <img src="screenshots/home.png" alt="数据浏览器" style="max-width:100%;">
+      <br><em>现代化数据浏览器，具有直观导航和主题支持</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <b>文本查看器</b><br>
+      <img src="screenshots/text.png" alt="文本查看器" style="max-width:100%;">
+      <br><em>高级文本查看器，具有搜索功能和虚拟化渲染</em>
+    </td>
+    <td align="center" width="50%">
+      <b>压缩包查看器</b><br>
+      <img src="screenshots/archive.png" alt="压缩包查看器" style="max-width:100%;">
+      <br><em>压缩包流式预览，支持文件预览和高效内容浏览</em>
+    </td>
+  </tr>
+</table>
 </div>
 
 ## 📚 支持的文件类型
