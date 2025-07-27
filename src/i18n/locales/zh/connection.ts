@@ -1,6 +1,6 @@
 export const connection = {
   // 应用标题和描述
-  'webdav.browser': '数据集查看器',
+  'app.name': '数据集查看器',
   'connect.storage': '连接到数据源或本地文件系统',
   'app.tagline': '轻松查看和搜索您的数据集',
   'app.description': '跨平台数据集查看工具，支持 WebDAV、对象存储和本地文件系统，提供流式传输和虚拟滚动等强大功能，专为大数据集设计。',

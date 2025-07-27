@@ -429,7 +429,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:space-x-4 min-w-0 flex-1">
-            <h1 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{t('webdav.browser')}</h1>
+            <h1 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{t('app.name')}</h1>
             {connection && (
               <span
                 className="hidden md:block text-sm text-gray-500 dark:text-gray-400 max-w-32 lg:max-w-48 truncate"

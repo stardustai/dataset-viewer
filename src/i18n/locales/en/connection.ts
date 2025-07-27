@@ -1,6 +1,6 @@
 export const connection = {
   // Application title and description
-  'webdav.browser': 'Dataset Viewer',
+  'app.name': 'Dataset Viewer',
   'connect.storage': 'Connect to data source or local file system',
   'app.tagline': 'Easily view and search your datasets',
   'app.description': 'Cross-platform dataset viewer supporting WebDAV, object storage, and local file systems with powerful features like streaming and virtual scrolling, designed for large datasets.',
