@@ -154,6 +154,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
       ref={parentRef}
       style={{ height: `${height}px` }}
       className="overflow-auto"
+      data-virtualized-container
     >
       <div
         style={{

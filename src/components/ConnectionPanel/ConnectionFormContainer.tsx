@@ -6,7 +6,7 @@ import { ConnectionSelector } from './ConnectionSelector';
 import { StorageTypeSelector } from '../StorageTypeSelector';
 import { LocalConnectionForm } from './LocalConnectionForm';
 import { OSSConnectionForm } from './OSSConnectionForm';
-import { WebDAVForm } from './WebDAVForm';
+import { WebDAVConnectionForm } from './WebDAVConnectionForm';
 
 interface ConnectionFormContainerProps {
   storageType: StorageClientType;
@@ -95,7 +95,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
 
           {/* 根据存储类型显示不同的表单 */}
           {storageType === 'webdav' ? (
-            <WebDAVForm
+            <WebDAVConnectionForm
               url={url}
               username={username}
               password={password}

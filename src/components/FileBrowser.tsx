@@ -100,18 +100,31 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         onDirectoryChange?.(path);
 
         // 恢复滚动位置
-        setTimeout(() => {
+        const restoreScrollPosition = () => {
           if (fileListRef.current) {
             const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
             if (scrollElement) {
               const savedPosition = navigationHistoryService.getScrollPosition(path);
               if (savedPosition) {
+                console.log('Restoring cached scroll position for path:', path, savedPosition);
                 scrollElement.scrollTop = savedPosition.scrollTop;
                 scrollElement.scrollLeft = savedPosition.scrollLeft;
+                return true;
               }
             }
           }
-        }, 50); // 缩短等待时间，因为是缓存数据
+          return false;
+        };
+
+        // 尝试立即恢复，如果失败则延迟重试
+        setTimeout(() => {
+          if (!restoreScrollPosition()) {
+            // 如果第一次尝试失败，再次尝试
+            setTimeout(() => {
+              restoreScrollPosition();
+            }, 50);
+          }
+        }, 20); // 缩短等待时间，因为是缓存数据
 
         return;
       }
@@ -151,18 +164,31 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       onDirectoryChange?.(path);
 
       // 恢复滚动位置
-      setTimeout(() => {
+      const restoreScrollPosition = () => {
         if (fileListRef.current) {
           const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
           if (scrollElement) {
             const savedPosition = navigationHistoryService.getScrollPosition(path);
             if (savedPosition) {
+              console.log('Restoring scroll position for path:', path, savedPosition);
               scrollElement.scrollTop = savedPosition.scrollTop;
               scrollElement.scrollLeft = savedPosition.scrollLeft;
+              return true;
             }
           }
         }
-      }, 100); // 给一点时间让组件渲染完成
+        return false;
+      };
+
+      // 尝试立即恢复，如果失败则延迟重试
+      setTimeout(() => {
+        if (!restoreScrollPosition()) {
+          // 如果第一次尝试失败，再次尝试
+          setTimeout(() => {
+            restoreScrollPosition();
+          }, 100);
+        }
+      }, 50);
 
     } catch (err) {
       setError('Failed to load directory contents');
@@ -200,14 +226,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 初始加载 - 优化避免重复加载
   useEffect(() => {
-    // 如果没有指定初始路径，尝试恢复最后访问的目录
-    const pathToLoad = initialPath || navigationHistoryService.getLastVisitedPath();
-
-    // 只有当目标路径与当前路径不同，或者还没有加载过数据时才加载
-    if (pathToLoad !== currentPath || files.length === 0) {
-      loadDirectory(pathToLoad);
+    // 只在 initialPath 与当前路径不同时才加载
+    if (initialPath !== currentPath) {
+      loadDirectory(initialPath);
     }
-  }, []); // 只在组件挂载时执行一次
+  }, [initialPath, currentPath]);
 
   // 监听滚动事件，实时保存滚动位置
   useEffect(() => {
@@ -639,7 +662,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                   onClearSearch={() => setSearchTerm('')}
                 />
               ) : (
-                <div className="bg-white dark:bg-gray-800">
+                <div ref={fileListRef} className="bg-white dark:bg-gray-800">
                   <VirtualizedFileList
                     files={files}
                     onFileClick={handleItemClick}

@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Lock } from 'lucide-react';
 
-interface WebDAVFormProps {
+interface WebDAVConnectionFormProps {
   url: string;
   username: string;
   password: string;
@@ -16,7 +16,7 @@ interface WebDAVFormProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
-export const WebDAVForm: React.FC<WebDAVFormProps> = ({
+export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
   url,
   username,
   password,

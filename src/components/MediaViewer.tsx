@@ -25,6 +25,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [showProgress, setShowProgress] = useState(false); // 是否显示进度条
   const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [activeSheet, setActiveSheet] = useState(0);
@@ -43,13 +44,21 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     setLoading(true);
     setError('');
     setLoadingProgress(0);
+    setShowProgress(false);
+
+    // 设置一个延迟显示进度条，避免快速加载时闪烁
+    const showProgressTimer = setTimeout(() => {
+      setShowProgress(true);
+    }, 300); // 300ms后才显示进度条
+
+    let progressInterval: NodeJS.Timeout | null = null;
 
     try {
       // 模拟进度更新，因为 Tauri 的 HTTP 请求目前不支持实时进度
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setLoadingProgress(prev => {
           if (prev >= 90) {
-            clearInterval(progressInterval);
+            if (progressInterval) clearInterval(progressInterval);
             return prev;
           }
           return prev + Math.random() * 20;
@@ -60,7 +69,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       const response = await StorageServiceManager.getFileBlob(filePath);
 
       // 完成下载，设置进度为100%
-      clearInterval(progressInterval);
+      if (progressInterval) clearInterval(progressInterval);
+      clearTimeout(showProgressTimer); // 清除进度条显示定时器
       setLoadingProgress(100);
 
       if (fileType === 'spreadsheet') {
@@ -87,6 +97,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       console.error('Failed to load media:', err);
       setError(t('viewer.load.error'));
       setLoadingProgress(0);
+      setShowProgress(false);
+      // 清理定时器
+      if (progressInterval) clearInterval(progressInterval);
+      clearTimeout(showProgressTimer);
     } finally {
       setLoading(false);
     }
@@ -199,12 +213,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   if (loading) {
     return (
       <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">
-        <div className="w-full bg-gray-200 dark:bg-gray-700 h-1">
-          <div
-            className="bg-indigo-600 h-1 transition-all duration-300"
-            style={{ width: `${loadingProgress}%` }}
-          />
-        </div>
+        {showProgress && (
+          <div className="w-full bg-gray-200 dark:bg-gray-700 h-1">
+            <div
+              className="bg-indigo-600 h-1 transition-all duration-300"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+        )}
         <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
           <LoadingDisplay
             message={`${t('loading')} ${fileName}`}
