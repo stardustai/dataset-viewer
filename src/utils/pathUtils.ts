@@ -3,8 +3,6 @@
  * 为不同存储类型提供一致的路径处理方法
  */
 
-import { StorageClientType } from '../services/storage/types';
-
 /**
  * 路径信息基础接口
  */
@@ -147,38 +145,25 @@ export class PathProcessor {
 
   /**
    * 构建文件导航路径
-   * @param storageType 存储类型
    * @param currentPath 当前路径
    * @param fileName 文件名（filename 字段）
    */
-  static buildNavigationPath(storageType: StorageClientType, currentPath: string, fileName: string): string {
+  static buildNavigationPath(currentPath: string, fileName: string): string {
     const normalizedCurrent = this.normalizePath(currentPath);
 
-    switch (storageType) {
-      case 'huggingface':
-        // HuggingFace 使用特殊的路径格式
-        return normalizedCurrent ? `${normalizedCurrent}/${fileName}` : fileName;
-
-      case 'oss':
-      case 'webdav':
-      case 'local':
-      default:
-        // 标准路径拼接
-        return normalizedCurrent ? `${normalizedCurrent}/${fileName}` : fileName;
-    }
+    // 所有存储类型使用相同的路径拼接逻辑
+    return normalizedCurrent ? `${normalizedCurrent}/${fileName}` : fileName;
   }
 
   /**
    * 构建文件显示路径
-   * @param storageType 存储类型（预留用于特殊处理）
    * @param currentPath 当前路径
    * @param baseName 文件基础名（basename 字段）
    */
-  static buildDisplayPath(storageType: StorageClientType, currentPath: string, baseName: string): string {
+  static buildDisplayPath(currentPath: string, baseName: string): string {
     const normalizedCurrent = this.normalizePath(currentPath);
 
     // 显示路径通常使用 basename，格式相对统一
-    // 未来可以根据 storageType 做特殊处理
     return normalizedCurrent ? `${normalizedCurrent}/${baseName}` : baseName;
   }
 

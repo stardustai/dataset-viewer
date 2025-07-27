@@ -156,7 +156,7 @@ export class StorageServiceManager {
     let connectionData;
 
     switch (config.type) {
-      case 'webdav':
+      case 'webdav': {
         connectionData = {
           url: config.url!,
           username: config.username!,
@@ -165,8 +165,9 @@ export class StorageServiceManager {
         };
         await connectionStorage.saveConnection(connectionData, config.name, true);
         break;
+      }
 
-      case 'local':
+      case 'local': {
         connectionData = {
           url: `local://${config.rootPath || config.url!}`,
           username: 'local',
@@ -175,8 +176,9 @@ export class StorageServiceManager {
         };
         await connectionStorage.saveConnection(connectionData, config.name, false);
         break;
+      }
 
-      case 'oss':
+      case 'oss': {
         const endpointUrl = new URL(config.url!);
         const ossUrl = `oss://${endpointUrl.hostname}${config.bucket ? '/' + config.bucket : ''}`;
         connectionData = {
@@ -192,8 +194,9 @@ export class StorageServiceManager {
         };
         await connectionStorage.saveConnection(connectionData, config.name, true);
         break;
+      }
 
-      case 'huggingface':
+      case 'huggingface': {
         const hfUrl = `huggingface://${config.organization || 'hub'}`;
         connectionData = {
           url: hfUrl,
@@ -207,6 +210,7 @@ export class StorageServiceManager {
         };
         await connectionStorage.saveConnection(connectionData, config.name, true);
         break;
+      }
     }
   }
 

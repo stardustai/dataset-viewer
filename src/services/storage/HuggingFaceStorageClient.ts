@@ -70,6 +70,11 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
 
     const pathInfo = PathProcessor.parseHuggingFacePath(path);
     if (!pathInfo) {
+      // 验证路径格式，避免构建无效 URL
+      if (path.includes('..') || path.includes('//')) {
+        throw new Error('Invalid path format');
+      }
+
       // 如果无法解析路径，假设它是一个简单的数据集名称
       if (org && !path.includes('/')) {
         // 如果指定了组织且路径不包含斜杠，自动添加组织前缀

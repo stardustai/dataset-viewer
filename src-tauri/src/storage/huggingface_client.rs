@@ -202,7 +202,7 @@ impl HuggingFaceClient {
     }
 
     /// 列出数据集文件
-    async fn list_dataset_files(&mut self, dataset_id: &str, subpath: &str) -> Result<DirectoryResult, StorageError> {
+    async fn list_dataset_files(&self, dataset_id: &str, subpath: &str) -> Result<DirectoryResult, StorageError> {
         // 使用 tree API 获取完整的文件信息
         let url = if subpath.is_empty() {
             format!("{}/datasets/{}/tree/main", self.api_url, dataset_id)
@@ -391,7 +391,6 @@ impl HuggingFaceClient {
 }
 
 #[async_trait]
-#[async_trait]
 impl StorageClient for HuggingFaceClient {
     async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError> {
         self.config = config.clone();
@@ -435,12 +434,7 @@ impl StorageClient for HuggingFaceClient {
         // 尝试解析数据集路径
         match self.parse_path(path) {
             Ok((dataset_id, file_path)) => {
-                // 创建临时客户端实例来处理数据集文件列表
-                let mut temp_client = HuggingFaceClient::new(self.config.clone())?;
-                temp_client.connected.store(true, Ordering::Relaxed);
-                temp_client.api_token = self.api_token.clone();
-
-                temp_client.list_dataset_files(&dataset_id, &file_path).await
+                self.list_dataset_files(&dataset_id, &file_path).await
             }
             Err(_) => {
                 // 如果路径解析失败，尝试将其视为组织名称

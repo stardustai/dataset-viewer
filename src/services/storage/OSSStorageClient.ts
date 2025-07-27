@@ -501,7 +501,7 @@ export class OSSStorageClient extends BaseStorageClient {
   /**
    * 标准化路径
    */
-  private normalizePath(path: string): string {
+  protected normalizePath(path: string): string {
     // 如果路径是完整的 oss:// URL，提取对象键部分
     if (path.startsWith('oss://')) {
       try {

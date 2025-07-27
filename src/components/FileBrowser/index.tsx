@@ -381,14 +381,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const handleItemClick = (file: WebDAVFile) => {
     if (file.type === 'directory') {
       // 使用统一的路径处理方法构建导航路径
-      const storageType = StorageServiceManager.getCurrentConnection()?.type || 'webdav';
-      const newPath = PathProcessor.buildNavigationPath(storageType, currentPath, file.filename);
+      const newPath = PathProcessor.buildNavigationPath(currentPath, file.filename);
       loadDirectory(newPath);
     } else {
       // 处理所有类型的文件，不仅仅是文本文件
       // 使用统一的路径处理方法构建文件路径
-      const storageType = StorageServiceManager.getCurrentConnection()?.type || 'webdav';
-      const fullPath = PathProcessor.buildDisplayPath(storageType, currentPath, file.basename);
+      const fullPath = PathProcessor.buildDisplayPath(currentPath, file.basename);
 
       const currentStorageClient = StorageServiceManager.getCurrentClient();
       onFileSelect(file, fullPath, currentStorageClient);
