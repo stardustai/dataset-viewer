@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="./logo.png">
-    <title data-i18n="page.title">WebDAV Viewer - 现代化 WebDAV 浏览器</title>
-    <meta name="description" content="100% AI 生成的现代化 WebDAV 浏览器，支持大文件查看、快速搜索和跨平台使用" data-i18n-attr="content:page.description">
-    <meta name="keywords" content="WebDAV,文件浏览器,大文件查看,AI生成,Tauri,React" data-i18n-attr="content:page.keywords">
+    <title data-i18n="page.title">Dataset Viewer - 现代化数据集查看器</title>
+    <meta name="description" content="100% AI 生成的现代化数据集查看器，支持大数据集查看、快速搜索和跨平台使用" data-i18n-attr="content:page.description">
+    <meta name="keywords" content="数据集查看器,Dataset Viewer,大数据集查看,WebDAV,AI生成,Tauri,React" data-i18n-attr="content:page.keywords">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .gradient-bg {
@@ -81,10 +81,10 @@
                     </div>
                 </div>
                 <div class="flex items-center justify-center mb-6">
-                    <img src="./logo.png" alt="WebDAV Viewer Logo" class="logo-animation w-20 h-20 mr-4 rounded-3xl drop-shadow-xl">
+                    <img src="./logo.png" alt="Dataset Viewer Logo" class="logo-animation w-20 h-20 mr-4 rounded-3xl drop-shadow-xl">
                     <div class="text-left relative">
                         <h1 class="text-5xl font-bold text-gray-900 mb-2" data-i18n="app.title">
-                            WebDAV Viewer
+                            Dataset Viewer
                         </h1>
                         <span id="version-badge" class="absolute top-2.5 -right-20 text-lg font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-md opacity-0 transition-all duration-500 transform scale-95"></span>
                         <div class="flex items-center space-x-3">
@@ -99,7 +99,7 @@
                 </div>
                 <div class="max-w-3xl mx-auto">
                     <p class="text-xl text-gray-700 mb-4 font-medium" data-i18n="app.subtitle">
-                        现代化的 WebDAV 浏览器
+                        现代化的数据集查看器
                     </p>
                     <p class="text-base text-gray-600 leading-relaxed" data-i18n="app.description">
                         支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能
@@ -274,7 +274,7 @@
             <!-- Footer -->
             <div class="text-center">
                 <div class="flex justify-center">
-                    <a href="https://github.com/stardustai/webdav-viewer"
+                    <a href="https://github.com/stardustai/dataset-viewer"
                        target="_blank"
                        class="group flex items-center space-x-3 text-gray-500 hover:text-gray-700 transition-all duration-300 hover:bg-white/60 px-6 py-3 rounded-xl">
                         <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
@@ -291,13 +291,13 @@
         // 国际化翻译配置
         const translations = {
             zh: {
-                'page.title': 'WebDAV Viewer - 现代化 WebDAV 浏览器',
-                'page.description': '100% AI 生成的现代化 WebDAV 浏览器，支持大文件查看、快速搜索和跨平台使用',
-                'page.keywords': 'WebDAV,文件浏览器,大文件查看,AI生成,Tauri,React',
-                'app.title': 'WebDAV Viewer',
+                'page.title': 'Dataset Viewer - 现代化数据集查看器',
+                'page.description': '100% AI 生成的现代化数据集查看器，支持大数据集查看、快速搜索和跨平台使用',
+                'page.keywords': '数据集查看器,Dataset Viewer,大数据集查看,WebDAV,AI生成,Tauri,React',
+                'app.title': 'Dataset Viewer',
                 'app.ai_badge': '🤖 100% AI 生成',
                 'app.open_source': '开源免费',
-                'app.subtitle': '现代化的 WebDAV 浏览器',
+                'app.subtitle': '现代化的数据集查看器',
                 'app.description': '支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能',
                 'app.crossplatform': '跨平台',
                 'platform.macos': 'macOS',
@@ -326,10 +326,10 @@
                 'footer.source_code': '查看源码'
             },
             en: {
-                'page.title': 'WebDAV Viewer - Modern WebDAV Browser',
+                'page.title': 'Dataset Viewer - Modern Dataset Browser',
                 'page.description': '100% AI-generated modern WebDAV browser with large file viewing, fast search and cross-platform support',
                 'page.keywords': 'WebDAV,file browser,large file viewing,AI generated,Tauri,React',
-                'app.title': 'WebDAV Viewer',
+                'app.title': 'Dataset Viewer',
                 'app.ai_badge': '🤖 100% AI Generated',
                 'app.open_source': 'Open Source',
                 'app.subtitle': 'Modern WebDAV Browser',
@@ -368,7 +368,7 @@
         // 获取默认语言
         function getDefaultLanguage() {
             // 首先检查本地存储
-            const savedLang = localStorage.getItem('webdav-viewer-lang');
+            const savedLang = localStorage.getItem('dataset-viewer-lang');
             if (savedLang) {
                 return savedLang;
             }
@@ -385,7 +385,7 @@
         // 切换语言
         function switchLanguage(lang) {
             currentLang = lang;
-            localStorage.setItem('webdav-viewer-lang', lang);
+            localStorage.setItem('dataset-viewer-lang', lang);
             updateLanguage();
             updateLanguageButtons();
         }
@@ -429,7 +429,7 @@
         // 从 GitHub API 获取最新版本信息
         async function loadConfig() {
             try {
-                const response = await fetch('https://api.github.com/repos/stardustai/webdav-viewer/releases/latest');
+                const response = await fetch('https://api.github.com/repos/stardustai/dataset-viewer/releases/latest');
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
@@ -454,7 +454,7 @@
 
         // 根据版本号生成配置
         function generateConfig(version, fileSizes = {}) {
-            const baseUrl = `https://github.com/stardustai/webdav-viewer/releases/download/v${version}`;
+            const baseUrl = `https://github.com/stardustai/dataset-viewer/releases/download/v${version}`;
 
             const getFileSize = (filename) => {
                 const size = fileSizes[filename];
@@ -492,7 +492,7 @@
                     }
                 },
                 github: {
-                    repoUrl: "https://github.com/stardustai/webdav-viewer"
+                    repoUrl: "https://github.com/stardustai/dataset-viewer"
                 }
             };
         }
@@ -560,7 +560,7 @@
         function downloadMac() {
             if (!appConfig) {
                 // 配置加载失败，直接跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
                 return;
             }
 
@@ -578,14 +578,14 @@
                 showMacInstallationTip();
             } else {
                 // 跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
 
         function downloadWindows() {
             if (!appConfig) {
                 // 配置加载失败，直接跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
                 return;
             }
 
@@ -594,14 +594,14 @@
                 downloadFile(config.downloadUrl, config.filename);
             } else {
                 // 跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
 
         function downloadLinux() {
             if (!appConfig) {
                 // 配置加载失败，直接跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
                 return;
             }
 
@@ -610,14 +610,14 @@
                 downloadFile(config.downloadUrl, config.filename);
             } else {
                 // 跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
 
         function downloadLinuxAppImage() {
             if (!appConfig) {
                 // 配置加载失败，直接跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
                 return;
             }
 
@@ -626,7 +626,7 @@
                 downloadFile(config.downloadUrl, config.filename);
             } else {
                 // 跳转到 GitHub releases
-                window.open('https://github.com/stardustai/webdav-viewer/releases', '_blank');
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
 
@@ -669,7 +669,7 @@
 
         function showMacInstallationTip() {
             // 检查当前语言
-            const currentLang = localStorage.getItem('webdav-viewer-lang') || getDefaultLanguage();
+            const currentLang = localStorage.getItem('dataset-viewer-lang') || getDefaultLanguage();
 
             // 创建模态框背景
             const overlay = document.createElement('div');
@@ -686,7 +686,7 @@
                     'Open the downloaded .dmg file',
                     'Drag the app to Applications folder',
                     'Open Terminal and run this command:',
-                    '<code class="bg-gray-100 px-2 py-1 rounded text-xs">sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"</code>',
+                    '<code class="bg-gray-100 px-2 py-1 rounded text-xs">sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"</code>',
                     'Now you can launch the app normally'
                 ],
                 alternative: 'Alternative methods:',
@@ -703,7 +703,7 @@
                     '打开下载的 .dmg 文件',
                     '将应用拖拽到应用程序文件夹',
                     '打开终端并运行以下命令：',
-                    '<code class="bg-gray-100 px-2 py-1 rounded text-xs">sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"</code>',
+                    '<code class="bg-gray-100 px-2 py-1 rounded text-xs">sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"</code>',
                     '现在可以正常启动应用了'
                 ],
                 alternative: '其他方法：',

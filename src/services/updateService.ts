@@ -3,7 +3,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import type { UpdateCheckResult, ReleaseInfo } from '../types';
 
-const GITHUB_API_URL = 'https://api.github.com/repos/stardustai/webdav-viewer/releases/latest';
+const GITHUB_API_URL = 'https://api.github.com/repos/stardustai/dataset-viewer/releases/latest';
 
 interface GitHubAsset {
   name: string;
@@ -224,7 +224,7 @@ class UpdateService {
    * 打开下载页面
    */
   async openDownloadPage(): Promise<void> {
-    await openUrl('https://stardustai.github.io/webdav-viewer');
+    await openUrl('https://stardustai.github.io/dataset-viewer');
   }
 }
 

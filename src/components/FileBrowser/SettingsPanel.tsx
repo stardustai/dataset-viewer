@@ -164,7 +164,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('about')}</h3>
             <div className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
-              <div>WebDAV Viewer</div>
+              <div>{t('app.name')}</div>
               <div>{t('app.description')}</div>
               <div>{t('app.features')}</div>
             </div>

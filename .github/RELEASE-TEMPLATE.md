@@ -19,7 +19,7 @@
 
 ### 🔧 Installation
 
-- **macOS**: Download DMG → Drag to Applications → Run: `sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"`
+- **macOS**: Download DMG → Drag to Applications → Run: `sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"`
 - **Windows**: Download MSI → Run installer
 - **Linux**: `chmod +x WebDAV.Viewer_*.AppImage` → Run
 

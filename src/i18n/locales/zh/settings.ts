@@ -19,6 +19,6 @@ export const settings = {
 
   // 关于
   'about': '关于',
-  'app.description': '现代化的 WebDAV 文件浏览器',
+  'app.description': '现代化的数据集查看工具',
   'app.features': '支持大文件查看和快速搜索',
 };

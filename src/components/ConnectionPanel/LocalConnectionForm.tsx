@@ -21,10 +21,10 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
 
   // 当 defaultPath 属性变化时，更新输入框的值
   useEffect(() => {
-    if (defaultPath && defaultPath !== rootPath) {
+    if (defaultPath) {
       setRootPath(defaultPath);
     }
-  }, [defaultPath, rootPath]);
+  }, [defaultPath]);
 
   // 常用本机路径建议
   const commonPaths = [

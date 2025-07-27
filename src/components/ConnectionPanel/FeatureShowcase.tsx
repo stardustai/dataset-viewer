@@ -9,7 +9,7 @@ export const FeatureShowcase: React.FC = () => {
       {/* 主标题和介绍 */}
       <div className="text-left">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          {t('webdav.browser')}
+          {t('app.name')}
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">
           {t('app.tagline')}

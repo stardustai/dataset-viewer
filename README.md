@@ -1,10 +1,10 @@
-# WebDAV Browser
+# Dataset Viewer
 
 > 🤖 **This project is 100% AI-generated** using GitHub Copilot and Claude AI
 
-A modern, high-performance WebDAV browser built with Tauri, React, and TypeScript. Designed to handle large text files (hundreds of GB) with efficient streaming and fast in-file search capabilities.
+A modern, high-performance dataset viewer built with Tauri, React, and TypeScript. Designed to handle massive datasets from multiple sources (WebDAV, local files, OSS) with efficient streaming for large text files (hundreds of GB) and fast in-file search capabilities.
 
-[中文文档](README_zh.md) · **[Download Latest Release](https://github.com/stardustai/webdav-viewer/releases/latest)**
+[中文文档](README_zh.md) · **[Download Latest Release](https://github.com/stardustai/dataset-viewer/releases/latest)**
 
 ## ✨ Highlights
 
@@ -15,18 +15,28 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 
 ## 🚀 Features
 
--  **Large File Support**: Stream massive text files (100GB+) with virtualized rendering for millions of lines
-- 📦 **Archive Streaming**: Browse ZIP, TAR files without extraction using streaming preview
-- 🔍 **Lightning-Fast Search**: Real-time in-file search with regex support
-- � **WebDAV Connection**: Secure connection to any WebDAV server with credential storage
-- 🎨 **Modern UI**: Responsive design with dark/light themes and multi-language support
+- 🌐 **Multi-Source Support**: WebDAV servers, local files, cloud storage (OSS)
+- 📊 **Large Dataset Streaming**: Handle 100GB+ files with virtualized rendering
+- 📦 **Archive Preview**: Browse ZIP/TAR files without extraction
+- 🔍 **Fast Search**: Real-time regex search with highlighting
+- 🎨 **Modern UI**: Dark/light themes, responsive design, multi-language
+- ⚡ **High Performance**: Native Tauri backend with React frontend
 
 ## 📸 Screenshots
 
-| File Browser | Text Viewer | Archive Viewer |
-|:------------:|:----------:|:-------------:|
-| ![File Browser](screenshots/home.png) | ![Text Viewer](screenshots/text.png) | ![Archive Viewer](screenshots/archive.png) |
-| *Modern file browser with intuitive navigation and theme support* | *Advanced text viewer with search capabilities and virtualized rendering* | *Archive streaming with file preview and efficient content browsing* |
+<div align="center">
+
+| Connection Setup | File Browser |
+|:---------------:|:------------:|
+| ![Connection Setup](screenshots/connect.png) | ![File Browser](screenshots/home.png) |
+| *Easy connection management with multiple storage types* | *Modern file browser with intuitive navigation and theme support* |
+
+| Text Viewer | Archive Viewer |
+|:-----------:|:-------------:|
+| ![Text Viewer](screenshots/text.png) | ![Archive Viewer](screenshots/archive.png) |
+| *Advanced text viewer with search capabilities and virtualized rendering* | *Archive streaming with file preview and efficient content browsing* |
+
+</div>
 
 ## 📚 Supported File Types
 
@@ -72,8 +82,8 @@ A modern, high-performance WebDAV browser built with Tauri, React, and TypeScrip
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/stardustai/webdav-viewer.git
-cd webdav-viewer
+git clone https://github.com/stardustai/dataset-viewer.git
+cd dataset-viewer
 ```
 
 2. **Install dependencies:**
@@ -110,7 +120,7 @@ pnpm package:debug
 - **Windows**: `.msi` installer, `.exe` executable
 - **Linux**: `.deb`, `.rpm`, `.AppImage` packages
 
-> **📱 macOS Note**: The app is unsigned. If you get security warnings, run: `sudo xattr -d com.apple.quarantine "/Applications/WebDAV Viewer.app"` or right-click → "Open" → "Open".
+> **📱 macOS Note**: The app is unsigned. If you get security warnings, run: `sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"` or right-click → "Open" → "Open".
 
 ## 🏗 Architecture & Performance
 
@@ -135,7 +145,7 @@ pnpm package:debug
 ## 🤝 Contributing
 
 1. Fork → Create feature branch → Make changes → Submit PR
-2. **Bug Reports**: [Open an issue](https://github.com/stardustai/webdav-viewer/issues) with clear description and steps to reproduce
+2. **Bug Reports**: [Open an issue](https://github.com/stardustai/dataset-viewer/issues) with clear description and steps to reproduce
 3. **Feature Requests**: Describe the feature and why it would be useful
 
 ## 📄 License
@@ -155,6 +165,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **Made with ❤️ and 🤖 AI**
 
-[Report Bug](https://github.com/stardustai/webdav-viewer/issues) · [Request Feature](https://github.com/stardustai/webdav-viewer/issues) · [Documentation](https://github.com/stardustai/webdav-viewer/wiki)
+[Report Bug](https://github.com/stardustai/dataset-viewer/issues) · [Request Feature](https://github.com/stardustai/dataset-viewer/issues) · [Documentation](https://github.com/stardustai/dataset-viewer/wiki)
 
 </div>

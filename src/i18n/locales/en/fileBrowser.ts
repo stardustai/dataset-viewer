@@ -1,6 +1,6 @@
 export const fileBrowser = {
-  // File browser interface
-  'file.browser': 'File Browser',
+  // Data browser interface
+  'file.browser': 'Data Browser',
   'go.back': 'Go back',
   'go.home': 'Home',
   'directory.empty': 'This directory is empty',
