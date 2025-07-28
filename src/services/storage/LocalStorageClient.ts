@@ -4,7 +4,8 @@ import {
   DirectoryResult,
   FileContent,
   ListOptions,
-  ReadOptions
+  ReadOptions,
+  StorageResponse
 } from './types';
 import { ArchiveInfo, FilePreview } from '../../types';
 import { invoke } from '@tauri-apps/api/core';
@@ -48,9 +49,14 @@ export class LocalStorageClient extends BaseStorageClient {
   /**
    * 构建文件URL（本地文件路径）
    */
-  protected buildFileUrl(path: string): string {
-    // 对于本地文件，返回相对路径，让后端处理完整路径构建
-    return path;
+  /**
+   * 将前端路径转换为协议统一的地址格式
+   * 本地存储协议格式：file:///path/to/file
+   */
+  toProtocolUrl(path: string): string {
+    // 对于本地文件，构建 file:// 协议 URL
+    // 后端会处理完整的文件系统路径
+    return path ? `file:///${path}` : 'file:///';
   }
 
   /**
@@ -69,20 +75,18 @@ export class LocalStorageClient extends BaseStorageClient {
 
       const rootPath = config.url || config.rootPath!;
 
-      // 使用统一的后端连接命令建立连接
-      const connected = await invoke<boolean>('storage_connect', {
-        config: {
-          protocol: 'local',
-          url: rootPath,
-          accessKey: null,
-          secretKey: null,
-          region: null,
-          bucket: null,
-          endpoint: null,
-          username: null,
-          password: null,
-          extraOptions: null,
-        }
+      // 使用基类的通用连接方法
+      const connected = await this.connectToBackend({
+        protocol: 'local',
+        url: rootPath,
+        accessKey: null,
+        secretKey: null,
+        region: null,
+        bucket: null,
+        endpoint: null,
+        username: null,
+        password: null,
+        extraOptions: null,
       });
 
       if (!connected) {
@@ -92,25 +96,19 @@ export class LocalStorageClient extends BaseStorageClient {
       // 保存根路径用于后续的路径构建
       this.displayPath = rootPath;
       this.rootPath = rootPath;
-      this.connected = true;
 
       return true;
     } catch (error) {
       console.error('Local storage connection failed:', error);
-      this.connected = false;
       return false;
     }
   }
 
   disconnect(): void {
-    // 调用后端断开连接
-    invoke('storage_disconnect').catch(error => {
-      console.error('Failed to disconnect storage:', error);
-    });
-
-    this.connected = false;
-    this.rootPath = '';
+    // 使用基类的通用断开连接方法
+    this.disconnectFromBackend();
     this.displayPath = '';
+    this.rootPath = '';
   }
 
   async listDirectory(path: string = '', options?: ListOptions): Promise<DirectoryResult> {
@@ -144,9 +142,12 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const response = await this.makeRequest({
+    const response = await invoke<StorageResponse>('storage_request', {
+      protocol: this.protocol,
       method: 'READ_FILE',
-      url: path, // 直接传递路径
+      url: this.toProtocolUrl(path),
+      headers: {},
+      body: undefined,
       options: {
         protocol: 'local',
         start: options?.start,
@@ -172,9 +173,12 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const response = await this.makeRequest({
+    const response = await invoke<StorageResponse>('storage_request', {
+      protocol: this.protocol,
       method: 'GET_FILE_SIZE',
-      url: path, // 直接传递路径
+      url: this.toProtocolUrl(path),
+      headers: {},
+      body: undefined,
       options: {
         protocol: 'local'
       }
@@ -194,13 +198,23 @@ export class LocalStorageClient extends BaseStorageClient {
     }
 
     // 对于本机文件，直接读取为二进制数据
-    const arrayBuffer = await this.makeRequestBinary({
+    const response = await invoke<string>('storage_request_binary', {
+      protocol: this.protocol,
       method: 'READ_FILE_BINARY',
-      url: path, // 直接传递路径
+      url: this.toProtocolUrl(path),
+      headers: {},
       options: {
         protocol: 'local'
       }
     });
+
+    // 转换为 ArrayBuffer
+    const binaryString = atob(response);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const arrayBuffer = bytes.buffer;
 
     return new Blob([arrayBuffer]);
   }

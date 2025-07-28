@@ -27,10 +27,8 @@ pub struct DatasetFile {
     pub path: String,      // 文件路径
 }
 
-#[derive(Debug, Deserialize)]
-struct DatasetSearchResponse {
-    datasets: Vec<DatasetInfo>,
-}pub struct HuggingFaceClient {
+// HuggingFace API 直接返回数组，不需要包装结构体
+pub struct HuggingFaceClient {
     client: reqwest::Client,
     config: ConnectionConfig,
     base_url: String,
@@ -75,12 +73,12 @@ impl HuggingFaceClient {
             ));
         }
 
-        let datasets_response: DatasetSearchResponse = response
+        let datasets: Vec<DatasetInfo> = response
             .json()
             .await
             .map_err(|e| StorageError::RequestFailed(e.to_string()))?;
 
-        let files: Vec<StorageFile> = datasets_response.datasets
+        let files: Vec<StorageFile> = datasets
             .into_iter()
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 使用 : 替代 / 来避免路径解析问题
@@ -124,12 +122,12 @@ impl HuggingFaceClient {
             ));
         }
 
-        let datasets_response: DatasetSearchResponse = response
+        let datasets: Vec<DatasetInfo> = response
             .json()
             .await
             .map_err(|e| StorageError::RequestFailed(e.to_string()))?;
 
-        let files: Vec<StorageFile> = datasets_response.datasets
+        let files: Vec<StorageFile> = datasets
             .into_iter()
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
@@ -174,12 +172,12 @@ impl HuggingFaceClient {
             ));
         }
 
-        let datasets_response: DatasetSearchResponse = response
+        let datasets: Vec<DatasetInfo> = response
             .json()
             .await
             .map_err(|e| StorageError::RequestFailed(e.to_string()))?;
 
-        let files: Vec<StorageFile> = datasets_response.datasets
+        let files: Vec<StorageFile> = datasets
             .into_iter()
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
@@ -322,21 +320,26 @@ impl HuggingFaceClient {
         format!("{}/datasets/{}/resolve/main/{}", self.base_url, dataset_id, file_path)
     }
 
-    /// 解析路径 - 处理前端传来的简单路径格式
+    /// 解析路径 - 处理前端传来的协议URL或简单路径格式
     fn parse_path(&self, path: &str) -> Result<(String, String), StorageError> {
         if path == "/" || path.is_empty() {
             return Err(StorageError::InvalidConfig("Root path not supported".to_string()));
         }
 
-        let path_trimmed = path.trim_start_matches('/');
+        // 处理协议URL格式：huggingface://owner:dataset/file_path
+        let path_to_parse = if path.starts_with("huggingface://") {
+            path.strip_prefix("huggingface://").unwrap()
+        } else {
+            path.trim_start_matches('/')
+        };
 
         // 处理搜索路径
-        if path_trimmed.starts_with("search/") {
+        if path_to_parse.starts_with("search/") {
             return Err(StorageError::InvalidConfig("Search paths should be handled separately".to_string()));
         }
 
-        // 前端传来的路径格式：{owner}:{dataset}/{file_path}
-        let parts: Vec<&str> = path_trimmed.split('/').collect();
+        // 路径格式：{owner}:{dataset}/{file_path}
+        let parts: Vec<&str> = path_to_parse.split('/').collect();
 
         if parts.is_empty() {
             return Err(StorageError::InvalidConfig("Empty path".to_string()));
@@ -448,12 +451,36 @@ impl StorageClient for HuggingFaceClient {
             return Err(StorageError::NotConnected);
         }
 
+        // 处理 huggingface:// 协议 URL
+        let actual_url = if request.url.starts_with("huggingface://") {
+            // 解析 huggingface://dataset_id/file_path 格式
+            let hf_url = request.url.strip_prefix("huggingface://").unwrap_or(&request.url);
+
+            if hf_url.is_empty() {
+                // 根路径，返回数据集列表页面
+                "https://huggingface.co/datasets".to_string()
+            } else {
+                let parts: Vec<&str> = hf_url.splitn(2, '/').collect();
+                if parts.len() >= 2 {
+                    let dataset_id = parts[0];
+                    let file_path = parts[1];
+                    // 构建文件下载 URL
+                    format!("https://huggingface.co/datasets/{}/resolve/main/{}", dataset_id, file_path)
+                } else {
+                    // 只有数据集 ID，返回数据集页面
+                    format!("https://huggingface.co/datasets/{}", parts[0])
+                }
+            }
+        } else {
+            return Err(StorageError::RequestFailed("Only huggingface:// protocol URLs are supported".to_string()));
+        };
+
         let mut req_builder = match request.method.as_str() {
-            "GET" => self.client.get(&request.url),
-            "HEAD" => self.client.head(&request.url),
-            "POST" => self.client.post(&request.url),
-            "PUT" => self.client.put(&request.url),
-            "DELETE" => self.client.delete(&request.url),
+            "GET" => self.client.get(&actual_url),
+            "HEAD" => self.client.head(&actual_url),
+            "POST" => self.client.post(&actual_url),
+            "PUT" => self.client.put(&actual_url),
+            "DELETE" => self.client.delete(&actual_url),
             _ => return Err(StorageError::RequestFailed("Unsupported method".to_string())),
         };
 
@@ -504,9 +531,31 @@ impl StorageClient for HuggingFaceClient {
             return Err(StorageError::NotConnected);
         }
 
+        // 处理 huggingface:// 协议 URL
+        let actual_url = if request.url.starts_with("huggingface://") {
+            // 解析 huggingface://dataset_id/file_path 格式
+            let hf_url = request.url.strip_prefix("huggingface://").unwrap_or(&request.url);
+
+            if hf_url.is_empty() {
+                return Err(StorageError::RequestFailed("Invalid HuggingFace URL for binary request".to_string()));
+            } else {
+                let parts: Vec<&str> = hf_url.splitn(2, '/').collect();
+                if parts.len() >= 2 {
+                    let dataset_id = parts[0];
+                    let file_path = parts[1];
+                    // 构建文件下载 URL
+                    format!("https://huggingface.co/datasets/{}/resolve/main/{}", dataset_id, file_path)
+                } else {
+                    return Err(StorageError::RequestFailed("Invalid HuggingFace URL format for binary request".to_string()));
+                }
+            }
+        } else {
+            return Err(StorageError::RequestFailed("Only huggingface:// protocol URLs are supported".to_string()));
+        };
+
         let mut req_builder = match request.method.as_str() {
-            "GET" => self.client.get(&request.url),
-            "HEAD" => self.client.head(&request.url),
+            "GET" => self.client.get(&actual_url),
+            "HEAD" => self.client.head(&actual_url),
             _ => return Err(StorageError::RequestFailed("Unsupported method for binary request".to_string())),
         };
 

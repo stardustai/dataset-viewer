@@ -6,8 +6,10 @@ import {
   FileContent,
   ListOptions,
   ReadOptions,
-  ServerCapabilities
+  ServerCapabilities,
+  StorageResponse
 } from './types';
+import type { ArchiveInfo, FilePreview } from '../../types';
 
 interface WebDAVConnection {
   url: string;
@@ -68,20 +70,18 @@ export class WebDAVStorageClient extends BaseStorageClient {
       // 简单的 URL 标准化 - 由后端统一处理具体格式
       const cleanUrl = config.url.trim();
 
-      // First establish connection in the Rust backend
-      const connected = await invoke<boolean>('storage_connect', {
-        config: {
-          protocol: 'webdav',
-          url: cleanUrl,
-          username: config.username,
-          password: config.password,
-          accessKey: null,
-          secretKey: null,
-          region: null,
-          bucket: null,
-          endpoint: null,
-          extraOptions: null,
-        }
+      // 使用基类的通用连接方法
+      const connected = await this.connectToBackend({
+        protocol: 'webdav',
+        url: cleanUrl,
+        username: config.username,
+        password: config.password,
+        accessKey: null,
+        secretKey: null,
+        region: null,
+        bucket: null,
+        endpoint: null,
+        extraOptions: null,
       });
 
       if (connected) {
@@ -91,20 +91,16 @@ export class WebDAVStorageClient extends BaseStorageClient {
           password: config.password,
           connected: true,
         };
-        this.connected = true;
 
         // 检测服务器能力 (non-blocking)
         this.detectServerCapabilities().catch(error => {
           console.warn('Server capability detection failed, will auto-detect later:', error);
         });
-      } else {
-        this.connected = false;
       }
 
       return connected;
     } catch (error) {
       console.error('WebDAV connection failed:', error);
-      this.connected = false;
 
       // 提供更详细的错误信息
       if (error instanceof Error && error.message.includes('URL format')) {
@@ -116,17 +112,19 @@ export class WebDAVStorageClient extends BaseStorageClient {
   }
 
   /**
-   * 构建文件URL（WebDAV文件URL）
+   * 将前端路径转换为协议统一的地址格式
+   * WebDAV 协议格式：webdav://host/path/to/file
    */
-  protected buildFileUrl(path: string): string {
+  toProtocolUrl(path: string): string {
     if (!this.connection?.url) {
       throw new Error('Not connected to WebDAV server');
     }
 
-    const baseUrl = this.connection.url.replace(/\/$/, '');
+    // 提取主机部分并构建 webdav:// 协议URL
+    const url = new URL(this.connection.url);
     const cleanPath = path.replace(/^\/+/, '');
 
-    return cleanPath ? `${baseUrl}/${cleanPath}` : baseUrl;
+    return cleanPath ? `webdav://${url.host}/${cleanPath}` : `webdav://${url.host}`;
   }
 
   /**
@@ -144,13 +142,9 @@ export class WebDAVStorageClient extends BaseStorageClient {
   }
 
   disconnect(): void {
-    // Disconnect from Rust backend
-    invoke('storage_disconnect').catch(error => {
-      console.warn('Failed to disconnect from storage backend:', error);
-    });
-
+    // 使用基类的通用断开连接方法
+    this.disconnectFromBackend();
     this.connection = null;
-    this.connected = false;
     this.resetServerCapabilities();
   }
 
@@ -189,10 +183,13 @@ export class WebDAVStorageClient extends BaseStorageClient {
       headers['Range'] = `bytes=${options.start}-${options.start + options.length - 1}`;
     }
 
-    const response = await this.makeRequest({
+    const response = await invoke<StorageResponse>('storage_request', {
+      protocol: this.protocol,
       method: 'GET',
-      url: this.buildUrl(path),
-      headers
+      url: this.toProtocolUrl(path),
+      headers,
+      body: undefined,
+      options: undefined
     });
 
     if (response.status < 200 || response.status >= 300) {
@@ -209,12 +206,16 @@ export class WebDAVStorageClient extends BaseStorageClient {
   async getFileSize(path: string): Promise<number> {
     if (!this.connection) throw new Error('Not connected');
 
-    const response = await this.makeRequest({
+    // 使用完整URL，与其他接口保持一致
+    const response = await invoke<StorageResponse>('storage_request', {
+      protocol: this.protocol,
       method: 'HEAD',
-      url: this.buildUrl(path),
+      url: this.toProtocolUrl(path),
       headers: {
         'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
-      }
+      },
+      body: undefined,
+      options: undefined
     });
 
     if (response.status < 200 || response.status >= 300) {
@@ -228,13 +229,23 @@ export class WebDAVStorageClient extends BaseStorageClient {
   async downloadFile(path: string): Promise<Blob> {
     if (!this.connection) throw new Error('Not connected');
 
-    const binaryData = await this.makeRequestBinary({
+    const response = await invoke<string>('storage_request_binary', {
+      protocol: this.protocol,
       method: 'GET',
-      url: this.buildUrl(path),
+      url: this.toProtocolUrl(path),
       headers: {
         'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
-      }
+      },
+      options: undefined
     });
+
+    // 转换为 ArrayBuffer
+    const binaryString = atob(response);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const binaryData = bytes.buffer;
 
     return new Blob([binaryData], { type: 'application/octet-stream' });
   }
@@ -244,23 +255,12 @@ export class WebDAVStorageClient extends BaseStorageClient {
 
     return await this.downloadWithProgress(
       'GET',
-      this.buildUrl(path),
+      this.toProtocolUrl(path),
       filename,
       {
         'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
       }
     );
-  }
-
-  private buildUrl(path: string): string {
-    if (!this.connection) throw new Error('Not connected');
-
-    if (path.startsWith('http')) return path;
-
-    // 简单的 URL 构建 - 避免过度处理
-    const baseUrl = this.connection.url.replace(/\/+$/, '');
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    return `${baseUrl}${normalizedPath}`;
   }
 
   private async detectServerCapabilities(): Promise<void> {
@@ -289,5 +289,47 @@ export class WebDAVStorageClient extends BaseStorageClient {
   // 获取服务器能力（用于调试和优化）
   getServerCapabilities(): ServerCapabilities {
     return { ...this.serverCapabilities };
+  }
+
+  /**
+   * 重写分析压缩文件方法，使用统一的协议URL格式
+   */
+  protected async analyzeArchiveWithClient(
+    path: string,
+    filename: string,
+    maxSize?: number
+  ): Promise<ArchiveInfo> {
+    // 使用协议URL格式，与其他API保持一致
+    const protocolUrl = this.toProtocolUrl(path);
+
+    // 通过Tauri命令调用后端的存储客户端接口
+    return await invoke('analyze_archive_with_client', {
+      protocol: this.protocol,
+      filePath: protocolUrl, // 传递协议URL格式
+      filename,
+      maxSize
+    });
+  }
+
+  /**
+   * 重写获取压缩文件预览方法，使用统一的协议URL格式
+   */
+  protected async getArchiveFilePreviewWithClient(
+    path: string,
+    filename: string,
+    entryPath: string,
+    maxPreviewSize?: number
+  ): Promise<FilePreview> {
+    // 使用协议URL格式，与其他API保持一致
+    const protocolUrl = this.toProtocolUrl(path);
+
+    // 通过Tauri命令调用后端的存储客户端接口
+    return await invoke('get_archive_preview_with_client', {
+      protocol: this.protocol,
+      filePath: protocolUrl, // 传递协议URL格式
+      filename,
+      entryPath,
+      maxPreviewSize
+    });
   }
 }

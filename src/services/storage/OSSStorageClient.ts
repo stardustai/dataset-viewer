@@ -6,6 +6,7 @@ import {
   FileContent,
   ListOptions,
   ReadOptions,
+  StorageResponse
 } from './types';
 import { ArchiveInfo, FilePreview } from '../../types';
 
@@ -148,30 +149,58 @@ export class OSSStorageClient extends BaseStorageClient {
           region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
         }
       } else {
-        // 如果已经是HTTP(S)格式，直接使用
-        if (!endpoint) {
-          endpoint = rawUrl;
-        }
-
-        // 尝试从URL提取bucket信息（虚拟主机格式）
-        if (!bucket) {
+        // 如果已经是HTTP(S)格式，需要区分虚拟主机和路径格式
+        if (!endpoint || !bucket) {
           try {
-            const url = new URL(endpoint);
+            const url = new URL(rawUrl);
             const hostname = url.hostname;
+            const pathname = url.pathname;
 
             if (hostname.includes('.oss-')) {
               // 虚拟主机格式：bucket.oss-region.aliyuncs.com
-              const parts = hostname.split('.');
-              bucket = parts[0];
+              if (!endpoint) {
+                endpoint = `${url.protocol}//${hostname}`;
+              }
+              if (!bucket) {
+                const parts = hostname.split('.');
+                bucket = parts[0];
+              }
 
               // 从hostname推断region（如果没有配置）
               if (!config.region) {
                 const regionMatch = hostname.match(/oss-([^.]+)/);
                 region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
               }
+            } else if (hostname.startsWith('oss-') || hostname.includes('aliyuncs.com')) {
+              // 路径格式：oss-region.aliyuncs.com/bucket/object-key
+              if (!endpoint) {
+                endpoint = `${url.protocol}//${hostname}`;
+              }
+
+              if (!bucket && pathname && pathname.length > 1) {
+                // 从路径中提取bucket名称（第一个路径段）
+                const pathParts = pathname.split('/').filter(part => part.length > 0);
+                if (pathParts.length > 0) {
+                  bucket = pathParts[0];
+                }
+              }
+
+              // 从hostname推断region（如果没有配置）
+              if (!config.region && hostname.includes('oss-')) {
+                const regionMatch = hostname.match(/oss-([^.]+)/);
+                region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
+              }
+            } else {
+              // 其他格式，直接使用原URL作为endpoint
+              if (!endpoint) {
+                endpoint = rawUrl;
+              }
             }
           } catch {
-            // 解析失败，使用默认值
+            // 解析失败，使用原URL作为endpoint
+            if (!endpoint) {
+              endpoint = rawUrl;
+            }
           }
         }
       }
@@ -186,22 +215,20 @@ export class OSSStorageClient extends BaseStorageClient {
     const normalizedEndpoint = this.normalizeOSSEndpoint(endpoint, bucket, region);
 
     try {
-      // 通过 Tauri 命令测试连接
-      const response = await invoke('storage_connect', {
-        config: {
-          protocol: 'oss',
-          url: normalizedEndpoint,
-          accessKey: accessKey,
-          secretKey: secretKey,
-          bucket: bucket,
-          region: region,
-          username: null,
-          password: null,
-          extraOptions: null,
-        }
+      // 使用基类的通用连接方法
+      const success = await this.connectToBackend({
+        protocol: 'oss',
+        url: normalizedEndpoint,
+        accessKey: accessKey,
+        secretKey: secretKey,
+        bucket: bucket,
+        region: region,
+        username: null,
+        password: null,
+        extraOptions: null,
       });
 
-      if (response) {
+      if (success) {
         this.connection = {
           endpoint: normalizedEndpoint,
           accessKey,
@@ -210,7 +237,7 @@ export class OSSStorageClient extends BaseStorageClient {
           region,
           connected: true,
         };
-        this.connected = true;
+
         return true;
       }
 
@@ -222,8 +249,9 @@ export class OSSStorageClient extends BaseStorageClient {
   }
 
   disconnect(): void {
+    // 使用基类的通用断开连接方法
+    this.disconnectFromBackend();
     this.connection = null;
-    this.connected = false;
   }
 
   async listDirectory(path: string, options: ListOptions = {}): Promise<DirectoryResult> {
@@ -231,17 +259,18 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    // 标准化路径
-    const prefix = this.normalizePath(path);
+    // 使用统一的路径转换方法
+    const objectKeyPrefix = this.getObjectKey(path);
 
     try {
       // 直接调用后端的 list_directory 方法，而不是通用的 request 方法
       const result = await invoke('storage_list_directory', {
-        path: prefix,
+        path: objectKeyPrefix,
         options: {
           page_size: options.pageSize || 1000,
           marker: options.marker,
-          prefix: prefix,
+          // 只有用户明确指定prefix时才使用，否则让后端根据path自动处理
+          prefix: options.prefix,
           recursive: options.recursive || false,
           sort_by: options.sortBy || 'name',
           sort_order: options.sortOrder || 'asc',
@@ -260,8 +289,6 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    const objectKey = this.normalizePath(path);
-
     try {
       const headers: Record<string, string> = {
         ...this.getAuthHeaders(),
@@ -274,10 +301,14 @@ export class OSSStorageClient extends BaseStorageClient {
         headers['Range'] = `bytes=${start}-${end}`;
       }
 
-      const response = await this.makeRequest({
+      // 使用统一的协议URL格式
+      const response = await invoke<StorageResponse>('storage_request', {
+        protocol: this.protocol,
         method: 'GET',
-        url: this.buildObjectUrl(objectKey),
+        url: this.toProtocolUrl(path),
         headers,
+        body: undefined,
+        options: undefined
       });
 
       return {
@@ -296,13 +327,14 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    const objectKey = this.normalizePath(path);
-
     try {
-      const response = await this.makeRequest({
+      const response = await invoke<StorageResponse>('storage_request', {
+        protocol: this.protocol,
         method: 'HEAD',
-        url: this.buildObjectUrl(objectKey),
+        url: this.toProtocolUrl(path),
         headers: this.getAuthHeaders(),
+        body: undefined,
+        options: undefined
       });
 
       return parseInt(response.headers['content-length'] || '0');
@@ -317,14 +349,22 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    const objectKey = this.normalizePath(path);
-
     try {
-      const arrayBuffer = await this.makeRequestBinary({
+      const response = await invoke<string>('storage_request_binary', {
+        protocol: this.protocol,
         method: 'GET',
-        url: this.buildObjectUrl(objectKey),
+        url: this.toProtocolUrl(path),
         headers: this.getAuthHeaders(),
+        options: undefined
       });
+
+      // 转换为 ArrayBuffer
+      const binaryString = atob(response);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const arrayBuffer = bytes.buffer;
 
       return new Blob([arrayBuffer]);
     } catch (error) {
@@ -341,12 +381,10 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    const objectKey = this.normalizePath(path);
-
     try {
       return await this.downloadWithProgress(
         'GET',
-        this.buildObjectUrl(objectKey),
+        this.toProtocolUrl(path),
         filename,
         this.getAuthHeaders()
       );
@@ -357,15 +395,29 @@ export class OSSStorageClient extends BaseStorageClient {
   }
 
   /**
-   * 构建文件 URL
+   * 将前端路径转换为协议统一的地址格式
+   * OSS 协议格式：oss://bucket/path/to/file
    */
-  protected buildFileUrl(path: string): string {
+  toProtocolUrl(path: string): string {
     if (!this.connection) {
       throw new Error('Not connected to OSS');
     }
 
-    const objectKey = this.normalizePath(path);
-    return this.buildObjectUrl(objectKey);
+    const objectKey = this.getObjectKey(path);
+
+    // 构建标准的 OSS URL 格式：oss://bucket/path/to/file
+    if (objectKey) {
+      return `oss://${this.connection.bucket}/${objectKey}`;
+    } else {
+      return `oss://${this.connection.bucket}`;
+    }
+  }
+
+  /**
+   * 提取对象键（移除开头斜杠，清理重复斜杠）
+   */
+  private getObjectKey(path: string): string {
+    return path.replace(/^\/+/, '').replace(/\/+/g, '/');
   }
 
   /**
@@ -390,12 +442,10 @@ export class OSSStorageClient extends BaseStorageClient {
   ): Promise<ArchiveInfo> {
     try {
       // OSS使用统一的StorageClient流式分析接口
-      const objectKey = this.extractObjectKeyFromUrl(path);
+      console.log('OSS使用统一流式分析:', { originalPath: path, filename });
 
-      console.log('OSS使用统一流式分析:', { originalPath: path, extractedObjectKey: objectKey, filename });
-
-      // 使用统一的流式分析接口
-      const result = await this.analyzeArchiveWithClient(objectKey, filename, maxSize);
+      // 直接传递path，因为它已经是协议URL格式
+      const result = await this.analyzeArchiveWithClient(path, filename, maxSize);
 
       return result;
     } catch (error) {
@@ -415,18 +465,15 @@ export class OSSStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     try {
       // 对于OSS，使用存储客户端接口而不是HTTP接口进行流式预览
-      const objectKey = this.extractObjectKeyFromUrl(path);
-
       console.log('OSS获取压缩文件预览（流式）:', {
         originalPath: path,
-        extractedObjectKey: objectKey,
         filename,
         entryPath
       });
 
-      // 使用流式预览接口，只读取需要的部分
+      // 直接传递path，因为它已经是协议URL格式
       return await this.getArchiveFilePreviewWithClient(
-        objectKey,
+        path,
         filename,
         entryPath,
         maxPreviewSize
@@ -435,34 +482,6 @@ export class OSSStorageClient extends BaseStorageClient {
       console.error('Failed to get OSS archive file preview:', error);
       throw error;
     }
-  }
-
-  /**
-   * 从 OSS URL 或路径中提取对象 key
-   * @param path OSS 路径或 URL
-   * @returns 对象 key 或原始 path
-   */
-  private extractObjectKeyFromUrl(path: string): string {
-    let objectKey = path;
-
-    // 如果传入的是完整URL，提取对象键
-    if (path.startsWith('http')) {
-      try {
-        const url = new URL(path);
-        objectKey = decodeURIComponent(url.pathname.substring(1)); // 去掉开头的'/'并解码
-
-        // 如果对象键还包含另一个URL，进一步提取
-        if (objectKey.startsWith('http')) {
-          const innerUrl = new URL(objectKey);
-          objectKey = decodeURIComponent(innerUrl.pathname.substring(1));
-        }
-      } catch (error) {
-        console.warn('Failed to parse URL, using as-is:', path);
-        objectKey = path;
-      }
-    }
-
-    return objectKey;
   }
 
   /**
@@ -517,18 +536,34 @@ export class OSSStorageClient extends BaseStorageClient {
       }
     }
 
+    // 如果路径是完整的 HTTPS OSS URL，提取对象键部分
+    if (path.startsWith('http')) {
+      try {
+        const url = new URL(path);
+        const hostname = url.hostname;
+        const pathname = url.pathname;
+
+        // 检查是否为OSS URL
+        if (hostname.includes('oss-') || hostname.includes('aliyuncs.com')) {
+          if (hostname.includes('.oss-')) {
+            // 虚拟主机格式：bucket.oss-region.aliyuncs.com/object-key
+            return pathname.replace(/^\/+/, ''); // 直接使用pathname作为object key
+          } else if (hostname.startsWith('oss-') || hostname.includes('aliyuncs.com')) {
+            // 路径格式：oss-region.aliyuncs.com/bucket/object-key
+            const pathParts = pathname.split('/').filter(part => part.length > 0);
+            if (pathParts.length > 1) {
+              // 跳过bucket（第一个部分），获取object key
+              return pathParts.slice(1).join('/');
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse HTTPS OSS URL:', path, error);
+      }
+    }
+
     // 移除开头的斜杠，OSS 对象键不应该以斜杠开头
     return path.replace(/^\/+/, '');
   }
 
-  /**
-   * 构建对象的 URL
-   */
-  private buildObjectUrl(objectKey: string): string {
-    if (!this.connection) {
-      throw new Error('Not connected');
-    }
-
-    return `${this.connection.endpoint}/${encodeURIComponent(objectKey)}`;
-  }
 }

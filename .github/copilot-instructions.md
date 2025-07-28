@@ -1,10 +1,10 @@
 <!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
 
-# WebDAV Browser Project Instructions
+# Dataset Viewer Project Instructions
 
 🤖 **This project is 100% AI-generated** using GitHub Copilot and Claude AI
 
-Cross-platform Tauri application for WebDAV browsing with massive file streaming capabilities.
+Cross-platform Tauri application for unified dataset browsing with massive file streaming capabilities.
 
 ## Tech Stack
 - **Frontend**: React 18 + TypeScript + Tailwind CSS
@@ -14,36 +14,39 @@ Cross-platform Tauri application for WebDAV browsing with massive file streaming
 - **Build**: Vite 6 + PNPM
 
 ## Key Features
+- **Multi-Protocol Support**: WebDAV, OSS, Local Files, HuggingFace Hub
 - **Large File Support**: Stream 100GB+ files with chunked loading
 - **Archive Preview**: Stream ZIP/TAR files without extraction
 - **Virtual Scrolling**: Handle millions of lines efficiently
 - **Real-time Search**: Regex search with highlighting
-- **Connection Management**: Secure credential storage
+- **Connection Management**: Secure credential storage with unified interface
 
-## Project Structure
-```
-src/
-├── App.tsx                 # Main app with state management
-├── types.ts               # TypeScript definitions
-├── components/            # React components by feature
-├── services/              # Business logic
-│   └── storage/          # Storage abstraction layer
-├── hooks/                 # Custom React hooks
-├── i18n/                 # Internationalization
-└── utils/                # Utility functions
-
-src-tauri/src/
-├── lib.rs                # Tauri commands
-├── storage/              # Storage implementations
-├── archive/              # Archive streaming
-└── download/             # Download management
-```
+## Storage Architecture
+- **BaseStorageClient**: Abstract base class with unified `toProtocolUrl()` method
+- **Protocol-specific clients**: WebDAV, OSS, Local, HuggingFace implementations
+- **Protocol URL Standards**:
+  - OSS: `oss://bucket/path`
+  - WebDAV: `webdav://host/path`
+  - HuggingFace: `huggingface://owner:dataset/path`
+  - Local: `file:///absolute/path`
+- **Unified Backend Parsing**: All storage clients parse protocol URLs in file operations
+- **Direct Backend Communication**: All clients use direct Tauri invoke() calls
 
 ## Development Guidelines
 - **TypeScript**: Use strict typing for all code
+- **Storage Clients**: Inherit from BaseStorageClient, implement abstract methods
+- **Path Processing**: Keep path handling logic within respective clients
 - **Components**: Organize by feature, use composition
 - **Styling**: Tailwind CSS utility classes
 - **Performance**: Virtual scrolling for >100 items, chunked loading for >10MB files
 - **I18n**: Wrap all UI text in translation functions
 - **State**: React hooks + localStorage persistence
 - **Tauri**: Use async commands, official plugins, follow security practices
+
+## Recent Architecture Improvements
+- **Protocol URL Standardization**: Unified all storage clients to use consistent protocol URL formats
+- **Single URL Method**: Replaced dual `toStoragePath`/`toRequestUrl` with unified `toProtocolUrl()` method
+- **Complete Backend Protocol Support**: All file operations (get_file_size, read_file_range, read_full_file) parse protocol URLs
+- **Eliminated Legacy Code**: Removed all historical compatibility logic from backend storage clients
+- **Cross-Client Consistency**: Verified uniform protocol URL handling across OSS, WebDAV, HuggingFace, and Local storage
+- **Compression File Analysis**: Fixed duplicate protocol URL conversion issues across all storage types

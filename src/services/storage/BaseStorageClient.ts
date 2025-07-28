@@ -5,8 +5,7 @@ import {
   DirectoryResult,
   FileContent,
   ListOptions,
-  ReadOptions,
-  StorageResponse
+  ReadOptions
 } from './types';
 import { CompressionService } from '../compression';
 import { ArchiveInfo, FilePreview } from '../../types';
@@ -51,50 +50,12 @@ export abstract class BaseStorageClient implements StorageClient {
   }
 
   /**
-   * 发起存储请求的统一接口
+   * 将前端路径转换为协议统一的地址格式
+   * 用于: 后端存储操作、HTTP 请求、用户复制等所有场景
+   * @param path 前端传入的路径
+   * @returns 协议统一的地址格式 (如: oss://bucket/path, file:///path, webdav://host/path, huggingface://dataset/path)
    */
-  protected async makeRequest(params: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    options?: any;
-  }): Promise<StorageResponse> {
-    return await invoke('storage_request', {
-      protocol: this.protocol,
-      method: params.method,
-      url: params.url,
-      headers: params.headers || {},
-      body: params.body,
-      options: params.options,
-    });
-  }
-
-  /**
-   * 发起二进制请求
-   */
-  protected async makeRequestBinary(params: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    options?: any;
-  }): Promise<ArrayBuffer> {
-    const response = await invoke<string>('storage_request_binary', {
-      protocol: this.protocol,
-      method: params.method,
-      url: params.url,
-      headers: params.headers || {},
-      options: params.options,
-    });
-
-    // 转换为 ArrayBuffer
-    const binaryString = atob(response);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes.buffer;
-  }
+  abstract toProtocolUrl(path: string): string;
 
   /**
    * 带进度的下载接口
@@ -221,9 +182,42 @@ export abstract class BaseStorageClient implements StorageClient {
   }
 
   /**
-   * 构建文件URL（子类实现）
+   * 通用连接方法 - 调用后端storage_connect
    */
-  protected abstract buildFileUrl(path: string): string;
+  protected async connectToBackend(config: {
+    protocol: string;
+    url?: string | null;
+    username?: string | null;
+    password?: string | null;
+    accessKey?: string | null;
+    secretKey?: string | null;
+    region?: string | null;
+    bucket?: string | null;
+    endpoint?: string | null;
+    extraOptions?: any;
+  }): Promise<boolean> {
+    try {
+      const connected = await invoke<boolean>('storage_connect', { config });
+      this.connected = connected;
+      return connected;
+    } catch (error) {
+      console.error(`${config.protocol} connection failed:`, error);
+      this.connected = false;
+      return false;
+    }
+  }
+
+  /**
+   * 通用断开连接方法
+   */
+  protected async disconnectFromBackend(): Promise<void> {
+    try {
+      await invoke('storage_disconnect');
+    } catch (error) {
+      console.warn('Failed to disconnect from storage backend:', error);
+    }
+    this.connected = false;
+  }
 
   /**
    * 获取认证头（子类实现）

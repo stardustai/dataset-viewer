@@ -23,17 +23,25 @@ impl LocalFileSystemClient {
     }
 
     /// 构建完整路径并进行安全检查
-    /// 支持绝对路径和相对路径两种模式
+    /// 支持绝对路径和相对路径两种模式，以及 file:// 协议
     fn build_safe_path(&self, path: &str) -> Result<PathBuf, StorageError> {
+        // 处理 file:// 协议 URL
+        let actual_path = if path.starts_with("file://") {
+            // 移除 file:// 前缀，保留路径部分
+            path.strip_prefix("file://").unwrap_or(path)
+        } else {
+            path
+        };
+
         // 如果路径以 ~ 开头，直接展开
-        if path.starts_with('~') {
+        if actual_path.starts_with('~') {
             if let Some(home_dir) = dirs::home_dir() {
-                let expanded_path = if path == "~" {
+                let expanded_path = if actual_path == "~" {
                     home_dir
-                } else if let Some(stripped) = path.strip_prefix("~/") {
+                } else if let Some(stripped) = actual_path.strip_prefix("~/") {
                     home_dir.join(stripped)
                 } else {
-                    PathBuf::from(path)
+                    PathBuf::from(actual_path)
                 };
                 return Ok(expanded_path);
             } else {
@@ -44,7 +52,7 @@ impl LocalFileSystemClient {
         }
 
         // 检查是否为绝对路径
-        let path_buf = PathBuf::from(path);
+        let path_buf = PathBuf::from(actual_path);
         if path_buf.is_absolute() {
             return Ok(path_buf);
         }

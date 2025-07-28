@@ -1,11 +1,102 @@
 import { invoke } from '@tauri-apps/api/core';
 import { BaseStorageClient } from './BaseStorageClient';
-import { ConnectionConfig, DirectoryResult, ListOptions, ReadOptions, FileContent } from './types';
-import { PathProcessor } from '../../utils/pathUtils';
+import { ConnectionConfig, DirectoryResult, ListOptions, ReadOptions, FileContent, StorageResponse } from './types';
+import type { ArchiveInfo, FilePreview } from '../../types';
+
+/**
+ * HuggingFace 路径信息
+ */
+interface HuggingFacePathInfo {
+  owner: string;
+  dataset: string;
+  filePath?: string;
+  fullDatasetId: string; // owner/dataset
+}
 
 export class HuggingFaceStorageClient extends BaseStorageClient {
   protected protocol = 'huggingface';
   private currentConfig: ConnectionConfig | null = null;
+
+  /**
+   * 解析 HuggingFace 路径
+   * 格式：{owner}:{dataset}/{file_path}
+   */
+  private parseHuggingFacePath(path: string): HuggingFacePathInfo | null {
+    if (!path || path === '/' || path === '') {
+      return null;
+    }
+
+    // 移除开头的斜杠并分割路径
+    const normalizedPath = path.replace(/^\/+/, '');
+    const segments = normalizedPath.split('/').filter(s => s.length > 0);
+
+    if (segments.length === 0) {
+      return null;
+    }
+
+    const datasetIdPart = segments[0];
+
+    // 必须使用 : 分隔符
+    if (!datasetIdPart.includes(':')) {
+      return null;
+    }
+
+    const datasetParts = datasetIdPart.split(':');
+    if (datasetParts.length !== 2) {
+      return null;
+    }
+
+    const [owner, dataset] = datasetParts;
+
+    if (!owner || !dataset) {
+      return null;
+    }
+
+    // 剩余部分是文件路径
+    const filePath = segments.length > 1 ? segments.slice(1).join('/') : undefined;
+
+    return {
+      owner,
+      dataset,
+      filePath,
+      fullDatasetId: `${owner}/${dataset}`
+    };
+  }
+
+  /**
+   * 将前端路径转换为协议统一的地址格式
+   * HuggingFace 协议格式：huggingface://dataset_id/file_path
+   */
+  toProtocolUrl(path: string): string {
+    const org = this.currentConfig?.organization;
+
+    // 处理空路径或根路径
+    if (!path || path === '/' || path === '') {
+      if (org) {
+        // 如果指定了组织，使用组织名作为默认路径
+        return `huggingface://${org}`;
+      }
+      return 'huggingface://';
+    }
+
+    const pathInfo = this.parseHuggingFacePath(path);
+    if (!pathInfo) {
+      // 如果无法解析路径，尝试简单处理
+      if (org && !path.includes('/')) {
+        // 如果指定了组织且路径不包含斜杠，自动添加组织前缀
+        return `huggingface://${org}/${path}`;
+      }
+      return `huggingface://${path}`;
+    }
+
+    if (!pathInfo.filePath) {
+      // 数据集根目录
+      return `huggingface://${pathInfo.fullDatasetId}`;
+    }
+
+    // 完整的数据集文件路径
+    return `huggingface://${pathInfo.fullDatasetId}/${pathInfo.filePath}`;
+  }
 
   getDisplayName(): string {
     return 'Hugging Face Hub';
@@ -55,66 +146,11 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     };
   }
 
-	// HuggingFace 构建正确的数据集 URL
-  protected buildFileUrl(path: string): string {
-    const org = this.currentConfig?.organization;
-
-    // 处理空路径或根路径
-    if (!path || path === '/' || path === '') {
-      if (org) {
-        // 如果指定了组织，跳转到组织页面
-        return `https://huggingface.co/${org}`;
-      }
-      return 'https://huggingface.co/datasets';
-    }
-
-    const pathInfo = PathProcessor.parseHuggingFacePath(path);
-    if (!pathInfo) {
-      // 验证路径格式，避免构建无效 URL
-      if (path.includes('..') || path.includes('//')) {
-        throw new Error('Invalid path format');
-      }
-
-      // 如果无法解析路径，假设它是一个简单的数据集名称
-      if (org && !path.includes('/')) {
-        // 如果指定了组织且路径不包含斜杠，自动添加组织前缀
-        return `https://huggingface.co/datasets/${org}/${path}`;
-      }
-      return `https://huggingface.co/datasets/${path}`;
-    }
-
-    const baseUrl = `https://huggingface.co/datasets/${pathInfo.fullDatasetId}`;
-
-    if (!pathInfo.filePath) {
-      // 数据集根目录
-      return baseUrl;
-    }
-
-    // 判断是文件还是目录
-    const isFile = this.isLikelyFile(pathInfo.filePath);
-
-    if (isFile) {
-      // 文件使用 resolve 路径
-      return `${baseUrl}/resolve/main/${pathInfo.filePath}`;
-    } else {
-      // 目录使用 tree 路径
-      return `${baseUrl}/tree/main/${pathInfo.filePath}`;
-    }
-  }
-
   /**
-   * 根据路径判断是否可能是文件
-   * 简单判断：有文件扩展名的认为是文件，否则认为是目录
-   */
-  private isLikelyFile(filePath: string): boolean {
-    const fileName = filePath.split('/').pop() || '';
-    // 判断是否包含点号且点号不在开头（排除隐藏文件夹如 .git）
-    return fileName.includes('.') && !fileName.startsWith('.');
-  }  /**
-   * 构建 HuggingFace 文件下载 URL
+   * 构建 HuggingFace 文件下载 URL（用于后端处理）
    */
   protected buildDownloadUrl(path: string): string {
-    const pathInfo = PathProcessor.parseHuggingFacePath(path);
+    const pathInfo = this.parseHuggingFacePath(path);
     if (!pathInfo || !pathInfo.filePath) {
       throw new Error('Invalid file path for HuggingFace download URL');
     }
@@ -134,37 +170,33 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
       // 保存当前配置，用于构建 URL
       this.currentConfig = config;
 
-      // 使用统一的后端连接命令建立连接
-      const connected = await invoke<boolean>('storage_connect', {
-        config: {
-          protocol: 'huggingface',
-          url: null,
-          accessKey: config.apiToken,
-          secretKey: null,
-          region: null,
-          endpoint: null,
-          username: null,
-          password: null,
-          extraOptions: null,
-        }
+      // 使用基类的通用连接方法
+      const connected = await this.connectToBackend({
+        protocol: 'huggingface',
+        url: null,
+        accessKey: config.apiToken,
+        secretKey: null,
+        region: null,
+        endpoint: null,
+        username: null,
+        password: null,
+        extraOptions: null,
       });
 
       if (connected) {
-        this.connected = true;
         return true;
       }
 
-      this.connected = false;
       return false;
     } catch (error) {
       console.error('HuggingFace connection failed:', error);
-      this.connected = false;
       return false;
     }
   }
 
   disconnect(): void {
-    this.connected = false;
+    // 使用基类的通用断开连接方法
+    this.disconnectFromBackend();
     this.currentConfig = null;
   }
 
@@ -202,15 +234,12 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   }
 
   async getFileContent(path: string, options?: ReadOptions): Promise<FileContent> {
-    const pathInfo = PathProcessor.parseHuggingFacePath(path);
+    const pathInfo = this.parseHuggingFacePath(path);
     if (!pathInfo || !pathInfo.filePath) {
       throw new Error('Invalid file path for HuggingFace content reading');
     }
 
     try {
-      // 构建下载 URL
-      const downloadUrl = this.buildDownloadUrl(path);
-
       // 准备请求头，支持范围请求
       const headers = this.getAuthHeaders();
 
@@ -222,12 +251,14 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
         headers['Range'] = `bytes=${options.start}-${options.end}`;
       }
 
-      // 使用基类的 makeRequest 方法获取文件内容
-      const response = await this.makeRequest({
+      // 使用统一的 storage_request 方法获取文件内容
+      const response = await invoke<StorageResponse>('storage_request', {
+        protocol: this.protocol,
         method: 'GET',
-        url: downloadUrl,
+        url: this.toProtocolUrl(path),
         headers,
-        options: null,
+        body: undefined,
+        options: undefined
       });
 
       return {
@@ -242,19 +273,20 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   }
 
   async getFileSize(path: string): Promise<number> {
-    const pathInfo = PathProcessor.parseHuggingFacePath(path);
+    const pathInfo = this.parseHuggingFacePath(path);
     if (!pathInfo || !pathInfo.filePath) {
       throw new Error('Invalid file path for HuggingFace size check');
     }
 
     try {
-      // 构建下载 URL 并使用基类的 makeRequest 方法获取文件头信息
-      const downloadUrl = this.buildDownloadUrl(path);
-      const response = await this.makeRequest({
+      // 使用统一的 storage_request 方法获取文件头信息
+      const response = await invoke<StorageResponse>('storage_request', {
+        protocol: this.protocol,
         method: 'HEAD',
-        url: downloadUrl,
+        url: this.toProtocolUrl(path),
         headers: this.getAuthHeaders(),
-        options: {}
+        body: undefined,
+        options: undefined
       });
 
       const sizeHeader = response.headers['content-length'] || response.headers['Content-Length'];
@@ -270,20 +302,28 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   }
 
   async downloadFile(path: string): Promise<Blob> {
-    const pathInfo = PathProcessor.parseHuggingFacePath(path);
+    const pathInfo = this.parseHuggingFacePath(path);
     if (!pathInfo || !pathInfo.filePath) {
       throw new Error('Invalid file path for HuggingFace download');
     }
 
     try {
-      // 构建下载 URL 并使用基类的 makeRequestBinary 方法
-      const downloadUrl = this.buildDownloadUrl(path);
-      const arrayBuffer = await this.makeRequestBinary({
+      // 使用统一的 storage_request_binary 方法
+      const response = await invoke<string>('storage_request_binary', {
+        protocol: this.protocol,
         method: 'GET',
-        url: downloadUrl,
+        url: this.toProtocolUrl(path),
         headers: this.getAuthHeaders(),
-        options: {}
+        options: undefined
       });
+
+      // 转换为 ArrayBuffer
+      const binaryString = atob(response);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const arrayBuffer = bytes.buffer;
 
       return new Blob([arrayBuffer]);
     } catch (error) {
@@ -293,7 +333,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   }
 
   async downloadFileWithProgress(path: string, filename: string): Promise<string> {
-    const pathInfo = PathProcessor.parseHuggingFacePath(path);
+    const pathInfo = this.parseHuggingFacePath(path);
     if (!pathInfo || !pathInfo.filePath) {
       throw new Error('Invalid file path for HuggingFace download with progress');
     }
@@ -306,5 +346,47 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
       console.error(`Failed to download file with progress ${path}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * 重写分析压缩文件方法，确保传递正确的协议URL格式给后端
+   */
+  protected async analyzeArchiveWithClient(
+    path: string,
+    filename: string,
+    maxSize?: number
+  ): Promise<ArchiveInfo> {
+    // 使用协议URL格式
+    const protocolUrl = this.toProtocolUrl(path);
+
+    // 通过Tauri命令调用后端的存储客户端接口
+    return await invoke('analyze_archive_with_client', {
+      protocol: this.protocol,
+      filePath: protocolUrl, // 传递协议URL格式
+      filename,
+      maxSize
+    });
+  }
+
+  /**
+   * 重写获取压缩文件预览方法，确保传递正确的协议URL格式给后端
+   */
+  protected async getArchiveFilePreviewWithClient(
+    path: string,
+    filename: string,
+    entryPath: string,
+    maxPreviewSize?: number
+  ): Promise<FilePreview> {
+    // 使用协议URL格式
+    const protocolUrl = this.toProtocolUrl(path);
+
+    // 通过Tauri命令调用后端的存储客户端接口
+    return await invoke('get_archive_preview_with_client', {
+      protocol: this.protocol,
+      filePath: protocolUrl, // 传递协议URL格式
+      filename,
+      entryPath,
+      maxPreviewSize
+    });
   }
 }

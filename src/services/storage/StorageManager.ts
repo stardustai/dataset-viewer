@@ -486,38 +486,8 @@ export class StorageServiceManager {
    * 获取文件URL
    */
   static getFileUrl(path: string): string {
-    const connection = this.getCurrentConnection();
     const client = this.getCurrentClient();
-
-    // 对于 HuggingFace，使用客户端的 buildFileUrl 方法
-    if (client instanceof HuggingFaceStorageClient) {
-      return (client as any).buildFileUrl(path);
-    }
-
-    if (!connection || !connection.url) throw new Error('Not connected');
-
-    // 处理本地文件系统
-    if (connection.url.startsWith('local://')) {
-      // 对于本地文件，通过 client 获取实际文件路径
-      if (client instanceof LocalStorageClient) {
-        return client.getActualFilePath(path);
-      }
-      // 降级处理：构建文件系统路径
-      const rootPath = connection.url.replace('local://', '');
-      const cleanPath = path.replace(/^\/+/, '').replace(/\/+/g, '/');
-
-      if (!cleanPath) {
-        return rootPath;
-      }
-
-      const separator = rootPath.endsWith('/') || rootPath.endsWith('\\') ? '' : '/';
-      return `${rootPath}${separator}${cleanPath}`;
-    }
-
-    // WebDAV URL 处理
-    const baseUrl = connection.url.replace(/\/$/, '');
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    return `${baseUrl}${normalizedPath}`;
+    return client.toProtocolUrl(path);
   }
 
   /**

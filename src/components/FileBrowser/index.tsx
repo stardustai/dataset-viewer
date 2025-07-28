@@ -24,7 +24,6 @@ import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
-import { PathProcessor } from '../../utils/pathUtils';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string, storageClient?: BaseStorageClient) => void;
@@ -380,13 +379,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   const handleItemClick = (file: WebDAVFile) => {
     if (file.type === 'directory') {
-      // 使用统一的路径处理方法构建导航路径
-      const newPath = PathProcessor.buildNavigationPath(currentPath, file.filename);
+      // 构建导航路径：如果当前路径为空，直接使用文件名，否则拼接
+      const newPath = currentPath ? `${currentPath}/${file.filename}` : file.filename;
       loadDirectory(newPath);
     } else {
       // 处理所有类型的文件，不仅仅是文本文件
-      // 使用统一的路径处理方法构建文件路径
-      const fullPath = PathProcessor.buildDisplayPath(currentPath, file.basename);
+      // 构建文件路径：如果当前路径为空，直接使用basename，否则拼接
+      const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
 
       const currentStorageClient = StorageServiceManager.getCurrentClient();
       onFileSelect(file, fullPath, currentStorageClient);
