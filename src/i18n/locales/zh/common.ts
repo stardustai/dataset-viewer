@@ -1,4 +1,11 @@
 export const common = {
+  // 应用信息
+  'app.name': '数据集查看器',
+  'app.initializing': '正在初始化...',
+  
+  // 连接状态
+  'connected.to': '已连接到',
+
   // 基础操作
   'save': '保存',
   'cancel': '取消',
@@ -10,6 +17,7 @@ export const common = {
   'ok': '确定',
   'retry': '重试',
   'loading': '加载中...',
+  'optional': '(可选)',
 
   // 时间相关
   'time.today': '今天',

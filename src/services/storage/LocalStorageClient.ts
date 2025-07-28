@@ -23,7 +23,7 @@ export class LocalStorageClient extends BaseStorageClient {
    * 获取连接的显示名称
    */
   getDisplayName(): string {
-    return this.displayPath || '本机文件';
+    return this.displayPath || 'Local Files';
   }
 
   /**

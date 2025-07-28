@@ -75,20 +75,20 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           <Bot className="inline w-4 h-4 mr-1" />
-          {t('huggingface.organization', '组织')}
-          <span className="text-gray-500 ml-1">{t('common.optional', '(可选)')}</span>
+          {t('huggingface.organization')}
+          <span className="text-gray-500 ml-1">{t('optional')}</span>
         </label>
         <input
           type="text"
           value={formData.organization}
           onChange={handleInputChange('organization')}
-          placeholder={t('huggingface.organization.placeholder', 'microsoft, openai, etc.')}
+          placeholder={t('huggingface.organization.placeholder')}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
                    bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {t('huggingface.organization.help', '可选，指定特定组织的数据集')}
+          {t('huggingface.organization.help')}
         </p>
       </div>
 
@@ -96,20 +96,20 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           <Lock className="inline w-4 h-4 mr-1" />
-          {t('huggingface.apiToken', 'API Token')}
-          <span className="text-gray-500 ml-1">{t('common.optional', '(可选)')}</span>
+          {t('huggingface.apiToken')}
+          <span className="text-gray-500 ml-1">{t('optional')}</span>
         </label>
         <input
           type="password"
           value={formData.apiToken}
           onChange={handleInputChange('apiToken')}
-          placeholder={t('huggingface.apiToken.placeholder', 'hf_xxxxxxxx')}
+          placeholder={t('huggingface.apiToken.placeholder')}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
                    bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {t('huggingface.apiToken.help', '仅在访问私有数据集时需要')}
+          {t('huggingface.apiToken.help')}
         </p>
       </div>
 
@@ -125,20 +125,20 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
         {isConnecting ? (
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-            {t('connection.connecting', '连接中...')}
+            {t('connecting')}
           </div>
         ) : (
-          t('connection.connect', '连接')
+          t('connect')
         )}
       </button>
 
       {/* 帮助信息 */}
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
         <p>
-          {t('huggingface.help.token.title', 'API Token 获取方式：')}
+          {t('huggingface.help.token.title')}
         </p>
         <p>
-          1. {t('huggingface.help.token.step1', '访问')}
+          1. {t('huggingface.help.token.step1')}
           <a
             href="https://huggingface.co/settings/tokens"
             target="_blank"
@@ -149,10 +149,10 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
           </a>
         </p>
         <p>
-          2. {t('huggingface.help.token.step2', '创建新的访问令牌')}
+          2. {t('huggingface.help.token.step2')}
         </p>
         <p>
-          3. {t('huggingface.help.token.step3', '选择 "Read" 权限即可')}
+          3. {t('huggingface.help.token.step3')}
         </p>
       </div>
     </form>

@@ -1,4 +1,11 @@
 export const common = {
+  // App information
+  'app.name': 'Dataset Viewer',
+  'app.initializing': 'Initializing...',
+
+  // Connection status
+  'connected.to': 'Connected to',
+
   // Basic operations
   'save': 'Save',
   'cancel': 'Cancel',
@@ -10,6 +17,7 @@ export const common = {
   'ok': 'OK',
   'retry': 'Retry',
   'loading': 'Loading...',
+  'optional': '(Optional)',
 
   // Time related
   'time.today': 'Today',

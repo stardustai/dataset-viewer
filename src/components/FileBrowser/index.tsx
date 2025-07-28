@@ -594,10 +594,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               <button
                 onClick={() => handleGlobalSearch(searchTerm.trim())}
                 className="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors flex-shrink-0 flex items-center space-x-1"
-                title={t('search.global', 'Search datasets')}
+                title={t('search.global')}
               >
                 <Search className="w-3 h-3" />
-                <span className="hidden sm:inline">{t('search.datasets', 'Search')}</span>
+                <span className="hidden sm:inline">{t('search.datasets')}</span>
               </button>
             )}
 

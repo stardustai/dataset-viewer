@@ -290,19 +290,19 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
         {/* 帮助信息 */}
         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
           <p>
-            {t('oss.help.credentials.title', 'Access Key 获取方式：')}
+            {t('oss.help.credentials.title')}
           </p>
           <p>
-            1. {t('oss.help.step1', '登录对象存储服务控制台（阿里云、AWS、MinIO 等）')}
+            1. {t('oss.help.step1')}
           </p>
           <p>
-            2. {t('oss.help.step2', '在访问控制或安全凭证页面创建 Access Key')}
+            2. {t('oss.help.step2')}
           </p>
           <p>
-            3. {t('oss.help.step3', '记录生成的 Access Key ID 和 Secret Access Key')}
+            3. {t('oss.help.step3')}
           </p>
           <p>
-            4. {t('oss.help.step4', '确保该密钥有访问目标存储桶的权限')}
+            4. {t('oss.help.step4')}
           </p>
         </div>
       </form>

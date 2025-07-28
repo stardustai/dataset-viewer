@@ -2,7 +2,7 @@
 
 > 🤖 **本项目 100% 由 AI 生成** 使用 GitHub Copilot 和 Claude AI
 
-一个基于 Tauri、React 和 TypeScript 构建的现代化、高性能数据集查看工具。专为处理来自多种存储源（WebDAV、本地文件、OSS）的大型数据集而设计，具有高效的流式处理和快速文件内搜索功能。
+一个基于 Tauri、React 和 TypeScript 构建的现代化、高性能数据集查看工具。专为处理来自多种存储源（WebDAV、本地文件、OSS、HuggingFace）的大型数据集而设计，具有高效的流式处理和快速文件内搜索功能。
 
 [English](README.md) · **[下载最新版本](https://github.com/stardustai/dataset-viewer/releases/latest)**
 
@@ -15,7 +15,7 @@
 
 ## 🚀 功能特性
 
-- 🌐 **多源支持**：WebDAV 服务器、本地文件、云存储（OSS）
+- 🌐 **多源支持**：WebDAV 服务器、本地文件、云存储（OSS）、HuggingFace 数据集
 - 📊 **大数据集流式处理**：支持 100GB+ 文件，虚拟化渲染
 - 📦 **压缩包预览**：无需解压浏览 ZIP/TAR 文件
 - 🔍 **高速搜索**：实时正则表达式搜索，支持高亮

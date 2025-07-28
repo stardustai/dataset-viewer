@@ -2,7 +2,7 @@
 
 > 🤖 **This project is 100% AI-generated** using GitHub Copilot and Claude AI
 
-A modern, high-performance dataset viewer built with Tauri, React, and TypeScript. Designed to handle massive datasets from multiple sources (WebDAV, local files, OSS) with efficient streaming for large text files (hundreds of GB) and fast in-file search capabilities.
+A modern, high-performance dataset viewer built with Tauri, React, and TypeScript. Designed to handle massive datasets from multiple sources (WebDAV, local files, OSS, HuggingFace) with efficient streaming for large text files (hundreds of GB) and fast in-file search capabilities.
 
 [中文文档](README_zh.md) · **[Download Latest Release](https://github.com/stardustai/dataset-viewer/releases/latest)**
 
@@ -15,7 +15,7 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 
 ## 🚀 Features
 
-- 🌐 **Multi-Source Support**: WebDAV servers, local files, cloud storage (OSS)
+- 🌐 **Multi-Source Support**: WebDAV servers, local files, cloud storage (OSS), HuggingFace datasets
 - 📊 **Large Dataset Streaming**: Handle 100GB+ files with virtualized rendering
 - 📦 **Archive Preview**: Browse ZIP/TAR files without extraction
 - 🔍 **Fast Search**: Real-time regex search with highlighting

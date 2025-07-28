@@ -1,6 +1,5 @@
 export const connection = {
-  // Application title and description
-  'app.name': 'Dataset Viewer',
+  // Application description for connection page
   'connect.storage': 'Connect to data source or local file system',
   'app.tagline': 'Easily view and search your datasets',
   'app.description': 'Cross-platform dataset viewer supporting WebDAV, object storage, and local file systems with powerful features like streaming and virtual scrolling, designed for large datasets.',
@@ -44,8 +43,8 @@ export const connection = {
   'password.saved': 'Using saved password',
   'password.click.new': 'Click to enter new password',
   'connecting': 'Connecting...',
-  'connected.to': 'Connected to',
   'connect': 'Connect',
+  'optional': '(Optional)',
 
   // OSS specific fields
   'oss.endpoint': 'Endpoint',

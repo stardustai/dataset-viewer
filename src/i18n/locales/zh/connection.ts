@@ -1,6 +1,5 @@
 export const connection = {
-  // 应用标题和描述
-  'app.name': '数据集查看器',
+  // 连接页面应用描述
   'connect.storage': '连接到数据源或本地文件系统',
   'app.tagline': '轻松查看和搜索您的数据集',
   'app.description': '跨平台数据集查看工具，支持 WebDAV、对象存储和本地文件系统，提供流式传输和虚拟滚动等强大功能，专为大数据集设计。',
@@ -44,8 +43,8 @@ export const connection = {
   'password.saved': '使用已保存的密码',
   'password.click.new': '点击输入新密码',
   'connecting': '连接中...',
-  'connected.to': '已连接到',
   'connect': '连接',
+  'optional': '(可选)',
 
   // OSS 特定字段
   'oss.endpoint': '端点地址',

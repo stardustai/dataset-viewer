@@ -116,7 +116,7 @@ impl StorageManager {
     }
 
     pub fn supported_protocols(&self) -> Vec<&str> {
-        vec!["webdav", "local", "oss"] // 支持 WebDAV、本机文件系统和 OSS
+        vec!["webdav", "local", "oss", "huggingface"] // 支持 WebDAV、本机文件系统、OSS 和 HuggingFace
     }
 }
 
