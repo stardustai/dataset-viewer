@@ -124,8 +124,9 @@ jobs:
         with:
           script: |
             const version = '${{ steps.get_version.outputs.VERSION }}';
+            // Check original tag name for prerelease detection (before Windows conversion)
             const isPrerelease = version.includes('alpha') || version.includes('beta') || version.includes('rc');
-            
+
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -199,6 +200,25 @@ jobs:
 
       - name: Install frontend dependencies
         run: pnpm install
+
+      - name: Fix version for Windows MSI (Windows only)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # Simple version fix: replace non-numeric pre-release with numbers
+          # beta.0 -> 1, alpha.0 -> 2, rc.0 -> 3, etc.
+          $files = @("package.json", "src-tauri/Cargo.toml", "src-tauri/tauri.conf.json")
+
+          foreach ($file in $files) {
+            $content = Get-Content $file -Raw
+            $content = $content -replace 'beta\.(\d+)', '$1'
+            $content = $content -replace 'alpha\.(\d+)', '$1'
+            $content = $content -replace 'rc\.(\d+)', '$1'
+            $content = $content -replace '-beta', '-1'
+            $content = $content -replace '-alpha', '-2'
+            $content = $content -replace '-rc', '-3'
+            Set-Content $file $content
+          }
+        shell: pwsh
 
       - uses: tauri-apps/tauri-action@v0
         env:

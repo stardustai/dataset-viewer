@@ -1,13 +1,5 @@
 {{changes}}
 
-### ✨ Key Features
-
-- 🌐 **WebDAV Server Connection** - Secure connections to various WebDAV servers
-- 📁 **File Browser** - Modern interface for browsing directories and files
-- 📄 **Large File Support** - Efficient viewing of large files with chunked loading
-- 🔍 **Fast Search** - In-file search with highlighting
-- 🎨 **Modern UI** - Responsive design with dark/light theme
-
 ### 💾 Downloads
 
 | Platform | Download |
