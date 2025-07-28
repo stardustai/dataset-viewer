@@ -83,10 +83,10 @@
                 <div class="flex items-center justify-center mb-6">
                     <img src="./logo.png" alt="Dataset Viewer Logo" class="logo-animation w-20 h-20 mr-4 rounded-3xl drop-shadow-xl">
                     <div class="text-left relative">
-                        <h1 class="text-5xl font-bold text-gray-900 mb-2" data-i18n="app.title">
+                        <h1 class="text-5xl font-bold text-gray-900 mb-2 pr-16" data-i18n="app.title">
                             Dataset Viewer
                         </h1>
-                        <span id="version-badge" class="absolute top-2.5 -right-20 text-lg font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-md opacity-0 transition-all duration-500 transform scale-95"></span>
+                        <span id="version-badge" class="absolute -top-4 right-0 text-xs font-medium text-gray-500 bg-gray-100/80 backdrop-blur-sm px-2 py-1 rounded-full opacity-0 transition-all duration-500 transform scale-95 whitespace-nowrap"></span>
                         <div class="flex items-center space-x-3">
                             <span class="ai-badge text-xs text-white px-3 py-1.5 rounded-full font-medium" data-i18n="app.ai_badge">
                                 🤖 100% AI 生成
@@ -466,29 +466,29 @@
                 version: version,
                 releases: {
                     "macos-arm64": {
-                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_aarch64.dmg`,
-                        filename: `WebDAV.Viewer_${version}_aarch64.dmg`,
-                        size: getFileSize(`WebDAV.Viewer_${version}_aarch64.dmg`)
+                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_aarch64.dmg`,
+                        filename: `Dataset.Viewer_${version}_aarch64.dmg`,
+                        size: getFileSize(`Dataset.Viewer_${version}_aarch64.dmg`)
                     },
                     "macos-x64": {
-                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_x64.dmg`,
-                        filename: `WebDAV.Viewer_${version}_x64.dmg`,
-                        size: getFileSize(`WebDAV.Viewer_${version}_x64.dmg`)
+                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_x64.dmg`,
+                        filename: `Dataset.Viewer_${version}_x64.dmg`,
+                        size: getFileSize(`Dataset.Viewer_${version}_x64.dmg`)
                     },
                     "windows": {
-                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_x64_en-US.msi`,
-                        filename: `WebDAV.Viewer_${version}_x64_en-US.msi`,
-                        size: getFileSize(`WebDAV.Viewer_${version}_x64_en-US.msi`)
+                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_x64_en-US.msi`,
+                        filename: `Dataset.Viewer_${version}_x64_en-US.msi`,
+                        size: getFileSize(`Dataset.Viewer_${version}_x64_en-US.msi`)
                     },
                     "linux": {
-                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_amd64.deb`,
-                        filename: `WebDAV.Viewer_${version}_amd64.deb`,
-                        size: getFileSize(`WebDAV.Viewer_${version}_amd64.deb`)
+                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_amd64.deb`,
+                        filename: `Dataset.Viewer_${version}_amd64.deb`,
+                        size: getFileSize(`Dataset.Viewer_${version}_amd64.deb`)
                     },
                     "linux-appimage": {
-                        downloadUrl: `${baseUrl}/WebDAV.Viewer_${version}_amd64.AppImage`,
-                        filename: `WebDAV.Viewer_${version}_amd64.AppImage`,
-                        size: getFileSize(`WebDAV.Viewer_${version}_amd64.AppImage`)
+                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_amd64.AppImage`,
+                        filename: `Dataset.Viewer_${version}_amd64.AppImage`,
+                        size: getFileSize(`Dataset.Viewer_${version}_amd64.AppImage`)
                     }
                 },
                 github: {
@@ -532,16 +532,9 @@
         function updateFileSizes() {
             if (!appConfig) return;
 
-            // 检测系统架构
-            const isAppleSilicon = navigator.userAgent.includes('Mac') &&
-                                 (navigator.userAgent.includes('ARM') ||
-                                  navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 0);
-
-            const macPlatform = isAppleSilicon ? 'macos-arm64' : 'macos-x64';
-
             // 更新各平台文件大小
             const updates = [
-                { id: 'macos-size', platform: macPlatform },
+                { id: 'macos-size', platform: 'macos-arm64' },
                 { id: 'windows-size', platform: 'windows' },
                 { id: 'linux-size', platform: 'linux' }
             ];
@@ -564,12 +557,7 @@
                 return;
             }
 
-            // 检测系统架构
-            const isAppleSilicon = navigator.userAgent.includes('Mac') &&
-                                 (navigator.userAgent.includes('ARM') ||
-                                  navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 0);
-
-            const platform = isAppleSilicon ? 'macos-arm64' : 'macos-x64';
+            const platform = 'macos-arm64';
             const config = appConfig?.releases?.[platform];
 
             if (config) {
