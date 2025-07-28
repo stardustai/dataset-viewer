@@ -23,7 +23,7 @@ import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from '../common';
-import { copyToClipboard, normalizePath, showCopyToast } from '../../utils/clipboard';
+import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 
 interface FileBrowserProps {
   onFileSelect: (file: WebDAVFile, path: string, storageClient?: BaseStorageClient) => void;
@@ -71,6 +71,33 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
 
     return filteredFiles;
+  };
+
+  // 处理全局搜索（如HuggingFace数据集搜索）
+  const handleGlobalSearch = async (query: string) => {
+    if (!query.trim()) return;
+
+    try {
+      const client = StorageServiceManager.getCurrentClient();
+      if (client.supportsSearch?.()) {
+        // 导航到搜索结果路径，让存储客户端处理搜索逻辑
+        const searchPath = `/search/${encodeURIComponent(query)}`;
+        await loadDirectory(searchPath, true, true);
+      }
+    } catch (error) {
+      console.error('Global search failed:', error);
+      setError(`Search failed: ${error}`);
+    }
+  };
+
+  // 检查当前存储是否支持全局搜索
+  const supportsGlobalSearch = () => {
+    try {
+      const client = StorageServiceManager.getCurrentClient();
+      return client.supportsSearch?.() || false;
+    } catch {
+      return false;
+    }
   };
 
   const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
@@ -352,24 +379,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   const handleItemClick = (file: WebDAVFile) => {
     if (file.type === 'directory') {
-      const newPath = currentPath === ''
-        ? file.basename
-        : `${currentPath}/${file.basename}`;
+      // 构建导航路径：如果当前路径为空，直接使用文件名，否则拼接
+      const newPath = currentPath ? `${currentPath}/${file.filename}` : file.filename;
       loadDirectory(newPath);
     } else {
       // 处理所有类型的文件，不仅仅是文本文件
-      const fullPath = currentPath === ''
-        ? file.basename
-        : `${currentPath}/${file.basename}`;
+      // 构建文件路径：如果当前路径为空，直接使用basename，否则拼接
+      const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
 
-      // 获取当前的存储客户端
-      const storageClient = StorageServiceManager.getCurrentClient();
-      if (storageClient) {
-        onFileSelect(file, fullPath, storageClient);
-      } else {
-        console.warn('No storage client available');
-        onFileSelect(file, fullPath);
-      }
+      const currentStorageClient = StorageServiceManager.getCurrentClient();
+      onFileSelect(file, fullPath, currentStorageClient);
     }
   };
 
@@ -408,8 +427,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       const connection = StorageServiceManager.getConnection();
       if (!connection) return;
 
-      // 构建完整路径，使用规范化函数避免重复斜杠
-      const fullPath = normalizePath(connection.url, currentPath);
+      // 使用 StorageServiceManager.getFileUrl 获取正确的 URL
+      // 这样可以正确处理 HuggingFace 等特殊协议
+      const fullPath = StorageServiceManager.getFileUrl(currentPath);
 
       const success = await copyToClipboard(fullPath);
       if (success) {
@@ -553,6 +573,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t('search.files')}
                 className="w-32 sm:w-48 lg:w-64 pl-8 lg:pl-10 pr-6 lg:pr-8 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && supportsGlobalSearch() && searchTerm.trim()) {
+                    handleGlobalSearch(searchTerm.trim());
+                  }
+                }}
               />
               {searchTerm && (
                 <button
@@ -563,6 +588,18 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                 </button>
               )}
             </div>
+
+            {/* 全局搜索按钮 - 仅在支持的存储类型中显示 */}
+            {supportsGlobalSearch() && searchTerm.trim() && (
+              <button
+                onClick={() => handleGlobalSearch(searchTerm.trim())}
+                className="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors flex-shrink-0 flex items-center space-x-1"
+                title={t('search.global')}
+              >
+                <Search className="w-3 h-3" />
+                <span className="hidden sm:inline">{t('search.datasets')}</span>
+              </button>
+            )}
 
             {/* 刷新按钮 */}
             <button
@@ -593,8 +630,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             <ErrorDisplay
               message={failedPath ? `${t('error.load.directory')}。${t('error.failed.path')}: ${failedPath}` : t('error.load.directory')}
               onRetry={() => {
-                const parentPath = currentPath.split('/').slice(0, -1).join('/');
-                loadDirectory(parentPath);
+                // 重试加载失败的路径，如果没有记录失败路径则加载当前路径
+                const retryPath = failedPath || currentPath;
+                loadDirectory(retryPath, true, true); // 标记为手动操作和强制重新加载
               }}
             />
           )}

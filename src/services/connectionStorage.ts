@@ -8,6 +8,18 @@ export interface StoredConnection {
   password?: string; // 可选的密码字段
   lastConnected?: string;
   isDefault?: boolean;
+  // 扩展元数据字段，用于存储不同存储类型的特定信息
+  metadata?: {
+    // HuggingFace 特定字段
+    organization?: string;
+    apiToken?: string;
+    // OSS 特定字段
+    bucket?: string;
+    region?: string;
+    endpoint?: string;
+    // 其他存储类型可以在此添加字段
+    [key: string]: any;
+  };
 }
 
 class ConnectionStorageService {
@@ -114,6 +126,11 @@ class ConnectionStorageService {
       storedConnection.password = connection.password;
     }
 
+    // 保存扩展的 metadata 信息
+    if (connection.metadata) {
+      storedConnection.metadata = connection.metadata;
+    }
+
     // 如果是第一个连接，设为默认
     if (connections.length === 0) {
       storedConnection.isDefault = true;
@@ -147,6 +164,18 @@ class ConnectionStorageService {
     const connections = this.getStoredConnections();
     const filtered = connections.filter(c => c.id !== id);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filtered));
+  }
+
+  // 恢复已删除的连接
+  restoreConnection(connection: StoredConnection): void {
+    const connections = this.getStoredConnections();
+
+    // 检查连接是否已存在（避免重复恢复）
+    const exists = connections.some(c => c.id === connection.id);
+    if (!exists) {
+      connections.push(connection);
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
+    }
   }
 
   // 设置默认连接

@@ -112,11 +112,11 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       // 检查是否有存储客户端，如果有则优先使用存储客户端接口
       if (storageClient && storageClient.analyzeArchive) {
         // 使用存储客户端的统一接口
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 1024 * 1024; // 1MB
         info = await storageClient.analyzeArchive(url, filename, maxSize);
       } else {
         // 回退到直接的压缩服务接口
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 1024 * 1024; // 1MB
         info = await CompressionService.analyzeArchive(
           url,
           headers,

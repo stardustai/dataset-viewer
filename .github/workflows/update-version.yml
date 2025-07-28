@@ -16,7 +16,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Update version in package.json and tauri.conf.json
+      - name: Update version in package.json, tauri.conf.json and Cargo.toml
         run: |
           VERSION="${{ github.event.inputs.version }}"
 
@@ -26,11 +26,14 @@ jobs:
           # Update tauri.conf.json
           jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
+          # Update Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
+
       - name: Commit version update
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json src-tauri/tauri.conf.json
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
           git commit -m "Bump version to ${{ github.event.inputs.version }}"
           git push
 

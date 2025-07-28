@@ -7,6 +7,7 @@ import { StorageTypeSelector } from '../StorageTypeSelector';
 import { LocalConnectionForm } from './LocalConnectionForm';
 import { OSSConnectionForm } from './OSSConnectionForm';
 import { WebDAVConnectionForm } from './WebDAVConnectionForm';
+import { HuggingFaceConnectionForm } from './HuggingFaceConnectionForm';
 
 interface ConnectionFormContainerProps {
   storageType: StorageClientType;
@@ -23,6 +24,7 @@ interface ConnectionFormContainerProps {
   onWebDAVConnect: (e: React.FormEvent) => void;
   onLocalConnect: (rootPath: string) => void;
   onOSSConnect: (config: ConnectionConfig) => Promise<void>;
+  onHuggingFaceConnect: (config: ConnectionConfig) => Promise<void>;
   onUrlChange: (value: string) => void;
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
@@ -44,6 +46,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   onWebDAVConnect,
   onLocalConnect,
   onOSSConnect,
+  onHuggingFaceConnect,
   onUrlChange,
   onUsernameChange,
   onPasswordChange,
@@ -122,6 +125,12 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               onConnect={onOSSConnect}
               connecting={connecting}
               error={error}
+              selectedConnection={selectedStoredConnection}
+            />
+          ) : storageType === 'huggingface' ? (
+            <HuggingFaceConnectionForm
+              onConnect={onHuggingFaceConnect}
+              isConnecting={connecting}
               selectedConnection={selectedStoredConnection}
             />
           ) : null}

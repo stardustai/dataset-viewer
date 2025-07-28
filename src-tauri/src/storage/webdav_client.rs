@@ -108,20 +108,20 @@ impl StorageClient for WebDAVClient {
         let base_url = self.config.url.as_ref()
             .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL is required".to_string()))?;
 
-        // 标准化基础 URL - 统一处理尾部斜杠
-        let normalized_base_url = if base_url.ends_with('/') {
-            base_url.trim_end_matches('/').to_string()
-        } else {
-            base_url.clone()
-        };
+        // 标准化基础 URL
+        let normalized_base_url = base_url.trim_end_matches('/');
 
-        // 构建完整URL - 确保路径正确处理
-        let url = if path.is_empty() || path == "/" {
+        // 简化路径处理：前端应传递相对于WebDAV根目录的路径，不包含/webdav前缀
+        let clean_path = path.trim_start_matches('/').trim_end_matches('/');
+
+        let url = if clean_path.is_empty() {
             format!("{}/", normalized_base_url)
         } else {
-            let clean_path = path.trim_start_matches('/').trim_end_matches('/');
             format!("{}/{}/", normalized_base_url, clean_path)
         };
+
+        // 添加调试日志
+        log::debug!("WebDAV list_directory - path: '{}', base_url: '{}', final_url: '{}'", path, base_url, url);
 
         // 创建PROPFIND请求
         let propfind_body = r#"<?xml version="1.0" encoding="utf-8"?>
@@ -155,7 +155,10 @@ impl StorageClient for WebDAVClient {
 
         let status = response.status().as_u16();
         if !(200..300).contains(&status) {
-            return Err(StorageError::RequestFailed(format!("PROPFIND failed with status: {}. Check URL format and trailing slash", status)));
+            return Err(StorageError::RequestFailed(format!(
+                "PROPFIND failed with status: {} for URL: '{}'. Request path: '{}'. Check if path exists on WebDAV server.",
+                status, url, path
+            )));
         }
 
         let body = response.text().await
@@ -180,16 +183,19 @@ impl StorageClient for WebDAVClient {
     }
 
     async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
+        // 处理 webdav:// 协议 URL
+        let actual_url = self.parse_webdav_url(&request.url)?;
+
         let mut req_builder = match request.method.as_str() {
-            "GET" => self.client.get(&request.url),
-            "POST" => self.client.post(&request.url),
-            "PUT" => self.client.put(&request.url),
-            "DELETE" => self.client.delete(&request.url),
-            "HEAD" => self.client.head(&request.url),
+            "GET" => self.client.get(&actual_url),
+            "POST" => self.client.post(&actual_url),
+            "PUT" => self.client.put(&actual_url),
+            "DELETE" => self.client.delete(&actual_url),
+            "HEAD" => self.client.head(&actual_url),
             "PROPFIND" => {
                 self.client.request(
                     reqwest::Method::from_bytes(b"PROPFIND").unwrap(),
-                    &request.url
+                    &actual_url
                 )
             },
             _ => return Err(StorageError::RequestFailed(format!("Unsupported method: {}", request.method))),
@@ -231,16 +237,19 @@ impl StorageClient for WebDAVClient {
     }
 
     async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
+        // 处理 webdav:// 协议 URL
+        let actual_url = self.parse_webdav_url(&request.url)?;
+
         let mut req_builder = match request.method.as_str() {
-            "GET" => self.client.get(&request.url),
-            "POST" => self.client.post(&request.url),
-            "PUT" => self.client.put(&request.url),
-            "DELETE" => self.client.delete(&request.url),
-            "HEAD" => self.client.head(&request.url),
+            "GET" => self.client.get(&actual_url),
+            "POST" => self.client.post(&actual_url),
+            "PUT" => self.client.put(&actual_url),
+            "DELETE" => self.client.delete(&actual_url),
+            "HEAD" => self.client.head(&actual_url),
             "PROPFIND" => {
                 self.client.request(
                     reqwest::Method::from_bytes(b"PROPFIND").unwrap(),
-                    &request.url
+                    &actual_url
                 )
             },
             _ => return Err(StorageError::RequestFailed(format!("Unsupported method: {}", request.method))),
@@ -301,9 +310,10 @@ impl StorageClient for WebDAVClient {
 
         println!("WebDAV读取文件范围: path={}, start={}, length={}", path, start, length);
 
-        let url = format!("{}/{}", self.config.url.as_ref().unwrap().trim_end_matches('/'), path.trim_start_matches('/'));
+        // 处理协议URL格式
+        let actual_url = self.parse_path_to_url(path)?;
 
-        let mut request = self.client.get(&url);
+        let mut request = self.client.get(&actual_url);
         if let Some(auth) = &self.auth_header {
             request = request.header("Authorization", auth);
         }
@@ -312,7 +322,7 @@ impl StorageClient for WebDAVClient {
         let range_header = format!("bytes={}-{}", start, start + length - 1);
         request = request.header("Range", range_header.clone());
 
-        println!("WebDAV Range请求: URL={}, Range={}", url, range_header);
+        println!("WebDAV Range请求: URL={}, Range={}", actual_url, range_header);
 
         let response = request.send().await
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
@@ -348,9 +358,10 @@ impl StorageClient for WebDAVClient {
             return Err(StorageError::NotConnected);
         }
 
-        let url = format!("{}/{}", self.config.url.as_ref().unwrap().trim_end_matches('/'), path.trim_start_matches('/'));
+        // 处理协议URL格式
+        let actual_url = self.parse_path_to_url(path)?;
 
-        let mut request = self.client.get(&url);
+        let mut request = self.client.get(&actual_url);
         if let Some(auth) = &self.auth_header {
             request = request.header("Authorization", auth);
         }
@@ -376,9 +387,10 @@ impl StorageClient for WebDAVClient {
             return Err(StorageError::NotConnected);
         }
 
-        let url = format!("{}/{}", self.config.url.as_ref().unwrap().trim_end_matches('/'), path.trim_start_matches('/'));
+        // 处理协议URL格式
+        let actual_url = self.parse_path_to_url(path)?;
 
-        let mut request = self.client.head(&url);
+        let mut request = self.client.head(&actual_url);
         if let Some(auth) = &self.auth_header {
             request = request.header("Authorization", auth);
         }
@@ -424,21 +436,15 @@ impl StorageClient for WebDAVClient {
             return Ok(path.to_string());
         }
 
-        // 否则，构建完整的下载 URL
+        // 使用统一的URL构建方法
         let base_url = self.config.url.as_ref()
             .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL not configured".to_string()))?;
 
-        let normalized_path = if path.starts_with('/') {
-            path.to_string()
-        } else {
-            format!("/{}", path)
-        };
+        let clean_base = base_url.trim_end_matches('/');
 
-        let download_url = if base_url.ends_with('/') {
-            format!("{}{}", base_url.trim_end_matches('/'), normalized_path)
-        } else {
-            format!("{}{}", base_url, normalized_path)
-        };
+        // 统一的路径处理：移除开头的斜杠
+        let clean_path = path.trim_start_matches('/');
+        let download_url = format!("{}/{}", clean_base, clean_path);
 
         Ok(download_url)
     }
@@ -599,7 +605,7 @@ impl WebDAVClient {
         }
 
         Some(StorageFile {
-            filename: href.clone(),
+            filename: filename.clone(), // 使用相对文件名，不包含完整路径
             basename: filename.clone(),
             lastmod: resp.lastmod.clone(),
             size: resp.size,
@@ -658,6 +664,56 @@ impl WebDAVClient {
         }
 
         files
+    }
+
+    /// 解析 WebDAV 协议 URL 并返回实际的 HTTP/HTTPS URL
+    ///
+    /// # Arguments
+    /// * `webdav_url` - WebDAV 协议 URL (例如: "webdav://host/path/to/file")
+    ///
+    /// # Returns
+    /// * `Result<String, StorageError>` - 实际的 HTTP/HTTPS URL
+    fn parse_webdav_url(&self, webdav_url: &str) -> Result<String, StorageError> {
+        if !webdav_url.starts_with("webdav://") {
+            return Err(StorageError::RequestFailed("Only webdav:// protocol URLs are supported".to_string()));
+        }
+
+        // 解析 webdav://host/path 格式
+        let url_without_protocol = webdav_url.strip_prefix("webdav://").unwrap_or(webdav_url);
+        let parts: Vec<&str> = url_without_protocol.splitn(2, '/').collect();
+
+        if parts.len() >= 2 {
+            let host = parts[0];
+            let path = parts[1];
+            // 构建实际的 HTTP/HTTPS URL
+            Ok(format!("{}/{}", self.config.url.as_ref().unwrap_or(&format!("https://{}", host)), path))
+        } else if parts.len() == 1 {
+            // 只有主机，没有路径
+            Ok(self.config.url.as_ref().unwrap_or(&format!("https://{}", parts[0])).clone())
+        } else {
+            Err(StorageError::RequestFailed("Invalid WebDAV URL format".to_string()))
+        }
+    }
+
+    /// 解析路径并返回实际的 HTTP/HTTPS URL
+    /// 支持 webdav:// 协议 URL 和传统相对路径
+    ///
+    /// # Arguments
+    /// * `path` - 路径或 WebDAV 协议 URL
+    ///
+    /// # Returns
+    /// * `Result<String, StorageError>` - 实际的 HTTP/HTTPS URL
+    fn parse_path_to_url(&self, path: &str) -> Result<String, StorageError> {
+        if path.starts_with("webdav://") {
+            self.parse_webdav_url(path)
+        } else {
+            // 传统相对路径处理（保持向后兼容）
+            let base_url = self.config.url.as_ref()
+                .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL not configured".to_string()))?
+                .trim_end_matches('/');
+            let clean_path = path.trim_start_matches('/');
+            Ok(format!("{}/{}", base_url, clean_path))
+        }
     }
 }
 

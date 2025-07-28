@@ -5,8 +5,7 @@ import {
   DirectoryResult,
   FileContent,
   ListOptions,
-  ReadOptions,
-  StorageResponse
+  ReadOptions
 } from './types';
 import { CompressionService } from '../compression';
 import { ArchiveInfo, FilePreview } from '../../types';
@@ -30,50 +29,33 @@ export abstract class BaseStorageClient implements StorageClient {
   abstract generateConnectionName(config: ConnectionConfig): string;
 
   /**
-   * 发起存储请求的统一接口
+   * 检查是否支持搜索功能
    */
-  protected async makeRequest(params: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    options?: any;
-  }): Promise<StorageResponse> {
-    return await invoke('storage_request', {
-      protocol: this.protocol,
-      method: params.method,
-      url: params.url,
-      headers: params.headers || {},
-      body: params.body,
-      options: params.options,
-    });
+  supportsSearch(): boolean {
+    return false; // 默认不支持，由子类重写
   }
 
   /**
-   * 发起二进制请求
+   * 检查是否支持自定义根路径展示
    */
-  protected async makeRequestBinary(params: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    options?: any;
-  }): Promise<ArrayBuffer> {
-    const response = await invoke<string>('storage_request_binary', {
-      protocol: this.protocol,
-      method: params.method,
-      url: params.url,
-      headers: params.headers || {},
-      options: params.options,
-    });
-
-    // 转换为 ArrayBuffer
-    const binaryString = atob(response);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes.buffer;
+  supportsCustomRootDisplay(): boolean {
+    return false; // 默认不支持，由子类重写
   }
+
+  /**
+   * 获取根路径的显示信息
+   */
+  getRootDisplayInfo(): { showWelcome?: boolean; customMessage?: string } {
+    return {}; // 默认空，由子类重写
+  }
+
+  /**
+   * 将前端路径转换为协议统一的地址格式
+   * 用于: 后端存储操作、HTTP 请求、用户复制等所有场景
+   * @param path 前端传入的路径
+   * @returns 协议统一的地址格式 (如: oss://bucket/path, file:///path, webdav://host/path, huggingface://dataset/path)
+   */
+  abstract toProtocolUrl(path: string): string;
 
   /**
    * 带进度的下载接口
@@ -174,9 +156,68 @@ export abstract class BaseStorageClient implements StorageClient {
   }
 
   /**
-   * 构建文件URL（子类实现）
+   * 标准化路径格式 - 所有子类统一使用
+   * @param path 原始路径
+   * @returns 标准化后的路径
    */
-  protected abstract buildFileUrl(path: string): string;
+  protected normalizePath(path: string): string {
+    if (!path) return '';
+
+    // 移除开头的斜杠，确保路径格式一致
+    let cleanPath = path.trim();
+    while (cleanPath.startsWith('/')) {
+      cleanPath = cleanPath.substring(1);
+    }
+
+    return cleanPath;
+  }
+
+  /**
+   * 解析路径信息 - 由子类重写以处理特定格式
+   * @param path 路径字符串
+   * @returns 解析后的路径信息
+   */
+  protected parsePath(path: string): any {
+    return { normalizedPath: this.normalizePath(path) };
+  }
+
+  /**
+   * 通用连接方法 - 调用后端storage_connect
+   */
+  protected async connectToBackend(config: {
+    protocol: string;
+    url?: string | null;
+    username?: string | null;
+    password?: string | null;
+    accessKey?: string | null;
+    secretKey?: string | null;
+    region?: string | null;
+    bucket?: string | null;
+    endpoint?: string | null;
+    extraOptions?: any;
+  }): Promise<boolean> {
+    try {
+      const connected = await invoke<boolean>('storage_connect', { config });
+      this.connected = connected;
+      return connected;
+    } catch (error) {
+      console.error(`${config.protocol} connection failed:`, error);
+      this.connected = false;
+      return false;
+    }
+  }
+
+  /**
+   * 通用断开连接方法
+   */
+  protected async disconnectFromBackend(): Promise<void> {
+    try {
+      await invoke('storage_disconnect');
+    } catch (error) {
+      console.warn('Failed to disconnect from storage backend:', error);
+    }
+    this.connected = false;
+  }
 
   /**
    * 获取认证头（子类实现）

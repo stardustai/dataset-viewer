@@ -41,6 +41,6 @@
     "copyright": "Copyright © 2025 Stardust AI. All rights reserved.",
     "category": "Productivity",
     "shortDescription": "Modern dataset viewer with large file streaming support",
-    "longDescription": "A powerful dataset viewer that supports multiple storage types (WebDAV, local files, OSS) with efficient streaming for large text files and archives."
+    "longDescription": "A powerful dataset viewer that supports multiple storage types (WebDAV, local files, OSS, HuggingFace) with efficient streaming for large text files and archives."
   }
 }

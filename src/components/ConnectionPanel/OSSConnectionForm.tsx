@@ -157,7 +157,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {externalError && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
             <p className="text-sm text-red-600 dark:text-red-400">{externalError}</p>
@@ -269,7 +269,10 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
         <button
           type="submit"
           disabled={connecting}
-          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
+                   text-white font-medium py-2 px-4 rounded-md transition-colors
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                   disabled:cursor-not-allowed flex items-center justify-center"
         >
           {connecting ? (
             <>
@@ -283,6 +286,25 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
             t('connect')
           )}
         </button>
+
+        {/* 帮助信息 */}
+        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+          <p>
+            {t('oss.help.credentials.title')}
+          </p>
+          <p>
+            1. {t('oss.help.step1')}
+          </p>
+          <p>
+            2. {t('oss.help.step2')}
+          </p>
+          <p>
+            3. {t('oss.help.step3')}
+          </p>
+          <p>
+            4. {t('oss.help.step4')}
+          </p>
+        </div>
       </form>
     </>
   );

@@ -23,17 +23,25 @@ impl LocalFileSystemClient {
     }
 
     /// 构建完整路径并进行安全检查
-    /// 支持绝对路径和相对路径两种模式
+    /// 支持绝对路径和相对路径两种模式，以及 file:// 协议
     fn build_safe_path(&self, path: &str) -> Result<PathBuf, StorageError> {
+        // 处理 file:// 协议 URL
+        let actual_path = if path.starts_with("file://") {
+            // 移除 file:// 前缀，保留路径部分
+            path.strip_prefix("file://").unwrap_or(path)
+        } else {
+            path
+        };
+
         // 如果路径以 ~ 开头，直接展开
-        if path.starts_with('~') {
+        if actual_path.starts_with('~') {
             if let Some(home_dir) = dirs::home_dir() {
-                let expanded_path = if path == "~" {
+                let expanded_path = if actual_path == "~" {
                     home_dir
-                } else if let Some(stripped) = path.strip_prefix("~/") {
+                } else if let Some(stripped) = actual_path.strip_prefix("~/") {
                     home_dir.join(stripped)
                 } else {
-                    PathBuf::from(path)
+                    PathBuf::from(actual_path)
                 };
                 return Ok(expanded_path);
             } else {
@@ -44,7 +52,7 @@ impl LocalFileSystemClient {
         }
 
         // 检查是否为绝对路径
-        let path_buf = PathBuf::from(path);
+        let path_buf = PathBuf::from(actual_path);
         if path_buf.is_absolute() {
             return Ok(path_buf);
         }
@@ -55,7 +63,7 @@ impl LocalFileSystemClient {
             .ok_or(StorageError::NotConnected)?;
 
         // 对于相对路径，与根目录拼接
-        let clean_path = path.trim_start_matches('/');
+        let clean_path = actual_path.trim_start_matches('/');
 
         // 构建完整路径
         let full_path = if clean_path.is_empty() {
@@ -284,7 +292,7 @@ impl StorageClient for LocalFileSystemClient {
                 let path = self.build_safe_path(&request.url)?;
 
                 if !path.exists() {
-                    return Err(StorageError::RequestFailed("File not found".to_string()));
+                    return Err(StorageError::RequestFailed(format!("File not found: {:?}", path)));
                 }
 
                 let mut file = fs::File::open(&path).await
@@ -419,8 +427,15 @@ impl StorageClient for LocalFileSystemClient {
         // 否则，构建完整路径并转换为 file:// URL
         let full_path = self.build_safe_path(path)?;
 
-        // 将路径转换为 file:// URL
-        let file_url = format!("file://{}", full_path.to_string_lossy());
+        // 规范化路径分隔符（Windows 使用反斜杠，需要转换为正斜杠）
+        let normalized_path = if cfg!(windows) {
+            full_path.to_string_lossy().replace('\\', "/")
+        } else {
+            full_path.to_string_lossy().to_string()
+        };
+
+        // 将路径转换为标准的 file:/// URL（三个斜杠）
+        let file_url = format!("file:///{}", normalized_path.trim_start_matches('/'));
 
         Ok(file_url)
     }

@@ -13,6 +13,8 @@ export const fileBrowser = {
   // Search functionality
   'search.files': 'Search file names...',
   'search.files.placeholder': 'Search files...',
+  'search.global': 'Search datasets',
+  'search.datasets': 'Search',
   'no.search.results': 'No matching files found',
   'try.different.search': 'Try different keywords or clear search',
   'clear.search': 'Clear search',

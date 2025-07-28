@@ -356,35 +356,23 @@ impl StorageClient for OSSClient {
             return Err(StorageError::NotConnected);
         }
 
-        let url = &req.url;
-        let uri = if let Ok(parsed_url) = Url::parse(url) {
-            // 只提取路径部分，不包含查询参数
-            // URL路径已经是编码的，这里直接使用
-            parsed_url.path().to_string()
-        } else {
-            // 如果无法解析为完整 URL，则尝试提取路径部分
-            if let Some(path_end) = url.find('?') {
-                url[..path_end].to_string()
-            } else {
-                url.clone()
-            }
-        };
+        // 处理 oss:// 协议 URL
+        let (object_key, actual_url) = self.parse_oss_url(&req.url)?;
 
-        // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
-        let signing_uri = self.normalize_uri_for_signing(&uri);
+        // 对于签名，使用对象键路径
+        let signing_uri = self.normalize_uri_for_signing(&format!("/{}", object_key));
 
         // 构建认证头
-        // 对于 LIST 请求，实际的 HTTP 方法是 GET
         let signing_method = if req.method == "LIST" { "GET" } else { &req.method };
         let auth_headers = self.build_auth_headers(signing_method, &signing_uri, &req.headers);
 
         // 发送请求
         let mut req_builder = match req.method.as_str() {
-            "GET" => self.client.get(url),
-            "HEAD" => self.client.head(url),
-            "PUT" => self.client.put(url),
-            "POST" => self.client.post(url),
-            "DELETE" => self.client.delete(url),
+            "GET" => self.client.get(&actual_url),
+            "HEAD" => self.client.head(&actual_url),
+            "PUT" => self.client.put(&actual_url),
+            "POST" => self.client.post(&actual_url),
+            "DELETE" => self.client.delete(&actual_url),
             "LIST" => {
                 // 特殊处理列表请求
                 let query_params = if let Some(body) = &req.body {
@@ -454,30 +442,17 @@ impl StorageClient for OSSClient {
             return Err(StorageError::NotConnected);
         }
 
-        let uri = if let Ok(parsed_url) = Url::parse(&req.url) {
-            parsed_url.path().to_string()
-        } else {
-            req.url.clone()
-        };
+        // 处理 oss:// 协议 URL
+        let (object_key, actual_url) = self.parse_oss_url(&req.url)?;
 
-        // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
-        let signing_uri = match urlencoding::decode(&uri) {
-            Ok(decoded) => decoded.to_string(),
-            Err(_) => {
-                // 如果解码失败，可能路径本身就没有编码，直接使用
-                if uri.starts_with('/') {
-                    uri
-                } else {
-                    format!("/{}", uri)
-                }
-            }
-        };
+        // 对于签名，使用对象键路径
+        let signing_uri = self.normalize_uri_for_signing(&format!("/{}", object_key));
 
         let auth_headers = self.build_auth_headers(&req.method, &signing_uri, &req.headers);
 
         let mut req_builder = match req.method.as_str() {
-            "GET" => self.client.get(&req.url),
-            "HEAD" => self.client.head(&req.url),
+            "GET" => self.client.get(&actual_url),
+            "HEAD" => self.client.head(&actual_url),
             _ => return Err(StorageError::RequestFailed(format!("Unsupported binary method: {}", req.method))),
         };
 
@@ -507,8 +482,10 @@ impl StorageClient for OSSClient {
 
         println!("OSS读取文件范围: path={}, start={}, length={}", path, start, length);
 
-        let object_key = path.trim_start_matches('/');
-        let url = self.build_object_url(object_key);
+        // 处理 oss:// 协议 URL
+        let object_key = self.extract_object_key(path)?;
+
+        let url = self.build_object_url(&object_key);
 
         println!("构建的URL: {}", url);
 
@@ -516,7 +493,7 @@ impl StorageClient for OSSClient {
             parsed_url.path().to_string()
         } else {
             // 如果无法解析URL，则直接使用编码后的路径
-            format!("/{}", urlencoding::encode(object_key))
+            format!("/{}", urlencoding::encode(&object_key))
         };
 
         // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
@@ -611,14 +588,12 @@ impl StorageClient for OSSClient {
         });
 
         // 标准化路径 - 对于非根目录，确保 prefix 以斜杠结尾
-        let prefix = if path == "/" {
+        let prefix = if path == "/" || path.is_empty() {
             String::new()
         } else {
-            let trimmed = path.trim_start_matches('/');
+            let trimmed = path.trim_start_matches('/').trim_end_matches('/');
             if trimmed.is_empty() {
                 String::new()
-            } else if trimmed.ends_with('/') {
-                trimmed.to_string()
             } else {
                 format!("{}/", trimmed)
             }
@@ -672,8 +647,10 @@ impl StorageClient for OSSClient {
 
         println!("OSS读取完整文件: path={}", path);
 
-        let object_key = path.trim_start_matches('/');
-        let url = self.build_object_url(object_key);
+        // 处理 oss:// 协议 URL
+        let object_key = self.extract_object_key(path)?;
+
+        let url = self.build_object_url(&object_key);
 
         println!("构建的URL: {}", url);
 
@@ -681,7 +658,7 @@ impl StorageClient for OSSClient {
             parsed_url.path().to_string()
         } else {
             // 如果无法解析URL，则直接使用编码后的路径
-            format!("/{}", urlencoding::encode(object_key))
+            format!("/{}", urlencoding::encode(&object_key))
         };
 
         // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
@@ -740,13 +717,15 @@ impl StorageClient for OSSClient {
             return Err(StorageError::NotConnected);
         }
 
-        let object_key = path.trim_start_matches('/');
-        let url = self.build_object_url(object_key);
+        // 处理 oss:// 协议 URL
+        let object_key = self.extract_object_key(path)?;
+
+        let url = self.build_object_url(&object_key);
         let uri = if let Ok(parsed_url) = Url::parse(&url) {
             parsed_url.path().to_string()
         } else {
             // 如果无法解析URL，则直接使用编码后的路径
-            format!("/{}", urlencoding::encode(object_key))
+            format!("/{}", urlencoding::encode(&object_key))
         };
 
         // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
@@ -817,23 +796,6 @@ impl StorageClient for OSSClient {
 }
 
 impl OSSClient {
-    /// 从路径或 URL 中提取对象键
-    fn extract_object_key(&self, input: &str) -> Result<String, StorageError> {
-        if let Ok(parsed_url) = url::Url::parse(input) {
-            // 是完整 URL，提取路径部分
-            let path = parsed_url.path().trim_start_matches('/');
-            match urlencoding::decode(path) {
-                Ok(decoded) => Ok(decoded.to_string()),
-                Err(_) => Ok(path.to_string()),
-            }
-        } else {
-            // 不是完整 URL，可能是相对路径，直接使用
-            // 移除开头的斜杠，OSS 对象键不应该以斜杠开头
-            let normalized = input.trim_start_matches('/');
-            Ok(normalized.to_string())
-        }
-    }
-
     /// 生成预签名下载 URL
     fn generate_download_url(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
         if !self.connected.load(Ordering::Relaxed) {
@@ -887,5 +849,51 @@ impl OSSClient {
         mac.update(string_to_sign.as_bytes());
         let result = mac.finalize();
         base64::engine::general_purpose::STANDARD.encode(result.into_bytes())
+    }
+
+    /// 解析 OSS 协议 URL 并返回对象键和实际 URL
+    ///
+    /// # Arguments
+    /// * `url` - OSS 协议 URL (例如: "oss://bucket/path/to/file")
+    ///
+    /// # Returns
+    /// * `Result<(String, String), StorageError>` - (对象键, 实际 HTTP URL)
+    fn parse_oss_url(&self, url: &str) -> Result<(String, String), StorageError> {
+        if !url.starts_with("oss://") {
+            return Err(StorageError::RequestFailed("Only oss:// protocol URLs are supported".to_string()));
+        }
+
+        // 解析 oss://bucket/path/to/file 格式
+        let oss_url = url.strip_prefix("oss://").unwrap_or(url);
+        let parts: Vec<&str> = oss_url.splitn(2, '/').collect();
+
+        if parts.len() >= 2 {
+            let _bucket = parts[0];
+            let object_key = parts[1];
+
+            // 构建实际的 OSS HTTP URL
+            let actual_url = self.build_object_url(object_key);
+            Ok((object_key.to_string(), actual_url))
+        } else {
+            // 只有 bucket，没有对象路径
+            Err(StorageError::RequestFailed("Invalid OSS URL format".to_string()))
+        }
+    }
+
+    /// 解析 OSS 协议 URL 并返回对象键
+    /// 如果不是 OSS 协议 URL，则返回原路径（去除前导斜杠）
+    ///
+    /// # Arguments
+    /// * `path` - 路径或 OSS 协议 URL
+    ///
+    /// # Returns
+    /// * `Result<String, StorageError>` - 对象键
+    fn extract_object_key(&self, path: &str) -> Result<String, StorageError> {
+        if path.starts_with("oss://") {
+            let (object_key, _) = self.parse_oss_url(path)?;
+            Ok(object_key)
+        } else {
+            Ok(path.trim_start_matches('/').to_string())
+        }
     }
 }

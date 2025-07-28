@@ -4,6 +4,64 @@ import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
 import { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
 
+interface UndoToastProps {
+  deletedConnection: StoredConnection;
+  onUndo: () => void;
+}
+
+const UndoToast: React.FC<UndoToastProps> = ({ deletedConnection, onUndo }) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <style>{`
+        @keyframes undoProgress {
+          0% {
+            transform: scaleX(1);
+          }
+          100% {
+            transform: scaleX(0);
+          }
+        }
+        .undo-toast-bg {
+          background: rgb(31 41 55 / 0.9);
+        }
+        .undo-toast-progress {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgb(79 70 229 / 0.9);
+          transform-origin: left;
+          animation: undoProgress 3s linear forwards;
+        }
+      `}</style>
+
+      <div
+        className="fixed bottom-4 right-4 text-white rounded-lg shadow-2xl overflow-hidden undo-toast-bg"
+        style={{ zIndex: 9999 }}
+      >
+        {/* 进度条 */}
+        <div className="undo-toast-progress" />
+
+        {/* 内容 */}
+        <div className="p-4 flex items-center space-x-3 relative z-10">
+          <span className="text-sm">
+            {t('deleted')}: {deletedConnection.name}
+          </span>
+          <button
+            onClick={onUndo}
+            className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-sm rounded transition-colors"
+          >
+            {t('undo')}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
 interface ConnectionSelectorProps {
   onSelect: (connection: StoredConnection) => void;
   selectedConnection?: StoredConnection | null;
@@ -18,19 +76,55 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [deletedConnection, setDeletedConnection] = useState<StoredConnection | null>(null);
+  const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadConnections();
   }, []);
 
+  // 组件卸载时清理计时器
+  useEffect(() => {
+    return () => {
+      if (undoTimer) {
+        clearTimeout(undoTimer);
+      }
+    };
+  }, [undoTimer]);
+
   const loadConnections = () => {
     setConnections(StorageServiceManager.getStoredConnections());
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = (connection: StoredConnection, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(t('confirm.delete.connection'))) {
-      StorageServiceManager.deleteStoredConnection(id);
+
+    // 清除之前的撤销计时器
+    if (undoTimer) {
+      clearTimeout(undoTimer);
+    }
+
+    // 立即删除连接
+    StorageServiceManager.deleteStoredConnection(connection.id);
+    setDeletedConnection(connection);
+    loadConnections();
+
+    // 设置3秒后的自动清理（稍晚一点让动画完成）
+    const timer = setTimeout(() => {
+      setDeletedConnection(null);
+    }, 3100);
+    setUndoTimer(timer);
+  };
+
+  const handleUndoDelete = () => {
+    if (deletedConnection && undoTimer) {
+      // 恢复连接
+      StorageServiceManager.restoreConnection(deletedConnection);
+
+      // 清理状态
+      clearTimeout(undoTimer);
+      setDeletedConnection(null);
+      setUndoTimer(null);
       loadConnections();
     }
   };
@@ -80,10 +174,20 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
 
   if (connections.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div className="text-sm">{t('no.saved.connections')}</div>
-        <div className="text-xs mt-1">{t('save.connection.hint')}</div>
-      </div>
+      <>
+        <div className="p-4 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="text-sm">{t('no.saved.connections')}</div>
+          <div className="text-xs mt-1">{t('save.connection.hint')}</div>
+        </div>
+
+        {/* 撤销删除提示 - 即使没有连接时也要显示 */}
+        {deletedConnection && (
+          <UndoToast
+            deletedConnection={deletedConnection}
+            onUndo={handleUndoDelete}
+          />
+        )}
+      </>
     );
   }
 
@@ -194,7 +298,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => handleDelete(connection.id, e)}
+                      onClick={(e) => handleDelete(connection, e)}
                       className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                       title={t('delete')}
                     >
@@ -206,6 +310,14 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
             </div>
           ))}
         </div>
+      )}
+
+      {/* 撤销删除提示 */}
+      {deletedConnection && (
+        <UndoToast
+          deletedConnection={deletedConnection}
+          onUndo={handleUndoDelete}
+        />
       )}
     </div>
   );

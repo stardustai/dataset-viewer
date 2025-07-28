@@ -2,8 +2,9 @@ import { BaseStorageClient } from './BaseStorageClient';
 import { WebDAVStorageClient } from './WebDAVStorageClient';
 import { LocalStorageClient } from './LocalStorageClient';
 import { OSSStorageClient } from './OSSStorageClient';
+import { HuggingFaceStorageClient } from './HuggingFaceStorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
-import { connectionStorage } from '../connectionStorage';
+import { connectionStorage, StoredConnection } from '../connectionStorage';
 
 /**
  * 存储客户端工厂
@@ -23,6 +24,8 @@ export class StorageClientFactory {
         return new LocalStorageClient();
       case 'oss':
         return new OSSStorageClient();
+      case 'huggingface':
+        return new HuggingFaceStorageClient();
       default:
         throw new Error(`Unsupported storage type: ${type}`);
     }
@@ -85,7 +88,7 @@ export class StorageClientFactory {
    * 检查是否支持指定的存储类型
    */
   static isSupportedType(type: string): type is StorageClientType {
-    return ['webdav', 'local', 'oss'].includes(type);
+    return ['webdav', 'local', 'oss', 'huggingface'].includes(type);
   }
 
   /**
@@ -110,6 +113,129 @@ export class StorageClientFactory {
 export class StorageServiceManager {
   private static currentClient: BaseStorageClient | null = null;
   private static currentConnection: ConnectionConfig | null = null;
+
+  /**
+   * 统一连接方法 - 根据配置自动选择合适的连接方式
+   */
+  static async connectWithConfig(config: ConnectionConfig): Promise<boolean> {
+    try {
+      if (this.isConnected()) {
+        this.disconnect();
+      }
+
+      // 生成默认连接名称（如果没有提供）
+      if (!config.name) {
+        config.name = StorageClientFactory.generateConnectionName(config);
+      }
+
+      // 直接使用 setCurrentStorage 建立连接
+      await this.setCurrentStorage(config);
+
+      // 连接成功后保存连接信息
+      await this.saveConnectionInfo(config);
+
+      // 设置为默认连接
+      const connections = this.getStoredConnections();
+      const matchingConnection = this.findMatchingStoredConnection(connections, config);
+
+      if (matchingConnection) {
+        this.setDefaultConnection(matchingConnection.id);
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`${config.type} connection error:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 保存连接信息到本地存储
+   */
+  private static async saveConnectionInfo(config: ConnectionConfig): Promise<void> {
+    let connectionData;
+
+    switch (config.type) {
+      case 'webdav': {
+        connectionData = {
+          url: config.url!,
+          username: config.username!,
+          password: config.password!,
+          connected: true
+        };
+        await connectionStorage.saveConnection(connectionData, config.name, true);
+        break;
+      }
+
+      case 'local': {
+        connectionData = {
+          url: `local://${config.rootPath || config.url!}`,
+          username: 'local',
+          password: '',
+          connected: true
+        };
+        await connectionStorage.saveConnection(connectionData, config.name, false);
+        break;
+      }
+
+      case 'oss': {
+        const endpointUrl = new URL(config.url!);
+        const ossUrl = `oss://${endpointUrl.hostname}${config.bucket ? '/' + config.bucket : ''}`;
+        connectionData = {
+          url: ossUrl,
+          username: config.username!,
+          password: config.password!,
+          connected: true,
+          metadata: {
+            bucket: config.bucket,
+            region: config.region,
+            endpoint: config.endpoint || config.url
+          }
+        };
+        await connectionStorage.saveConnection(connectionData, config.name, true);
+        break;
+      }
+
+      case 'huggingface': {
+        const hfUrl = `huggingface://${config.organization || 'hub'}`;
+        connectionData = {
+          url: hfUrl,
+          username: '', // 不再使用 username 存储组织信息
+          password: '', // 不再使用 password 存储 API token
+          connected: true,
+          metadata: {
+            organization: config.organization,
+            apiToken: config.apiToken
+          }
+        };
+        await connectionStorage.saveConnection(connectionData, config.name, true);
+        break;
+      }
+    }
+  }
+
+  /**
+   * 查找匹配的已保存连接
+   */
+  private static findMatchingStoredConnection(connections: any[], config: ConnectionConfig) {
+    return connections.find(conn => {
+      switch (config.type) {
+        case 'webdav':
+          return conn.url === config.url && conn.username === config.username;
+        case 'local':
+          return conn.url.startsWith('local://') && conn.url.includes(config.rootPath || config.url!);
+        case 'oss':
+          return conn.url.startsWith('oss://') && conn.username === config.username;
+        case 'huggingface':
+          // 匹配 HuggingFace 连接：使用 metadata 中的组织信息
+          const storedOrg = conn.metadata?.organization;
+          const configOrg = config.organization;
+          return conn.url.startsWith('huggingface://') && storedOrg === configOrg;
+        default:
+          return false;
+      }
+    });
+  }
 
   /**
    * 设置当前活跃的存储客户端
@@ -229,53 +355,8 @@ export class StorageServiceManager {
     }
   }
 
-  // ========== WebDAV 兼容方法 ==========
-
   /**
-   * WebDAV 兼容：连接方法
-   */
-  static async connect(
-    url: string,
-    username: string,
-    password: string,
-    saveConnection: boolean = true,
-    connectionName?: string,
-    savePassword: boolean = false
-  ): Promise<boolean> {
-    try {
-      const config: ConnectionConfig = {
-        type: 'webdav',
-        url,
-        username,
-        password,
-        name: connectionName || `WebDAV(${new URL(url).hostname})`
-      };
-
-      await this.setCurrentStorage(config);
-
-      // 保存连接信息
-      if (saveConnection) {
-        const existingConnection = connectionStorage.findConnection(url, username);
-        if (existingConnection) {
-          connectionStorage.updateLastConnected(existingConnection.id);
-          if (savePassword) {
-            connectionStorage.updatePassword(existingConnection.id, password);
-          }
-        } else {
-          const connection = { url, username, password, connected: true };
-          await connectionStorage.saveConnection(connection, connectionName, savePassword);
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Connection failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * WebDAV 兼容：自动连接
+   * 自动连接
    */
   static async autoConnect(): Promise<boolean> {
     const defaultConnection = connectionStorage.getDefaultConnection();
@@ -286,22 +367,36 @@ export class StorageServiceManager {
       if (defaultConnection.url.startsWith('local://')) {
         // 本地文件系统连接
         const rootPath = defaultConnection.url.replace('local://', '');
-        return await this.connectToLocal(rootPath, false, defaultConnection.name);
+        return await this.connectToLocal(rootPath, defaultConnection.name);
       } else if (defaultConnection.url.startsWith('oss://')) {
-        // OSS 连接
-        const ossUrl = defaultConnection.url.replace('oss://', '');
-        const [host, bucket] = ossUrl.split('/');
+        // OSS 连接 - 从 metadata 获取信息
+        const endpoint = defaultConnection.metadata?.endpoint;
+        const bucketName = defaultConnection.metadata?.bucket || '';
+        const region = defaultConnection.metadata?.region || '';
 
-        // 从存储的连接中获取访问密钥信息
-        // 注意：OSS 连接的 username 是 accessKey，password 是 secretKey
         const config: ConnectionConfig = {
           type: 'oss',
-          url: `https://${host}`, // OSS endpoint
+          url: endpoint,
           username: defaultConnection.username, // accessKey
           password: defaultConnection.password || '', // secretKey
-          bucket: bucket || '', // bucket name
-          region: '', // 可以从 host 中解析或设为空
+          bucket: bucketName,
+          region: region,
+          endpoint: endpoint,
           name: defaultConnection.name
+        };
+
+        await this.setCurrentStorage(config);
+        return true;
+      } else if (defaultConnection.url.startsWith('huggingface://')) {
+        // HuggingFace 连接 - 从 metadata 获取信息
+        const organization = defaultConnection.metadata?.organization;
+        const apiToken = defaultConnection.metadata?.apiToken || '';
+
+        const config: ConnectionConfig = {
+          type: 'huggingface',
+          name: defaultConnection.name,
+          apiToken: apiToken,
+          organization: organization
         };
 
         await this.setCurrentStorage(config);
@@ -311,8 +406,7 @@ export class StorageServiceManager {
         return await this.connect(
           defaultConnection.url,
           defaultConnection.username,
-          defaultConnection.password || '',
-          false // 不重复保存连接
+          defaultConnection.password || ''
         );
       }
     } catch (error) {
@@ -322,7 +416,7 @@ export class StorageServiceManager {
   }
 
   /**
-   * WebDAV 兼容：列出目录
+   * 列出目录
    */
   static async listDirectory(path: string = '') {
     const client = this.getCurrentClient();
@@ -341,7 +435,7 @@ export class StorageServiceManager {
   }
 
   /**
-   * WebDAV 兼容：获取文件内容
+   * 获取文件内容
    */
   static async getFileContent(path: string, start?: number, length?: number) {
     const client = this.getCurrentClient();
@@ -350,7 +444,7 @@ export class StorageServiceManager {
   }
 
   /**
-   * WebDAV 兼容：获取文件大小
+   * 获取文件大小
    */
   static async getFileSize(path: string): Promise<number> {
     const client = this.getCurrentClient();
@@ -358,15 +452,18 @@ export class StorageServiceManager {
   }
 
   /**
-   * WebDAV 兼容：下载文件
+   * 下载文件
    */
   static async downloadFile(path: string): Promise<Blob> {
     const client = this.getCurrentClient();
+    console.log('[StorageManager] downloadFile called with path:', path);
+    console.log('[StorageManager] current client type:', client.constructor.name);
+    console.log('[StorageManager] current connection:', this.currentConnection?.type);
     return await client.downloadFile(path);
   }
 
   /**
-   * WebDAV 兼容：带进度下载文件
+   * 带进度下载文件
    */
   static async downloadFileWithProgress(path: string, filename: string): Promise<string> {
     const client = this.getCurrentClient();
@@ -378,7 +475,7 @@ export class StorageServiceManager {
   }
 
   /**
-   * WebDAV 兼容：获取文件二进制数据
+   * 获取文件二进制数据
    */
   static async getFileBlob(path: string): Promise<ArrayBuffer> {
     const blob = await this.downloadFile(path);
@@ -386,39 +483,21 @@ export class StorageServiceManager {
   }
 
   /**
-   * WebDAV 兼容：获取文件URL
+   * 获取文件URL
    */
   static getFileUrl(path: string): string {
-    const connection = this.getCurrentConnection();
-    if (!connection || !connection.url) throw new Error('Not connected');
+    const client = this.getCurrentClient();
 
-    // 处理本地文件系统
-    if (connection.url.startsWith('local://')) {
-      // 对于本地文件，通过 client 获取实际文件路径
-      const client = this.getCurrentClient();
-      if (client instanceof LocalStorageClient) {
-        return client.getActualFilePath(path);
-      }
-      // 降级处理：构建文件系统路径
-      const rootPath = connection.url.replace('local://', '');
-      const cleanPath = path.replace(/^\/+/, '').replace(/\/+/g, '/');
-
-      if (!cleanPath) {
-        return rootPath;
-      }
-
-      const separator = rootPath.endsWith('/') || rootPath.endsWith('\\') ? '' : '/';
-      return `${rootPath}${separator}${cleanPath}`;
+    // 如果路径已经是协议URL格式，直接返回
+    if (path.includes('://')) {
+      return path;
     }
 
-    // WebDAV URL 处理
-    const baseUrl = connection.url.replace(/\/$/, '');
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    return `${baseUrl}${normalizedPath}`;
+    return client.toProtocolUrl(path);
   }
 
   /**
-   * WebDAV 兼容：获取请求headers
+   * 获取请求headers
    */
   static getHeaders(): Record<string, string> {
     const connection = this.getCurrentConnection();
@@ -430,13 +509,22 @@ export class StorageServiceManager {
   }
 
   /**
-   * WebDAV 兼容：获取连接信息
+   * 获取连接信息
    */
   static getConnection() {
     try {
       const config = this.getCurrentConnection();
+      const client = this.getCurrentClient();
+
+      // 对于 HuggingFace，构建虚拟 URL
+      let url = config.url;
+      if (client instanceof HuggingFaceStorageClient && !url) {
+        const org = config.organization || 'hub';
+        url = `huggingface://${org}`;
+      }
+
       return {
-        url: config.url!,
+        url: url!,
         username: config.username!,
         password: config.password!,
         connected: true
@@ -463,6 +551,10 @@ export class StorageServiceManager {
     connectionStorage.deleteConnection(id);
   }
 
+  static restoreConnection(connection: StoredConnection) {
+    connectionStorage.restoreConnection(connection);
+  }
+
   static renameStoredConnection(id: string, newName: string) {
     connectionStorage.renameConnection(id, newName);
   }
@@ -471,88 +563,54 @@ export class StorageServiceManager {
     connectionStorage.setDefaultConnection(id);
   }
 
-  // ========== 本机文件系统连接方法 ==========
+  // ========== 统一存储接口（便捷方法）==========
+
+  /**
+   * WebDAV 兼容连接方法
+   */
+  static async connect(
+    url: string,
+    username: string,
+    password: string,
+    connectionName?: string
+  ): Promise<boolean> {
+    const config: ConnectionConfig = {
+      type: 'webdav',
+      url,
+      username,
+      password,
+      name: connectionName || `WebDAV(${new URL(url).hostname})`
+    };
+    return await this.connectWithConfig(config);
+  }
 
   /**
    * 连接到本机文件系统
    */
   static async connectToLocal(
     rootPath: string,
-    saveConnection: boolean = true,
     connectionName?: string
   ): Promise<boolean> {
-    try {
-      const config: ConnectionConfig = {
-        type: 'local',
-        url: rootPath, // 使用 url 字段传递根路径
-        rootPath, // 保留 rootPath 字段用于前端显示
-        name: connectionName || `Local Files(${rootPath})`
-      };
-
-      await this.setCurrentStorage(config);
-
-      // 保存连接信息（如果需要）
-      if (saveConnection) {
-        // 为本机文件系统创建特殊的连接记录
-        // 对于本地路径，使用 local:// 协议而不是 file://，避免 URL 解析问题
-        const connection = {
-          url: `local://${rootPath}`,
-          username: 'local',
-          password: '',
-          connected: true
-        };
-        await connectionStorage.saveConnection(connection, config.name, false);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Local storage connection failed:', error);
-      return false;
-    }
+    const config: ConnectionConfig = {
+      type: 'local',
+      rootPath,
+      url: rootPath,
+      name: connectionName || `Local Files(${rootPath})`
+    };
+    return await this.connectWithConfig(config);
   }
-
-  // ========== OSS 连接方法 ==========
 
   /**
    * 连接到 OSS 对象存储
    */
   static async connectToOSS(config: ConnectionConfig): Promise<boolean> {
-    try {
-      // 验证配置
-      if (!config.url || !config.username || !config.password) {
-        throw new Error('OSS connection requires endpoint, access key, and secret key');
-      }
+    return await this.connectWithConfig(config);
+  }
 
-      await this.setCurrentStorage(config);
-
-      // 保存连接信息 - 使用 oss:// 协议格式
-      try {
-        const endpointUrl = new URL(config.url);
-        const ossUrl = `oss://${endpointUrl.hostname}${config.bucket ? '/' + config.bucket : ''}`;
-
-        const connection = {
-          url: ossUrl, // 使用 oss:// 协议格式
-          username: config.username,
-          password: config.password,
-          connected: true
-        };
-        await connectionStorage.saveConnection(connection, config.name, true);
-      } catch (urlError) {
-        // 如果 URL 解析失败，使用备选格式
-        const ossUrl = `oss://${config.url.replace(/^https?:\/\//, '')}${config.bucket ? '/' + config.bucket : ''}`;
-        const connection = {
-          url: ossUrl,
-          username: config.username,
-          password: config.password,
-          connected: true
-        };
-        await connectionStorage.saveConnection(connection, config.name, true);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('OSS storage connection failed:', error);
-      return false;
-    }
+  /**
+   * 连接到 HuggingFace Hub
+   */
+  static async connectToHuggingFace(config: ConnectionConfig): Promise<boolean> {
+    return await this.connectWithConfig(config);
   }
 }

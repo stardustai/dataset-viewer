@@ -64,6 +64,54 @@ async fn storage_request(
         }
     }
 
+    // 如果是 HuggingFace 的连接检查，需要先创建临时客户端
+    if protocol == "huggingface" && method == "CHECK_ACCESS" {
+        // 创建连接配置
+        let config = ConnectionConfig {
+            protocol: "huggingface".to_string(),
+            url: Some(url.clone()),
+            access_key: None,
+            secret_key: None,
+            region: None,
+            bucket: None,
+            endpoint: None,
+            username: None,
+            password: None,
+            extra_options: options.clone().map(|v| {
+                // 尝试将 serde_json::Value 转换为 HashMap<String, String>
+                if let serde_json::Value::Object(map) = v {
+                    map.into_iter()
+                        .filter_map(|(k, v)| {
+                            if let serde_json::Value::String(s) = v {
+                                Some((k, s))
+                            } else {
+                                Some((k, v.to_string()))
+                            }
+                        })
+                        .collect()
+                } else {
+                    std::collections::HashMap::new()
+                }
+            }),
+        };
+
+        // 使用 StorageManager 的 connect 方法
+        match manager.connect(&config).await {
+            Ok(_) => {
+                // 返回成功响应
+                return Ok(serde_json::json!({
+                    "status": 200,
+                    "headers": {},
+                    "body": "OK",
+                    "metadata": null
+                }));
+            }
+            Err(e) => {
+                return Err(format!("HuggingFace connection failed: {}", e));
+            }
+        }
+    }
+
     let request = StorageRequest {
         method,
         url,
@@ -310,7 +358,7 @@ async fn analyze_archive(
             max_size
         ).await
     } else {
-        Err("No storage client available. Please connect to a storage first (Local, WebDAV, or OSS)".to_string())
+        Err("No storage client available. Please connect to a storage first (Local, WebDAV, OSS, or HuggingFace)".to_string())
     }
 }
 
@@ -339,7 +387,7 @@ async fn get_file_preview(
             max_preview_size
         ).await
     } else {
-        Err("No storage client available. Please connect to a storage first (Local, WebDAV, or OSS)".to_string())
+        Err("No storage client available. Please connect to a storage first (Local, WebDAV, OSS, or HuggingFace)".to_string())
     }
 }
 

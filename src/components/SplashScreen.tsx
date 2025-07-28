@@ -20,7 +20,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ message }) => {
         <div className="flex items-center justify-center space-x-2">
           <Loader2 className="w-6 h-6 animate-spin text-indigo-600 dark:text-indigo-400" />
           <span className="text-gray-600 dark:text-gray-300 text-sm font-medium">
-            {message || t('app.initializing', '正在初始化...')}
+            {message || t('app.initializing')}
           </span>
         </div>
 

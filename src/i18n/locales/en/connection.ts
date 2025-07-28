@@ -1,6 +1,5 @@
 export const connection = {
-  // Application title and description
-  'app.name': 'Dataset Viewer',
+  // Application description for connection page
   'connect.storage': 'Connect to data source or local file system',
   'app.tagline': 'Easily view and search your datasets',
   'app.description': 'Cross-platform dataset viewer supporting WebDAV, object storage, and local file systems with powerful features like streaming and virtual scrolling, designed for large datasets.',
@@ -19,17 +18,20 @@ export const connection = {
 
   // Storage types
   'storage.type.select': 'Select Data Source Type',
-  'storage.type.webdav': 'WebDAV Server',
-  'storage.type.webdav.description': 'Connect to WebDAV server for dataset browsing',
+  'storage.type.webdav': 'WebDAV',
+  'storage.type.webdav.description': 'WebDAV Server',
   'storage.type.local': 'Local Files',
   'storage.type.local.description': 'Browse local file system',
   'storage.type.oss': 'OSS',
-  'storage.type.oss.description': 'Connect to object storage service',
+  'storage.type.oss.description': 'Connect to Object Storage Service',
+  'storage.type.huggingface': 'HuggingFace',
+  'storage.type.huggingface.description': 'AI Datasets',
 
   // Connection name formats
   'connection.name.webdav': 'WebDAV({{host}})',
   'connection.name.local': 'Local Files({{path}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
+  'connection.name.huggingface': 'Hugging Face({{org}})',
 
   // Form fields
   'server.url': 'Server URL',
@@ -41,8 +43,8 @@ export const connection = {
   'password.saved': 'Using saved password',
   'password.click.new': 'Click to enter new password',
   'connecting': 'Connecting...',
-  'connected.to': 'Connected to',
   'connect': 'Connect',
+  'optional': '(Optional)',
 
   // OSS specific fields
   'oss.endpoint': 'Endpoint',
@@ -80,6 +82,8 @@ export const connection = {
   'set.default': 'Set as default',
   'unset.default': 'Unset default',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
+  'deleted': 'Connection deleted',
+  'undo': 'Undo',
 
   // Local file system
   'local.root.path': 'Root Directory Path',
@@ -98,4 +102,24 @@ export const connection = {
 
   // OSS errors
   'error.oss.connection.failed': 'OSS connection failed',
+
+  // OSS help information
+  'oss.help.credentials.title': 'How to get Access Key:',
+  'oss.help.step1': 'Login to object storage service console (Alibaba Cloud, AWS, MinIO, etc.)',
+  'oss.help.step2': 'Create Access Key in Access Control or Security Credentials page',
+  'oss.help.step3': 'Record the generated Access Key ID and Secret Access Key',
+  'oss.help.step4': 'Ensure the key has permission to access the target bucket',
+
+  // Hugging Face fields
+  'huggingface.apiToken': 'API Token',
+  'huggingface.apiToken.placeholder': 'hf_xxxxxxxx',
+  'huggingface.apiToken.help': 'Only required for accessing private datasets',
+  'huggingface.organization': 'Organization',
+  'huggingface.organization.placeholder': 'microsoft, openai, etc.',
+  'huggingface.organization.help': 'Optional, specify datasets from a specific organization',
+  'huggingface.help.token.title': 'How to get API Token:',
+  'huggingface.help.token.step1': 'Visit',
+  'huggingface.help.token.step2': 'Create new access token',
+  'huggingface.help.token.step3': 'Select "Read" permission',
+  'error.huggingface.connection.failed': 'Hugging Face connection failed',
 };

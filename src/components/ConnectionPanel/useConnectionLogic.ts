@@ -18,7 +18,6 @@ export const useConnectionLogic = (onConnect: () => void) => {
   const [error, setError] = useState('');
   const [selectedStoredConnection, setSelectedStoredConnection] = useState<StoredConnection | null>(null);
   const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false);
-  const savePassword = true;
 
   // 本地文件系统连接状态
   const [defaultLocalPath, setDefaultLocalPath] = useState('');
@@ -54,6 +53,9 @@ export const useConnectionLogic = (onConnect: () => void) => {
         } else if (defaultConnection.url.startsWith('oss://')) {
           setStorageType('oss');
           handleSelectStoredConnection(defaultConnection);
+        } else if (defaultConnection.url.startsWith('huggingface://')) {
+          setStorageType('huggingface');
+          handleSelectStoredConnection(defaultConnection);
         } else {
           setStorageType('webdav');
           handleSelectStoredConnection(defaultConnection);
@@ -74,6 +76,8 @@ export const useConnectionLogic = (onConnect: () => void) => {
       setDefaultLocalPath(localPath);
     } else if (connection.url.startsWith('oss://')) {
       setStorageType('oss');
+    } else if (connection.url.startsWith('huggingface://')) {
+      setStorageType('huggingface');
     } else {
       setStorageType('webdav');
       setUrl(connection.url);
@@ -90,94 +94,59 @@ export const useConnectionLogic = (onConnect: () => void) => {
 
   const handleWebDAVConnect = async (e: React.FormEvent) => {
     e.preventDefault();
-    setConnecting(true);
-    setError('');
 
-    try {
-      const connectionName = selectedStoredConnection ?
-        selectedStoredConnection.name :
-        t('connection.name.webdav', 'WebDAV({{host}})', { host: new URL(url).hostname });
+    const connectionName = selectedStoredConnection ?
+      selectedStoredConnection.name :
+      t('connection.name.webdav', 'WebDAV({{host}})', { host: new URL(url).hostname });
 
-      const actualPassword = isPasswordFromStorage && selectedStoredConnection?.password
-        ? selectedStoredConnection.password
-        : password;
+    const actualPassword = isPasswordFromStorage && selectedStoredConnection?.password
+      ? selectedStoredConnection.password
+      : password;
 
-      const success = await StorageServiceManager.connect(url, username, actualPassword, true, connectionName, savePassword);
-      if (success) {
-        if (selectedStoredConnection) {
-          StorageServiceManager.setDefaultConnection(selectedStoredConnection.id);
-        }
-        onConnect();
-      } else {
-        setError(t('error.credentials'));
-      }
-    } catch (err) {
-      setError(t('error.connection.failed'));
-    } finally {
-      setConnecting(false);
-    }
+    const config: ConnectionConfig = {
+      type: 'webdav',
+      url,
+      username,
+      password: actualPassword,
+      name: connectionName
+    };
+
+    await handleConnect(config);
   };
 
   const handleLocalConnect = async (rootPath: string) => {
-    setConnecting(true);
-    setError('');
+    const config: ConnectionConfig = {
+      type: 'local',
+      rootPath,
+      url: rootPath, // 兼容性
+      name: t('connection.name.local', '本机文件({{path}})', { path: rootPath })
+    };
 
-    try {
-      if (StorageServiceManager.isConnected()) {
-        StorageServiceManager.disconnect();
-      }
-
-      const success = await StorageServiceManager.connectToLocal(
-        rootPath,
-        true,
-        t('connection.name.local', '本机文件({{path}})', { path: rootPath })
-      );
-
-      if (success) {
-        const connections = StorageServiceManager.getStoredConnections();
-        const localConnection = connections.find(conn =>
-          conn.url.startsWith('local://') && conn.url.includes(rootPath)
-        );
-        if (localConnection) {
-          StorageServiceManager.setDefaultConnection(localConnection.id);
-        }
-        onConnect();
-      } else {
-        setError(t('local.error.access'));
-      }
-    } catch (err) {
-      console.error('Local connection error:', err);
-      setError(t('local.error.connection'));
-    } finally {
-      setConnecting(false);
-    }
+    await handleConnect(config);
   };
 
   const handleOSSConnect = async (config: ConnectionConfig) => {
+    await handleConnect(config);
+  };
+
+  const handleHuggingFaceConnect = async (config: ConnectionConfig) => {
+    await handleConnect(config);
+  };
+
+  // 统一的连接处理方法
+  const handleConnect = async (config: ConnectionConfig) => {
     setConnecting(true);
     setError('');
 
     try {
-      if (StorageServiceManager.isConnected()) {
-        StorageServiceManager.disconnect();
-      }
-
-      const success = await StorageServiceManager.connectToOSS(config);
-
+      const success = await StorageServiceManager.connectWithConfig(config);
       if (success) {
-        const connections = StorageServiceManager.getStoredConnections();
-        const ossConnection = connections.find(conn =>
-          conn.url.startsWith('oss://') && conn.username === config.username
-        );
-        if (ossConnection) {
-          StorageServiceManager.setDefaultConnection(ossConnection.id);
-        }
         onConnect();
       } else {
-        setError(t('error.oss.connection.failed'));
+        setError(t(`error.${config.type}.connection.failed`));
       }
     } catch (err) {
-      console.error('OSS connection error:', err);
+      console.error(`${config.type} connection error:`, err);
       setError(err instanceof Error ? err.message : t('error.connection.failed'));
     } finally {
       setConnecting(false);
@@ -189,7 +158,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
     setError('');
 
     if (type === 'webdav') {
-      if (selectedStoredConnection && !selectedStoredConnection.url.startsWith('local://') && !selectedStoredConnection.url.startsWith('oss://')) {
+      if (selectedStoredConnection && !selectedStoredConnection.url.startsWith('local://') && !selectedStoredConnection.url.startsWith('oss://') && !selectedStoredConnection.url.startsWith('huggingface://')) {
         // 保持 WebDAV 连接选择
       } else {
         setSelectedStoredConnection(null);
@@ -213,6 +182,10 @@ export const useConnectionLogic = (onConnect: () => void) => {
       }
     } else if (type === 'oss') {
       if (!selectedStoredConnection || !selectedStoredConnection.url.startsWith('oss://')) {
+        setSelectedStoredConnection(null);
+      }
+    } else if (type === 'huggingface') {
+      if (!selectedStoredConnection || !selectedStoredConnection.url.startsWith('huggingface://')) {
         setSelectedStoredConnection(null);
       }
     }
@@ -269,6 +242,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
     handleWebDAVConnect,
     handleLocalConnect,
     handleOSSConnect,
+    handleHuggingFaceConnect,
     handleUrlChange,
     handleUsernameChange,
     handlePasswordChange,
