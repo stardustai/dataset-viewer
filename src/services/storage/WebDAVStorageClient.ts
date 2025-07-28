@@ -299,13 +299,11 @@ export class WebDAVStorageClient extends BaseStorageClient {
     filename: string,
     maxSize?: number
   ): Promise<ArchiveInfo> {
-    // 使用协议URL格式，与其他API保持一致
-    const protocolUrl = this.toProtocolUrl(path);
-
+    // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
     return await invoke('analyze_archive_with_client', {
       protocol: this.protocol,
-      filePath: protocolUrl, // 传递协议URL格式
+      filePath: path, // 直接使用传入的路径
       filename,
       maxSize
     });
@@ -320,13 +318,11 @@ export class WebDAVStorageClient extends BaseStorageClient {
     entryPath: string,
     maxPreviewSize?: number
   ): Promise<FilePreview> {
-    // 使用协议URL格式，与其他API保持一致
-    const protocolUrl = this.toProtocolUrl(path);
-
+    // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
     return await invoke('get_archive_preview_with_client', {
       protocol: this.protocol,
-      filePath: protocolUrl, // 传递协议URL格式
+      filePath: path, // 直接使用传入的路径
       filename,
       entryPath,
       maxPreviewSize

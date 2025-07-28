@@ -174,12 +174,12 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
       const connected = await this.connectToBackend({
         protocol: 'huggingface',
         url: null,
-        accessKey: config.apiToken,
+        accessKey: null,
         secretKey: null,
         region: null,
         endpoint: null,
         username: null,
-        password: null,
+        password: config.apiToken, // HuggingFace token 传递给 password 字段
         extraOptions: null,
       });
 
@@ -357,12 +357,11 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     maxSize?: number
   ): Promise<ArchiveInfo> {
     // 使用协议URL格式
-    const protocolUrl = this.toProtocolUrl(path);
-
+    // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
     return await invoke('analyze_archive_with_client', {
       protocol: this.protocol,
-      filePath: protocolUrl, // 传递协议URL格式
+      filePath: path, // 直接使用传入的路径
       filename,
       maxSize
     });
@@ -377,13 +376,11 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     entryPath: string,
     maxPreviewSize?: number
   ): Promise<FilePreview> {
-    // 使用协议URL格式
-    const protocolUrl = this.toProtocolUrl(path);
-
+    // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
     return await invoke('get_archive_preview_with_client', {
       protocol: this.protocol,
-      filePath: protocolUrl, // 传递协议URL格式
+      filePath: path, // 直接使用传入的路径
       filename,
       entryPath,
       maxPreviewSize

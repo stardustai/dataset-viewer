@@ -27,6 +27,7 @@ import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../../utils
 import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
+import { configManager } from '../../config';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
@@ -42,11 +43,9 @@ interface FileViewerProps {
   onBack: () => void;
 }
 
-const CHUNK_SIZE = 1024 * 1024; // 1MB chunks for large files
-const MAX_INITIAL_LOAD = 1024 * 1024 * 10; // 10MB initial load
-
 export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageClient, onBack }) => {
   const { t } = useTranslation();
+  const config = configManager.getConfig();
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -97,10 +96,10 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
       const fileSize = await StorageServiceManager.getFileSize(filePath);
       setTotalSize(fileSize);
 
-      if (fileSize > MAX_INITIAL_LOAD) {
+      if (fileSize > config.streaming.maxInitialLoad) {
         // Large file - load in chunks
         setIsLargeFile(true);
-        const initialContent = await StorageServiceManager.getFileContent(filePath, 0, MAX_INITIAL_LOAD);
+        const initialContent = await StorageServiceManager.getFileContent(filePath, 0, config.streaming.maxInitialLoad);
         setContent(initialContent.content);
         setCurrentFilePosition(0);
         setLoadedContentSize(initialContent.content.length);
@@ -137,7 +136,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
       }
 
       const remainingSize = totalSize - nextPosition;
-      const chunkSize = Math.min(CHUNK_SIZE, remainingSize);
+      const chunkSize = Math.min(config.streaming.chunkSize, remainingSize);
 
       const additionalContent = await StorageServiceManager.getFileContent(filePath, nextPosition, chunkSize);
       setContent(prev => prev + additionalContent.content);
@@ -349,8 +348,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
       setLoading(true);
 
       // 跳转到搜索结果附近的文件位置
-      const targetPosition = Math.max(0, result.filePosition - CHUNK_SIZE / 2); // 在结果前加载一些内容
-      const endPosition = Math.min(targetPosition + CHUNK_SIZE * 2, totalSize); // 加载2MB内容
+      const chunkSize = config.streaming.chunkSize;
+      const targetPosition = Math.max(0, result.filePosition - chunkSize / 2); // 在结果前加载一些内容
+      const endPosition = Math.min(targetPosition + chunkSize * 2, totalSize); // 加载2倍chunk大小的内容
 
       const newContent = await StorageServiceManager.getFileContent(filePath, targetPosition, endPosition - targetPosition);
 

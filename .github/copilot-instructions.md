@@ -38,7 +38,7 @@ Cross-platform Tauri application for unified dataset browsing with massive file 
 - **Path Processing**: Keep path handling logic within respective clients
 - **Components**: Organize by feature, use composition
 - **Styling**: Tailwind CSS utility classes
-- **Performance**: Virtual scrolling for >100 items, chunked loading for >10MB files
+- **Performance**: Virtual scrolling for >100 items, chunked loading for >1MB files
 - **I18n**: Wrap all UI text in translation functions
 - **State**: React hooks + localStorage persistence
 - **Tauri**: Use async commands, official plugins, follow security practices

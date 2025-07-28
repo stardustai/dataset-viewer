@@ -24,7 +24,7 @@ export interface AppConfig {
 export const defaultConfig: AppConfig = {
   streaming: {
     chunkSize: 1024 * 1024, // 1MB chunks
-    maxInitialLoad: 1024 * 1024 * 10, // 10MB initial load
+    maxInitialLoad: 1024 * 1024, // 1MB initial load
     prefetchNextChunk: true,
     enableCompression: false,
   },

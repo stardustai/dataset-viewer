@@ -145,7 +145,7 @@ pnpm package:debug
 - **Build**: Vite for fast development and optimized builds
 
 **Key Optimizations:**
-- **📊 Chunked Loading**: Large files in 10MB chunks
+- **📊 Chunked Loading**: Large files in 1MB chunks
 - **📦 Archive Streaming**: Process compressed files without full extraction
 - **🖥 Virtual Scrolling**: Millions of lines without performance impact
 - **🧠 Smart Memory Management**: Efficient loading and disposal

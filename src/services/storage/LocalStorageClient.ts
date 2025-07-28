@@ -51,12 +51,20 @@ export class LocalStorageClient extends BaseStorageClient {
    */
   /**
    * 将前端路径转换为协议统一的地址格式
-   * 本地存储协议格式：file:///path/to/file
+   * 本地存储协议格式：file://path/to/file
    */
   toProtocolUrl(path: string): string {
-    // 对于本地文件，构建 file:// 协议 URL
-    // 后端会处理完整的文件系统路径
-    return path ? `file:///${path}` : 'file:///';
+    if (!path) {
+      return 'file://';
+    }
+
+    // 如果路径已经是绝对路径（以 / 开头），直接使用
+    if (path.startsWith('/')) {
+      return `file://${path}`;
+    }
+
+    // 对于相对路径，构建 file:// 协议 URL（不添加额外的斜杠）
+    return `file://${path}`;
   }
 
   /**

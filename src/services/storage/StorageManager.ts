@@ -487,6 +487,12 @@ export class StorageServiceManager {
    */
   static getFileUrl(path: string): string {
     const client = this.getCurrentClient();
+
+    // 如果路径已经是协议URL格式，直接返回
+    if (path.includes('://')) {
+      return path;
+    }
+
     return client.toProtocolUrl(path);
   }
 
