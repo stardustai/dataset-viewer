@@ -59,6 +59,13 @@ export const fileViewer = {
   'copied.to.clipboard': '已复制到剪贴板',
   'copy.failed': '复制失败',
 
+  // 格式化功能
+  'format.json': '格式化JSON',
+  'format.json.success': 'JSON格式化成功',
+  'format.json.failed': 'JSON格式化失败：内容不是有效的JSON',
+  'formatted.content': '格式化内容',
+  'original.content': '原始内容',
+
   // 加载状态
   'loading.file': '正在加载文件 "{{filename}}"...',
   'loading.analyzing.archive': '正在分析压缩文件...',

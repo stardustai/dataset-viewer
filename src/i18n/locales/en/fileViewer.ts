@@ -59,6 +59,13 @@ export const fileViewer = {
   'copied.to.clipboard': 'Copied to clipboard',
   'copy.failed': 'Copy failed',
 
+  // Format functionality
+  'format.json': 'Format JSON',
+  'format.json.success': 'JSON formatted successfully',
+  'format.json.failed': 'JSON format failed: content is not valid JSON',
+  'formatted.content': 'Formatted Content',
+  'original.content': 'Original Content',
+
   // Loading status
   'loading.file': 'Loading file "{{filename}}"...',
   'loading.analyzing.archive': 'Analyzing archive...',

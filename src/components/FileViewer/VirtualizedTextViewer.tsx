@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Copy } from 'lucide-react';
+import { Copy, Braces } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 
 interface VirtualizedTextViewerProps {
@@ -33,6 +33,51 @@ const LineContentModal: React.FC<{
   const modalRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
+  // 格式化状态
+  const [isFormatted, setIsFormatted] = useState(false);
+  const [formattedContent, setFormattedContent] = useState('');
+
+  // 重置格式化状态当内容变化时
+  useEffect(() => {
+    setIsFormatted(false);
+    setFormattedContent('');
+  }, [content]);
+
+  // JSON格式化函数
+  const formatAsJSON = useCallback(() => {
+    try {
+      // 尝试解析JSON
+      const parsed = JSON.parse(content.trim());
+      // 格式化为缩进的JSON
+      const formatted = JSON.stringify(parsed, null, 2);
+      setFormattedContent(formatted);
+      setIsFormatted(true);
+      showCopyToast(t('format.json.success'));
+    } catch (error) {
+      showCopyToast(t('format.json.failed'));
+    }
+  }, [content, t]);
+
+  // 切换显示模式
+  const toggleFormatView = useCallback(() => {
+    if (isFormatted) {
+      setIsFormatted(false);
+    } else {
+      formatAsJSON();
+    }
+  }, [isFormatted, formatAsJSON]);
+
+  // 检查内容是否可能是JSON
+  const isLikelyJSON = useCallback((text: string) => {
+    const trimmed = text.trim();
+    return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+           (trimmed.startsWith('[') && trimmed.endsWith(']'));
+  }, []);
+
+  // 获取当前显示的内容
+  const currentContent = isFormatted ? formattedContent : content;
+  const currentContentLabel = isFormatted ? t('formatted.content') : t('original.content');
+
   // 处理点击外部关闭
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,10 +101,8 @@ const LineContentModal: React.FC<{
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   // 高亮搜索词
-  const renderHighlightedContent = (text: string) => {
+  const renderHighlightedContent = useCallback((text: string) => {
     if (!searchTerm || searchTerm.length < 2) {
       return text;
     }
@@ -78,7 +121,9 @@ const LineContentModal: React.FC<{
       }
       return part;
     });
-  };
+  }, [searchTerm]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -88,30 +133,50 @@ const LineContentModal: React.FC<{
       >
         {/* 标题栏 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {t('line.content', { line: lineNumber })}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
-          >
-            ×
-          </button>
+          <div className="flex items-center space-x-3">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {t('line.content', { line: lineNumber })}
+            </h3>
+            {isFormatted && (
+              <span className="text-sm px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                {currentContentLabel}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            {/* JSON格式化按钮 */}
+            {isLikelyJSON(content) && (
+              <button
+                onClick={toggleFormatView}
+                className="flex items-center space-x-2 px-3 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                title={isFormatted ? t('original.content') : t('format.json')}
+              >
+                <Braces className="w-4 h-4" />
+                <span>{isFormatted ? t('original.content') : t('format.json')}</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {/* 内容区域 */}
         <div className="flex-1 overflow-auto p-4">
           <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 font-mono text-sm whitespace-pre-wrap break-words">
-            {renderHighlightedContent(content)}
+            {renderHighlightedContent(currentContent)}
           </div>
         </div>
 
         {/* 底部操作栏 */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
-          <span>{t('characters')}: {content.length}</span>
+          <span>{t('characters')}: {currentContent.length}</span>
           <button
             onClick={async () => {
-              const success = await copyToClipboard(content);
+              const success = await copyToClipboard(currentContent);
               if (success) {
                 showCopyToast(t('copied.to.clipboard'));
               } else {
