@@ -32,6 +32,7 @@
     "hyparquet": "^1.17.1",
     "i18next": "^25.3.2",
     "lucide-react": "^0.525.0",
+    "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.6.0",
@@ -40,6 +41,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "@types/node": "^24.0.15",
+    "@types/papaparse": "^5.3.16",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

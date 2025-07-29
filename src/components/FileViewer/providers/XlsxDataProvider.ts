@@ -1,12 +1,6 @@
 import { StorageServiceManager } from '../../../services/storage';
 import * as XLSX from 'xlsx';
-import { DataProvider, DataMetadata } from './ParquetDataProvider';
-
-interface DataColumn {
-  name: string;
-  type: string;
-  logicalType?: string;
-}
+import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 
 export class XlsxDataProvider implements DataProvider {
   private filePath: string;
@@ -14,7 +8,7 @@ export class XlsxDataProvider implements DataProvider {
   private workbook: XLSX.WorkBook | null = null;
   private metadata: DataMetadata | null = null;
   private currentSheetIndex = 0;
-  private currentSheetData: any[][] | null = null;
+  private currentSheetData: unknown[][] | null = null;
 
   constructor(filePath: string, fileSize: number) {
     this.filePath = filePath;
@@ -47,6 +41,17 @@ export class XlsxDataProvider implements DataProvider {
     const workbook = await this.getWorkbook();
     const sheetData = await this.getCurrentSheetData();
 
+    if (sheetData.length === 0) {
+      this.metadata = {
+        numRows: 0,
+        numColumns: 0,
+        columns: [],
+        fileSize: this.fileSize,
+        sheets: workbook.SheetNames,
+      };
+      return this.metadata;
+    }
+
     // 假设第一行是标题行
     const headerRow = sheetData[0] || [];
     const columns: DataColumn[] = headerRow.map((header, index) => ({
@@ -65,8 +70,12 @@ export class XlsxDataProvider implements DataProvider {
     return this.metadata;
   }
 
-  async loadData(offset: number, limit: number): Promise<any[]> {
+  async loadData(offset: number, limit: number): Promise<Record<string, unknown>[]> {
     const sheetData = await this.getCurrentSheetData();
+
+    if (sheetData.length === 0) {
+      return [];
+    }
 
     // 跳过标题行（第一行）
     const dataRows = sheetData.slice(1);
@@ -75,7 +84,7 @@ export class XlsxDataProvider implements DataProvider {
     // 转换为对象数组格式，以便与 Parquet 格式保持一致
     const headerRow = sheetData[0] || [];
     return chunk.map(row => {
-      const obj: any = {};
+      const obj: Record<string, unknown> = {};
       headerRow.forEach((header, index) => {
         const key = String(header) || `Column ${index + 1}`;
         obj[key] = row[index] !== undefined ? row[index] : null;

@@ -73,7 +73,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   const { t } = useTranslation();
 
   // Data state
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [metadata, setMetadata] = useState<DataMetadata | null>(null);
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +97,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   const [showMetadata, setShowMetadata] = useState(false);
   const [showCellModal, setShowCellModal] = useState(false);
   const [modalCellData, setModalCellData] = useState<{
-    value: any;
+    value: unknown;
     column: string;
     row: number;
   } | null>(null);
@@ -107,7 +107,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   const dataProviderRef = useRef<DataProvider | null>(null);
 
   // 打开单元格详情弹窗
-  const openCellModal = (value: any, column: string, rowIndex: number) => {
+  const openCellModal = (value: unknown, column: string, rowIndex: number) => {
     setModalCellData({ value, column, row: rowIndex });
     setShowCellModal(true);
   };
@@ -215,7 +215,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
       setTotalRows(meta.numRows);
 
       // 更新列信息
-      const columnInfo: DataColumn[] = meta.columns.map((col: any) => ({
+      const columnInfo: DataColumn[] = meta.columns.map((col) => ({
         id: col.name,
         header: col.name,
         type: col.type,
@@ -255,10 +255,9 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   // 创建表格列定义
   const tableColumns = useMemo(() => {
-    const columnHelper = createColumnHelper<any>();
-
+    const columnHelper = createColumnHelper<Record<string, unknown>>();
     return columns.map(col => {
-      return columnHelper.accessor(col.accessorKey, {
+      return columnHelper.accessor(col.accessorKey as keyof Record<string, unknown>, {
         id: col.id,
         header: () => (
           <div className="flex items-center space-x-1 w-full">

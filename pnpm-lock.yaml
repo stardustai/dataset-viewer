@@ -32,6 +32,9 @@ dependencies:
   lucide-react:
     specifier: ^0.525.0
     version: 0.525.0(react@18.3.1)
+  papaparse:
+    specifier: ^5.5.3
+    version: 5.5.3
   react:
     specifier: ^18.3.1
     version: 18.3.1
@@ -52,6 +55,9 @@ devDependencies:
   '@types/node':
     specifier: ^24.0.15
     version: 24.0.15
+  '@types/papaparse':
+    specifier: ^5.3.16
+    version: 5.3.16
   '@types/react':
     specifier: ^18.3.1
     version: 18.3.23
@@ -944,6 +950,12 @@ packages:
       undici-types: 7.8.0
     dev: true
 
+  /@types/papaparse@5.3.16:
+    resolution: {integrity: sha512-T3VuKMC2H0lgsjI9buTB3uuKj3EMD2eap1MOuEQuBQ44EnDx/IkGhU6EwiTf9zG3za4SKlmwKAImdDKdNnCsXg==}
+    dependencies:
+      '@types/node': 24.0.15
+    dev: true
+
   /@types/prop-types@15.7.15:
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
     dev: true
@@ -1525,6 +1537,10 @@ packages:
   /package-json-from-dist@1.0.1:
     resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
     dev: true
+
+  /papaparse@5.5.3:
+    resolution: {integrity: sha512-5QvjGxYVjxO59MGU2lHVYpRWBBtKHnlIAcSe1uNFCkkptUh63NFRj0FJQm7nR67puEruUci/ZkjmEFrjCAyP4A==}
+    dev: false
 
   /path-key@3.1.1:
     resolution: {integrity: sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==}

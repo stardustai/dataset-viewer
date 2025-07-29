@@ -1,7 +1,7 @@
 import { StorageServiceManager } from '../../../services/storage';
 import { parquetReadObjects, parquetMetadataAsync } from 'hyparquet';
 
-interface DataColumn {
+export interface DataColumn {
   name: string;
   type: string;
   logicalType?: string;
@@ -17,7 +17,7 @@ export interface DataMetadata {
 
 export interface DataProvider {
   loadMetadata(): Promise<DataMetadata>;
-  loadData(offset: number, limit: number, sheetIndex?: number): Promise<any[]>;
+  loadData(offset: number, limit: number, sheetIndex?: number): Promise<Record<string, unknown>[]>;
   switchSheet?(sheetIndex: number): Promise<void>;
 }
 
@@ -74,7 +74,7 @@ export class ParquetDataProvider implements DataProvider {
     return this.metadata;
   }
 
-  async loadData(offset: number, limit: number): Promise<any[]> {
+  async loadData(offset: number, limit: number): Promise<Record<string, unknown>[]> {
     const buffer = await this.getFileBuffer();
 
     const result = await parquetReadObjects({
@@ -83,6 +83,6 @@ export class ParquetDataProvider implements DataProvider {
       rowEnd: offset + limit,
     });
 
-    return result;
+    return result as Record<string, unknown>[];
   }
 }
