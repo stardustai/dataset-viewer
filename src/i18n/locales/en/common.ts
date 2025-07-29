@@ -9,6 +9,7 @@ export const common = {
   // Basic operations
   'save': 'Save',
   'cancel': 'Cancel',
+  'close': 'Close',
   'delete': 'Delete',
   'rename': 'Rename',
   'connect': 'Connect',

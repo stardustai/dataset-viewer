@@ -16,7 +16,7 @@ import { WebDAVFile, SearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
-import { DataTableViewer } from './DataTableViewer';
+import { UniversalDataTableViewer } from './UniversalDataTableViewer';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { getFileType, isTextFile, isMediaFile, isArchiveFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
 import { FileIcon } from '../../utils/fileIcons';
@@ -999,7 +999,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                 fileSize={file.size}
               />
             ) : isSpreadsheet ? (
-              <DataTableViewer
+              <UniversalDataTableViewer
                 filePath={filePath}
                 fileName={file.basename}
                 fileSize={file.size}
@@ -1008,7 +1008,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                 onMetadataLoaded={setDataMetadata}
               />
             ) : isData ? (
-              <DataTableViewer
+              <UniversalDataTableViewer
                 filePath={filePath}
                 fileName={file.basename}
                 fileSize={file.size}
