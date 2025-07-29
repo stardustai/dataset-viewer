@@ -24,11 +24,11 @@ const FILE_ICON_CONFIG: Record<FileType | 'directory', FileIconConfig> = {
   video: { icon: Film, color: 'text-purple-500' },
   audio: { icon: Music, color: 'text-pink-500' },
   pdf: { icon: FileImage, color: 'text-red-500' },
-  text: { icon: FileText, color: 'text-gray-500' },
+  text: { icon: FileText, color: 'text-gray-500 dark:text-gray-400' },
   spreadsheet: { icon: FileSpreadsheet, color: 'text-emerald-500' },
   archive: { icon: Archive, color: 'text-orange-500' },
   data: { icon: Database, color: 'text-cyan-500' },
-  unknown: { icon: File, color: 'text-gray-500' }
+  unknown: { icon: File, color: 'text-gray-400 dark:text-gray-500' }
 };
 
 interface FileIconProps {
