@@ -206,7 +206,7 @@ impl RarHandler {
                         let mut output = Vec::new();
                         entry.extract_to_writer(&mut output).map_err(|e| e.to_string())?;
 
-                        let file_type = FileType::from_path(entry_path);
+
                         let total_size = entry.unpacked_size;
                         let preview_size = max_size.min(output.len());
 
@@ -228,7 +228,7 @@ impl RarHandler {
                             .content(content)
                             .with_truncated(preview_size < total_size as usize)
                             .total_size(total_size)
-                            .file_type(file_type)
+                
                             .build());
                     }
                 }

@@ -29,6 +29,8 @@ export const errors = {
   // 预览错误
   'preview.failed': '预览失败',
   'retry.preview': '重试预览',
+  'preview.no.content': '文件内容为空',
+  'preview.render.error': '预览渲染失败',
 
   // 压缩文件格式错误
   'archive.format.7z.not.supported': '7Z 格式不支持在线预览。7Z 的文件结构信息位于文件末尾，无法实现流式处理，需要下载完整文件才能分析。建议使用专门的解压工具。',

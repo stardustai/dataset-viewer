@@ -206,7 +206,7 @@ export class LocalStorageClient extends BaseStorageClient {
     }
 
     // 对于本机文件，直接读取为二进制数据
-    const response = await invoke<string>('storage_request_binary', {
+    const response = await invoke<number[]>('storage_request_binary', {
       protocol: this.protocol,
       method: 'READ_FILE_BINARY',
       url: this.toProtocolUrl(path),
@@ -216,15 +216,9 @@ export class LocalStorageClient extends BaseStorageClient {
       }
     });
 
-    // 转换为 ArrayBuffer
-    const binaryString = atob(response);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    const arrayBuffer = bytes.buffer;
-
-    return new Blob([arrayBuffer]);
+    // 直接使用返回的二进制数据创建 Blob
+    const uint8Array = new Uint8Array(response);
+    return new Blob([uint8Array]);
   }
 
   async downloadFileWithProgress(path: string, filename: string): Promise<string> {

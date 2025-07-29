@@ -29,13 +29,20 @@ export class CompressionService {
     entryPath: string,
     maxPreviewSize?: number
   ): Promise<FilePreview> {
-    return await invoke('get_file_preview', {
+    const result = await invoke('get_file_preview', {
       url,
       headers,
       filename,
       entryPath,
       maxPreviewSize,
-    });
+    }) as any;
+    
+    // Convert content to Uint8Array if it's not already
+    if (result.content && !(result.content instanceof Uint8Array)) {
+      result.content = new Uint8Array(result.content);
+    }
+    
+    return result as FilePreview;
   }
 
   /**
@@ -47,12 +54,19 @@ export class CompressionService {
     filename: string,
     entryPath: string
   ): Promise<FilePreview> {
-    return await invoke('smart_preview', {
+    const result = await invoke('smart_preview', {
       url,
       headers,
       filename,
       entryPath,
-    });
+    }) as any;
+    
+    // Convert content to Uint8Array if it's not already
+    if (result.content && !(result.content instanceof Uint8Array)) {
+      result.content = new Uint8Array(result.content);
+    }
+    
+    return result as FilePreview;
   }
 
   /**
@@ -65,12 +79,20 @@ export class CompressionService {
     entryPaths: string[],
     maxPreviewSize?: number
   ): Promise<Array<[string, FilePreview | string]>> {
-    return await invoke('batch_preview', {
+    const results = await invoke('batch_preview', {
       url,
       headers,
       filename,
       entryPaths,
       maxPreviewSize,
+    }) as Array<[string, any | string]>;
+    
+    // Convert content to Uint8Array for FilePreview objects
+    return results.map(([path, result]) => {
+      if (typeof result === 'object' && result.content && !(result.content instanceof Uint8Array)) {
+        result.content = new Uint8Array(result.content);
+      }
+      return [path, result];
     });
   }
 

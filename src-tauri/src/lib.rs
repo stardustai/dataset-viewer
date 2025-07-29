@@ -1,5 +1,3 @@
-use base64::{Engine as _, engine::general_purpose};
-
 mod storage;
 mod archive;  // 压缩包处理功能 - 前端需要使用
 mod download; // 下载管理功能
@@ -186,7 +184,7 @@ async fn storage_request_binary(
     url: String,
     headers: std::collections::HashMap<String, String>,
     options: Option<serde_json::Value>,
-) -> Result<String, String> {
+) -> Result<Vec<u8>, String> {
     let manager = get_storage_manager().await;
     let manager = manager.lock().await;
 
@@ -199,7 +197,7 @@ async fn storage_request_binary(
     };
 
     match manager.request_binary(&request).await {
-        Ok(data) => Ok(general_purpose::STANDARD.encode(&data)),
+        Ok(data) => Ok(data),
         Err(e) => Err(format!("Binary request failed: {}", e))
     }
 }

@@ -94,6 +94,7 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 ### Media Files (Preview)
 - Images (`.jpg`, `.png`, `.gif`, `.svg`, `.webp`)
 - Videos (`.mp4`, `.webm`, `.mov`)
+- Audios (`.mp3`, `.wav`, `.ogg`)
 
 ## 🛠 Getting Started
 

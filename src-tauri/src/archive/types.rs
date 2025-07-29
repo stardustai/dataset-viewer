@@ -129,59 +129,14 @@ pub enum AnalysisStatus {
 /// 文件预览结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilePreview {
-    pub content: String,
+    #[serde(with = "serde_bytes")]
+    pub content: Vec<u8>,
     pub is_truncated: bool,
     pub total_size: u64,
     pub preview_size: usize,
-    pub encoding: String,
-    pub file_type: FileType,
 }
 
-/// 文件类型
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FileType {
-    Text,
-    Binary,
-    Image,
-    Audio,
-    Video,
-    Archive,
-    Unknown,
-}
 
-impl FileType {
-    #[allow(dead_code)] // 在其他模块中被使用
-    pub fn from_path(path: &str) -> Self {
-        let lower = path.to_lowercase();
-        let ext = lower.split('.').last().unwrap_or("");
-
-        match ext {
-            "txt" | "md" | "json" | "jsonl" | "xml" | "html" | "css" | "js" | "ts" | "jsx" | "tsx" | "py" | "rs" | "go" | "java" | "c" | "cpp" | "h" |
-            "php" | "rb" | "yaml" | "yml" | "sql" | "sh" | "bat" | "ps1" | "log" | "config" | "ini" | "tsv" | "csv" | "scss" | "less" => FileType::Text,
-            "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" | "webp" => FileType::Image,
-            "mp3" | "wav" | "flac" | "ogg" | "aac" => FileType::Audio,
-            "mp4" | "avi" | "mov" | "wmv" | "mkv" => FileType::Video,
-            "zip" | "tar" | "gz" | "7z" | "rar" => FileType::Archive,
-            _ => {
-                if ext.is_empty() {
-                    FileType::Unknown
-                } else {
-                    FileType::Binary
-                }
-            }
-        }
-    }
-
-    #[allow(dead_code)] // 在其他模块中被使用
-    pub fn is_text(&self) -> bool {
-        matches!(self, FileType::Text)
-    }
-
-    #[allow(dead_code)] // API 保留方法
-    pub fn supports_preview(&self) -> bool {
-        matches!(self, FileType::Text | FileType::Image)
-    }
-}
 
 /// 下载选项
 #[derive(Debug, Clone, Serialize, Deserialize)]

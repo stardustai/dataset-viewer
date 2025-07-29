@@ -82,11 +82,9 @@ export interface AnalysisStatus {
 }
 
 export interface FilePreview {
-  content: string;
+  content: Uint8Array;
   is_truncated: boolean;
   total_size: number;
   preview_size: number;
-  encoding: string;
-  file_type: string;
 }
 

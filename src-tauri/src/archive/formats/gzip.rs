@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::io::{Cursor, Read};
 use flate2::read::GzDecoder;
-use base64::{Engine as _, engine::general_purpose};
+
 
 pub struct GzipHandler;
 
@@ -156,22 +156,15 @@ impl GzipHandler {
 
         // 检测内容类型
         let _mime_type = detect_mime_type(&preview_data);
-        let is_text = is_text_content(&preview_data);
 
-        let content = if is_text {
-            String::from_utf8_lossy(&preview_data).into_owned()
-        } else {
-            general_purpose::STANDARD.encode(&preview_data)
-        };
 
         // 判断是否被截断（如果解压数据达到了最大size，可能还有更多内容）
         let is_truncated = preview_data.len() >= max_size;
+        let data_len = preview_data.len() as u64;
 
         Ok(PreviewBuilder::new()
-            .content(content)
-            .total_size(preview_data.len() as u64) // 这里只能给出已解压的大小
-            .file_type(if is_text { FileType::Text } else { FileType::Binary })
-            .encoding(if is_text { "utf-8".to_string() } else { "base64".to_string() })
+            .content(preview_data)
+            .total_size(data_len) // 这里只能给出已解压的大小
             .with_truncated(is_truncated)
             .build())
     }

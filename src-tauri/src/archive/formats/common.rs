@@ -62,101 +62,34 @@ pub fn is_text_content(data: &[u8]) -> bool {
     (non_text_count as f64 / total_checked as f64) < 0.1
 }
 
-/// 文本解码工具
-pub struct TextDecoder;
 
-impl TextDecoder {
-    /// 尝试解码文本（处理非UTF-8编码）
-    pub fn try_decode_text(buffer: Vec<u8>) -> Result<String, String> {
-        // 尝试UTF-8
-        if let Ok(text) = String::from_utf8(buffer.clone()) {
-            return Ok(text);
-        }
-
-        // 尝试Latin-1（ISO-8859-1）
-        let latin1_text: String = buffer.iter().map(|&b| b as char).collect();
-        if latin1_text.chars().all(|c| !c.is_control() || c.is_whitespace()) {
-            return Ok(format!("[Latin-1编码]\n{}", latin1_text));
-        }
-
-        // 如果都不行，返回十六进制表示
-        Ok(Self::format_binary_preview(buffer))
-    }
-
-    /// 格式化二进制预览
-    pub fn format_binary_preview(buffer: Vec<u8>) -> String {
-        let mut result = String::new();
-        result.push_str("[二进制文件预览]\n");
-
-        for (i, chunk) in buffer.chunks(16).enumerate() {
-            // 地址
-            result.push_str(&format!("{:08x}: ", i * 16));
-
-            // 十六进制
-            for (j, &byte) in chunk.iter().enumerate() {
-                result.push_str(&format!("{:02x} ", byte));
-                if j == 7 {
-                    result.push(' ');
-                }
-            }
-
-            // 填充空格
-            for _ in chunk.len()..16 {
-                result.push_str("   ");
-                if chunk.len() <= 8 {
-                    result.push(' ');
-                }
-            }
-
-            // ASCII表示
-            result.push_str(" |");
-            for &byte in chunk {
-                if (32..=126).contains(&byte) {
-                    result.push(byte as char);
-                } else {
-                    result.push('.');
-                }
-            }
-            result.push_str("|\n");
-
-            // 限制预览长度
-            if i >= 32 {
-                result.push_str("...\n");
-                break;
-            }
-        }
-
-        result
-    }
-}
 
 /// 文件预览构建器
+#[derive(Debug, Clone)]
 pub struct PreviewBuilder {
-    content: String,
+    content: Vec<u8>,
     is_truncated: bool,
     total_size: u64,
     preview_size: usize,
-    encoding: String,
-    file_type: crate::archive::types::FileType,
 }
 
 impl PreviewBuilder {
     pub fn new() -> Self {
         Self {
-            content: String::new(),
+            content: Vec::new(),
             is_truncated: false,
             total_size: 0,
             preview_size: 0,
-            encoding: "utf-8".to_string(),
-            file_type: crate::archive::types::FileType::Unknown,
         }
     }
 
-    pub fn content(mut self, content: String) -> Self {
+    pub fn content(mut self, content: Vec<u8>) -> Self {
         self.preview_size = content.len();
         self.content = content;
         self
     }
+
+
 
     pub fn with_truncated(mut self, truncated: bool) -> Self {
         self.is_truncated = truncated;
@@ -168,15 +101,9 @@ impl PreviewBuilder {
         self
     }
 
-    pub fn file_type(mut self, file_type: crate::archive::types::FileType) -> Self {
-        self.file_type = file_type;
-        self
-    }
 
-    pub fn encoding(mut self, encoding: String) -> Self {
-        self.encoding = encoding;
-        self
-    }
+
+
 
     pub fn build(self) -> crate::archive::types::FilePreview {
         crate::archive::types::FilePreview {
@@ -184,8 +111,6 @@ impl PreviewBuilder {
             is_truncated: self.is_truncated,
             total_size: self.total_size,
             preview_size: self.preview_size,
-            encoding: self.encoding,
-            file_type: self.file_type,
         }
     }
 }

@@ -3,6 +3,7 @@ import { Archive, Search, Copy, AlertCircle, Folder } from 'lucide-react';
 import { ArchiveInfo, ArchiveEntry, FilePreview } from '../../types';
 import { CompressionService } from '../../services/compression';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
+import { isTextFile } from '../../utils/fileTypes';
 
 import { VirtualizedArchiveList } from './VirtualizedArchiveList';
 import { LoadingDisplay, ErrorDisplay, StatusDisplay } from '../common';
@@ -451,7 +452,26 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                   <div className="h-full flex flex-col min-h-0">
                     <div className="flex-1 overflow-auto min-h-0">
                       <pre className="whitespace-pre-wrap text-sm font-mono p-4 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
-                        {filePreview.content}
+                        {(() => {
+                          try {
+                            if (!filePreview.content) {
+                              return t('preview.no.content');
+                            }
+                            
+                            const isText = selectedEntry ? isTextFile(selectedEntry.path) : false;
+                            if (isText) {
+                              return new TextDecoder('utf-8', { fatal: false }).decode(filePreview.content);
+                            } else {
+                              // For binary content, show hex dump
+                              return Array.from(filePreview.content, byte => 
+                                byte.toString(16).padStart(2, '0')
+                              ).join(' ');
+                            }
+                          } catch (error) {
+                            console.error('Error rendering file preview:', error);
+                            return t('preview.render.error');
+                          }
+                        })()}
                       </pre>
                     </div>
 
