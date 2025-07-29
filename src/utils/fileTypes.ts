@@ -77,15 +77,6 @@ export const isArchiveFile = (filename: string): boolean => {
   return getFileType(filename) === 'archive';
 };
 
-export const isStreamableArchive = (filename: string): boolean => {
-  const lower = filename.toLowerCase();
-  return lower.endsWith('.zip') ||
-         lower.endsWith('.tar.gz') ||
-         lower.endsWith('.tgz') ||
-         lower.endsWith('.tar') ||
-         lower.endsWith('.gz');
-};
-
 export const isTextFile = (filename: string): boolean => {
   return getFileType(filename) === 'text';
 };

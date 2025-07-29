@@ -112,12 +112,7 @@ export abstract class BaseStorageClient implements StorageClient {
     }
   }
 
-  /**
-   * 检查文件是否为支持的压缩格式
-   */
-  async isSupportedArchive(filename: string): Promise<boolean> {
-    return await CompressionService.isSupportedArchive(filename);
-  }
+
 
   /**
    * 通过存储客户端分析压缩文件（用于本地文件）
