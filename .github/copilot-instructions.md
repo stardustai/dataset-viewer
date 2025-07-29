@@ -6,6 +6,15 @@
 
 Cross-platform Tauri application for unified dataset browsing with massive file streaming capabilities.
 
+## Commit Message Generation Instructions
+
+- When generating commit messages, always use English.
+- Follow the Conventional Commits specification (e.g., feat:, fix:, docs:, refactor:, etc.).
+- Summarize the main change clearly and concisely, focusing on user impact.
+- Do not include unrelated or trivial details.
+- Example: `feat(file-browser): add virtual scrolling for large directories`
+
+
 ## Tech Stack
 - **Frontend**: React 18 + TypeScript + Tailwind CSS
 - **Backend**: Tauri 2.0 (Rust) + HTTP/FS plugins

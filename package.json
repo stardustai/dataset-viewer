@@ -23,13 +23,16 @@
     "postinstall": "echo '✅ Dependencies installed successfully!'"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.12",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-fs": "^2.4.1",
     "@tauri-apps/plugin-http": "^2.5.1",
     "@tauri-apps/plugin-opener": "^2",
+    "hyparquet": "^1.17.1",
     "i18next": "^25.3.2",
     "lucide-react": "^0.525.0",
+    "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.6.0",
@@ -38,6 +41,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "@types/node": "^24.0.15",
+    "@types/papaparse": "^5.3.16",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

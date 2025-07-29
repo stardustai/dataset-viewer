@@ -1,19 +1,9 @@
 import React, { useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import {
-  Folder,
-  FileText,
-  Download,
-  File,
-  Image,
-  Film,
-  Music,
-  FileImage,
-  FileSpreadsheet,
-  Archive
-} from 'lucide-react';
+import { Download } from 'lucide-react';
 import { WebDAVFile } from '../../types';
 import { getFileType } from '../../utils/fileTypes';
+import { FileIcon } from '../../utils/fileIcons';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface VirtualizedFileListProps {
@@ -96,29 +86,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
 
   // 渲染文件图标
   const renderFileIcon = (file: WebDAVFile) => {
-    if (file.type === 'directory') {
-      return <Folder className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0" />;
-    }
-
-    const fileType = getFileType(file.filename);
-    switch (fileType) {
-      case 'image':
-        return <Image className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />;
-      case 'video':
-        return <Film className="w-5 h-5 text-purple-500 mr-3 flex-shrink-0" />;
-      case 'audio':
-        return <Music className="w-5 h-5 text-pink-500 mr-3 flex-shrink-0" />;
-      case 'pdf':
-        return <FileImage className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" />;
-      case 'spreadsheet':
-        return <FileSpreadsheet className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" />;
-      case 'archive':
-        return <Archive className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />;
-      case 'text':
-        return <FileText className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0" />;
-      default:
-        return <File className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />;
-    }
+    const fileType = file.type === 'directory' ? 'directory' : getFileType(file.filename);
+    return <FileIcon fileType={fileType} size="md" className="mr-3" />;
   };
 
   // 格式化文件大小
