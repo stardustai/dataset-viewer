@@ -1,4 +1,4 @@
-export type FileType = 'text' | 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet' | 'archive' | 'unknown';
+export type FileType = 'text' | 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet' | 'data' | 'archive' | 'unknown';
 
 export const getFileType = (filename: string): FileType => {
   const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
@@ -28,9 +28,14 @@ export const getFileType = (filename: string): FileType => {
     'mp3', 'wav', 'oga', 'aac', 'flac', 'ogg', 'm4a', 'wma'
   ];
 
-  // Spreadsheet files
+  // Spreadsheet files (unified - all handled by DataTableViewer)
   const spreadsheetExtensions = [
     'xlsx', 'xls', 'ods', 'csv'
+  ];
+
+  // Data files (specialized data formats)
+  const dataExtensions = [
+    'parquet', 'pqt'
   ];
 
   // Archive files
@@ -44,6 +49,7 @@ export const getFileType = (filename: string): FileType => {
   if (videoExtensions.includes(ext)) return 'video';
   if (audioExtensions.includes(ext)) return 'audio';
   if (spreadsheetExtensions.includes(ext)) return 'spreadsheet';
+  if (dataExtensions.includes(ext)) return 'data';
   if (archiveExtensions.includes(ext)) return 'archive';
 
   // Check for tar.gz and other compound extensions
@@ -56,7 +62,15 @@ export const getFileType = (filename: string): FileType => {
 
 export const isMediaFile = (filename: string): boolean => {
   const type = getFileType(filename);
-  return ['image', 'pdf', 'video', 'audio', 'spreadsheet'].includes(type);
+  return ['image', 'pdf', 'video', 'audio'].includes(type);
+};
+
+export const isSpreadsheetFile = (filename: string): boolean => {
+  return getFileType(filename) === 'spreadsheet';
+};
+
+export const isDataFile = (filename: string): boolean => {
+  return getFileType(filename) === 'data';
 };
 
 export const isArchiveFile = (filename: string): boolean => {

@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@tanstack/react-table':
+    specifier: ^8.21.3
+    version: 8.21.3(react-dom@18.3.1)(react@18.3.1)
   '@tanstack/react-virtual':
     specifier: ^3.13.12
     version: 3.13.12(react-dom@18.3.1)(react@18.3.1)
@@ -20,6 +23,9 @@ dependencies:
   '@tauri-apps/plugin-opener':
     specifier: ^2
     version: 2.4.0
+  hyparquet:
+    specifier: ^1.17.1
+    version: 1.17.1
   i18next:
     specifier: ^25.3.2
     version: 25.3.2(typescript@5.6.3)
@@ -728,6 +734,18 @@ packages:
     dev: true
     optional: true
 
+  /@tanstack/react-table@8.21.3(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16.8'
+      react-dom: '>=16.8'
+    dependencies:
+      '@tanstack/table-core': 8.21.3
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    dev: false
+
   /@tanstack/react-virtual@3.13.12(react-dom@18.3.1)(react@18.3.1):
     resolution: {integrity: sha512-Gd13QdxPSukP8ZrkbgS2RwoZseTTbQPLnQEn7HY/rqtM+8Zt95f7xKC7N0EsKs7aoz0WzZ+fditZux+F8EzYxA==}
     peerDependencies:
@@ -737,6 +755,11 @@ packages:
       '@tanstack/virtual-core': 3.13.12
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+    dev: false
+
+  /@tanstack/table-core@8.21.3:
+    resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
+    engines: {node: '>=12'}
     dev: false
 
   /@tanstack/virtual-core@3.13.12:
@@ -1312,6 +1335,10 @@ packages:
     resolution: {integrity: sha512-KknJ50kTInJ7qIScF3jeaFRpMpE8/lfiTdzf/twXyPBLAGrLRTmkz3AdTnKeh40X8k9L2fdYwEp/42WGXIRGcg==}
     dependencies:
       void-elements: 3.1.0
+    dev: false
+
+  /hyparquet@1.17.1:
+    resolution: {integrity: sha512-79NqDEkWF3VHbjiUuefexuZLtiwD/j43eSc7kKbrcI8f4V8owLBw6P8Eg6k0VaCeB0KpmJVDW3ZewlsW18h8fQ==}
     dev: false
 
   /i18next@25.3.2(typescript@5.6.3):

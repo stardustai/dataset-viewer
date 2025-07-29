@@ -4,26 +4,22 @@ import {
   ArrowLeft,
   Search,
   Download,
-  FileText,
   Loader2,
   ChevronUp,
   ChevronDown,
   X,
   Move,
   Percent,
-  Image,
-  Film,
-  Music,
-  File,
-  Archive,
   Copy
 } from 'lucide-react';
 import { WebDAVFile, SearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
+import { DataTableViewer } from './DataTableViewer';
 import { LanguageSwitcher } from '../LanguageSwitcher';
-import { getFileType, isTextFile, isMediaFile, isArchiveFile } from '../../utils/fileTypes';
+import { getFileType, isTextFile, isMediaFile, isArchiveFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
+import { FileIcon } from '../../utils/fileIcons';
 import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
@@ -69,16 +65,26 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   const [searchResultsLimited, setSearchResultsLimited] = useState(false); // 搜索结果是否被限制
   const [fullFileSearchLimited, setFullFileSearchLimited] = useState(false); // 全文件搜索结果是否被限制
   const [baselineStartLineNumber, setBaselineStartLineNumber] = useState<number | null>(null); // 跳转后的基准起始行号
+  const [dataMetadata, setDataMetadata] = useState<any>(null); // 数据文件元数据
 
   // Determine file type
   const fileType = getFileType(file.basename);
   const isMedia = isMediaFile(file.basename);
   const isText = isTextFile(file.basename);
   const isArchive = isArchiveFile(file.basename);
+  const isData = isDataFile(file.basename);
+  const isSpreadsheet = isSpreadsheetFile(file.basename);
 
   const loadFileContent = useCallback(async () => {
     // Only load content for text files
-    if (!isText && !isArchive) {
+    if (!isText && !isArchive && !isData) {
+      setLoading(false);
+      return;
+    }
+
+    // For data files (like Parquet), don't load content here
+    // ParquetViewer will handle its own loading
+    if (isData) {
       setLoading(false);
       return;
     }
@@ -753,13 +759,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
             </button>
 
             <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
-              {fileType === 'image' && <Image className="w-5 h-5 lg:w-6 lg:h-6 text-blue-500 flex-shrink-0" />}
-              {fileType === 'video' && <Film className="w-5 h-5 lg:w-6 lg:h-6 text-purple-500 flex-shrink-0" />}
-              {fileType === 'audio' && <Music className="w-5 h-5 lg:w-6 lg:h-6 text-pink-500 flex-shrink-0" />}
-              {fileType === 'pdf' && <File className="w-5 h-5 lg:w-6 lg:h-6 text-red-500 flex-shrink-0" />}
-              {fileType === 'text' && <FileText className="w-5 h-5 lg:w-6 lg:h-6 text-green-500 flex-shrink-0" />}
-              {fileType === 'archive' && <Archive className="w-5 h-5 lg:w-6 lg:h-6 text-orange-500 flex-shrink-0" />}
-              {fileType === 'unknown' && <File className="w-5 h-5 lg:w-6 lg:h-6 text-gray-500 flex-shrink-0" />}
+              <FileIcon fileType={fileType} size="lg" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-1 lg:space-x-2">
                   <h1
@@ -778,7 +778,10 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                   </button>
                 </div>
                 <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">
-                  {formatFileSize(file.size)} • {isText ? getLanguageFromExtension(getFileExtension(file.basename)) : fileType}
+                  {formatFileSize(file.size)} • {(isData || isSpreadsheet) && dataMetadata ?
+                    `${dataMetadata.numRows.toLocaleString()} rows • ${dataMetadata.numColumns} columns` :
+                    isText ? getLanguageFromExtension(getFileExtension(file.basename)) : fileType
+                  }
                   {isLargeFile && (
                     <span className="hidden sm:inline">
                       {' • '}
@@ -992,8 +995,25 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
               <MediaViewer
                 filePath={filePath}
                 fileName={file.basename}
-                fileType={fileType as 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet'}
+                fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
                 fileSize={file.size}
+              />
+            ) : isSpreadsheet ? (
+              <DataTableViewer
+                filePath={filePath}
+                fileName={file.basename}
+                fileSize={file.size}
+                fileType={file.basename.toLowerCase().endsWith('.xlsx') || file.basename.toLowerCase().endsWith('.xls') ? 'xlsx' :
+                         file.basename.toLowerCase().endsWith('.ods') ? 'ods' : 'csv'}
+                onMetadataLoaded={setDataMetadata}
+              />
+            ) : isData ? (
+              <DataTableViewer
+                filePath={filePath}
+                fileName={file.basename}
+                fileSize={file.size}
+                fileType={file.basename.toLowerCase().endsWith('.parquet') || file.basename.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv'}
+                onMetadataLoaded={setDataMetadata}
               />
             ) : isArchive ? (
               <ArchiveViewer

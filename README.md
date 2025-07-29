@@ -18,6 +18,7 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 - 🌐 **Multi-Source Support**: WebDAV servers, local files, cloud storage (OSS), HuggingFace datasets
 - 📊 **Large Dataset Streaming**: Handle 100GB+ files with virtualized rendering
 - 📦 **Archive Preview**: Browse ZIP/TAR files without extraction
+- 🗂️ **Data Format Support**: Native Parquet, Excel, CSV with optimized table rendering
 - 🔍 **Fast Search**: Real-time regex search with highlighting
 - 🎨 **Modern UI**: Dark/light themes, responsive design, multi-language
 - ⚡ **High Performance**: Native Tauri backend with React frontend
@@ -80,6 +81,15 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 ### Document Files
 - PDF (`.pdf`) - Document viewer
 - Excel (`.xlsx`, `.xls`) - Spreadsheet viewer
+- CSV (`.csv`) - Comma-separated values viewer
+- ODS (`.ods`) - OpenDocument spreadsheet viewer
+
+### Data Files
+- **Parquet (`.parquet`)** - High-performance columnar data format with efficient streaming
+  - Native support for large-scale analytics datasets
+  - Optimized memory usage and fast loading
+  - Schema inspection and data type detection
+  - Virtual scrolling for millions of rows
 
 ### Media Files (Preview)
 - Images (`.jpg`, `.png`, `.gif`, `.svg`, `.webp`)
