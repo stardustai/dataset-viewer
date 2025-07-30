@@ -1,6 +1,7 @@
 import { fetch } from '@tauri-apps/plugin-http';
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import * as semver from 'semver';
 import type { UpdateCheckResult, ReleaseInfo } from '../types';
 
 const GITHUB_API_URL = 'https://api.github.com/repos/stardustai/dataset-viewer/releases/latest';
@@ -48,8 +49,25 @@ class UpdateService {
       const release: GitHubRelease = await response.json();
       const latestVersion = release.tag_name.replace(/^v/, ''); // 移除 v 前缀
 
-      // 比较版本
-      const hasUpdate = this.compareVersions(latestVersion, currentVersion) > 0;
+      // 比较版本 - 使用 semver 库正确处理语义化版本号
+      let hasUpdate = false;
+      try {
+        // 验证版本号格式并比较
+        if (semver.valid(latestVersion) && semver.valid(currentVersion)) {
+          hasUpdate = semver.gt(latestVersion, currentVersion);
+        } else {
+          // 如果版本号格式不标准，尝试清理后再比较
+          const cleanLatest = semver.coerce(latestVersion);
+          const cleanCurrent = semver.coerce(currentVersion);
+          if (cleanLatest && cleanCurrent) {
+            hasUpdate = semver.gt(cleanLatest, cleanCurrent);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to compare versions with semver, using fallback:', error);
+        // 回退到简单的字符串比较
+        hasUpdate = latestVersion !== currentVersion;
+      }
 
       let downloadInfo: ReleaseInfo | null = null;
       if (hasUpdate) {
@@ -171,39 +189,9 @@ class UpdateService {
     }
 
     return `${size.toFixed(1)} ${units[unitIndex]}`;
-  }  /**
-   * 比较版本号
-   * @param version1 版本1
-   * @param version2 版本2
-   * @returns 正数表示 version1 > version2，负数表示 version1 < version2，0表示相等
-   */
-  private compareVersions(version1: string, version2: string): number {
-    const v1 = this.parseVersion(version1);
-    const v2 = this.parseVersion(version2);
-
-    for (let i = 0; i < Math.max(v1.length, v2.length); i++) {
-      const num1 = v1[i] || 0;
-      const num2 = v2[i] || 0;
-
-      if (num1 > num2) return 1;
-      if (num1 < num2) return -1;
-    }
-
-    return 0;
   }
 
-  /**
-   * 解析版本号为数字数组
-   */
-  private parseVersion(version: string): number[] {
-    return version
-      .replace(/^v/, '') // 移除 v 前缀
-      .split('.')
-      .map(part => {
-        const num = parseInt(part.replace(/\D/g, ''), 10);
-        return isNaN(num) ? 0 : num;
-      });
-  }
+  // 版本比较逻辑已迁移到使用 semver 库，无需自定义实现
 
   /**
    * 设置检查间隔
