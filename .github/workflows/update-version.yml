@@ -16,9 +16,6 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Install cargo-edit
-        run: cargo install cargo-edit
-
       - name: Update version in package.json, tauri.conf.json and Cargo.toml
         run: |
           VERSION="${{ github.event.inputs.version }}"
@@ -29,8 +26,8 @@ jobs:
           # Update tauri.conf.json
           jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
-          # Update Cargo.toml using cargo set-version (more reliable than sed)
-          cd src-tauri && cargo set-version "$VERSION"
+          # Update Cargo.toml
+          sed -i '/^\[package\]/,/^\[/ s/^version = ".*"/version = "'"$VERSION"'"/' src-tauri/Cargo.toml
 
       - name: Commit version update
         run: |
