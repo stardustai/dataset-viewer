@@ -9,16 +9,34 @@ export class XlsxDataProvider implements DataProvider {
   private metadata: DataMetadata | null = null;
   private currentSheetIndex = 0;
   private currentSheetData: unknown[][] | null = null;
+  private previewContent?: Uint8Array;
 
-  constructor(filePath: string, fileSize: number) {
+  constructor(filePath: string, fileSize: number, previewContent?: Uint8Array) {
     this.filePath = filePath;
     this.fileSize = fileSize;
+    this.previewContent = previewContent;
   }
 
   private async getWorkbook(): Promise<XLSX.WorkBook> {
     if (!this.workbook) {
-      const arrayBuffer = await StorageServiceManager.getFileBlob(this.filePath);
-      this.workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      let arrayBuffer: ArrayBuffer;
+      if (this.previewContent) {
+        // 使用预览内容
+        arrayBuffer = this.previewContent.buffer.slice(
+          this.previewContent.byteOffset,
+          this.previewContent.byteOffset + this.previewContent.byteLength
+        );
+      } else {
+        // 没有预览内容时才请求
+        arrayBuffer = await StorageServiceManager.getFileBlob(this.filePath);
+      }
+      try {
+        this.workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+      } catch (error) {
+        console.error('XLSX parsing error:', error);
+        throw error;
+      }
     }
     return this.workbook;
   }

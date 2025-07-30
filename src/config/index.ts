@@ -1,4 +1,4 @@
-import { WebDAVFile } from '../types';
+import { StorageFile } from '../types';
 
 export interface StreamingConfig {
   chunkSize: number;
@@ -111,7 +111,7 @@ export class ConfigManager {
     this.config = { ...this.config, ...updates };
   }
 
-  isTextFile(file: WebDAVFile): boolean {
+  isTextFile(file: StorageFile): boolean {
     // Check by extension
     const ext = file.filename.toLowerCase().substring(file.filename.lastIndexOf('.'));
     if (TEXT_FILE_EXTENSIONS.includes(ext)) {

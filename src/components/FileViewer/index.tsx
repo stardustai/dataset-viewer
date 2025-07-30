@@ -12,7 +12,7 @@ import {
   Percent,
   Copy
 } from 'lucide-react';
-import { WebDAVFile, SearchResult } from '../../types';
+import { StorageFile, SearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
@@ -33,7 +33,7 @@ interface VirtualizedTextViewerRef {
 }
 
 interface FileViewerProps {
-  file: WebDAVFile;
+  file: StorageFile;
   filePath: string;
   storageClient?: any;
   onBack: () => void;

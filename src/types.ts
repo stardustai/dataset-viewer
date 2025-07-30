@@ -1,4 +1,4 @@
-export interface WebDAVFile {
+export interface StorageFile {
   filename: string;
   basename: string;
   lastmod: string;

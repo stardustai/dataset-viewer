@@ -84,6 +84,8 @@ export const fileViewer = {
   'archive.empty': '压缩文件为空',
   'folder.selected': '已选择文件夹',
   'folder.info.message': '这是一个文件夹。压缩文件中的文件夹仅用于组织文件结构，无法进入或预览内容。',
+  'archive.root': '根目录',
+  'archive.back': '返回上级',
 
   // 数据表格查看器
   'data.table.viewer': '数据表格查看器',
@@ -116,4 +118,14 @@ export const fileViewer = {
   'data.table.cell.details': '单元格详情',
   'data.table.cell.location': '位置: {{column}} 列, 第 {{row}} 行',
   'data.table.cell.copy': '复制内容',
+  
+  // 分块加载相关
+  'file.loaded.chunks': '已加载 {{chunks}} 个分块 ({{size}})',
+  'scroll.to.load.more': '滚动加载更多',
+  'error.load.more': '加载更多内容失败',
+  'file.not.loaded': '文件未加载',
+  'load.full.content': '加载完整内容',
+  'error.load.full.content': '加载完整内容失败',
+  'media.large.file.manual.load': '大型媒体文件需要手动加载',
+  'data.large.file.manual.load': '大型数据文件需要手动加载',
 };

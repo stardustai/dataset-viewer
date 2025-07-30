@@ -43,19 +43,20 @@ interface UniversalDataTableViewerProps {
   fileSize: number;
   fileType: 'parquet' | 'xlsx' | 'csv' | 'ods';
   onMetadataLoaded?: (metadata: DataMetadata) => void;
+  previewContent?: Uint8Array;
 }
 
 const MAX_INITIAL_ROWS = 1000;
 const CHUNK_SIZE = 500;
 
 // Provider 工厂函数
-const createDataProvider = (fileType: string, filePath: string, fileSize: number): DataProvider => {
+const createDataProvider = (fileType: string, filePath: string, fileSize: number, previewContent?: Uint8Array): DataProvider => {
   switch (fileType) {
     case 'parquet':
       return new ParquetDataProvider(filePath, fileSize);
     case 'xlsx':
     case 'ods':
-      return new XlsxDataProvider(filePath, fileSize);
+      return new XlsxDataProvider(filePath, fileSize, previewContent);
     case 'csv':
       return new CsvDataProvider(filePath, fileSize);
     default:
@@ -68,7 +69,8 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   fileName,
   fileSize,
   fileType,
-  onMetadataLoaded
+  onMetadataLoaded,
+  previewContent
 }) => {
   const { t } = useTranslation();
 
@@ -119,7 +121,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
     try {
       // 创建数据提供器
-      const provider = createDataProvider(fileType, filePath, fileSize);
+      const provider = createDataProvider(fileType, filePath, fileSize, previewContent);
       dataProviderRef.current = provider;
 
       // 初始化并获取元数据

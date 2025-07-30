@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 export * from './StatusDisplay';
+export * from './BreadcrumbNavigation';
 
 interface ErrorBoundaryProps {
   error: Error | null;
