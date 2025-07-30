@@ -1,6 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import { ArchiveInfo, FilePreview } from '../types';
 
+interface FilePreviewInvokeResponse {
+  content: number[];
+  is_truncated: boolean;
+  total_size: number;
+  preview_size: number;
+}
+
 export class CompressionService {
   /**
    * 分析压缩文件结构
@@ -35,13 +42,15 @@ export class CompressionService {
       filename,
       entryPath,
       maxPreviewSize,
-    }) as any;
+    }) as FilePreviewInvokeResponse;
     
-    // Convert content to Uint8Array if it's not already
-    if (result.content && !(result.content instanceof Uint8Array)) {
-      result.content = new Uint8Array(result.content);
-    }
+    const content = new Uint8Array(result.content);
     
-    return result as FilePreview;
+    return {
+      content,
+      is_truncated: result.is_truncated,
+      total_size: result.total_size,
+      preview_size: result.preview_size
+    } as FilePreview;
   }
 }

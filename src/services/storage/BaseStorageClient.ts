@@ -7,7 +7,6 @@ import {
   ListOptions,
   ReadOptions
 } from './types';
-import { CompressionService } from '../compression';
 import { ArchiveInfo, FilePreview } from '../../types';
 
 /**
