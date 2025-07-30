@@ -7,7 +7,6 @@ import {
   ListOptions,
   ReadOptions
 } from './types';
-import { CompressionService } from '../compression';
 import { ArchiveInfo, FilePreview } from '../../types';
 
 /**
@@ -112,12 +111,7 @@ export abstract class BaseStorageClient implements StorageClient {
     }
   }
 
-  /**
-   * 检查文件是否为支持的压缩格式
-   */
-  async isSupportedArchive(filename: string): Promise<boolean> {
-    return await CompressionService.isSupportedArchive(filename);
-  }
+
 
   /**
    * 通过存储客户端分析压缩文件（用于本地文件）
@@ -146,13 +140,20 @@ export abstract class BaseStorageClient implements StorageClient {
     maxPreviewSize?: number
   ): Promise<FilePreview> {
     // 通过Tauri命令调用后端的存储客户端接口
-    return await invoke('get_archive_preview_with_client', {
+    const result = await invoke('get_archive_preview_with_client', {
       protocol: this.protocol,
       filePath: path,
       filename,
       entryPath,
       maxPreviewSize
-    });
+    }) as FilePreview;
+
+    // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据
+    if (result.content && !(result.content instanceof Uint8Array)) {
+      result.content = new Uint8Array(result.content as number[]);
+    }
+
+    return result;
   }
 
   /**

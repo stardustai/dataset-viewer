@@ -26,8 +26,10 @@ export const errors = {
   'viewer.spreadsheet.preview.not.available': 'Spreadsheet preview not available',
 
   // Preview errors
-  'preview.failed': 'Preview Failed',
-  'retry.preview': 'Retry Preview',
+  'preview.failed': 'Preview failed',
+  'retry.preview': 'Retry preview',
+  'preview.no.content': 'File content is empty',
+  'preview.render.error': 'Preview rendering failed',
 
   // Archive format errors
   'archive.format.7z.not.supported': '7Z format is not supported for online preview. 7Z file structure is located at the end of the file, making streaming impossible. Full file download is required for analysis. Please use dedicated extraction tools.',

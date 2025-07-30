@@ -448,7 +448,7 @@ impl ZipHandler {
             return Err(format!("Unsupported compression method: {}", compression_method));
         };
 
-        let file_type = FileType::Binary; // 默认为二进制，调用者需要根据文件路径确定
+        // 默认为二进制，调用者需要根据文件路径确定
         let preview_data = if decompressed_data.len() > max_size {
             decompressed_data[..max_size].to_vec()
         } else {
@@ -458,20 +458,12 @@ impl ZipHandler {
         let preview_data_len = preview_data.len();
         let total_size = decompressed_data.len() as u64;
 
-        let content = if is_text_content(&preview_data) {
-            match String::from_utf8(preview_data.clone()) {
-                Ok(text) => text,
-                Err(_) => TextDecoder::try_decode_text(preview_data)?,
-            }
-        } else {
-            TextDecoder::format_binary_preview(preview_data)
-        };
+
 
         Ok(PreviewBuilder::new()
-            .content(content)
+            .content(preview_data)
             .with_truncated(preview_data_len < total_size as usize)
             .total_size(total_size)
-            .file_type(file_type)
             .build())
     }
 }

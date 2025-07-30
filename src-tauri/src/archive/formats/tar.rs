@@ -4,7 +4,7 @@ use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
 use crate::storage::traits::StorageClient;
 use std::collections::HashMap;
 use std::sync::Arc;
-use base64::{Engine as _, engine::general_purpose};
+
 
 pub struct TarHandler;
 
@@ -142,21 +142,13 @@ impl TarHandler {
                         .map_err(|e| format!("Failed to read file content: {}", e))?;
 
                     let _mime_type = detect_mime_type(&content_data);
-                    let is_text = is_text_content(&content_data);
 
-                    let content = if is_text {
-                        String::from_utf8_lossy(&content_data).into_owned()
-                    } else {
-                        general_purpose::STANDARD.encode(&content_data)
-                    };
-
-                    return Ok(PreviewBuilder::new()
-                        .content(content)
-                        .total_size(entry_info.size)
-                        .file_type(if is_text { FileType::Text } else { FileType::Binary })
-                        .encoding(if is_text { "utf-8".to_string() } else { "base64".to_string() })
-                        .with_truncated(content_data.len() >= max_size || (content_data.len() as u64) < entry_info.size)
-                        .build());
+                     let data_len = content_data.len();
+                     return Ok(PreviewBuilder::new()
+                          .content(content_data)
+                          .total_size(entry_info.size)
+                          .with_truncated(data_len >= max_size || (data_len as u64) < entry_info.size)
+                          .build());
                 }
 
                 // 计算文件数据的大小（向上舍入到512字节的倍数）

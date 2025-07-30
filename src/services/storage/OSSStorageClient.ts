@@ -350,7 +350,7 @@ export class OSSStorageClient extends BaseStorageClient {
     }
 
     try {
-      const response = await invoke<string>('storage_request_binary', {
+      const response = await invoke<number[]>('storage_request_binary', {
         protocol: this.protocol,
         method: 'GET',
         url: this.toProtocolUrl(path),
@@ -358,15 +358,9 @@ export class OSSStorageClient extends BaseStorageClient {
         options: undefined
       });
 
-      // 转换为 ArrayBuffer
-      const binaryString = atob(response);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const arrayBuffer = bytes.buffer;
-
-      return new Blob([arrayBuffer]);
+      // 直接使用返回的二进制数据创建 Blob
+      const uint8Array = new Uint8Array(response);
+      return new Blob([uint8Array]);
     } catch (error) {
       console.error('Failed to download OSS file:', error);
       throw new Error(`Failed to download file: ${error}`);

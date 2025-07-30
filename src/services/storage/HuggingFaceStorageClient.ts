@@ -309,7 +309,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
 
     try {
       // 使用统一的 storage_request_binary 方法
-      const response = await invoke<string>('storage_request_binary', {
+      const response = await invoke<number[]>('storage_request_binary', {
         protocol: this.protocol,
         method: 'GET',
         url: this.toProtocolUrl(path),
@@ -317,15 +317,8 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
         options: undefined
       });
 
-      // 转换为 ArrayBuffer
-      const binaryString = atob(response);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const arrayBuffer = bytes.buffer;
-
-      return new Blob([arrayBuffer]);
+      // 直接从二进制数据创建 Blob
+      return new Blob([new Uint8Array(response)]);
     } catch (error) {
       console.error(`Failed to download file ${path}:`, error);
       throw error;
@@ -378,12 +371,19 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    return await invoke('get_archive_preview_with_client', {
+    const result = await invoke('get_archive_preview_with_client', {
       protocol: this.protocol,
       filePath: path, // 直接使用传入的路径
       filename,
       entryPath,
       maxPreviewSize
-    });
+    }) as FilePreview;
+
+    // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据
+    if (result.content && !(result.content instanceof Uint8Array)) {
+      result.content = new Uint8Array(result.content as number[]);
+    }
+
+    return result;
   }
 }

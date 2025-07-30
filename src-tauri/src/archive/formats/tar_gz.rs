@@ -7,7 +7,7 @@ use std::io::{Cursor, Read};
 use std::sync::Arc;
 use flate2::read::GzDecoder;
 use tar::Archive;
-use base64::{Engine as _, engine::general_purpose};
+
 
 pub struct TarGzHandler;
 
@@ -206,18 +206,11 @@ impl TarGzHandler {
                         let bytes_read = entry.read(&mut buffer).map_err(|e| e.to_string())?;
                         buffer.truncate(bytes_read);
 
-                        let is_text = is_text_content(&buffer);
-                        let content = if is_text {
-                            String::from_utf8_lossy(&buffer).into_owned()
-                        } else {
-                            general_purpose::STANDARD.encode(&buffer)
-                        };
+                
 
                         return Ok(PreviewBuilder::new()
-                            .content(content)
+                            .content(buffer)
                             .total_size(total_size)
-                            .file_type(if is_text { FileType::Text } else { FileType::Binary })
-                            .encoding(if is_text { "utf-8".to_string() } else { "base64".to_string() })
                             .with_truncated(bytes_read >= max_size || (bytes_read as u64) < total_size)
                             .build());
                     }
