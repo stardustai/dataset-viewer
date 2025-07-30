@@ -20,7 +20,8 @@ export const getFileType = (filename: string): FileType => {
 
   // Video files
   const videoExtensions = [
-    'mp4', 'webm', 'ogv', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'm4v'
+    'mp4', 'webm', 'ogv', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'm4v',
+    'ivf', 'av1' // AV1 视频格式
   ];
 
   // Audio files

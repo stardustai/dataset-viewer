@@ -1,9 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ZoomIn, ZoomOut, RotateCcw, GalleryHorizontal } from 'lucide-react';
 import { StorageServiceManager } from '../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common/StatusDisplay';
 import { formatFileSize } from '../../utils/fileUtils';
+import AV1VideoPlayer from './AV1VideoPlayer';
+import { Dav1dDecoderService } from '../../services/dav1dDecoder';
+
+// 将 MIME 类型映射移到组件外部，避免重复创建
+const MIME_TYPES: { [key: string]: string } = {
+  // Images
+  'jpg': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'png': 'image/png',
+  'gif': 'image/gif',
+  'webp': 'image/webp',
+  'svg': 'image/svg+xml',
+  'bmp': 'image/bmp',
+  'ico': 'image/x-icon',
+  // PDF
+  'pdf': 'application/pdf',
+  // Video
+  'mp4': 'video/mp4',
+  'webm': 'video/webm',
+  'ogv': 'video/ogg',
+  'avi': 'video/x-msvideo',
+  'mov': 'video/quicktime',
+  'wmv': 'video/x-ms-wmv',
+  'flv': 'video/x-flv',
+  'mkv': 'video/x-matroska',
+  'm4v': 'video/mp4',
+  // Audio
+  'mp3': 'audio/mpeg',
+  'wav': 'audio/wav',
+  'oga': 'audio/ogg',
+  'aac': 'audio/aac',
+  'flac': 'audio/flac'
+};
+
+const getMimeType = (filename: string): string => {
+  const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+  return MIME_TYPES[ext] || 'application/octet-stream';
+};
+
+// 检测是否为 AV1 视频文件
+const detectAV1Video = (fileName: string, data?: Uint8Array): boolean => {
+  const ext = fileName.toLowerCase();
+  
+  // 检查文件扩展名
+  if (ext.endsWith('.ivf') || ext.endsWith('.av1')) {
+    return true;
+  }
+  
+  // 检查文件数据
+  if (data && data.length >= 32) {
+    // IVF 文件头: "DKIF" (0x46494B44)
+    const header = new TextDecoder().decode(data.slice(0, 4));
+    if (header === 'DKIF') {
+      return true;
+    }
+    
+    // 检查 MP4 文件中的 AV1 编码
+    if (header === 'ftyp' || (data[4] === 0x66 && data[5] === 0x74 && data[6] === 0x79 && data[7] === 0x70)) {
+      const searchLength = Math.min(data.length, 1024);
+      const searchData = new TextDecoder('latin1').decode(data.slice(0, searchLength));
+      
+      // 检查是否包含 AV1 相关的编解码器标识
+      return searchData.includes('av01') || searchData.includes('AV01');
+    }
+  }
+  
+  return false;
+};
 
 interface MediaViewerProps {
   filePath: string;
@@ -28,18 +96,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [rotation, setRotation] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false); // 是否显示进度条
+  const [videoData, setVideoData] = useState<Uint8Array | null>(null);
+  const [isAV1Video, setIsAV1Video] = useState(false);
+  const [useWasmDecoder, setUseWasmDecoder] = useState(false);
 
-  useEffect(() => {
-    loadMediaContent();
-    return () => {
-      // Cleanup blob URL when component unmounts
-      if (mediaUrl) {
-        URL.revokeObjectURL(mediaUrl);
-      }
-    };
-  }, [filePath]);
-
-  const loadMediaContent = async () => {
+  const loadMediaContent = useCallback(async () => {
     setLoading(true);
     setError('');
     setLoadingProgress(0);
@@ -48,9 +109,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     // 设置一个延迟显示进度条，避免快速加载时闪烁
     const showProgressTimer = setTimeout(() => {
       setShowProgress(true);
-    }, 300); // 300ms后才显示进度条
+    }, 300);
 
     let progressInterval: NodeJS.Timeout | null = null;
+
+    const cleanup = () => {
+      if (progressInterval) clearInterval(progressInterval);
+      clearTimeout(showProgressTimer);
+    };
 
     try {
       let response: Uint8Array;
@@ -58,11 +124,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       // 如果有预览内容，直接使用，避免重复请求
       if (previewContent) {
         response = previewContent;
-        // 直接设置进度为100%，因为内容已经可用
         clearTimeout(showProgressTimer);
         setLoadingProgress(100);
       } else {
-        // 模拟进度更新，因为 Tauri 的 HTTP 请求目前不支持实时进度
+        // 模拟进度更新
         progressInterval = setInterval(() => {
           setLoadingProgress(prev => {
             if (prev >= 90) {
@@ -73,71 +138,44 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           });
         }, 200);
 
-        // Get file content as blob
-         const arrayBuffer = await StorageServiceManager.getFileBlob(filePath);
-         response = new Uint8Array(arrayBuffer);
+        const arrayBuffer = await StorageServiceManager.getFileBlob(filePath);
+        response = new Uint8Array(arrayBuffer);
 
-        // 完成下载，设置进度为100%
-        if (progressInterval) clearInterval(progressInterval);
-        clearTimeout(showProgressTimer); // 清除进度条显示定时器
+        cleanup();
         setLoadingProgress(100);
       }
 
-      // 处理媒体文件
-      const blob = new Blob([response], { type: getMimeType(fileName) });
-      const url = URL.createObjectURL(blob);
-      setMediaUrl(url);
+      // 检测是否为 AV1 视频
+      const isAV1 = detectAV1Video(fileName, response);
+      setIsAV1Video(isAV1);
+      
+      if (isAV1) {
+        setVideoData(response);
+        const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
+        setUseWasmDecoder(needsWasmDecoder);
+        
+        if (!needsWasmDecoder) {
+          const blob = new Blob([response], { type: 'video/mp4' });
+          const url = URL.createObjectURL(blob);
+          setMediaUrl(url);
+        }
+      } else {
+        const blob = new Blob([response], { type: getMimeType(fileName) });
+        const url = URL.createObjectURL(blob);
+        setMediaUrl(url);
+      }
     } catch (err) {
       console.error('Failed to load media:', err);
       setError(t('viewer.load.error'));
       setLoadingProgress(0);
       setShowProgress(false);
-      // 清理定时器
-      if (progressInterval) clearInterval(progressInterval);
-      clearTimeout(showProgressTimer);
+      cleanup();
     } finally {
       setLoading(false);
     }
-  };
+  }, [filePath, fileName, previewContent]);
 
-  const getMimeType = (filename: string): string => {
-    const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-    const mimeTypes: { [key: string]: string } = {
-      // Images
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'gif': 'image/gif',
-      'webp': 'image/webp',
-      'svg': 'image/svg+xml',
-      'bmp': 'image/bmp',
-      'ico': 'image/x-icon',
-
-      // PDF
-      'pdf': 'application/pdf',
-
-      // Video
-      'mp4': 'video/mp4',
-      'webm': 'video/webm',
-      'ogv': 'video/ogg',
-      'avi': 'video/x-msvideo',
-      'mov': 'video/quicktime',
-      'wmv': 'video/x-ms-wmv',
-      'flv': 'video/x-flv',
-      'mkv': 'video/x-matroska',
-      'm4v': 'video/mp4',
-
-      // Audio
-      'mp3': 'audio/mpeg',
-      'wav': 'audio/wav',
-      'oga': 'audio/ogg',
-      'aac': 'audio/aac',
-      'flac': 'audio/flac'
-    };
-    return mimeTypes[ext] || 'application/octet-stream';
-  };
-
-  const downloadFile = async () => {
+  const downloadFile = useCallback(async () => {
     try {
       const response = await StorageServiceManager.getFileBlob(filePath);
       const blob = new Blob([response], { type: getMimeType(fileName) });
@@ -152,28 +190,35 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     } catch (err) {
       console.error('Failed to download file:', err);
     }
-  };
+  }, [filePath, fileName]);
 
-
-
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     setZoom(prev => Math.min(500, prev + 25));
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     setZoom(prev => Math.max(25, prev - 25));
-  };
+  }, []);
 
-  const handleRotate = () => {
+  const handleRotate = useCallback(() => {
     setRotation(prev => (prev + 90) % 360);
-  };
+  }, []);
 
-  const resetView = () => {
+  const resetView = useCallback(() => {
     setZoom(100);
     setRotation(0);
-  };
+  }, []);
 
+  const showImageControls = useMemo(() => fileType === 'image', [fileType]);
 
+  useEffect(() => {
+    loadMediaContent();
+    return () => {
+      if (mediaUrl) {
+        URL.revokeObjectURL(mediaUrl);
+      }
+    };
+  }, [mediaUrl, loadMediaContent]);
 
   if (loading) {
     return (
@@ -255,6 +300,18 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         );
 
       case 'video':
+        // AV1 视频且需要使用 WASM 解码器
+        if (isAV1Video && useWasmDecoder && videoData) {
+          return (
+            <AV1VideoPlayer
+              videoData={videoData}
+              fileName={fileName}
+              onError={(error) => setError(error)}
+            />
+          );
+        }
+        
+        // 普通视频或原生支持的 AV1 视频
         return (
           <div className="flex justify-center items-center h-full p-4 bg-black">
             <video
@@ -335,8 +392,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         );
     }
   };
-
-  const showImageControls = fileType === 'image';
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">

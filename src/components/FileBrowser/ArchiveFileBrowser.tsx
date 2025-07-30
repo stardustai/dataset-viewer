@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Home,
   ChevronUp,
   ChevronDown,
   Search,
   X,
-  Copy
 } from 'lucide-react';
 import { StorageFile, ArchiveInfo } from '../../types';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { LoadingDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
-import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
 
 interface ArchiveFileBrowserProps {
@@ -27,7 +24,6 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
   archiveInfo,
   onFileSelect,
   onBack,
-  archiveFileName,
   loading = false,
   error
 }) => {

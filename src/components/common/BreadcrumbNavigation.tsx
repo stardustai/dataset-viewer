@@ -104,7 +104,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
       )}
 
       {/* 面包屑导航 */}
-      <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-300 min-w-0 flex-1 overflow-hidden">
+      <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-300 min-w-0 overflow-hidden">
         {/* 根目录按钮 */}
         <span
           onClick={onNavigateHome}
