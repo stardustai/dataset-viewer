@@ -84,6 +84,8 @@ export const fileViewer = {
   'archive.empty': 'Archive is empty',
   'folder.selected': 'Folder Selected',
   'folder.info.message': 'This is a folder. Folders in archives are used for organizing file structure and cannot be entered or previewed.',
+  'archive.root': 'Root',
+  'archive.back': 'Back',
 
   // Data Table Viewer
   'data.table.viewer': 'Data Table Viewer',
@@ -131,4 +133,14 @@ export const fileViewer = {
   'data.table.metadata.columns': 'Columns',
   'data.table.metadata.loaded': 'Loaded',
   'data.table.metadata.size': 'File Size',
+  
+  // 分块加载相关
+  'file.loaded.chunks': 'Loaded {{chunks}} chunks ({{size}})',
+  'scroll.to.load.more': 'Scroll to load more',
+  'error.load.more': 'Failed to load more content',
+  'file.not.loaded': 'File not loaded',
+  'load.full.content': 'Load Full Content',
+  'error.load.full.content': 'Failed to load full content',
+  'media.large.file.manual.load': 'Large media files require manual loading',
+  'data.large.file.manual.load': 'Large data files require manual loading',
 };

@@ -52,7 +52,6 @@ impl ArchiveHandler {
         };
 
         // 通过 StorageClient 进行流式分析
-        println!("开始流式分析压缩文件: {} ({})", file_path, compression_type.to_string());
         handler.analyze_with_client(client, &file_path, &filename, max_size).await
     }
 
@@ -98,7 +97,6 @@ impl ArchiveHandler {
         };
 
         let max_size = max_preview_size.unwrap_or(64 * 1024); // 默认64KB
-        println!("开始流式预览压缩文件: {} -> {} ({})", file_path, entry_path, compression_type.to_string());
         handler.extract_preview_with_client(client, &file_path, &entry_path, max_size).await
     }
     /// 检查文件是否支持压缩包操作

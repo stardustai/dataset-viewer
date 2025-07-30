@@ -1,4 +1,4 @@
-export interface WebDAVFile {
+export interface StorageFile {
   filename: string;
   basename: string;
   lastmod: string;
@@ -27,11 +27,6 @@ export interface StorageConnection {
   };
 }
 
-export interface FileContent {
-  content: string;
-  size: number;
-  encoding: string;
-}
 
 export interface SearchResult {
   line: number;
@@ -74,7 +69,7 @@ export interface ArchiveInfo {
   analysis_status?: AnalysisStatus;
 }
 
-export interface AnalysisStatus {
+interface AnalysisStatus {
   Complete?: {};
   Partial?: { analyzed_entries: number };
   Streaming?: { estimated_entries: number | null };

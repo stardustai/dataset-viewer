@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, GalleryHorizontal } from 'lucide-react';
 import { StorageServiceManager } from '../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common/StatusDisplay';
+import { formatFileSize } from '../../utils/fileUtils';
 
 interface MediaViewerProps {
   filePath: string;
   fileName: string;
   fileType: 'image' | 'pdf' | 'video' | 'audio';
   fileSize: number;
+  previewContent?: Uint8Array; // 可选的预览内容，避免重复请求
 }
 
 export const MediaViewer: React.FC<MediaViewerProps> = ({
   filePath,
   fileName,
   fileType,
-  fileSize
+  fileSize,
+  previewContent
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -50,24 +53,35 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     let progressInterval: NodeJS.Timeout | null = null;
 
     try {
-      // 模拟进度更新，因为 Tauri 的 HTTP 请求目前不支持实时进度
-      progressInterval = setInterval(() => {
-        setLoadingProgress(prev => {
-          if (prev >= 90) {
-            if (progressInterval) clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + Math.random() * 20;
-        });
-      }, 200);
+      let response: Uint8Array;
+      
+      // 如果有预览内容，直接使用，避免重复请求
+      if (previewContent) {
+        response = previewContent;
+        // 直接设置进度为100%，因为内容已经可用
+        clearTimeout(showProgressTimer);
+        setLoadingProgress(100);
+      } else {
+        // 模拟进度更新，因为 Tauri 的 HTTP 请求目前不支持实时进度
+        progressInterval = setInterval(() => {
+          setLoadingProgress(prev => {
+            if (prev >= 90) {
+              if (progressInterval) clearInterval(progressInterval);
+              return prev;
+            }
+            return prev + Math.random() * 20;
+          });
+        }, 200);
 
-      // Get file content as blob
-      const response = await StorageServiceManager.getFileBlob(filePath);
+        // Get file content as blob
+         const arrayBuffer = await StorageServiceManager.getFileBlob(filePath);
+         response = new Uint8Array(arrayBuffer);
 
-      // 完成下载，设置进度为100%
-      if (progressInterval) clearInterval(progressInterval);
-      clearTimeout(showProgressTimer); // 清除进度条显示定时器
-      setLoadingProgress(100);
+        // 完成下载，设置进度为100%
+        if (progressInterval) clearInterval(progressInterval);
+        clearTimeout(showProgressTimer); // 清除进度条显示定时器
+        setLoadingProgress(100);
+      }
 
       // 处理媒体文件
       const blob = new Blob([response], { type: getMimeType(fileName) });
@@ -140,13 +154,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(500, prev + 25));
@@ -372,7 +380,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                 title={t('viewer.reset')}
               >
-                <Maximize2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <GalleryHorizontal className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
             </div>
           </div>

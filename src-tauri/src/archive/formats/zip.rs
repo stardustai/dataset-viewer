@@ -380,7 +380,13 @@ impl ZipHandler {
         let extra_len = u16::from_le_bytes([local_header[28], local_header[29]]) as u64;
 
         let data_offset = file_info.local_header_offset + 30 + filename_len + extra_len;
-        let read_size = std::cmp::min(max_size as u64, file_info.compressed_size);
+        // 当max_size足够大时，读取完整的压缩数据以避免"Bad compressed size"错误
+        let read_size = if max_size >= file_info.compressed_size as usize {
+            file_info.compressed_size
+        } else {
+            std::cmp::min(max_size as u64, file_info.compressed_size)
+        };
+        
 
         let compressed_data = client.read_file_range(file_path, data_offset, read_size)
             .await

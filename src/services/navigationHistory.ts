@@ -14,7 +14,7 @@ interface NavigationHistory {
 
 interface DirectoryCache {
   path: string;
-  files: any[]; // WebDAVFile[]
+  files: any[]; // StorageFile[]
   timestamp: number;
   lastAccess: number;
 }

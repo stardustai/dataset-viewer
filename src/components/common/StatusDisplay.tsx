@@ -12,7 +12,7 @@ import {
   LucideIcon
 } from 'lucide-react';
 
-export type StatusType =
+type StatusType =
   | 'loading'
   | 'error'
   | 'empty'

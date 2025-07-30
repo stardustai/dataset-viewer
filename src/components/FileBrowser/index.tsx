@@ -3,18 +3,14 @@ import { useTranslation } from 'react-i18next';
 import {
   Eye,
   EyeOff,
-  Home,
-  ArrowLeft,
-  ChevronRight,
   ChevronUp,
   ChevronDown,
   RefreshCw,
   Search,
   X,
-  Settings,
-  Copy
+  Settings
 } from 'lucide-react';
-import { WebDAVFile } from '../../types';
+import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../../services/navigationHistory';
@@ -22,11 +18,11 @@ import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
-import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay } from '../common';
+import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 
 interface FileBrowserProps {
-  onFileSelect: (file: WebDAVFile, path: string, storageClient?: BaseStorageClient) => void;
+  onFileSelect: (file: StorageFile, path: string, storageClient?: BaseStorageClient) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
@@ -40,7 +36,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 }) => {
   const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState(initialPath);
-  const [files, setFiles] = useState<WebDAVFile[]>([]);
+  const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showHidden, setShowHidden] = useState(false);
@@ -377,7 +373,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     loadDirectory('');
   };
 
-  const handleItemClick = (file: WebDAVFile) => {
+  const handleItemClick = (file: StorageFile) => {
     if (file.type === 'directory') {
       const newPath = currentPath ? `${currentPath}/${file.filename}` : file.filename;
       loadDirectory(newPath);
@@ -391,18 +387,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   const connection = StorageServiceManager.getConnection();
 
-  const getPathSegments = () => {
-    if (currentPath === '') return [];
-    return currentPath.split('/').filter(Boolean);
-  };
-
   const navigateToSegment = (index: number) => {
     // 如果当前有错误，先清除错误状态
     if (error) {
       setError('');
     }
 
-    const segments = getPathSegments();
+    const segments = currentPath === '' ? [] : currentPath.split('/').filter(Boolean);
     const newPath = segments.slice(0, index + 1).join('/');
     loadDirectory(newPath);
   };
@@ -502,57 +493,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       {/* Navigation */}
       <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center space-x-2 min-w-0 flex-1">
-            <button
-              onClick={navigateToHome}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
-              title={t('home')}
-            >
-              <Home className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-            </button>
-
-            {currentPath !== '' && (
-              <button
-                onClick={navigateUp}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
-                title={t('go.up')}
-              >
-                <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
-            )}
-
-            {/* 面包屑导航 - 移动端优化 */}
-            <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-300 min-w-0 flex-1 overflow-hidden">
-              <span
-                onClick={navigateToHome}
-                className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex-shrink-0"
-              >
-                {t('home')}
-              </span>
-
-              {getPathSegments().map((segment, index) => (
-                <React.Fragment key={index}>
-                  <ChevronRight className="w-3 h-3 lg:w-4 lg:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                  <span
-                    onClick={() => navigateToSegment(index)}
-                    className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate max-w-16 sm:max-w-24 lg:max-w-32"
-                    title={segment}
-                  >
-                    {segment}
-                  </span>
-                </React.Fragment>
-              ))}
-
-              {/* 复制完整路径按钮 */}
-              <button
-                onClick={copyFullPath}
-                className="ml-1 lg:ml-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
-                title={t('copy.full.path')}
-              >
-                <Copy className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500 dark:text-gray-400" />
-              </button>
-            </div>
-          </div>
+          <BreadcrumbNavigation
+            currentPath={currentPath}
+            onNavigateHome={navigateToHome}
+            onNavigateBack={navigateUp}
+            onNavigateToSegment={navigateToSegment}
+            onCopyPath={copyFullPath}
+            homeLabel={t('home')}
+            showHomeIcon={true}
+          />
 
           {/* 搜索框和刷新按钮 */}
           <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">

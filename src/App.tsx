@@ -5,7 +5,7 @@ import { FileViewer } from './components/FileViewer';
 import { DownloadProgress } from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
 import { SplashScreen } from './components/SplashScreen';
-import { WebDAVFile } from './types';
+import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
 import { navigationHistoryService } from './services/navigationHistory';
 import { useTheme } from './hooks/useTheme';
@@ -22,7 +22,7 @@ function App() {
   const { showNotification, hideUpdateDialog } = useUpdateNotification();
 
   const [appState, setAppState] = useState<AppState>('initializing');
-  const [selectedFile, setSelectedFile] = useState<WebDAVFile | null>(null);
+  const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
   const [selectedStorageClient, setSelectedStorageClient] = useState<any>(null);
   const [currentDirectory, setCurrentDirectory] = useState<string>('');
@@ -92,7 +92,7 @@ function App() {
     setCurrentDirectory('');
   };
 
-  const handleFileSelect = (file: WebDAVFile, path: string, storageClient?: any) => {
+  const handleFileSelect = (file: StorageFile, path: string, storageClient?: any) => {
     setSelectedFile(file);
     setSelectedFilePath(path);
     setSelectedStorageClient(storageClient); // 保存存储客户端引用

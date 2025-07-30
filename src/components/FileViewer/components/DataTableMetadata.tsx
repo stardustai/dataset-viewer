@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DataMetadata } from '../providers';
+import { formatFileSize } from '../../../utils/fileUtils';
 
 interface DataTableMetadataProps {
   metadata: DataMetadata;
@@ -17,13 +18,7 @@ export const DataTableMetadata: React.FC<DataTableMetadataProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+
 
   return (
     <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 lg:px-6 py-4">

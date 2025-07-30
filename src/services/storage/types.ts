@@ -50,7 +50,7 @@ export interface DirectoryResult {
 }
 
 // 统一的文件信息接口
-export interface StorageFile {
+interface StorageFile {
   filename: string;   // 用于内部路径导航和API调用的标识符（如 HF 的 owner:dataset）
   basename: string;   // 用于UI显示的文件/目录名称（如 owner/dataset）
   lastmod: string;
@@ -77,28 +77,6 @@ export interface ReadOptions {
   end?: number; // 结束位置 (包含)
 }
 
-// 后端请求参数
-export interface StorageRequest {
-  protocol: string;
-  method: string;
-  url: string;
-  headers?: Record<string, string>;
-  body?: string;
-  options?: RequestOptions;
-}
-
-// 请求选项
-export interface RequestOptions {
-  timeout?: number;
-  followRedirects?: boolean;
-  maxRedirects?: number;
-  // OSS 特定选项
-  region?: string;
-  accessKey?: string;
-  secretKey?: string;
-  bucket?: string;
-  endpoint?: string;
-}
 
 // 后端响应
 export interface StorageResponse {

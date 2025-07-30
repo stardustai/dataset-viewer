@@ -12,7 +12,7 @@ import {
   Percent,
   Copy
 } from 'lucide-react';
-import { WebDAVFile, SearchResult } from '../../types';
+import { StorageFile, SearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
@@ -24,6 +24,7 @@ import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { configManager } from '../../config';
+import { formatFileSize } from '../../utils/fileUtils';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
@@ -33,7 +34,7 @@ interface VirtualizedTextViewerRef {
 }
 
 interface FileViewerProps {
-  file: WebDAVFile;
+  file: StorageFile;
   filePath: string;
   storageClient?: any;
   onBack: () => void;
@@ -666,13 +667,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     return () => clearTimeout(timer);
   }, [content, isLargeFile, loadedChunks, containerHeight]);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+
 
   const getFileExtension = (filename: string): string => {
     return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
