@@ -10,7 +10,7 @@ interface HuggingFacePathInfo {
   owner: string;
   dataset: string;
   filePath?: string;
-  fullDatasetId: string; // owner/dataset
+  fullDatasetId: string; // owner:dataset
 }
 
 export class HuggingFaceStorageClient extends BaseStorageClient {
@@ -59,7 +59,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
       owner,
       dataset,
       filePath,
-      fullDatasetId: `${owner}/${dataset}`
+      fullDatasetId: `${owner}:${dataset}`
     };
   }
 
@@ -81,10 +81,9 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
 
     const pathInfo = this.parseHuggingFacePath(path);
     if (!pathInfo) {
-      // 如果无法解析路径，尝试简单处理
-      if (org && !path.includes('/')) {
-        // 如果指定了组织且路径不包含斜杠，自动添加组织前缀
-        return `huggingface://${org}/${path}`;
+      if (org && !path.includes('/') && !path.includes(':')) {
+        // 如果指定了组织且路径不包含分隔符，自动添加组织前缀
+        return `huggingface://${org}:${path}`;
       }
       return `huggingface://${path}`;
     }
@@ -155,8 +154,9 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
       throw new Error('Invalid file path for HuggingFace download URL');
     }
 
-    // HuggingFace 文件下载 URL 格式
-    return `https://huggingface.co/datasets/${pathInfo.fullDatasetId}/resolve/main/${pathInfo.filePath}`;
+    // HuggingFace 文件下载 URL 格式 (URL中需要使用/分隔符)
+    const urlDatasetId = pathInfo.fullDatasetId.replace(':', '/');
+    return `https://huggingface.co/datasets/${urlDatasetId}/resolve/main/${pathInfo.filePath}`;
   }
 
   protected getAuthHeaders(): Record<string, string> {
