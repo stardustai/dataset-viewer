@@ -217,4 +217,3 @@ class UpdateService {
 }
 
 export const updateService = new UpdateService();
-export default updateService;

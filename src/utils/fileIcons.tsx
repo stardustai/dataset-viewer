@@ -56,8 +56,3 @@ export const FileIcon: React.FC<FileIconProps> = ({
 
   return <IconComponent className={finalClassName} />;
 };
-
-// 获取文件图标配置的工具函数
-export const getFileIconConfig = (fileType: FileType | 'directory') => {
-  return FILE_ICON_CONFIG[fileType] || FILE_ICON_CONFIG.unknown;
-};

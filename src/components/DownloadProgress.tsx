@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { X, Download, Check, AlertCircle, StopCircle } from 'lucide-react';
+import { formatFileSize } from '../utils/fileUtils';
 
 interface DownloadProgressProps {
   isVisible: boolean;
@@ -99,13 +100,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
     };
   }, [isVisible]);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+
 
   const cancelDownload = async (filename: string) => {
     try {

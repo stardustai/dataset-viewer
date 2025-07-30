@@ -1,13 +1,13 @@
 import { StorageFile } from '../types';
 
-export interface StreamingConfig {
+interface StreamingConfig {
   chunkSize: number;
   maxInitialLoad: number;
   prefetchNextChunk: boolean;
   enableCompression: boolean;
 }
 
-export interface AppConfig {
+interface AppConfig {
   streaming: StreamingConfig;
   ui: {
     virtualScrolling: boolean;
@@ -21,7 +21,7 @@ export interface AppConfig {
   };
 }
 
-export const defaultConfig: AppConfig = {
+const defaultConfig: AppConfig = {
   streaming: {
     chunkSize: 1024 * 1024, // 1MB chunks
     maxInitialLoad: 1024 * 1024, // 1MB initial load
@@ -41,7 +41,7 @@ export const defaultConfig: AppConfig = {
 };
 
 // File size thresholds
-export const FILE_SIZE_THRESHOLDS = {
+const FILE_SIZE_THRESHOLDS = {
   SMALL: 1024 * 1024, // 1MB
   MEDIUM: 1024 * 1024 * 50, // 50MB
   LARGE: 1024 * 1024 * 100, // 100MB
@@ -49,7 +49,7 @@ export const FILE_SIZE_THRESHOLDS = {
 };
 
 // Supported text file extensions
-export const TEXT_FILE_EXTENSIONS = [
+const TEXT_FILE_EXTENSIONS = [
   '.txt', '.md', '.json', '.xml', '.yaml', '.yml', '.csv',
   '.js', '.ts', '.jsx', '.tsx', '.css', '.scss', '.sass',
   '.html', '.htm', '.php', '.py', '.java', '.c', '.cpp',
@@ -60,7 +60,7 @@ export const TEXT_FILE_EXTENSIONS = [
 ];
 
 // MIME types for text files
-export const TEXT_MIME_TYPES = [
+const TEXT_MIME_TYPES = [
   'text/plain',
   'text/markdown',
   'application/json',

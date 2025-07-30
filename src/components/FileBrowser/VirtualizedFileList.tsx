@@ -5,6 +5,7 @@ import { StorageFile } from '../../types';
 import { getFileType } from '../../utils/fileTypes';
 import { FileIcon } from '../../utils/fileIcons';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { formatFileSize } from '../../utils/fileUtils';
 
 interface VirtualizedFileListProps {
   files: StorageFile[];
@@ -90,18 +91,22 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     return <FileIcon fileType={fileType} size="md" className="mr-3" />;
   };
 
-  // 格式化文件大小
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+
 
   // 格式化日期 - 移动端显示简洁格式
   const formatDate = (dateString: string): string => {
+    // 如果日期字符串为空或无效，返回横杠
+    if (!dateString || dateString.trim() === '') {
+      return '—';
+    }
+
     const date = new Date(dateString);
+    
+    // 如果日期无效，返回横杠
+    if (isNaN(date.getTime())) {
+      return '—';
+    }
+
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
     const isThisYear = date.getFullYear() === now.getFullYear();

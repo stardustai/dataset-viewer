@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
  * @param query - The media query string (e.g., '(max-width: 640px)')
  * @returns boolean indicating if the media query matches
  */
-export const useMediaQuery = (query: string): boolean => {
+const useMediaQuery = (query: string): boolean => {
   const [matches, setMatches] = useState<boolean>(() => {
     // Initialize with current match state, but handle SSR case
     if (typeof window !== 'undefined') {

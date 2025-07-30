@@ -13,8 +13,8 @@ use crate::storage::traits::{
 #[derive(Debug, Deserialize)]
 struct DatasetInfo {
     id: String,
-    #[serde(rename = "updatedAt")]
-    updated_at: Option<String>,
+    #[serde(rename = "lastModified")]
+    last_modified: Option<String>,
 }
 
 /// HuggingFace 数据集文件信息（来自 tree API）
@@ -83,7 +83,7 @@ impl HuggingFaceClient {
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 使用 : 替代 / 来避免路径解析问题
                 basename: dataset.id.clone(), // 显示时仍然显示原始格式
-                lastmod: dataset.updated_at.unwrap_or_else(|| "unknown".to_string()),
+                lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
                 size: 0,
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
@@ -132,7 +132,7 @@ impl HuggingFaceClient {
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
                 basename: dataset.id.clone(), // 显示原始格式
-                lastmod: dataset.updated_at.unwrap_or_else(|| "unknown".to_string()),
+                lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
                 size: 0,
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
@@ -182,7 +182,7 @@ impl HuggingFaceClient {
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
                 basename: dataset.id.clone(), // 显示原始格式
-                lastmod: dataset.updated_at.unwrap_or_else(|| "unknown".to_string()),
+                lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
                 size: 0,
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),

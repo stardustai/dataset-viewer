@@ -3,7 +3,7 @@ import { ArchiveEntry, StorageFile } from '../types';
 /**
  * 将压缩文件条目转换为StorageFile格式
  */
-export function archiveEntryToStorageFile(entry: ArchiveEntry): StorageFile {
+function archiveEntryToStorageFile(entry: ArchiveEntry): StorageFile {
   const pathParts = entry.path.split('/');
   const filename = pathParts[pathParts.length - 1] || entry.path;
   
@@ -140,11 +140,4 @@ export function buildArchiveFileTree(entries: ArchiveEntry[]): Map<string, Stora
  */
 export function getFilesAtPath(tree: Map<string, StorageFile[]>, path: string): StorageFile[] {
   return tree.get(path) || [];
-}
-
-/**
- * 检查路径是否存在于文件树中
- */
-export function pathExistsInTree(tree: Map<string, StorageFile[]>, path: string): boolean {
-  return tree.has(path);
 }

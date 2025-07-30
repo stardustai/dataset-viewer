@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, GalleryHorizontal } from 'lucide-react';
 import { StorageServiceManager } from '../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common/StatusDisplay';
+import { formatFileSize } from '../../utils/fileUtils';
 
 interface MediaViewerProps {
   filePath: string;
@@ -153,13 +154,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(500, prev + 25));
@@ -385,7 +380,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                 title={t('viewer.reset')}
               >
-                <Maximize2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <GalleryHorizontal className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
             </div>
           </div>
