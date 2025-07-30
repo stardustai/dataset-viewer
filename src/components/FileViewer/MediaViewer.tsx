@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
 import { StorageServiceManager } from '../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common/StatusDisplay';
-import * as XLSX from 'xlsx';
 
 interface MediaViewerProps {
   filePath: string;
   fileName: string;
-  fileType: 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet';
+  fileType: 'image' | 'pdf' | 'video' | 'audio';
   fileSize: number;
 }
 
@@ -26,9 +25,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [rotation, setRotation] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false); // 是否显示进度条
-  const [spreadsheetData, setSpreadsheetData] = useState<any[][]>([]);
-  const [sheetNames, setSheetNames] = useState<string[]>([]);
-  const [activeSheet, setActiveSheet] = useState(0);
 
   useEffect(() => {
     loadMediaContent();
@@ -73,26 +69,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       clearTimeout(showProgressTimer); // 清除进度条显示定时器
       setLoadingProgress(100);
 
-      if (fileType === 'spreadsheet') {
-        // 处理 Excel 文件
-        const arrayBuffer = await new Blob([response]).arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-        setSheetNames(workbook.SheetNames);
-
-        // 读取第一个工作表
-        if (workbook.SheetNames.length > 0) {
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-          setSpreadsheetData(jsonData as any[][]);
-        }
-      } else {
-        // 处理其他媒体文件
-        const blob = new Blob([response], { type: getMimeType(fileName) });
-        const url = URL.createObjectURL(blob);
-        setMediaUrl(url);
-      }
+      // 处理媒体文件
+      const blob = new Blob([response], { type: getMimeType(fileName) });
+      const url = URL.createObjectURL(blob);
+      setMediaUrl(url);
     } catch (err) {
       console.error('Failed to load media:', err);
       setError(t('viewer.load.error'));
@@ -138,13 +118,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       'wav': 'audio/wav',
       'oga': 'audio/ogg',
       'aac': 'audio/aac',
-      'flac': 'audio/flac',
-
-      // Spreadsheet
-      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'xls': 'application/vnd.ms-excel',
-      'ods': 'application/vnd.oasis.opendocument.spreadsheet',
-      'csv': 'text/csv',
+      'flac': 'audio/flac'
     };
     return mimeTypes[ext] || 'application/octet-stream';
   };
@@ -191,24 +165,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     setRotation(0);
   };
 
-  const switchSheet = async (sheetIndex: number) => {
-    if (sheetIndex === activeSheet) return;
 
-    try {
-      const response = await StorageServiceManager.getFileBlob(filePath);
-      const arrayBuffer = await new Blob([response]).arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-      const sheetName = workbook.SheetNames[sheetIndex];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-
-      setSpreadsheetData(jsonData as any[][]);
-      setActiveSheet(sheetIndex);
-    } catch (err) {
-      console.error('Failed to switch sheet:', err);
-    }
-  };
 
   if (loading) {
     return (
@@ -360,97 +317,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           </div>
         );
 
-      case 'spreadsheet':
-        return (
-          <div className="h-full flex flex-col bg-white dark:bg-gray-800">
-            {/* 工作表选项卡 */}
-            {sheetNames.length > 1 && (
-              <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 lg:px-6 py-3">
-                <div className="flex items-center space-x-1 overflow-x-auto">
-                  <span className="text-sm text-gray-600 dark:text-gray-400 mr-3 whitespace-nowrap">工作表:</span>
-                  {sheetNames.map((sheetName, index) => (
-                    <button
-                      key={index}
-                      onClick={() => switchSheet(index)}
-                      className={`px-3 py-1.5 text-sm rounded-lg whitespace-nowrap transition-all duration-200 ${
-                        index === activeSheet
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium border border-blue-200 dark:border-blue-700'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-transparent'
-                      }`}
-                    >
-                      {sheetName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {/* 表格内容 */}
-            <div className="flex-1 overflow-auto p-4">
-              {spreadsheetData.length > 0 ? (
-                <div className="overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    {/* 表头 */}
-                    {spreadsheetData.length > 0 && (
-                      <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                          {Array.isArray(spreadsheetData[0]) && spreadsheetData[0].map((header, index) => (
-                            <th
-                              key={index}
-                              className="px-3 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
-                            >
-                              {String(header) || `列 ${index + 1}`}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                    )}
-
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {spreadsheetData.slice(1, 1001).map((row, rowIndex) => (
-                        <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'}>
-                          {Array.isArray(row) && row.map((cell, cellIndex) => (
-                            <td
-                              key={cellIndex}
-                              className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-600 max-w-xs"
-                            >
-                              <div className="truncate" title={String(cell)}>
-                                {String(cell)}
-                              </div>
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {/* 显示行数限制提示 */}
-                  {spreadsheetData.length > 1001 && (
-                    <div className="text-center py-3 text-sm text-gray-500 dark:text-gray-400 bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-800">
-                      仅显示前 1000 行数据（除表头外），总共 {spreadsheetData.length - 1} 行数据
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-emerald-600 dark:text-emerald-400 text-2xl">📊</span>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">工作表为空或无法解析</p>
-                    <button
-                      onClick={downloadFile}
-                      className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 transition-colors inline-flex items-center"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      {t('viewer.download')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        );
 
       default:
         return (

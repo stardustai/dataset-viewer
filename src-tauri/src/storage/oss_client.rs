@@ -103,7 +103,6 @@ impl OSSClient {
         {
             println!("DEBUG: StringToSign:");
             println!("{}", string_to_sign);
-            println!("DEBUG: StringToSign bytes: {:?}", string_to_sign.as_bytes());
 
             // 如果需要测试签名生成，应该使用环境变量或测试配置文件
             // 而不是硬编码凭据

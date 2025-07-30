@@ -17,7 +17,7 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 ## 🚀 Key Features
 
 - ⚡ **Instant Large File Opening**: Handle 100GB+ files with virtualized rendering, no waiting time
-- 🔍 **Millisecond Search**: Real-time regex search with highlighting, fast positioning in large files
+- 🔍 **Millisecond Search**: Real-time search with highlighting, fast positioning in large files
 - 📦 **Direct Archive Preview**: Browse ZIP/TAR files without extraction, streaming file browser
 - 🗂️ **Native Multi-Format Support**: Optimized rendering for Parquet, Excel, CSV with syntax highlighting for JSON/YAML
 - 🌐 **Multi-Source Data Access**: WebDAV servers, local files, cloud storage (OSS), HuggingFace datasets
