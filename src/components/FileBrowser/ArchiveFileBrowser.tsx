@@ -248,7 +248,6 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                   showHidden={true}
                   sortField={sortField}
                   sortDirection={sortDirection}
-                  height={400} // 固定高度，实际使用时可以动态计算
                   searchTerm={searchTerm}
                 />
               </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Archive, Copy, AlertCircle, Folder } from 'lucide-react';
-import { ArchiveEntry, ArchiveInfo, FilePreview, StorageFile } from '../../types';
+import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../types';
 import { CompressionService } from '../../services/compression';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { getFileType, isTextFile, isMediaFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
+import { formatFileSize, formatModifiedTime } from '../../utils/fileUtils';
 import { configManager } from '../../config';
 
 import { ArchiveFileBrowser } from '../FileBrowser/ArchiveFileBrowser';
@@ -11,37 +12,8 @@ import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { UniversalDataTableViewer } from './UniversalDataTableViewer';
 import { LoadingDisplay, ErrorDisplay, StatusDisplay, UnsupportedFormatDisplay } from '../common';
+import { ManualLoadButton } from './ManualLoadButton';
 import { useTranslation } from 'react-i18next';
-
-// 文件大小格式化工具函数
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
-
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-// 安全的日期格式化函数
-const formatModifiedTime = (timeString: string | undefined): string | null => {
-  if (!timeString) return null;
-
-  try {
-    // 尝试解析日期
-    const date = new Date(timeString);
-
-    // 检查日期是否有效
-    if (isNaN(date.getTime())) {
-      return null;
-    }
-
-    return date.toLocaleString();
-  } catch {
-    return null;
-  }
-};
 
 // 错误信息翻译辅助函数
 const translateError = (error: string, t: (key: string) => string): string => {
@@ -92,18 +64,18 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>(''); // 文本文件内容
   
-  // 分块加载相关状态
-  const [isLargeFile, setIsLargeFile] = useState(false);
-  const [totalSize, setTotalSize] = useState(0);
-  const [loadedContentSize, setLoadedContentSize] = useState(0);
-  const [loadedChunks, setLoadedChunks] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [autoLoadTriggered, setAutoLoadTriggered] = useState(false);
-  const [currentFilePosition, setCurrentFilePosition] = useState(0);
-  
-  // 非文本文件手动加载状态
-  const [manualLoadRequested, setManualLoadRequested] = useState(false);
-  const [manualLoading, setManualLoading] = useState(false);
+  // 文件加载状态管理
+  const [fileLoadState, setFileLoadState] = useState({
+    isLargeFile: false,
+    totalSize: 0,
+    loadedContentSize: 0,
+    loadedChunks: 0,
+    currentFilePosition: 0,
+    loadingMore: false,
+    autoLoadTriggered: false,
+    manualLoadRequested: false,
+    manualLoading: false
+  });
 
   useEffect(() => {
     loadArchiveInfo();
@@ -198,27 +170,31 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setFileContent('');
       setPreviewError(null);
       
-      // 重置分块加载状态
-      setIsLargeFile(false);
-      setTotalSize(0);
-      setLoadedContentSize(0);
-      setLoadedChunks(0);
-      setCurrentFilePosition(0);
-      setLoadingMore(false);
-      setAutoLoadTriggered(false);
-      
-      // 重置手动加载状态
-      setManualLoadRequested(false);
-      setManualLoading(false);
+      // 重置文件加载状态
+      setFileLoadState({
+        isLargeFile: false,
+        totalSize: 0,
+        loadedContentSize: 0,
+        loadedChunks: 0,
+        currentFilePosition: 0,
+        loadingMore: false,
+        autoLoadTriggered: false,
+        manualLoadRequested: false,
+        manualLoading: false
+      });
 
       const config = configManager.getConfig();
       const fileSize = entry.size || 0;
-      setTotalSize(fileSize);
       
       // 判断是否为大文件（仅对文本文件启用分块加载）
       const isTextFileType = isTextFile(entry.path);
       const shouldUseChunking = isTextFileType && fileSize > config.streaming.maxInitialLoad;
-      setIsLargeFile(shouldUseChunking);
+      
+      setFileLoadState(prev => ({
+        ...prev,
+        totalSize: fileSize,
+        isLargeFile: shouldUseChunking
+      }));
       
       // 对于非文本文件，检查是否需要自动加载
       if (!isTextFileType) {
@@ -262,7 +238,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         }
 
         setFilePreview(preview);
-        setManualLoadRequested(true); // 标记为已加载
+        setFileLoadState(prev => ({ ...prev, manualLoadRequested: true })); // 标记为已加载
         return;
       }
       
@@ -295,9 +271,12 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         try {
           const textContent = new TextDecoder('utf-8', { fatal: false }).decode(preview.content);
           setFileContent(textContent);
-          setLoadedContentSize(preview.content.length);
-          setLoadedChunks(1);
-          setCurrentFilePosition(0);
+          setFileLoadState(prev => ({
+            ...prev,
+            loadedContentSize: preview.content.length,
+            loadedChunks: 1,
+            currentFilePosition: 0
+          }));
         } catch (decodeError) {
           console.error('Failed to decode text content:', decodeError);
           setPreviewError(t('error.decode.text'));
@@ -331,18 +310,18 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
   // 加载更多内容的函数
   const loadMoreContent = useCallback(async (entry: ArchiveEntry) => {
-    if (!isLargeFile || loadingMore || !isTextFile(entry.path)) return;
+    if (!fileLoadState.isLargeFile || fileLoadState.loadingMore || !isTextFile(entry.path)) return;
 
-    setLoadingMore(true);
+    setFileLoadState(prev => ({ ...prev, loadingMore: true }));
     try {
       const config = configManager.getConfig();
-      const nextPosition = currentFilePosition + loadedContentSize;
-      if (nextPosition >= totalSize) {
-        setLoadingMore(false);
+      const nextPosition = fileLoadState.currentFilePosition + fileLoadState.loadedContentSize;
+      if (nextPosition >= fileLoadState.totalSize) {
+        setFileLoadState(prev => ({ ...prev, loadingMore: false }));
         return;
       }
 
-      const remainingSize = totalSize - nextPosition;
+      const remainingSize = fileLoadState.totalSize - nextPosition;
       const chunkSize = Math.min(config.streaming.chunkSize, remainingSize);
 
       let additionalPreview: FilePreview;
@@ -363,16 +342,21 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
             url,
             filename,
             entry.path,
-            totalSize
+            fileLoadState.totalSize
           );
-          if (fullPreview.content && fullPreview.content.length > loadedContentSize) {
-            const remainingContent = fullPreview.content.slice(loadedContentSize);
+          if (fullPreview.content && fullPreview.content.length > fileLoadState.loadedContentSize) {
+            const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
             const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(remainingContent);
             setFileContent(prev => prev + additionalText);
-            setLoadedContentSize(fullPreview.content.length);
-            setLoadedChunks(prev => prev + 1);
+            setFileLoadState(prev => ({
+              ...prev,
+              loadedContentSize: fullPreview.content!.length,
+              loadedChunks: prev.loadedChunks + 1,
+              loadingMore: false
+            }));
+          } else {
+            setFileLoadState(prev => ({ ...prev, loadingMore: false }));
           }
-          setLoadingMore(false);
           return;
         }
       } else {
@@ -383,53 +367,61 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           headers,
           filename,
           entry.path,
-          totalSize
+          fileLoadState.totalSize
         );
-        if (fullPreview.content && fullPreview.content.length > loadedContentSize) {
-          const remainingContent = fullPreview.content.slice(loadedContentSize);
+        if (fullPreview.content && fullPreview.content.length > fileLoadState.loadedContentSize) {
+          const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
           const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(remainingContent);
           setFileContent(prev => prev + additionalText);
-          setLoadedContentSize(fullPreview.content.length);
-          setLoadedChunks(prev => prev + 1);
+          setFileLoadState(prev => ({
+            ...prev,
+            loadedContentSize: fullPreview.content!.length,
+            loadedChunks: prev.loadedChunks + 1,
+            loadingMore: false
+          }));
+        } else {
+          setFileLoadState(prev => ({ ...prev, loadingMore: false }));
         }
-        setLoadingMore(false);
         return;
       }
 
       if (additionalPreview.content) {
         const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(additionalPreview.content);
         setFileContent(prev => prev + additionalText);
-        setLoadedContentSize(prev => prev + additionalPreview.content!.length);
-        setLoadedChunks(prev => prev + 1);
+        setFileLoadState(prev => ({
+          ...prev,
+          loadedContentSize: prev.loadedContentSize + additionalPreview.content!.length,
+          loadedChunks: prev.loadedChunks + 1
+        }));
       }
     } catch (err) {
       console.error('Failed to load more content:', err);
       setPreviewError(t('error.load.more'));
     } finally {
-      setLoadingMore(false);
+      setFileLoadState(prev => ({ ...prev, loadingMore: false }));
     }
-  }, [url, headers, filename, storageClient, isLargeFile, loadingMore, currentFilePosition, loadedContentSize, totalSize, t]);
+  }, [url, headers, filename, storageClient, fileLoadState.isLargeFile, fileLoadState.loadingMore, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, t]);
 
   // 滚动到底部时的回调
   const handleScrollToBottom = useCallback(async () => {
-    if (!selectedEntry || !isLargeFile || loadingMore || autoLoadTriggered) return;
+    if (!selectedEntry || !fileLoadState.isLargeFile || fileLoadState.loadingMore || fileLoadState.autoLoadTriggered) return;
 
-    const currentEndPosition = currentFilePosition + loadedContentSize;
-    if (currentEndPosition >= totalSize) return;
+    const currentEndPosition = fileLoadState.currentFilePosition + fileLoadState.loadedContentSize;
+    if (currentEndPosition >= fileLoadState.totalSize) return;
 
-    setAutoLoadTriggered(true);
+    setFileLoadState(prev => ({ ...prev, autoLoadTriggered: true }));
     await loadMoreContent(selectedEntry);
 
     setTimeout(() => {
-      setAutoLoadTriggered(false);
+      setFileLoadState(prev => ({ ...prev, autoLoadTriggered: false }));
     }, 1000);
-  }, [selectedEntry, isLargeFile, loadingMore, autoLoadTriggered, currentFilePosition, loadedContentSize, totalSize, loadMoreContent]);
+  }, [selectedEntry, fileLoadState.isLargeFile, fileLoadState.loadingMore, fileLoadState.autoLoadTriggered, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, loadMoreContent]);
 
   // 手动加载完整内容的函数（用于非文本文件）
   const loadFullContent = useCallback(async (entry: ArchiveEntry) => {
-    if (manualLoading) return;
+    if (fileLoadState.manualLoading) return;
 
-    setManualLoading(true);
+    setFileLoadState(prev => ({ ...prev, manualLoading: true }));
     try {
       let fullPreview: FilePreview;
       if (storageClient && storageClient.getArchiveFilePreview) {
@@ -450,14 +442,14 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       }
 
       setFilePreview(fullPreview);
-      setManualLoadRequested(true);
+      setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
       
       // 如果是文本文件，也更新文本内容
       if (isTextFile(entry.path) && fullPreview.content) {
         try {
           const textContent = new TextDecoder('utf-8', { fatal: false }).decode(fullPreview.content);
           setFileContent(textContent);
-          setLoadedContentSize(fullPreview.content.length);
+          setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
         } catch (decodeError) {
           console.error('Failed to decode text content:', decodeError);
         }
@@ -466,9 +458,9 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       console.error('Failed to load full content:', err);
       setPreviewError(t('error.load.full.content'));
     } finally {
-      setManualLoading(false);
+      setFileLoadState(prev => ({ ...prev, manualLoading: false }));
     }
-  }, [url, headers, filename, storageClient, manualLoading, t]);
+  }, [url, headers, filename, storageClient, fileLoadState.manualLoading, t]);
 
 
   // 复制压缩包内文件路径到剪贴板
@@ -612,22 +604,21 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                             searchTerm=""
                             onSearchResults={() => {}}
                             className="flex-1"
-                            height={400} // 默认高度，实际会被CSS覆盖
-                            onScrollToBottom={isLargeFile ? handleScrollToBottom : undefined}
+                            onScrollToBottom={fileLoadState.isLargeFile ? handleScrollToBottom : undefined}
                           />
-                          {isLargeFile && (
+                          {fileLoadState.isLargeFile && (
                             <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
                               <div className="flex items-center justify-between">
                                 <span>
-                                  {t('file.loaded.chunks', { chunks: loadedChunks, size: formatFileSize(loadedContentSize) })}
+                                  {t('file.loaded.chunks', { chunks: fileLoadState.loadedChunks, size: formatFileSize(fileLoadState.loadedContentSize) })}
                                 </span>
-                                {loadingMore && (
+                                {fileLoadState.loadingMore && (
                                   <div className="flex items-center gap-2">
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
                                     <span>{t('loading.more.content')}</span>
                                   </div>
                                 )}
-                                {!loadingMore && loadedContentSize < totalSize && (
+                                {!fileLoadState.loadingMore && fileLoadState.loadedContentSize < fileLoadState.totalSize && (
                                   <span className="text-blue-600 dark:text-blue-400">
                                     {t('scroll.to.load.more')}
                                   </span>
@@ -642,35 +633,14 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                       const fileSize = selectedEntry.size || 0;
                       const shouldAutoLoad = fileSize < 1024 * 1024; // 1MB
                       
-                      if (!shouldAutoLoad && !manualLoadRequested) {
+                      if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
                         return (
-                          <div className="flex flex-col items-center justify-center h-64 m-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-                            <div className="text-center mb-4">
-                              <div className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                {t('file.not.loaded')}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {t('file.size')}: {formatFileSize(fileSize)}
-                              </div>
-                              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                {t('media.large.file.manual.load')}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => loadFullContent(selectedEntry)}
-                              disabled={manualLoading}
-                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center gap-2"
-                            >
-                              {manualLoading ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  {t('loading')}
-                                </>
-                              ) : (
-                                t('load.full.content')
-                              )}
-                            </button>
-                          </div>
+                          <ManualLoadButton
+                            entry={selectedEntry}
+                            onLoad={loadFullContent}
+                            isLoading={fileLoadState.manualLoading}
+                            loadType="media"
+                          />
                         );
                       }
                       return (
@@ -687,35 +657,14 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                       const fileSize = selectedEntry.size || 0;
                       const shouldAutoLoad = fileSize < 1024 * 1024; // 1MB
                       
-                      if (!shouldAutoLoad && !manualLoadRequested) {
+                      if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
                         return (
-                          <div className="flex flex-col items-center justify-center h-64 m-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-                            <div className="text-center mb-4">
-                              <div className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                {t('file.not.loaded')}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {t('file.size')}: {formatFileSize(selectedEntry.size || 0)}
-                              </div>
-                              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                {t('data.large.file.manual.load')}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => loadFullContent(selectedEntry)}
-                              disabled={manualLoading}
-                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center gap-2"
-                            >
-                              {manualLoading ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  {t('loading')}
-                                </>
-                              ) : (
-                                t('load.full.content')
-                              )}
-                            </button>
-                          </div>
+                          <ManualLoadButton
+                            entry={selectedEntry}
+                            onLoad={loadFullContent}
+                            isLoading={fileLoadState.manualLoading}
+                            loadType="data"
+                          />
                         );
                       }
                       return (
@@ -732,35 +681,14 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                       );
                     } else {
                       // 不支持的格式：检查是否已手动加载
-                      if (!manualLoadRequested) {
+                      if (!fileLoadState.manualLoadRequested) {
                         return (
-                          <div className="flex flex-col items-center justify-center h-64 m-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-                            <div className="text-center mb-4">
-                              <div className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                {t('file.not.loaded')}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                                {t('file.size')}: {formatFileSize(selectedEntry.size || 0)}
-                              </div>
-                              <div className="text-xs text-gray-400 dark:text-gray-500">
-                                {t('viewer.unsupported.format')}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => loadFullContent(selectedEntry)}
-                              disabled={manualLoading}
-                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center gap-2"
-                            >
-                              {manualLoading ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  {t('loading')}
-                                </>
-                              ) : (
-                                t('load.full.content')
-                              )}
-                            </button>
-                          </div>
+                          <ManualLoadButton
+                            entry={selectedEntry}
+                            onLoad={loadFullContent}
+                            isLoading={fileLoadState.manualLoading}
+                            loadType="unsupported"
+                          />
                         );
                       }
                       return (

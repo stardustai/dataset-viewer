@@ -12,7 +12,7 @@ interface VirtualizedFileListProps {
   showHidden: boolean;
   sortField: 'name' | 'size' | 'modified';
   sortDirection: 'asc' | 'desc';
-  height: number;
+  height?: number;
   searchTerm?: string;
 }
 
@@ -124,7 +124,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   return (
     <div
       ref={parentRef}
-      style={{ height: `${height}px` }}
+      style={{ height: height ? `${height}px` : '100%' }}
       className="overflow-auto"
       data-virtualized-container
     >
