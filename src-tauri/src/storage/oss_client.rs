@@ -200,7 +200,9 @@ impl OSSClient {
                     if let Some(ref mut obj) = current_object {
                         match element_name.as_ref() {
                             "Key" => {
-                                obj.filename = current_text.clone();
+                                // 对于OSS，filename应该是相对于当前prefix的路径，而不是完整的object key
+                                let relative_path = current_text.strip_prefix(prefix).unwrap_or(&current_text);
+                                obj.filename = relative_path.to_string();
                                 obj.basename = current_text.rsplit('/').next().unwrap_or(&current_text).to_string();
                             }
                             "LastModified" => {
@@ -238,7 +240,7 @@ impl OSSClient {
                                     if !relative_path.is_empty() && !relative_path.trim_end_matches('/').contains('/') {
                                         let dir_name = relative_path.trim_end_matches('/');
                                         files.push(StorageFile {
-                                            filename: prefix_path.clone(),
+                                            filename: dir_name.to_string(),
                                             basename: dir_name.to_string(),
                                             lastmod: chrono::Utc::now().to_rfc3339(),
                                             size: 0,
