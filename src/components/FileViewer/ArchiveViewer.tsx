@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Archive, Copy, AlertCircle, Folder } from 'lucide-react';
+import { Archive, Copy, AlertCircle, Folder, Download } from 'lucide-react';
 import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../types';
 import { CompressionService } from '../../services/compression';
+import { StorageServiceManager } from '../../services/storage/StorageManager';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { getFileType, isTextFile, isMediaFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../utils/fileUtils';
@@ -479,6 +480,21 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     }
   };
 
+  // 下载压缩包内的单个文件
+  const downloadFile = async (entry: ArchiveEntry) => {
+    try {
+      await StorageServiceManager.downloadArchiveFileWithProgress(
+        url,
+        filename,
+        entry.path,
+        entry.path.split('/').pop() || entry.path
+      );
+    } catch (err) {
+      console.error('Failed to download file:', err);
+      // 可以添加错误提示
+    }
+  };
+
   // 不再需要过滤逻辑，由ArchiveFileBrowser处理
 
   if (loading) {
@@ -524,14 +540,26 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center space-x-2">
                       <h3 className="font-medium truncate">{selectedEntry.path}</h3>
-                      {/* 复制文件路径按钮 */}
-                      <button
-                        onClick={() => copyFilePath(selectedEntry)}
-                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                        title={t('copy.full.path')}
-                      >
-                        <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                      </button>
+                      <div className="flex items-center space-x-1">
+                        {/* 下载文件按钮 */}
+                        {!selectedEntry.is_dir && (
+                          <button
+                            onClick={() => downloadFile(selectedEntry)}
+                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                            title={t('viewer.download')}
+                          >
+                            <Download className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                          </button>
+                        )}
+                        {/* 复制文件路径按钮 */}
+                        <button
+                          onClick={() => copyFilePath(selectedEntry)}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title={t('copy.full.path')}
+                        >
+                          <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        </button>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {t('file.size.label')}: {formatFileSize(selectedEntry.size)}

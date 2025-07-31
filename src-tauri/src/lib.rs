@@ -6,6 +6,7 @@ use archive::{handlers::ArchiveHandler, types::*};
 use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
+use tauri::Emitter;
 
 // 移除参数结构体，直接在命令中使用 serde rename 属性
 
@@ -308,6 +309,133 @@ async fn cancel_download(filename: String) -> Result<String, String> {
     DOWNLOAD_MANAGER.cancel_download(&filename)
 }
 
+#[tauri::command]
+async fn download_archive_file_with_progress(
+    app: tauri::AppHandle,
+    archive_path: String,
+    archive_filename: String,
+    entry_path: String,
+    entry_filename: String,
+) -> Result<String, String> {
+    use crate::storage::get_storage_manager;
+    use crate::download::progress::ProgressTracker;
+    use crate::download::types::*;
+    use tokio::io::AsyncWriteExt;
+    use tauri_plugin_dialog::DialogExt;
+    
+    // 获取存储管理器
+    let manager = get_storage_manager().await;
+    let manager = manager.lock().await;
+    let client = manager.get_current_client()
+        .ok_or_else(|| "No storage client available".to_string())?;
+    
+    // 显示保存文件对话框
+    let file_path = app
+        .dialog()
+        .file()
+        .set_file_name(&entry_filename)
+        .blocking_save_file();
+
+    let save_path = match file_path {
+        Some(path) => path
+            .into_path()
+            .map_err(|e| format!("Failed to get path: {}", e))?,
+        None => return Err("User cancelled file save".to_string()),
+    };
+    
+    // 创建进度跟踪器
+    let progress_tracker = ProgressTracker::new(app.clone());
+    
+    // 发送开始下载事件，初始时不知道文件大小
+    progress_tracker.emit_started(DownloadStarted {
+        filename: entry_filename.clone(),
+        total_size: 0, // 初始时设为0，表示未知大小
+    });
+    
+    // 模拟进度更新 - 显示正在提取
+    progress_tracker.emit_progress(crate::download::types::DownloadProgress {
+        filename: entry_filename.clone(),
+        downloaded: 0,
+        total_size: 0,
+        progress: 0,
+    });
+    
+    // 使用压缩包处理器提取文件，不限制大小
+    let handler = &*ARCHIVE_HANDLER;
+    let file_preview = handler.get_file_preview_with_client(
+        client,
+        archive_path,
+        archive_filename,
+        entry_path,
+        Some(usize::MAX), // 设置为最大值，确保获取完整文件
+    ).await.map_err(|e| {
+        // 发送错误事件
+        let _ = app.emit("download-error", serde_json::json!({
+            "filename": entry_filename,
+            "error": e
+        }));
+        e
+    })?;
+    
+    let file_size = file_preview.content.len() as u64;
+    
+    // 文件提取完成，更新进度为50%（表示提取完成，开始写入）
+    progress_tracker.emit_progress(crate::download::types::DownloadProgress {
+        filename: entry_filename.clone(),
+        downloaded: file_size / 2,
+        total_size: file_size,
+        progress: 50,
+    });
+    
+    // 异步写入文件
+    let mut file = tokio::fs::File::create(&save_path)
+        .await
+        .map_err(|e| format!("Failed to create file: {}", e))?;
+    
+    // 分块写入文件以显示进度
+    let chunk_size = 64 * 1024; // 64KB chunks
+    let mut written = 0;
+    
+    for chunk in file_preview.content.chunks(chunk_size) {
+        file.write_all(chunk)
+            .await
+            .map_err(|e| format!("Failed to write file: {}", e))?;
+        
+        written += chunk.len();
+        let progress = 50 + ((written as f64 / file_size as f64) * 50.0) as u32;
+         
+         progress_tracker.emit_progress(crate::download::types::DownloadProgress {
+             filename: entry_filename.clone(),
+             downloaded: (file_size / 2) + written as u64,
+             total_size: file_size,
+             progress,
+         });
+        
+        // 小延迟以显示进度变化
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    }
+    
+    file.flush()
+        .await
+        .map_err(|e| format!("Failed to flush file: {}", e))?;
+    
+    // 发送最终进度
+    progress_tracker.emit_progress(crate::download::types::DownloadProgress {
+        filename: entry_filename.clone(),
+        downloaded: file_size,
+        total_size: file_size,
+        progress: 100,
+    });
+    
+    // 发送下载完成事件
+     progress_tracker.emit_completed(DownloadCompleted {
+         filename: entry_filename.clone(),
+         file_path: save_path.to_string_lossy().to_string(),
+     });
+    
+    Ok(save_path.to_string_lossy().to_string())
+}
+
 // 系统对话框命令
 
 /// 显示文件夹选择对话框
@@ -454,6 +582,7 @@ pub fn run() {
             // 下载进度命令
             download_file_with_progress,
             cancel_download,
+            download_archive_file_with_progress,
             // 系统对话框命令
             show_folder_dialog,
             // 压缩包处理命令
