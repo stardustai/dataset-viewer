@@ -1,6 +1,10 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
+
+/// 进度回调函数类型
+pub type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;
 
 /// 统一的文件信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,8 +127,39 @@ pub trait StorageClient: Send + Sync {
     /// 读取文件的指定范围（用于压缩包等需要随机访问的场景）
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError>;
 
+    /// 读取文件的指定范围，支持进度回调
+    async fn read_file_range_with_progress(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+        progress_callback: Option<ProgressCallback>,
+    ) -> Result<Vec<u8>, StorageError> {
+        // 默认实现：调用不带进度的版本，并在完成后调用一次进度回调
+        let result = self.read_file_range(path, start, length).await?;
+        if let Some(callback) = progress_callback {
+            callback(length, length);
+        }
+        Ok(result)
+    }
+
     /// 读取完整文件（用于小文件或完整下载）
     async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError>;
+
+    /// 读取完整文件，支持进度回调
+    async fn read_full_file_with_progress(
+        &self,
+        path: &str,
+        progress_callback: Option<ProgressCallback>,
+    ) -> Result<Vec<u8>, StorageError> {
+        // 默认实现：调用不带进度的版本，并在完成后调用一次进度回调
+        let result = self.read_full_file(path).await?;
+        if let Some(callback) = progress_callback {
+            let size = result.len() as u64;
+            callback(size, size);
+        }
+        Ok(result)
+    }
 
     /// 获取文件大小
     async fn get_file_size(&self, path: &str) -> Result<u64, StorageError>;

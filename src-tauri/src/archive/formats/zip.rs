@@ -1,7 +1,7 @@
 /// ZIP 格式处理器
 use crate::archive::types::*;
 use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
-use crate::storage::traits::StorageClient;
+use crate::storage::traits::{StorageClient, ProgressCallback};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -25,8 +25,9 @@ impl CompressionHandlerDispatcher for ZipHandler {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_preview_with_storage_client(client, file_path, entry_path, max_size).await
+        Self::extract_zip_preview_with_progress(client, file_path, entry_path, max_size, progress_callback).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -60,15 +61,6 @@ impl ZipHandler {
     }
 
     /// 使用存储客户端提取ZIP文件预览（流式提取）
-    async fn extract_preview_with_storage_client(
-        client: Arc<dyn StorageClient>,
-        file_path: &str,
-        entry_path: &str,
-        max_size: usize,
-    ) -> Result<FilePreview, String> {
-        Self::extract_zip_preview_with_client(client, file_path, entry_path, max_size).await
-    }
-
     // 这些方法从之前工作的代码迁移过来
 
     /// 在数据中查找EOCD记录位置
@@ -659,12 +651,15 @@ impl ZipHandler {
             .build())
     }
 
-    /// 通过存储客户端提取文件预览
-    async fn extract_zip_preview_with_client(
+
+
+    /// 通过存储客户端提取ZIP文件预览（支持进度回调）
+    async fn extract_zip_preview_with_progress(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
         // 先找到文件信息
         let file_size = client.get_file_size(file_path).await
@@ -687,15 +682,21 @@ impl ZipHandler {
         let extra_len = u16::from_le_bytes([local_header[28], local_header[29]]) as u64;
 
         let data_offset = file_info.local_header_offset + 30 + filename_len + extra_len;
-        // 当max_size足够大时，读取完整的压缩数据以避免"Bad compressed size"错误
         let read_size = if max_size >= file_info.compressed_size as usize {
             file_info.compressed_size
         } else {
             std::cmp::min(max_size as u64, file_info.compressed_size)
         };
-        
 
-        let compressed_data = client.read_file_range(file_path, data_offset, read_size)
+        // 直接读取全部数据，避免人为分块导致的性能问题
+        // 注意：read_file_range_with_progress 本身就是高效的 HTTP Range 请求，并支持进度回调
+        let progress_cb = progress_callback.map(|cb| {
+            Arc::new(move |current: u64, total: u64| {
+                cb(current, total);
+            }) as ProgressCallback
+        });
+        
+        let compressed_data = client.read_file_range_with_progress(file_path, data_offset, read_size, progress_cb)
             .await
             .map_err(|e| format!("Failed to read compressed data: {}", e))?;
 

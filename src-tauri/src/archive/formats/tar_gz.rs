@@ -1,7 +1,7 @@
 /// TAR.GZ 格式处理器（组合GZIP和TAR）
 use crate::archive::types::*;
 use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
-use crate::storage::traits::StorageClient;
+use crate::storage::traits::{StorageClient, ProgressCallback};
 use std::collections::HashMap;
 use std::io::{Cursor, Read};
 use std::sync::Arc;
@@ -29,8 +29,9 @@ impl CompressionHandlerDispatcher for TarGzHandler {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_preview_with_storage_client(client, file_path, entry_path, max_size).await
+        Self::extract_tar_gz_preview_with_progress(client, file_path, entry_path, max_size, progress_callback).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -53,17 +54,7 @@ impl TarGzHandler {
         Self::analyze_tar_gz_streaming(client, file_path).await
     }
 
-    /// 使用storage client提取预览（流式）
-    async fn extract_preview_with_storage_client(
-        client: Arc<dyn StorageClient>,
-        file_path: &str,
-        entry_path: &str,
-        max_size: usize,
-    ) -> Result<FilePreview, String> {
-        log::debug!("使用storage client从TAR.GZ文件流式提取预览: {} -> {}", file_path, entry_path);
 
-        Self::extract_tar_gz_preview_streaming(client, file_path, entry_path, max_size).await
-    }
 
     /// 流式分析TAR.GZ文件
     async fn analyze_tar_gz_streaming(
@@ -99,14 +90,17 @@ impl TarGzHandler {
         Self::analyze_tar_gz_complete(&data)
     }
 
-    /// 流式提取TAR.GZ文件预览
-    async fn extract_tar_gz_preview_streaming(
+
+
+    /// 流式提取TAR.GZ文件预览（支持进度回调）
+    async fn extract_tar_gz_preview_with_progress(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
-        log::debug!("开始流式提取TAR.GZ预览: {} -> {}", file_path, entry_path);
+        log::debug!("开始流式提取TAR.GZ预览（带进度）: {} -> {}", file_path, entry_path);
 
         // 统一使用内存限制
         const MAX_MEMORY_USAGE: usize = 50 * 1024 * 1024; // 50MB
@@ -122,14 +116,20 @@ impl TarGzHandler {
             ));
         }
 
-        // 统一读取并解压缩
-        let data = client.read_full_file(file_path).await
+        // 直接读取全部数据，避免人为分块导致的性能问题
+        let progress_cb = progress_callback.map(|cb| {
+            Arc::new(move |current: u64, total: u64| {
+                cb(current, total);
+            }) as ProgressCallback
+        });
+        
+        let data = client.read_full_file_with_progress(file_path, progress_cb).await
             .map_err(|e| format!("Failed to read file: {}", e))?;
 
         Self::extract_tar_gz_preview_from_data(&data, entry_path, max_size)
     }
 
-    /// 完整TAR.GZ文件分析（用于小文件）
+    /// 完整分析TAR.GZ文件（用于小文件）
     fn analyze_tar_gz_complete(data: &[u8]) -> Result<ArchiveInfo, String> {
         log::debug!("开始分析TAR.GZ文件，数据长度: {} 字节", data.len());
 

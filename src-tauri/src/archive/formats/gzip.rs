@@ -1,7 +1,7 @@
 /// GZIP 格式处理器
 use crate::archive::types::*;
 use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
-use crate::storage::traits::StorageClient;
+use crate::storage::traits::{StorageClient, ProgressCallback};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::io::{Cursor, Read};
@@ -28,8 +28,9 @@ impl CompressionHandlerDispatcher for GzipHandler {
         file_path: &str,
         _entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_preview_with_storage_client(client, file_path, max_size).await
+        Self::extract_gzip_preview_streaming(client, file_path, max_size, progress_callback).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -61,16 +62,7 @@ impl GzipHandler {
     }
 
     /// 使用存储客户端提取GZIP文件预览
-    async fn extract_preview_with_storage_client(
-        client: Arc<dyn StorageClient>,
-        file_path: &str,
-        max_size: usize,
-    ) -> Result<FilePreview, String> {
-        log::debug!("使用storage client从GZIP文件提取预览: {}", file_path);
 
-        // 使用流式方法提取预览，无需完整加载文件
-        Self::extract_gzip_preview_streaming(client, file_path, max_size).await
-    }
 
     /// 流式分析GZIP文件，只读取必要的头部和少量内容
     async fn analyze_gzip_streaming(
@@ -137,14 +129,26 @@ impl GzipHandler {
         client: Arc<dyn StorageClient>,
         file_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
         log::debug!("开始流式提取GZIP预览: {}", file_path);
+
+        let file_size = client.get_file_size(file_path).await
+            .map_err(|e| format!("Failed to get file size: {}", e))?;
 
         // 估算需要读取的压缩数据大小（考虑压缩比）
         // 通常文本压缩比在3-5倍，二进制文件1.5-2倍
         let estimated_compressed_size = (max_size * 3).max(4096); // 至少读取4KB
+        let read_size = std::cmp::min(estimated_compressed_size as u64, file_size);
 
-        let compressed_data = client.read_file_range(file_path, 0, estimated_compressed_size as u64).await
+        // 直接读取全部数据，避免人为分块导致的性能问题
+        let progress_cb = progress_callback.map(|cb| {
+            Arc::new(move |current: u64, total: u64| {
+                cb(current, total);
+            }) as ProgressCallback
+        });
+        
+        let compressed_data = client.read_file_range_with_progress(file_path, 0, read_size, progress_cb).await
             .map_err(|e| format!("Failed to read GZIP data: {}", e))?;
 
         if !Self::validate_gzip_header(&compressed_data) {

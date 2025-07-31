@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
-use super::traits::{StorageClient, StorageError, StorageRequest, StorageResponse, DirectoryResult, StorageFile, ListOptions, ConnectionConfig, StorageCapabilities};
+use super::traits::{StorageClient, StorageError, StorageRequest, StorageResponse, DirectoryResult, StorageFile, ListOptions, ConnectionConfig, StorageCapabilities, ProgressCallback};
 
 /// 本机文件系统存储客户端
 pub struct LocalFileSystemClient {
@@ -312,6 +312,16 @@ impl StorageClient for LocalFileSystemClient {
 
     /// 读取文件的指定范围
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
+        self.read_file_range_with_progress(path, start, length, None).await
+    }
+
+    async fn read_file_range_with_progress(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+        progress_callback: Option<ProgressCallback>,
+    ) -> Result<Vec<u8>, StorageError> {
         if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
@@ -339,6 +349,12 @@ impl StorageClient for LocalFileSystemClient {
             .map_err(|e| StorageError::IoError(format!("Failed to read file: {}", e)))?;
 
         buffer.truncate(bytes_read);
+        
+        // 对于本地文件，读取是瞬时的，所以在完成后调用一次进度回调
+        if let Some(callback) = progress_callback {
+            callback(buffer.len() as u64, length);
+        }
+        
         log::debug!("本地文件实际读取到 {} 字节", buffer.len());
         Ok(buffer)
     }

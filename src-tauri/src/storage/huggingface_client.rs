@@ -3,10 +3,11 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
+use futures_util::StreamExt;
 
 use crate::storage::traits::{
     StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig,
-    StorageCapabilities, DirectoryResult, StorageFile, ListOptions,
+    StorageCapabilities, DirectoryResult, StorageFile, ListOptions, ProgressCallback,
 };
 
 /// HuggingFace 数据集信息
@@ -635,6 +636,16 @@ impl StorageClient for HuggingFaceClient {
     }
 
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
+        self.read_file_range_with_progress(path, start, length, None).await
+    }
+
+    async fn read_file_range_with_progress(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+        progress_callback: Option<ProgressCallback>,
+    ) -> Result<Vec<u8>, StorageError> {
         let (dataset_id, file_path) = self.parse_path(path)?;
         let download_url = self.build_download_url(&dataset_id, &file_path);
         
@@ -657,10 +668,25 @@ impl StorageClient for HuggingFaceClient {
             return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown error"))));
         }
 
-        let bytes = response.bytes().await
-            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+        // 使用流式读取以支持进度回调
+        let mut result = Vec::with_capacity(length as usize);
+        let mut downloaded = 0u64;
+        let mut stream = response.bytes_stream();
 
-        Ok(bytes.to_vec())
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result
+                .map_err(|e| StorageError::NetworkError(format!("Failed to read chunk: {}", e)))?;
+            
+            result.extend_from_slice(&chunk);
+            downloaded += chunk.len() as u64;
+
+            // 调用进度回调
+            if let Some(ref callback) = progress_callback {
+                callback(downloaded, length);
+            }
+        }
+
+        Ok(result)
     }
 
     async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError> {

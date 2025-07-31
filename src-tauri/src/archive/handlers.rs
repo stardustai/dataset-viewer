@@ -55,15 +55,19 @@ impl ArchiveHandler {
         handler.analyze_with_client(client, &file_path, &filename, max_size).await
     }
 
-    /// 获取文件预览（统一StorageClient接口）
-    pub async fn get_file_preview_with_client(
+    /// 获取文件预览
+    pub async fn get_file_preview_with_client<F>(
         &self,
         client: Arc<dyn StorageClient>,
         file_path: String,
         filename: String,
         entry_path: String,
         max_preview_size: Option<usize>,
-    ) -> Result<FilePreview, String> {
+        progress_callback: Option<F>,
+    ) -> Result<FilePreview, String>
+    where
+        F: Fn(u64, u64) + Send + Sync + 'static,
+    {
         let compression_type = CompressionType::from_filename(&filename);
 
         // 检查是否支持该格式
@@ -96,9 +100,18 @@ impl ArchiveHandler {
                 .ok_or_else(|| "Unsupported archive format".to_string())?
         };
 
-        let max_size = max_preview_size.unwrap_or(64 * 1024); // 默认64KB
-        handler.extract_preview_with_client(client, &file_path, &entry_path, max_size).await
+        // 如果没有指定大小限制，使用4GB作为最大限制（用于下载完整文件）
+        let max_size = max_preview_size.unwrap_or(4 * 1024 * 1024 * 1024); // 默认4GB
+        
+        // 统一使用支持进度回调的方法
+        let boxed_callback = progress_callback.map(|callback| {
+            let boxed: Box<dyn Fn(u64, u64) + Send + Sync> = Box::new(callback);
+            boxed
+        });
+        handler.extract_preview_with_client(client, &file_path, &entry_path, max_size, boxed_callback).await
     }
+
+
     /// 检查文件是否支持压缩包操作
     pub fn is_supported_archive(&self, filename: &str) -> bool {
         let compression_type = CompressionType::from_filename(filename);

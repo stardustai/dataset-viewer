@@ -10,10 +10,11 @@ use urlencoding;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use base64::Engine;
+use futures_util::StreamExt;
 
 use crate::storage::traits::{
     StorageClient, StorageRequest, StorageResponse, StorageError,
-    ConnectionConfig, StorageCapabilities, DirectoryResult, StorageFile, ListOptions
+    ConnectionConfig, StorageCapabilities, DirectoryResult, StorageFile, ListOptions, ProgressCallback
 };
 
 pub struct OSSClient {
@@ -477,6 +478,16 @@ impl StorageClient for OSSClient {
     }
 
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
+        self.read_file_range_with_progress(path, start, length, None).await
+    }
+
+    async fn read_file_range_with_progress(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+        progress_callback: Option<ProgressCallback>,
+    ) -> Result<Vec<u8>, StorageError> {
         if !self.is_connected().await {
             return Err(StorageError::NotConnected);
         }
@@ -548,12 +559,27 @@ impl StorageClient for OSSClient {
 
         println!("预期接收 {} 字节，实际Content-Length: {}", length, content_length);
 
-        let bytes = response.bytes().await
-            .map_err(|e| StorageError::RequestFailed(format!("Failed to read range content: {}", e)))?;
+        // 使用流式读取以支持进度回调
+        let mut result = Vec::with_capacity(length as usize);
+        let mut downloaded = 0u64;
+        let mut stream = response.bytes_stream();
 
-        println!("实际接收到 {} 字节", bytes.len());
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result
+                .map_err(|e| StorageError::RequestFailed(format!("Failed to read chunk: {}", e)))?;
+            
+            result.extend_from_slice(&chunk);
+            downloaded += chunk.len() as u64;
 
-        Ok(bytes.to_vec())
+            // 调用进度回调
+            if let Some(ref callback) = progress_callback {
+                callback(downloaded, length);
+            }
+        }
+
+        println!("实际接收到 {} 字节", result.len());
+
+        Ok(result)
     }
 
     fn capabilities(&self) -> StorageCapabilities {
