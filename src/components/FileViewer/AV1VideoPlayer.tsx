@@ -36,6 +36,7 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
   const [uiUpdateTrigger, setUiUpdateTrigger] = useState(0);
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoPlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDecoderReady = useRef(false);
   const startTime = useRef<number>(0);
   const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null); // 复用的离屏画布
@@ -370,7 +371,7 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
         playStateRef.current.currentTime = 1 / playStateRef.current.frameRate;
         triggerUIUpdate();
 
-        setTimeout(() => togglePlayback(), 200)
+        autoPlayTimeoutRef.current = setTimeout(() => togglePlayback(), 200)
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : t('av1.player.error.decode');
@@ -393,6 +394,10 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
       if (playIntervalRef.current) {
         clearTimeout(playIntervalRef.current);
         playIntervalRef.current = null;
+      }
+      if (autoPlayTimeoutRef.current) {
+        clearTimeout(autoPlayTimeoutRef.current);
+        autoPlayTimeoutRef.current = null;
       }
       dav1dDecoderService.cleanup();
     };

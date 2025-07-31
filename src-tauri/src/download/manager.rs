@@ -366,7 +366,7 @@ impl DownloadManager {
             archive_path.to_string(),
             archive_filename.to_string(),
             entry_path.to_string(),
-            None, // 使用4GB默认限制来获取完整文件
+            Some(4 * 1024 * 1024 * 1024), // 4GB 限制
             Some(progress_callback), // 使用进度回调显示提取进度
         ).await.map_err(|e| {
             format!("Failed to extract file from archive: {}", e)
