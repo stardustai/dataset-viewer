@@ -18,15 +18,71 @@ interface DecodedFrame {
 const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [frameCount, setFrameCount] = useState(0);
-  const [totalFrames, setTotalFrames] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 480, height: 270 });
+  
+  // 使用ref管理播放状态，避免state依赖问题
+  const playStateRef = useRef({
+    frameCount: 0,
+    totalFrames: 0,
+    isPlaying: false,
+    frameRate: 15,
+    currentTime: 0
+  });
+  
+  // 用于触发UI更新的状态
+  const [uiUpdateTrigger, setUiUpdateTrigger] = useState(0);
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isDecoderReady = useRef(false);
   const startTime = useRef<number>(0);
+  const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null); // 复用的离屏画布
+
+  // 触发UI更新的辅助函数
+  const triggerUIUpdate = useCallback(() => {
+    setUiUpdateTrigger(prev => prev + 1);
+  }, []);
+
+  // 计算保持宽高比的画布尺寸
+  const calculateCanvasSize = useCallback((videoWidth: number, videoHeight: number) => {
+    // 获取容器的实际尺寸
+    let maxWidth = 800;
+    let maxHeight = 600;
+    
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerStyle = window.getComputedStyle(containerRef.current);
+      const paddingX = parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
+      const paddingY = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+      
+      // 使用实际的容器尺寸减去padding
+      maxWidth = Math.max(200, containerRect.width - paddingX - 16); // 额外减去一些边距
+      maxHeight = Math.max(150, containerRect.height - paddingY - 16);
+    }
+    
+    const aspectRatio = videoWidth / videoHeight;
+    
+    let canvasWidth = videoWidth;
+    let canvasHeight = videoHeight;
+    
+    // 如果视频尺寸超过最大限制，按比例缩放
+    if (canvasWidth > maxWidth) {
+      canvasWidth = maxWidth;
+      canvasHeight = canvasWidth / aspectRatio;
+    }
+    
+    if (canvasHeight > maxHeight) {
+      canvasHeight = maxHeight;
+      canvasWidth = canvasHeight * aspectRatio;
+    }
+    
+    return {
+      width: Math.round(canvasWidth),
+      height: Math.round(canvasHeight)
+    };
+  }, []);
 
   // 渲染帧函数
   const renderFrame = useCallback((frame: DecodedFrame) => {
@@ -36,9 +92,17 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 设置canvas尺寸
-    canvas.width = 480;
-    canvas.height = 270;
+    // 如果是第一帧，设置视频尺寸并计算画布大小
+    if (!videoDimensions || videoDimensions.width !== frame.width || videoDimensions.height !== frame.height) {
+      const newDimensions = { width: frame.width, height: frame.height };
+      setVideoDimensions(newDimensions);
+      const newCanvasSize = calculateCanvasSize(frame.width, frame.height);
+      setCanvasSize(newCanvasSize);
+      
+      // 更新canvas实际尺寸
+      canvas.width = newCanvasSize.width;
+      canvas.height = newCanvasSize.height;
+    }
 
     // 清空画布
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -89,34 +153,45 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
         imageData.data.set(rgbaData);
       }
 
-      // 创建临时canvas并缩放绘制
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
-      if (tempCtx) {
-        tempCanvas.width = frame.width;
-        tempCanvas.height = frame.height;
-        tempCtx.putImageData(imageData, 0, 0);
-        ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+      // 使用复用的OffscreenCanvas进行缩放绘制
+      if (!offscreenCanvasRef.current || 
+          offscreenCanvasRef.current.width !== frame.width || 
+          offscreenCanvasRef.current.height !== frame.height) {
+        offscreenCanvasRef.current = new OffscreenCanvas(frame.width, frame.height);
+      }
+      
+      const offscreenCtx = offscreenCanvasRef.current.getContext('2d');
+      if (offscreenCtx) {
+        offscreenCtx.putImageData(imageData, 0, 0);
+        ctx.drawImage(offscreenCanvasRef.current, 0, 0, canvas.width, canvas.height);
       }
     } catch (error) {
       console.error(t('av1.player.error.decode'), error);
     }
-  }, []);
+  }, [videoDimensions, canvasSize, calculateCanvasSize]);
 
   // 停止播放
   const stopPlayback = useCallback(() => {
-    setIsPlaying(false);
+    playStateRef.current.isPlaying = false;
     if (playIntervalRef.current) {
       clearTimeout(playIntervalRef.current);
       playIntervalRef.current = null;
     }
-  }, []);
+    triggerUIUpdate();
+  }, [triggerUIUpdate]);
 
   // 初始化解码器
   const initializeDecoder = useCallback(async () => {
     try {
       await dav1dDecoderService.initialize();
       await dav1dDecoderService.setupDecoder(videoData);
+      
+      // 获取实际帧率
+      const actualFrameRate = dav1dDecoderService.getFrameRate();
+      if (actualFrameRate > 0) {
+        playStateRef.current.frameRate = actualFrameRate;
+      }
+      
       isDecoderReady.current = true;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : t('av1.player.error.init');
@@ -127,7 +202,7 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
 
   // 播放控制
   const togglePlayback = useCallback(async () => {
-    if (isPlaying) {
+    if (playStateRef.current.isPlaying) {
       stopPlayback();
       return;
     }
@@ -146,16 +221,17 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
       }
 
       // 检查是否在最后一帧，如果是则从头开始
-      if (totalFrames > 0 && frameCount >= totalFrames) {
+      if (playStateRef.current.totalFrames > 0 && playStateRef.current.frameCount >= playStateRef.current.totalFrames) {
         dav1dDecoderService.resetPlayback();
-        setFrameCount(0);
+        playStateRef.current.frameCount = 0;
         startTime.current = Date.now();
       } else {
         // 从当前位置继续播放
-        startTime.current = Date.now() - (frameCount / 15) * 1000; // 根据当前帧计算开始时间
+        startTime.current = Date.now() - (playStateRef.current.frameCount / playStateRef.current.frameRate) * 1000;
       }
       
-      setIsPlaying(true);
+      playStateRef.current.isPlaying = true;
+      triggerUIUpdate();
 
       // 播放循环
       const playLoop = async () => {
@@ -173,18 +249,18 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
           const frame = await dav1dDecoderService.getNextFrame();
           if (frame) {
             renderFrame(frame);
-            setFrameCount(prev => {
-              const newCount = prev + 1;
-              // 检查是否到达最后一帧
-              if (totalFrames > 0 && newCount > totalFrames) {
-                // 播放结束，停止播放
-                stopPlayback();
-                return newCount;
-              }
-              return newCount;
-            });
+            playStateRef.current.frameCount += 1;
             
-            playIntervalRef.current = setTimeout(playLoop, 67); // ~15fps
+            // 检查是否到达最后一帧
+            if (playStateRef.current.totalFrames > 0 && playStateRef.current.frameCount >= playStateRef.current.totalFrames) {
+              // 播放结束，停止播放
+              stopPlayback();
+              return;
+            }
+            
+            triggerUIUpdate();
+            const frameInterval = 1000 / playStateRef.current.frameRate;
+            playIntervalRef.current = setTimeout(playLoop, frameInterval);
           } else {
             // 没有更多帧，播放结束
             stopPlayback();
@@ -195,18 +271,20 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
         }
       };
 
-      playIntervalRef.current = setTimeout(playLoop, 67);
+      const frameInterval = 1000 / playStateRef.current.frameRate;
+      playIntervalRef.current = setTimeout(playLoop, frameInterval);
     } catch (error) {
       setError(t('av1.player.error.decode'));
     }
-  }, [isPlaying, stopPlayback, initializeDecoder, renderFrame, currentTime, videoData]);
+  }, [stopPlayback, initializeDecoder, renderFrame, triggerUIUpdate]);
 
   // 重置播放器
   const resetPlayer = useCallback(async () => {
     try {
       stopPlayback();
-      setFrameCount(0);
-      setCurrentTime(0);
+      playStateRef.current.frameCount = 0;
+      playStateRef.current.currentTime = 0;
+      playStateRef.current.totalFrames = 0;
       setError(null);
       startTime.current = 0;
       
@@ -222,40 +300,40 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
       }
+      
+      triggerUIUpdate();
     } catch (error) {
       console.error(t('av1.player.error.decode'), error);
     }
-  }, [stopPlayback]);
+  }, [stopPlayback, triggerUIUpdate]);
 
   // 进度条点击跳转
-  const handleProgressClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (totalFrames === 0 || !isDecoderReady.current) {
-      return;
-    }
-
+  const handleProgressClick = useCallback(async (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDecoderReady.current) return;
+    
     const rect = event.currentTarget.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
-    const progressPercent = clickX / rect.width;
-    const targetFrame = Math.floor(progressPercent * totalFrames);
+    const progressWidth = rect.width;
+    const clickRatio = clickX / progressWidth;
     
-    // 跳转到目标帧
-    dav1dDecoderService.seekToFrame(targetFrame);
-    setFrameCount(targetFrame);
-    
-    // 如果正在播放，需要重新渲染当前帧
-    if (!isPlaying) {
-      // 暂停状态下，渲染跳转后的帧
-      dav1dDecoderService.getNextFrame().then(frame => {
-        if (frame) {
-          renderFrame(frame);
+    try {
+      const totalFrames = dav1dDecoderService.getTotalFrames();
+      if (totalFrames > 0) {
+        const targetFrame = Math.floor(clickRatio * totalFrames);
+        await dav1dDecoderService.seekToFrame(targetFrame);
+        playStateRef.current.frameCount = targetFrame;
+        
+        // 如果正在播放，更新开始时间
+        if (playStateRef.current.isPlaying) {
+          startTime.current = Date.now() - (targetFrame / playStateRef.current.frameRate) * 1000;
         }
-      }).catch(error => {
-        console.error(t('av1.player.error.decode'), error);
-      });
+        
+        triggerUIUpdate();
+      }
+    } catch (error) {
+      setError(t('av1.player.error.seek'));
     }
-  }, [totalFrames, isPlaying, renderFrame]);
-
-
+  }, [triggerUIUpdate]);
 
   // 获取总帧数
   const getTotalFrames = useCallback(() => {
@@ -282,87 +360,30 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
       // 等待数据准备完成后设置总帧数
       await new Promise(resolve => setTimeout(resolve, 100)); // 短暂延迟确保数据准备完成
       const total = getTotalFrames();
-      setTotalFrames(total);
+      playStateRef.current.totalFrames = total;
       
       // 渲染第一帧
       const frame = await dav1dDecoderService.getNextFrame();
       if (frame) {
         renderFrame(frame);
-        setFrameCount(1);
-        
-        // 自动开始循环播放
-        setTimeout(async () => {
-          try {
-            setError(null);
-            
-            // 确保解码器已初始化
-            if (!isDecoderReady.current) {
-              throw new Error(t('av1.player.error.init'));
-            }
-            
-            setIsPlaying(true);
-            setFrameCount(1); // 保持当前帧计数，因为已经渲染了第一帧
-            startTime.current = Date.now();
+        playStateRef.current.frameCount = 1;
+        playStateRef.current.currentTime = 1 / playStateRef.current.frameRate;
+        triggerUIUpdate();
 
-            // 不需要重新设置解码器，直接从当前位置继续播放
-
-            // 播放循环
-            const playLoop = async () => {
-              if (playIntervalRef.current === null) {
-                return;
-              }
-              
-              // 检查解码器状态和数据准备情况
-              if (!isDecoderReady.current || !dav1dDecoderService.isDataReady()) {
-                setIsPlaying(false);
-                setError(t('av1.player.error.decode'));
-                return;
-              }
-              
-              try {
-                const frame = await dav1dDecoderService.getNextFrame();
-                if (frame) {
-                  renderFrame(frame);
-                  setFrameCount(prev => {
-                    const newCount = prev + 1;
-                    // 检查是否到达最后一帧
-                    if (totalFrames > 0 && newCount > totalFrames) {
-                      // 播放结束，停止播放
-                      setIsPlaying(false);
-                      return newCount;
-                    }
-                    return newCount;
-                  });
-                  
-                  playIntervalRef.current = setTimeout(playLoop, 67);
-                } else {
-                  // 没有更多帧，播放结束
-                  setIsPlaying(false);
-                }
-              } catch (error) {
-                setIsPlaying(false);
-                setError(t('av1.player.error.decode'));
-              }
-            };
-
-            playIntervalRef.current = setTimeout(playLoop, 67);
-          } catch (error) {
-            setError(t('av1.player.error.decode'));
-          }
-        }, 1000);
+        setTimeout(() => togglePlayback(), 200)
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : t('av1.player.error.decode');
       setError(errorMsg);
     }
-  }, [initializeDecoder, renderFrame, getTotalFrames, videoData]);
+  }, [initializeDecoder, renderFrame, getTotalFrames, triggerUIUpdate, togglePlayback]);
 
   // 组件初始化
   useEffect(() => {
     setError(null);
-    setFrameCount(0);
-    setCurrentTime(0);
-    setTotalFrames(0);
+    playStateRef.current.frameCount = 0;
+    playStateRef.current.currentTime = 0;
+    playStateRef.current.totalFrames = 0;
     startTime.current = 0;
     
     // 自动渲染第一帧
@@ -375,7 +396,10 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
       }
       dav1dDecoderService.cleanup();
     };
-  }, [videoData, renderFirstFrame]);
+  }, [videoData]);
+  
+  // 触发UI更新的依赖
+  useEffect(() => {}, [uiUpdateTrigger]);
 
   if (error) {
     return (
@@ -397,19 +421,21 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
   };
 
   // 计算进度（基于当前播放的帧数和总帧数）
+  // 使用uiUpdateTrigger确保UI响应playStateRef变化
+  const { frameCount, totalFrames, frameRate, isPlaying } = playStateRef.current;
   const progress = totalFrames > 0 ? Math.min((frameCount / totalFrames) * 100, 100) : 0;
-  const estimatedDuration = totalFrames > 0 ? totalFrames / 15 : 0;
-  const currentTimeInSeconds = frameCount / 15; // 假设15fps
+  const estimatedDuration = totalFrames > 0 ? totalFrames / frameRate : 0;
+  const currentTimeInSeconds = frameCount / frameRate; // 使用实际帧率
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* 视频画布区域 */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div ref={containerRef} className="flex-1 flex items-center justify-center p-4">
         <div className="relative bg-black rounded-lg shadow-lg overflow-hidden">
           <canvas
             ref={canvasRef}
-            width={480}
-            height={270}
+            width={canvasSize.width}
+            height={canvasSize.height}
             className="block"
             style={{ imageRendering: 'pixelated' }}
           />
@@ -427,8 +453,8 @@ const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
             onClick={togglePlayback}
             className="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors shadow-lg flex-shrink-0"
             title={isPlaying ? t('av1.player.pause') : t('av1.player.play')}
-          >
-            {isPlaying ? (
+           >
+             {isPlaying ? (
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
               </svg>

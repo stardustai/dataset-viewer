@@ -19,8 +19,8 @@ export class Dav1dDecoderService {
   private frameIndex = 0;
   private frameQueue: Uint8Array[] = [];
   private currentFrameIndex = 0;
-  private fileFormat: 'ivf' | 'mp4' | 'raw' = 'raw';
   private isDataPrepared = false;
+  private frameRate = 30; // 默认帧率
 
   /**
    * 检查浏览器是否原生支持 AV1
@@ -108,6 +108,13 @@ export class Dav1dDecoderService {
   }
 
   /**
+   * 获取视频帧率
+   */
+  getFrameRate(): number {
+    return this.frameRate;
+  }
+
+  /**
    * 重置播放位置到开始
    */
   resetPlayback(): void {
@@ -133,9 +140,8 @@ export class Dav1dDecoderService {
    */
   private reset(): void {
     this.frameIndex = 0;
-    this.currentFrameIndex = 0;
     this.frameQueue = [];
-    this.fileFormat = 'raw';
+    this.currentFrameIndex = 0;
     this.isDataPrepared = false;
   }
 
@@ -148,7 +154,6 @@ export class Dav1dDecoderService {
     }
 
     const formatInfo = this.detectFileFormat(this.inputData);
-    this.fileFormat = formatInfo.format;
 
     switch (formatInfo.format) {
       case 'mp4':
@@ -178,6 +183,14 @@ export class Dav1dDecoderService {
     if (signature === 'DKIF') {
       const headerLength = new DataView(data.buffer).getUint16(6, true);
       const frameCount = new DataView(data.buffer).getUint32(24, true);
+      
+      // 解析帧率信息 (IVF格式: timebase_denominator在偏移16, timebase_numerator在偏移20)
+      const timebaseDen = new DataView(data.buffer).getUint32(16, true);
+      const timebaseNum = new DataView(data.buffer).getUint32(20, true);
+      if (timebaseNum > 0 && timebaseDen > 0) {
+        this.frameRate = timebaseDen / timebaseNum;
+      }
+      
       return { format: 'ivf', headerSize: headerLength, frameCount };
     }
     
@@ -353,8 +366,8 @@ export class Dav1dDecoderService {
       obuSize = sizeResult.value;
       offset = sizeResult.nextOffset;
     } else {
-      // 没有大小字段，尝试估算到下一个 OBU 或数据结束
-      obuSize = Math.min(8192, data.length - offset);
+      // 没有大小字段，扫描寻找下一个有效的 OBU 头或数据结束
+      obuSize = this.findNextOBUBoundary(data, offset) - offset;
     }
     
     if (offset + obuSize > data.length) {
@@ -362,6 +375,66 @@ export class Dav1dDecoderService {
     }
     
     return data.slice(startOffset, offset + obuSize);
+  }
+
+  /**
+   * 扫描寻找下一个有效的 OBU 头边界
+   */
+  private findNextOBUBoundary(data: Uint8Array, startOffset: number): number {
+    // 从当前偏移开始扫描，寻找下一个有效的 OBU 头
+    for (let i = startOffset + 1; i < data.length; i++) {
+      if (this.isValidOBUHeader(data, i)) {
+        return i;
+      }
+    }
+    // 如果没有找到下一个 OBU 头，返回数据结束位置
+    return data.length;
+  }
+
+  /**
+   * 检查指定位置是否为有效的 OBU 头
+   */
+  private isValidOBUHeader(data: Uint8Array, offset: number): boolean {
+    if (offset >= data.length) return false;
+    
+    const obuHeader = data[offset];
+    const obuType = (obuHeader >> 3) & 0x0F;
+    
+    // 检查 OBU 类型是否有效 (0-15 范围内的已定义类型)
+    const validOBUTypes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    if (!validOBUTypes.includes(obuType)) {
+      return false;
+    }
+    
+    // 检查保留位是否为0
+    const reservedBit = (obuHeader & 0x01);
+    if (reservedBit !== 0) {
+      return false;
+    }
+    
+    const hasExtension = (obuHeader & 0x04) !== 0;
+    const hasSize = (obuHeader & 0x02) !== 0;
+    
+    let checkOffset = offset + 1;
+    
+    // 跳过扩展头
+    if (hasExtension && checkOffset < data.length) {
+      checkOffset++;
+    }
+    
+    // 如果有大小字段，尝试读取 LEB128
+    if (hasSize && checkOffset < data.length) {
+      const sizeResult = this.readLEB128(data, checkOffset);
+      if (!sizeResult) {
+        return false;
+      }
+      // 检查大小是否合理（不超过剩余数据长度）
+      if (sizeResult.value > data.length - sizeResult.nextOffset) {
+        return false;
+      }
+    }
+    
+    return true;
   }
   
 

@@ -509,7 +509,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
               archiveInfo={archiveInfo}
               onFileSelect={previewFile}
               onBack={() => window.history.back()}
-              archiveFileName={filename}
             />
           )}
         </div>

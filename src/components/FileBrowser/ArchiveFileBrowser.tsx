@@ -15,7 +15,6 @@ interface ArchiveFileBrowserProps {
   archiveInfo: ArchiveInfo;
   onFileSelect: (entry: any, path: string) => void;
   onBack: () => void;
-  archiveFileName: string;
   loading?: boolean;
   error?: string;
 }
@@ -230,7 +229,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
           </div>
 
           {/* 文件列表 */}
-          {filteredAndSortedFiles.length > 0 ? (
+          {currentFiles.length > 0 ? (
             searchTerm && filteredAndSortedFiles.length === 0 ? (
               <NoSearchResultsDisplay
                 searchTerm={searchTerm}
