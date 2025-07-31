@@ -476,9 +476,9 @@
                         size: getFileSize(`Dataset.Viewer_${version}_x64.dmg`)
                     },
                     "windows": {
-                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_x64_en-US.msi`,
-                        filename: `Dataset.Viewer_${version}_x64_en-US.msi`,
-                        size: getFileSize(`Dataset.Viewer_${version}_x64_en-US.msi`)
+                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version.replace('-beta.1', '-1')}_x64_en-US.msi`,
+                        filename: `Dataset.Viewer_${version.replace('-beta.1', '-1')}_x64_en-US.msi`,
+                        size: getFileSize(`Dataset.Viewer_${version.replace('-beta.1', '-1')}_x64_en-US.msi`)
                     },
                     "linux": {
                         downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_amd64.deb`,
