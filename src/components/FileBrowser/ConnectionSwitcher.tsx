@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Check, Wifi, Star, Loader, AlertCircle } from 'lucide-react';
+import { ChevronDown, Check, Star, Loader, AlertCircle } from 'lucide-react';
 import { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
 
@@ -164,7 +164,6 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
         className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors max-w-32 lg:max-w-48"
         title={`${t('connected.to')} ${currentConnection}`}
       >
-        <Wifi className="w-3 h-3 flex-shrink-0" />
         <span className="truncate">{currentConnection}</span>
         <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>

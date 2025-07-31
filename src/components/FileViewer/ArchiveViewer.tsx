@@ -64,6 +64,24 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>(''); // 文本文件内容
+  // 从localStorage获取隐藏文件显示偏好
+  const [showHidden, setShowHidden] = useState(() => {
+    try {
+      const saved = localStorage.getItem('file-viewer-show-hidden');
+      return saved ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  // 保存隐藏文件显示偏好到localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('file-viewer-show-hidden', JSON.stringify(showHidden));
+    } catch {
+      // 忽略localStorage错误
+    }
+  }, [showHidden]);
   
   // 文件加载状态管理
   const [fileLoadState, setFileLoadState] = useState({
@@ -525,6 +543,8 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
               archiveInfo={archiveInfo}
               onFileSelect={previewFile}
               onBack={() => window.history.back()}
+              showHidden={showHidden}
+              onShowHiddenChange={setShowHidden}
             />
           )}
         </div>

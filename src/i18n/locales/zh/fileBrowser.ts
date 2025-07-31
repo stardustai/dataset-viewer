@@ -14,7 +14,6 @@ export const fileBrowser = {
   'search.files': '搜索文件名...',
   'search.files.placeholder': '搜索文件...',
   'search.global': '搜索数据集',
-  'search.datasets': '搜索',
   'no.search.results': '没有找到匹配的文件',
   'try.different.search': '尝试其他搜索词或清除搜索',
   'clear.search': '清除搜索',
@@ -36,6 +35,9 @@ export const fileBrowser = {
   'status.no.matching.files': '未找到匹配的文件',
   'status.try.different.keywords': '请尝试不同的搜索关键词 "{{searchTerm}}"',
   'status.clear.search': '清除搜索',
+  'status.no.local.results': '本地未找到匹配的文件',
+  'status.try.remote.search': '点击搜索远程数据集 "{{searchTerm}}"',
+  'status.search.remote': '搜索远程数据集',
 
   // 加载状态
   'loading.directory': '正在加载 {{path}} 目录...',

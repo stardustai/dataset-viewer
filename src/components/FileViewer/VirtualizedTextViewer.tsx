@@ -33,39 +33,16 @@ const LineContentModal: React.FC<{
   const modalRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
+  // 格式化配置持久化键
+  const FORMAT_PREFERENCE_KEY = 'text-viewer-format-preference';
+
   // 格式化状态
-  const [isFormatted, setIsFormatted] = useState(false);
+  const [isFormatted, setIsFormatted] = useState(() => {
+    // 从localStorage读取用户的格式化偏好
+    const saved = localStorage.getItem(FORMAT_PREFERENCE_KEY);
+    return saved === 'true';
+  });
   const [formattedContent, setFormattedContent] = useState('');
-
-  // 重置格式化状态当内容变化时
-  useEffect(() => {
-    setIsFormatted(false);
-    setFormattedContent('');
-  }, [content]);
-
-  // JSON格式化函数
-  const formatAsJSON = useCallback(() => {
-    try {
-      // 尝试解析JSON
-      const parsed = JSON.parse(content.trim());
-      // 格式化为缩进的JSON
-      const formatted = JSON.stringify(parsed, null, 2);
-      setFormattedContent(formatted);
-      setIsFormatted(true);
-      showCopyToast(t('format.json.success'));
-    } catch (error) {
-      showCopyToast(t('format.json.failed'));
-    }
-  }, [content, t]);
-
-  // 切换显示模式
-  const toggleFormatView = useCallback(() => {
-    if (isFormatted) {
-      setIsFormatted(false);
-    } else {
-      formatAsJSON();
-    }
-  }, [isFormatted, formatAsJSON]);
 
   // 检查内容是否可能是JSON
   const isLikelyJSON = useCallback((text: string) => {
@@ -73,6 +50,56 @@ const LineContentModal: React.FC<{
     return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
            (trimmed.startsWith('[') && trimmed.endsWith(']'));
   }, []);
+
+  // JSON格式化函数
+  const formatAsJSON = useCallback((showToast = true) => {
+    try {
+      // 尝试解析JSON
+      const parsed = JSON.parse(content.trim());
+      // 格式化为缩进的JSON
+      const formatted = JSON.stringify(parsed, null, 2);
+      setFormattedContent(formatted);
+      setIsFormatted(true);
+      // 只在手动触发时显示成功提醒
+      if (showToast) {
+        showCopyToast(t('format.json.success'));
+      }
+    } catch (error) {
+      // 只在手动触发时显示失败提醒
+      if (showToast) {
+        showCopyToast(t('format.json.failed'));
+        // 格式化失败时自动关闭弹窗
+        setTimeout(() => {
+          onClose();
+        }, 1500); // 1.5秒后自动关闭
+      }
+    }
+  }, [content, t, onClose]);
+
+  // 重置格式化状态当内容变化时
+  useEffect(() => {
+    // 如果用户偏好格式化且内容看起来像JSON，自动尝试格式化
+    const shouldAutoFormat = localStorage.getItem(FORMAT_PREFERENCE_KEY) === 'true';
+    if (shouldAutoFormat && isLikelyJSON(content)) {
+      formatAsJSON(false); // 自动格式化时不显示提醒
+    } else {
+      setIsFormatted(false);
+      setFormattedContent('');
+    }
+  }, [content, formatAsJSON, isLikelyJSON, FORMAT_PREFERENCE_KEY]);
+
+  // 切换显示模式
+  const toggleFormatView = useCallback(() => {
+    if (isFormatted) {
+      setIsFormatted(false);
+      // 保存用户偏好：不格式化
+      localStorage.setItem(FORMAT_PREFERENCE_KEY, 'false');
+    } else {
+      formatAsJSON();
+      // 保存用户偏好：格式化
+      localStorage.setItem(FORMAT_PREFERENCE_KEY, 'true');
+    }
+  }, [isFormatted, formatAsJSON, FORMAT_PREFERENCE_KEY]);
 
   // 获取当前显示的内容
   const currentContent = isFormatted ? formattedContent : content;
