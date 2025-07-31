@@ -574,12 +574,12 @@
             const platform = 'macos-arm64';
             const config = appConfig?.releases?.[platform];
 
-            if (config) {
+            if (config && config.size) {
                 downloadFile(config.downloadUrl, config.filename);
                 // 显示 macOS 安装提示
                 showMacInstallationTip();
             } else {
-                // 跳转到 GitHub releases
+                // 文件不存在或无法获取大小，跳转到 GitHub releases
                 window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
@@ -592,10 +592,10 @@
             }
 
             const config = appConfig?.releases?.windows;
-            if (config) {
+            if (config && config.size) {
                 downloadFile(config.downloadUrl, config.filename);
             } else {
-                // 跳转到 GitHub releases
+                // 文件不存在或无法获取大小，跳转到 GitHub releases
                 window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
@@ -608,10 +608,10 @@
             }
 
             const config = appConfig?.releases?.linux;
-            if (config) {
+            if (config && config.size) {
                 downloadFile(config.downloadUrl, config.filename);
             } else {
-                // 跳转到 GitHub releases
+                // 文件不存在或无法获取大小，跳转到 GitHub releases
                 window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
@@ -624,10 +624,10 @@
             }
 
             const config = appConfig?.releases?.['linux-appimage'];
-            if (config) {
+            if (config && config.size) {
                 downloadFile(config.downloadUrl, config.filename);
             } else {
-                // 跳转到 GitHub releases
+                // 文件不存在或无法获取大小，跳转到 GitHub releases
                 window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
             }
         }
