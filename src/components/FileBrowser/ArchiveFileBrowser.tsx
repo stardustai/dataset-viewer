@@ -1,24 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Home,
   ChevronUp,
   ChevronDown,
   Search,
   X,
-  Copy
 } from 'lucide-react';
 import { StorageFile, ArchiveInfo } from '../../types';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { LoadingDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
-import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
 
 interface ArchiveFileBrowserProps {
   archiveInfo: ArchiveInfo;
   onFileSelect: (entry: any, path: string) => void;
   onBack: () => void;
-  archiveFileName: string;
   loading?: boolean;
   error?: string;
 }
@@ -27,7 +23,6 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
   archiveInfo,
   onFileSelect,
   onBack,
-  archiveFileName,
   loading = false,
   error
 }) => {
@@ -234,7 +229,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
           </div>
 
           {/* 文件列表 */}
-          {filteredAndSortedFiles.length > 0 ? (
+          {currentFiles.length > 0 ? (
             searchTerm && filteredAndSortedFiles.length === 0 ? (
               <NoSearchResultsDisplay
                 searchTerm={searchTerm}

@@ -26,8 +26,9 @@ impl CompressionHandlerDispatcher for TarHandler {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_preview_with_storage_client(client, file_path, entry_path, max_size).await
+        Self::extract_tar_preview_with_progress(client, file_path, entry_path, max_size, progress_callback).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -64,16 +65,6 @@ impl TarHandler {
     }
 
     /// 使用存储客户端提取TAR文件预览（流式提取）
-    async fn extract_preview_with_storage_client(
-        client: Arc<dyn StorageClient>,
-        file_path: &str,
-        entry_path: &str,
-        max_size: usize,
-    ) -> Result<FilePreview, String> {
-        // 使用流式方法提取预览，避免加载整个文件
-        Self::extract_tar_preview_streaming(client, file_path, entry_path, max_size).await
-    }
-
     /// 验证TAR文件头
     #[allow(dead_code)]
     fn validate_tar_header(data: &[u8]) -> bool {
@@ -88,14 +79,15 @@ impl TarHandler {
         magic_ustar == b"ustar" || magic_gnu == b"ustar  \0"
     }
 
-    /// 流式提取TAR文件预览，只读取目标文件内容
-    async fn extract_tar_preview_streaming(
+    /// 流式提取TAR文件预览（支持进度回调）
+    async fn extract_tar_preview_with_progress(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String> {
-        log::debug!("开始流式提取TAR文件预览: {} -> {}", file_path, entry_path);
+        log::debug!("开始流式提取TAR文件预览（带进度）: {} -> {}", file_path, entry_path);
 
         let file_size = client.get_file_size(file_path).await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
@@ -107,6 +99,11 @@ impl TarHandler {
         const BLOCK_SIZE: u64 = 512;
 
         while current_offset < file_size {
+            // 更新进度
+            if let Some(ref callback) = progress_callback {
+                callback(current_offset, file_size);
+            }
+
             // 读取TAR头部（512字节）
             let header_data = match client.read_file_range(file_path, current_offset, BLOCK_SIZE).await {
                 Ok(data) => {
@@ -134,21 +131,45 @@ impl TarHandler {
                         return Err("Cannot preview directory".to_string());
                     }
 
-                    // 找到了目标文件，读取其内容
+                    // 找到了目标文件，分块读取其内容
                     let file_offset = current_offset + BLOCK_SIZE;
                     let preview_size = max_size.min(entry_info.size as usize);
 
-                    let content_data = client.read_file_range(file_path, file_offset, preview_size as u64).await
-                        .map_err(|e| format!("Failed to read file content: {}", e))?;
+                    let content_data = if let Some(ref callback) = progress_callback {
+                        // 分块读取以显示进度
+                        let chunk_size = 64 * 1024; // 64KB chunks
+                        let mut all_data = Vec::with_capacity(preview_size);
+                        let mut read_offset = 0u64;
+                        
+                        while read_offset < preview_size as u64 {
+                            let current_chunk_size = std::cmp::min(chunk_size, preview_size as u64 - read_offset);
+                            let chunk = client.read_file_range(file_path, file_offset + read_offset, current_chunk_size)
+                                .await
+                                .map_err(|e| format!("Failed to read file content chunk: {}", e))?;
+                            
+                            all_data.extend_from_slice(&chunk);
+                            read_offset += chunk.len() as u64;
+                            
+                            // 更新进度（基于文件内容读取）
+                            let total_progress = current_offset + BLOCK_SIZE + read_offset;
+                            callback(total_progress, file_size);
+                        }
+                        
+                        all_data
+                    } else {
+                        // 直接读取全部内容
+                        client.read_file_range(file_path, file_offset, preview_size as u64).await
+                            .map_err(|e| format!("Failed to read file content: {}", e))?
+                    };
 
                     let _mime_type = detect_mime_type(&content_data);
 
-                     let data_len = content_data.len();
-                     return Ok(PreviewBuilder::new()
-                          .content(content_data)
-                          .total_size(entry_info.size)
-                          .with_truncated(data_len >= max_size || (data_len as u64) < entry_info.size)
-                          .build());
+                    let data_len = content_data.len();
+                    return Ok(PreviewBuilder::new()
+                        .content(content_data)
+                        .total_size(entry_info.size)
+                        .with_truncated(data_len >= max_size || (data_len as u64) < entry_info.size)
+                        .build());
                 }
 
                 // 计算文件数据的大小（向上舍入到512字节的倍数）
@@ -170,7 +191,7 @@ impl TarHandler {
             }
         }
 
-        Err("File not found in archive".to_string())
+        Err("File not found in TAR archive".to_string())
     }
 
     /// 流式分析TAR文件，逐块读取头部信息

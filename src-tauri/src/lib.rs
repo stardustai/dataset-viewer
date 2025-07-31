@@ -7,6 +7,7 @@ use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
 
+
 // 移除参数结构体，直接在命令中使用 serde rename 属性
 
 // 全局下载管理器
@@ -174,6 +175,7 @@ async fn get_archive_preview_with_client(
         filename,
         entry_path,
         max_preview_size,
+        None::<fn(u64, u64)>, // 不使用进度回调
     ).await
 }
 
@@ -308,6 +310,26 @@ async fn cancel_download(filename: String) -> Result<String, String> {
     DOWNLOAD_MANAGER.cancel_download(&filename)
 }
 
+#[tauri::command]
+async fn download_archive_file_with_progress(
+    app: tauri::AppHandle,
+    archive_path: String,
+    archive_filename: String,
+    entry_path: String,
+    entry_filename: String,
+) -> Result<String, String> {
+    // 使用统一的下载管理器来处理压缩包文件下载，支持取消功能
+    DOWNLOAD_MANAGER
+        .download_archive_file_with_progress(
+            app,
+            archive_path,
+            archive_filename,
+            entry_path,
+            entry_filename,
+        )
+        .await
+}
+
 // 系统对话框命令
 
 /// 显示文件夹选择对话框
@@ -382,7 +404,8 @@ async fn get_file_preview(
             url,
             filename,
             entry_path,
-            max_preview_size
+            max_preview_size,
+            None::<fn(u64, u64)>, // 不使用进度回调
         ).await
     } else {
         Err("No storage client available. Please connect to a storage first (Local, WebDAV, OSS, or HuggingFace)".to_string())
@@ -454,6 +477,7 @@ pub fn run() {
             // 下载进度命令
             download_file_with_progress,
             cancel_download,
+            download_archive_file_with_progress,
             // 系统对话框命令
             show_folder_dialog,
             // 压缩包处理命令

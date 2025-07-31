@@ -76,13 +76,19 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     try {
       const client = StorageServiceManager.getCurrentClient();
       if (client.supportsSearch?.()) {
-        // 导航到搜索结果路径，让存储客户端处理搜索逻辑
+        setLoading(true);
+        setError('');
+        
         const searchPath = `/search/${encodeURIComponent(query)}`;
-        await loadDirectory(searchPath, true, true);
+        const result = await StorageServiceManager.listDirectory(searchPath);
+        
+        setFiles(result);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Global search failed:', error);
       setError(`Search failed: ${error}`);
+      setLoading(false);
     }
   };
 
@@ -105,6 +111,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     // 如果不是强制重新加载且路径相同，则直接返回
     if (!forceReload && !isManual && currentPath === path && files.length > 0) {
       return;
+    }
+
+    // 路径变化时清除搜索框状态
+    if (currentPath !== path) {
+      setSearchTerm('');
     }
 
     // 尝试从缓存获取数据（除非是手动刷新或强制重新加载）
@@ -527,7 +538,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               />
               {searchTerm && (
                 <button
-                  onClick={() => setSearchTerm('')}
+                  onClick={() => {
+                    setSearchTerm('');
+                    // 重新加载当前目录以清除搜索结果
+                    loadDirectory(currentPath);
+                  }}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-3 h-3" />

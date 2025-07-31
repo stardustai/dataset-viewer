@@ -1,6 +1,7 @@
 use tauri::Emitter;
 use crate::download::types::*;
 
+#[derive(Clone)]
 pub struct ProgressTracker {
     app: tauri::AppHandle,
 }

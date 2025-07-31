@@ -475,6 +475,25 @@ export class StorageServiceManager {
   }
 
   /**
+   * 下载压缩包内的单个文件
+   */
+  static async downloadArchiveFileWithProgress(
+    archivePath: string,
+    archiveFilename: string,
+    entryPath: string,
+    entryFilename: string
+  ): Promise<string> {
+    const { invoke } = await import('@tauri-apps/api/core');
+    
+    return invoke('download_archive_file_with_progress', {
+      archivePath,
+      archiveFilename,
+      entryPath,
+      entryFilename,
+    });
+  }
+
+  /**
    * 获取文件二进制数据
    */
   static async getFileBlob(path: string): Promise<ArrayBuffer> {

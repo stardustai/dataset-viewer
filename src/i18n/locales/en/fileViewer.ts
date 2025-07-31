@@ -143,4 +143,18 @@ export const fileViewer = {
   'error.load.full.content': 'Failed to load full content',
   'media.large.file.manual.load': 'Large media files require manual loading',
   'data.large.file.manual.load': 'Large data files require manual loading',
+
+  // AV1 Video Player
+  'av1.player.loading': 'Loading AV1 decoder...',
+  'av1.player.initializing': 'Initializing video...',
+  'av1.player.decoding': 'Decoding video frames...',
+  'av1.player.error.load': 'Failed to load AV1 decoder',
+  'av1.player.error.init': 'Failed to initialize AV1 decoder',
+  'av1.player.error.decode': 'Failed to decode video',
+  'av1.player.error.invalid.format': 'Invalid AV1 video format',
+  'av1.player.play': 'Play',
+  'av1.player.pause': 'Pause',
+  'av1.player.reset': 'Reset',
+  'av1.player.frame': 'Frame {{current}} / {{total}}',
+  'av1.player.fps': 'FPS: {{fps}}',
 };

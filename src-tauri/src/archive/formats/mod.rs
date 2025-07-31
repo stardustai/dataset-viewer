@@ -24,13 +24,14 @@ pub trait CompressionHandlerDispatcher: Send + Sync {
         max_size: Option<usize>,
     ) -> Result<ArchiveInfo, String>;
 
-    /// 通过存储客户端提取文件预览（统一接口，支持流式提取）
+    /// 通过存储客户端提取文件预览（统一接口，支持流式提取和进度回调）
     async fn extract_preview_with_client(
         &self,
         client: Arc<dyn StorageClient>,
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
     ) -> Result<FilePreview, String>;
 
     /// 获取压缩类型
