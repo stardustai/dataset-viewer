@@ -363,6 +363,14 @@ class NavigationHistoryService {
       console.warn('Failed to clear cached directory:', error);
     }
   }
+
+  /**
+   * 清除所有缓存（目录缓存和滚动位置缓存）
+   */
+  clearCache(): void {
+    this.clearDirectoryCache();
+    this.clearScrollPositions();
+  }
 }
 
 export const navigationHistoryService = NavigationHistoryService.getInstance();

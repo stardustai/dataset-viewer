@@ -5,6 +5,7 @@ export const common = {
 
   // 连接状态
   'connected.to': '已连接到',
+  'saved.connections': '已保存的连接',
 
   // 基础操作
   'save': '保存',
@@ -24,6 +25,7 @@ export const common = {
   'time.today': '今天',
   'time.yesterday': '昨天',
   'time.days.ago': '{{count}} 天前',
+  'last.connected': '上次连接',
 
   // 主题
   'theme.light': '浅色',

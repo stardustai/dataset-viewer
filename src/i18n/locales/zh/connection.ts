@@ -122,4 +122,9 @@ export const connection = {
   'huggingface.help.token.step2': '创建新的访问令牌',
   'huggingface.help.token.step3': '选择 "Read" 权限即可',
   'error.huggingface.connection.failed': '连接 Hugging Face 失败',
+
+  // 连接切换
+  'connection.switch.failed': '切换连接失败',
+  'connection.switch.error': '切换连接时发生错误：{{error}}',
+  'dismiss': '关闭',
 };

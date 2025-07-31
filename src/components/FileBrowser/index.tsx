@@ -18,6 +18,7 @@ import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
+import { ConnectionSwitcher } from './ConnectionSwitcher';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 
@@ -450,12 +451,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           <div className="flex items-center space-x-2 lg:space-x-4 min-w-0 flex-1">
             <h1 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{t('app.name')}</h1>
             {connection && (
-              <span
-                className="hidden md:block text-sm text-gray-500 dark:text-gray-400 max-w-32 lg:max-w-48 truncate"
-                title={StorageServiceManager.getConnectionDisplayName()}
-              >
-                {t('connected.to')} {StorageServiceManager.getConnectionDisplayName()}
-              </span>
+              <div className="hidden md:block">
+                <ConnectionSwitcher onConnectionChange={() => {
+                  // 连接切换后重置到根目录并清除缓存
+                  navigationHistoryService.clearCache();
+                  setCurrentPath('');
+                  loadDirectory('', true, true);
+                }} />
+              </div>
             )}
           </div>
           <div className="flex items-center space-x-2 lg:space-x-4">

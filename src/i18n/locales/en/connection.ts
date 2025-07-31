@@ -122,4 +122,9 @@ export const connection = {
   'huggingface.help.token.step2': 'Create new access token',
   'huggingface.help.token.step3': 'Select "Read" permission',
   'error.huggingface.connection.failed': 'Hugging Face connection failed',
+
+  // Connection switching
+  'connection.switch.failed': 'Failed to switch connection',
+  'connection.switch.error': 'Error occurred while switching connection: {{error}}',
+  'dismiss': 'Dismiss',
 };

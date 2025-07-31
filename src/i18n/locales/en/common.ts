@@ -5,6 +5,7 @@ export const common = {
 
   // Connection status
   'connected.to': 'Connected to',
+  'saved.connections': 'Saved Connections',
 
   // Basic operations
   'save': 'Save',
@@ -24,6 +25,7 @@ export const common = {
   'time.today': 'Today',
   'time.yesterday': 'Yesterday',
   'time.days.ago': '{{count}} days ago',
+  'last.connected': 'Last connected',
 
   // Theme
   'theme.light': 'Light',
