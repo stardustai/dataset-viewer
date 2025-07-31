@@ -106,6 +106,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     setLoadingProgress(0);
     setShowProgress(false);
 
+    // 清理之前的 mediaUrl
+    setMediaUrl(prevUrl => {
+      if (prevUrl) {
+        URL.revokeObjectURL(prevUrl);
+      }
+      return '';
+    });
+
     // 设置一个延迟显示进度条，避免快速加载时闪烁
     const showProgressTimer = setTimeout(() => {
       setShowProgress(true);
@@ -173,7 +181,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [filePath, fileName, previewContent]);
+  }, [filePath, fileName, previewContent, t]);
 
   const downloadFile = useCallback(async () => {
     try {
@@ -213,12 +221,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   useEffect(() => {
     loadMediaContent();
+  }, [loadMediaContent]);
+
+  // 单独处理 mediaUrl 的清理
+  useEffect(() => {
     return () => {
       if (mediaUrl) {
         URL.revokeObjectURL(mediaUrl);
       }
     };
-  }, [mediaUrl, loadMediaContent]);
+  }, [mediaUrl]);
 
   if (loading) {
     return (

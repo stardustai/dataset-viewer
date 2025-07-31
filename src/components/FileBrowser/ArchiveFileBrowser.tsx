@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { StorageFile, ArchiveInfo } from '../../types';
 import { VirtualizedFileList } from './VirtualizedFileList';
-import { LoadingDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
+import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
 import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
 
 interface ArchiveFileBrowserProps {
@@ -17,6 +17,8 @@ interface ArchiveFileBrowserProps {
   onBack: () => void;
   loading?: boolean;
   error?: string;
+  showHidden?: boolean;
+  onShowHiddenChange?: (show: boolean) => void;
 }
 
 export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
@@ -24,13 +26,17 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
   onFileSelect,
   onBack,
   loading = false,
-  error
+  error,
+  showHidden = false,
+  onShowHiddenChange
 }) => {
   const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+
 
   // 构建虚拟文件系统树
   const fileTree = useMemo(() => {
@@ -45,6 +51,13 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
   // 过滤和排序文件
   const filteredAndSortedFiles = useMemo(() => {
     let filtered = currentFiles;
+
+    // 隐藏文件过滤
+    if (!showHidden) {
+      filtered = filtered.filter(file => 
+        file.basename && !file.basename.startsWith('.')
+      );
+    }
 
     // 搜索过滤
     if (searchTerm) {
@@ -75,7 +88,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [currentFiles, searchTerm, sortField, sortDirection]);
+  }, [currentFiles, searchTerm, sortField, sortDirection, showHidden]);
 
   const handleItemClick = (file: StorageFile) => {
     if (file.type === 'directory') {
@@ -150,25 +163,27 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
             homeLabel={t('archive.root')}
           />
 
-          {/* 搜索框 */}
-          <div className="relative ml-4 flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder={t('search.in.file')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-8 py-2 w-64 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
-                >
-                  <X className="w-3 h-3 text-gray-400" />
-                </button>
-              )}
+          <div className="flex items-center space-x-2">
+            {/* 搜索框 */}
+            <div className="relative flex-shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={t('search.in.file')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-8 py-2 w-64 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                  >
+                    <X className="w-3 h-3 text-gray-400" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -228,19 +243,21 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
             </div>
           </div>
 
-          {/* 文件列表 */}
+          {/* 文件列表或空状态 */}
           {currentFiles.length > 0 ? (
-            searchTerm && filteredAndSortedFiles.length === 0 ? (
+            !showHidden && currentFiles.every(file => file.basename && file.basename.startsWith('.')) ? (
+               <HiddenFilesDisplay onShowHidden={() => onShowHiddenChange?.(true)} />
+            ) : filteredAndSortedFiles.length === 0 ? (
               <NoSearchResultsDisplay
                 searchTerm={searchTerm}
                 onClearSearch={() => setSearchTerm('')}
               />
             ) : (
-              <div className="bg-white dark:bg-gray-800 flex-1">
+              <div className="bg-white dark:bg-gray-800 flex-1 overflow-hidden">
                 <VirtualizedFileList
                   files={filteredAndSortedFiles}
                   onFileClick={handleItemClick}
-                  showHidden={true}
+                  showHidden={showHidden}
                   sortField={sortField}
                   sortDirection={sortDirection}
                   searchTerm={searchTerm}
@@ -248,7 +265,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
               </div>
             )
           ) : (
-            <EmptyDisplay message={t('archive.empty')} />
+            <EmptyDisplay message={t('directory.empty')} />
           )}
         </div>
       </main>

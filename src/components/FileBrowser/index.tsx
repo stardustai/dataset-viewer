@@ -8,7 +8,8 @@ import {
   RefreshCw,
   Search,
   X,
-  Settings
+  Settings,
+  ArrowLeft
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
@@ -18,7 +19,8 @@ import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
-import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
+import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, NoLocalResultsDisplay, NoRemoteResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 
 interface FileBrowserProps {
@@ -39,7 +41,24 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showHidden, setShowHidden] = useState(false);
+  // 从localStorage获取隐藏文件显示偏好
+  const [showHidden, setShowHidden] = useState(() => {
+    try {
+      const saved = localStorage.getItem('file-viewer-show-hidden');
+      return saved ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  // 保存隐藏文件显示偏好到localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('file-viewer-show-hidden', JSON.stringify(showHidden));
+    } catch {
+      // 忽略localStorage错误
+    }
+  }, [showHidden]);
   const [sortField, setSortField] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [loadingRequest, setLoadingRequest] = useState<string | null>(null); // 跟踪当前正在加载的路径
@@ -49,6 +68,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [tableHeaderHeight, setTableHeaderHeight] = useState(40); // 表头高度
   const [searchTerm, setSearchTerm] = useState(''); // 文件名搜索
   const [showSettings, setShowSettings] = useState(false); // 设置面板显示状态
+  const [currentView, setCurrentView] = useState<'directory' | 'remote-search'>('directory'); // 当前显示的内容类型
+  const [remoteSearchQuery, setRemoteSearchQuery] = useState(''); // 远程搜索查询词
   const containerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLDivElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
@@ -78,6 +99,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       if (client.supportsSearch?.()) {
         setLoading(true);
         setError('');
+        setCurrentView('remote-search');
+        setRemoteSearchQuery(query);
         
         const searchPath = `/search/${encodeURIComponent(query)}`;
         const result = await StorageServiceManager.listDirectory(searchPath);
@@ -90,6 +113,18 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setError(`Search failed: ${error}`);
       setLoading(false);
     }
+  };
+
+  // 返回到目录浏览模式
+  const returnToDirectory = () => {
+    setCurrentView('directory');
+    setRemoteSearchQuery('');
+    loadDirectory(currentPath, false, true); // 强制重新加载当前目录
+  };
+
+  // 清空搜索
+  const handleClearSearch = () => {
+    setSearchTerm('');
   };
 
   // 检查当前存储是否支持全局搜索
@@ -381,6 +416,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setError('');
     }
 
+    // 重置到目录浏览模式
+    setCurrentView('directory');
+    setRemoteSearchQuery('');
     loadDirectory('');
   };
 
@@ -450,12 +488,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           <div className="flex items-center space-x-2 lg:space-x-4 min-w-0 flex-1">
             <h1 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{t('app.name')}</h1>
             {connection && (
-              <span
-                className="hidden md:block text-sm text-gray-500 dark:text-gray-400 max-w-32 lg:max-w-48 truncate"
-                title={StorageServiceManager.getConnectionDisplayName()}
-              >
-                {t('connected.to')} {StorageServiceManager.getConnectionDisplayName()}
-              </span>
+              <div className="hidden md:block">
+                <ConnectionSwitcher onConnectionChange={() => {
+                  // 连接切换后重置到根目录并清除缓存
+                  navigationHistoryService.clearCache();
+                  setCurrentPath('');
+                  loadDirectory('', true, true);
+                }} />
+              </div>
             )}
           </div>
           <div className="flex items-center space-x-2 lg:space-x-4">
@@ -522,45 +562,57 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               </div>
             )}
 
+            {/* 远程搜索结果页面的返回按钮 */}
+            {currentView === 'remote-search' && (
+              <button
+                onClick={returnToDirectory}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0 mr-2"
+                title={t('search.backToDirectory')}
+              >
+                <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              </button>
+            )}
+
             <div className="relative">
               <Search className="absolute left-2 lg:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={t('search.files')}
-                className="w-32 sm:w-48 lg:w-64 pl-8 lg:pl-10 pr-6 lg:pr-8 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && supportsGlobalSearch() && searchTerm.trim()) {
-                    handleGlobalSearch(searchTerm.trim());
+                value={currentView === 'remote-search' ? remoteSearchQuery : searchTerm}
+                onChange={(e) => {
+                  if (currentView === 'directory') {
+                    setSearchTerm(e.target.value);
                   }
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (currentView === 'directory' && searchTerm.trim()) {
+                      // 检查本地是否有搜索结果
+                      const localResults = getFilteredFiles();
+                      const client = StorageServiceManager.getCurrentClient();
+                      
+                      // 如果本地没有结果且支持远程搜索，则触发远程搜索
+                      if (localResults.length === 0 && client.supportsSearch?.()) {
+                        handleGlobalSearch(searchTerm);
+                      }
+                    } else if (currentView === 'remote-search') {
+                      // 在远程搜索模式下按回车返回目录模式
+                      returnToDirectory();
+                    }
+                  }
+                }}
+                placeholder={currentView === 'remote-search' ? t('search.remoteResults') : t('search.files')}
+                className="w-32 sm:w-48 lg:w-64 pl-8 lg:pl-10 pr-6 lg:pr-8 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                readOnly={currentView === 'remote-search'}
               />
-              {searchTerm && (
+              {((currentView === 'directory' && searchTerm) || currentView === 'remote-search') && (
                 <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    // 重新加载当前目录以清除搜索结果
-                    loadDirectory(currentPath);
-                  }}
+                  onClick={currentView === 'remote-search' ? returnToDirectory : handleClearSearch}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-3 h-3" />
                 </button>
               )}
             </div>
-
-            {/* 全局搜索按钮 - 仅在支持的存储类型中显示 */}
-            {supportsGlobalSearch() && searchTerm.trim() && (
-              <button
-                onClick={() => handleGlobalSearch(searchTerm.trim())}
-                className="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors flex-shrink-0 flex items-center space-x-1"
-                title={t('search.global')}
-              >
-                <Search className="w-3 h-3" />
-                <span className="hidden sm:inline">{t('search.datasets')}</span>
-              </button>
-            )}
 
             {/* 刷新按钮 */}
             <button
@@ -656,10 +708,22 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               !showHidden && files.every(file => file.basename && file.basename.startsWith('.')) ? (
                 <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
               ) : getFilteredFiles().length === 0 ? (
-                <NoSearchResultsDisplay
-                  searchTerm={searchTerm}
-                  onClearSearch={() => setSearchTerm('')}
-                />
+                supportsGlobalSearch() ? (
+                  <NoLocalResultsDisplay
+                    searchTerm={searchTerm}
+                    onRemoteSearch={() => handleGlobalSearch(searchTerm)}
+                  />
+                ) : currentView === 'remote-search' ? (
+                  <NoRemoteResultsDisplay
+                    searchTerm={remoteSearchQuery}
+                    onClearSearch={returnToDirectory}
+                  />
+                ) : (
+                   <NoSearchResultsDisplay
+                     searchTerm={searchTerm}
+                     onClearSearch={handleClearSearch}
+                   />
+                )
               ) : (
                 <div ref={fileListRef} className="bg-white dark:bg-gray-800">
                   <VirtualizedFileList

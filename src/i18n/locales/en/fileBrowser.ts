@@ -14,7 +14,6 @@ export const fileBrowser = {
   'search.files': 'Search file names...',
   'search.files.placeholder': 'Search files...',
   'search.global': 'Search datasets',
-  'search.datasets': 'Search',
   'no.search.results': 'No matching files found',
   'try.different.search': 'Try different keywords or clear search',
   'clear.search': 'Clear search',
@@ -36,6 +35,9 @@ export const fileBrowser = {
   'status.no.matching.files': 'No matching files found',
   'status.try.different.keywords': 'Try different search keywords "{{searchTerm}}"',
   'status.clear.search': 'Clear search',
+  'status.no.local.results': 'No local files found',
+  'status.try.remote.search': 'Click to search remote datasets "{{searchTerm}}"',
+  'status.search.remote': 'Search Remote Datasets',
 
   // Loading status
   'loading.directory': 'Loading{{path}} directory...',

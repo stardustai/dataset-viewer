@@ -34,6 +34,11 @@ interface StatusDisplayProps {
     onClick: () => void;
     variant?: 'primary' | 'secondary';
   };
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+    variant?: 'primary' | 'secondary';
+  };
   className?: string;
 }
 
@@ -66,6 +71,7 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
   secondaryMessage,
   icon,
   action,
+  secondaryAction,
   className = "",
 }) => {
   const IconComponent = icon || defaultIcons[type];
@@ -81,17 +87,33 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
             {secondaryMessage}
           </p>
         )}
-        {action && (
-          <button
-            onClick={action.onClick}
-            className={`mt-2 text-sm ${
-              action.variant === 'primary'
-                ? 'px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700'
-                : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300'
-            }`}
-          >
-            {action.label}
-          </button>
+        {(action || secondaryAction) && (
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+            {action && (
+              <button
+                onClick={action.onClick}
+                className={`text-sm ${
+                  action.variant === 'primary'
+                    ? 'px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700'
+                    : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300'
+                }`}
+              >
+                {action.label}
+              </button>
+            )}
+            {secondaryAction && (
+              <button
+                onClick={secondaryAction.onClick}
+                className={`text-sm ${
+                  secondaryAction.variant === 'primary'
+                    ? 'px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700'
+                    : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300'
+                }`}
+              >
+                {secondaryAction.label}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -184,6 +206,40 @@ export const HiddenFilesDisplay: React.FC<{
 };
 
 export const NoSearchResultsDisplay: React.FC<{
+  searchTerm: string;
+  onClearSearch: () => void;
+  className?: string;
+}> = ({ searchTerm, onClearSearch, className }) => {
+  const { t } = useTranslation();
+  return (
+    <StatusDisplay
+      type="noSearchResults"
+      message={t('status.no.matching.files')}
+      secondaryMessage={t('status.try.different.keywords', { searchTerm })}
+      action={{ label: t('status.clear.search'), onClick: onClearSearch, variant: "secondary" }}
+      className={className}
+    />
+  );
+};
+
+export const NoLocalResultsDisplay: React.FC<{
+  searchTerm: string;
+  onRemoteSearch: () => void;
+  className?: string;
+}> = ({ searchTerm, onRemoteSearch, className }) => {
+  const { t } = useTranslation();
+  return (
+    <StatusDisplay
+      type="noSearchResults"
+      message={t('status.no.local.results')}
+      secondaryMessage={t('status.try.remote.search', { searchTerm })}
+      action={{ label: t('status.search.remote'), onClick: onRemoteSearch, variant: "secondary" }}
+      className={className}
+    />
+  );
+};
+
+export const NoRemoteResultsDisplay: React.FC<{
   searchTerm: string;
   onClearSearch: () => void;
   className?: string;
