@@ -452,6 +452,20 @@
             }
         }
 
+         // Windows 版本处理函数
+        function getWindowsVersion(version) {
+            let windowsVersion = version;
+            // 移除 beta./alpha./rc. 后缀
+            windowsVersion = windowsVersion.replace(/beta\./g, '');
+            windowsVersion = windowsVersion.replace(/alpha\./g, '');
+            windowsVersion = windowsVersion.replace(/rc\./g, '');
+            // 替换预发布标签为数字
+            windowsVersion = windowsVersion.replace(/-beta/g, '-1');
+            windowsVersion = windowsVersion.replace(/-alpha/g, '-2');
+            windowsVersion = windowsVersion.replace(/-rc/g, '-3');
+            return windowsVersion;
+        }
+
         // 根据版本号生成配置
         function generateConfig(version, fileSizes = {}) {
             const baseUrl = `https://github.com/stardustai/dataset-viewer/releases/download/v${version}`;
@@ -466,29 +480,29 @@
                 version: version,
                 releases: {
                     "macos-arm64": {
-                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_aarch64.dmg`,
-                        filename: `Dataset.Viewer_${version}_aarch64.dmg`,
-                        size: getFileSize(`Dataset.Viewer_${version}_aarch64.dmg`)
+                        downloadUrl: `${baseUrl}/dataset-viewer_${version}_aarch64.dmg`,
+                        filename: `dataset-viewer_${version}_aarch64.dmg`,
+                        size: getFileSize(`dataset-viewer_${version}_aarch64.dmg`)
                     },
                     "macos-x64": {
-                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_x64.dmg`,
-                        filename: `Dataset.Viewer_${version}_x64.dmg`,
-                        size: getFileSize(`Dataset.Viewer_${version}_x64.dmg`)
+                        downloadUrl: `${baseUrl}/dataset-viewer_${version}_x64.dmg`,
+                        filename: `dataset-viewer_${version}_x64.dmg`,
+                        size: getFileSize(`dataset-viewer_${version}_x64.dmg`)
                     },
                     "windows": {
-                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version.replace('-beta.1', '-1')}_x64_en-US.msi`,
-                        filename: `Dataset.Viewer_${version.replace('-beta.1', '-1')}_x64_en-US.msi`,
-                        size: getFileSize(`Dataset.Viewer_${version.replace('-beta.1', '-1')}_x64_en-US.msi`)
+                        downloadUrl: `${baseUrl}/dataset-viewer_${getWindowsVersion(version)}_x64_en-US.msi`,
+                        filename: `dataset-viewer_${getWindowsVersion(version)}_x64_en-US.msi`,
+                        size: getFileSize(`dataset-viewer_${getWindowsVersion(version)}_x64_en-US.msi`)
                     },
                     "linux": {
-                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_amd64.deb`,
-                        filename: `Dataset.Viewer_${version}_amd64.deb`,
-                        size: getFileSize(`Dataset.Viewer_${version}_amd64.deb`)
+                        downloadUrl: `${baseUrl}/dataset-viewer_${version}_amd64.deb`,
+                        filename: `dataset-viewer_${version}_amd64.deb`,
+                        size: getFileSize(`dataset-viewer_${version}_amd64.deb`)
                     },
                     "linux-appimage": {
-                        downloadUrl: `${baseUrl}/Dataset.Viewer_${version}_amd64.AppImage`,
-                        filename: `Dataset.Viewer_${version}_amd64.AppImage`,
-                        size: getFileSize(`Dataset.Viewer_${version}_amd64.AppImage`)
+                        downloadUrl: `${baseUrl}/dataset-viewer_${version}_amd64.AppImage`,
+                        filename: `dataset-viewer_${version}_amd64.AppImage`,
+                        size: getFileSize(`dataset-viewer_${version}_amd64.AppImage`)
                     }
                 },
                 github: {

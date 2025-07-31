@@ -103,12 +103,22 @@ jobs:
           CHANGES=$(cat CHANGELOG.md)
           VERSION_WITHOUT_V="${{ steps.get_version.outputs.VERSION }}"
           VERSION_WITHOUT_V="${VERSION_WITHOUT_V#v}"
+          
+          # Create Windows-compatible version (for MSI filename)
+          WINDOWS_VERSION="$VERSION_WITHOUT_V"
+          WINDOWS_VERSION="${WINDOWS_VERSION/beta./}"
+          WINDOWS_VERSION="${WINDOWS_VERSION/alpha./}"
+          WINDOWS_VERSION="${WINDOWS_VERSION/rc./}"
+          WINDOWS_VERSION="${WINDOWS_VERSION/-beta/-1}"
+          WINDOWS_VERSION="${WINDOWS_VERSION/-alpha/-2}"
+          WINDOWS_VERSION="${WINDOWS_VERSION/-rc/-3}"
 
           # Replace template variables
+          RELEASE_BODY="${RELEASE_BODY//\{\{github_repo\}\}/${{ github.repository }}}"
           RELEASE_BODY="${RELEASE_BODY//\{\{tag_name\}\}/${{ steps.get_version.outputs.VERSION }}}"
           RELEASE_BODY="${RELEASE_BODY//\{\{version\}\}/$VERSION_WITHOUT_V}"
+          RELEASE_BODY="${RELEASE_BODY//\{\{windows_version\}\}/$WINDOWS_VERSION}"
           RELEASE_BODY="${RELEASE_BODY//\{\{changes\}\}/$CHANGES}"
-          RELEASE_BODY="${RELEASE_BODY//\{\{github_repo\}\}/${{ github.repository }}}"
 
           # Save to file
           echo "$RELEASE_BODY" > release_body.md
@@ -204,15 +214,16 @@ jobs:
       - name: Fix version for Windows MSI (Windows only)
         if: matrix.platform == 'windows-latest'
         run: |
-          # Simple version fix: replace non-numeric pre-release with numbers
-          # beta.0 -> 1, alpha.0 -> 2, rc.0 -> 3, etc.
+          # Process version to match template logic
           $files = @("package.json", "src-tauri/Cargo.toml", "src-tauri/tauri.conf.json")
 
           foreach ($file in $files) {
             $content = Get-Content $file -Raw
-            $content = $content -replace 'beta\.(\d+)', '$1'
-            $content = $content -replace 'alpha\.(\d+)', '$1'
-            $content = $content -replace 'rc\.(\d+)', '$1'
+            # Remove beta./alpha./rc. suffixes
+            $content = $content -replace 'beta\.', ''
+            $content = $content -replace 'alpha\.', ''
+            $content = $content -replace 'rc\.', ''
+            # Replace pre-release tags with numbers
             $content = $content -replace '-beta', '-1'
             $content = $content -replace '-alpha', '-2'
             $content = $content -replace '-rc', '-3'
