@@ -99,6 +99,14 @@ export const connection = {
   'local.connect': 'Connect to Local Files',
   'local.error.access': 'Cannot access the specified path, please check if the path exists and you have permission to access it',
   'local.error.connection': 'Failed to connect to local file system',
+  'local.mobile.path.selector.title': 'Select Common Path',
+  'local.mobile.path.downloads': 'Downloads Folder',
+  'local.mobile.path.documents': 'Documents Folder',
+  'local.mobile.path.pictures': 'Pictures Folder',
+  'local.mobile.path.camera': 'Camera Folder',
+  'local.mobile.path.app.data': 'App Data Folder',
+  'local.mobile.manual.input': 'Or enter path manually:',
+  'local.mobile.manual.placeholder': '/storage/emulated/0/your-folder',
 
   // OSS errors
   'error.oss.connection.failed': 'OSS connection failed',

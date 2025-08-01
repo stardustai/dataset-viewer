@@ -334,22 +334,41 @@ async fn download_archive_file_with_progress(
 
 /// 显示文件夹选择对话框
 #[tauri::command]
-async fn show_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    use tauri_plugin_dialog::DialogExt;
-
-    let folder = app
-        .dialog()
-        .file()
-        .set_title("选择目录")
-        .blocking_pick_folder();
-
-    match folder {
-        Some(path) => {
-            let path_buf = path.into_path()
-                .map_err(|e| format!("Failed to get path: {}", e))?;
-            Ok(Some(path_buf.to_string_lossy().to_string()))
-        },
-        None => Ok(None),
+async fn show_folder_dialog(_app: tauri::AppHandle) -> Result<Option<String>, String> {
+    // Android and iOS don't support folder picker
+    #[cfg(target_os = "android")]
+    {
+        return Err("Folder selection is not supported on Android platform".to_string());
+    }
+    
+    #[cfg(target_os = "ios")]
+    {
+        return Err("Folder selection is not supported on iOS platform".to_string());
+    }
+    
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_dialog::DialogExt;
+        use std::sync::mpsc;
+        
+        let (tx, rx) = mpsc::channel();
+        
+        _app.dialog()
+            .file()
+            .set_title("选择目录")
+            .pick_folder(move |folder| {
+                let _ = tx.send(folder);
+            });
+        
+        match rx.recv() {
+            Ok(Some(folder)) => {
+                let path_buf = folder.into_path()
+                    .map_err(|e| format!("Failed to get path: {}", e))?;
+                Ok(Some(path_buf.to_string_lossy().to_string()))
+            },
+            Ok(None) => Ok(None),
+            Err(e) => Err(format!("Failed to receive folder selection: {}", e)),
+        }
     }
 }
 

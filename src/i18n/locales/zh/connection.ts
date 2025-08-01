@@ -99,6 +99,14 @@ export const connection = {
   'local.connect': '连接到本机文件',
   'local.error.access': '无法访问指定路径，请检查路径是否存在且有权限访问',
   'local.error.connection': '连接本机文件系统失败',
+  'local.mobile.path.selector.title': '选择常用路径',
+  'local.mobile.path.downloads': '下载文件夹',
+  'local.mobile.path.documents': '文档文件夹',
+  'local.mobile.path.pictures': '图片文件夹',
+  'local.mobile.path.camera': '相机文件夹',
+  'local.mobile.path.app.data': '应用数据文件夹',
+  'local.mobile.manual.input': '或手动输入路径：',
+  'local.mobile.manual.placeholder': '/storage/emulated/0/your-folder',
 
   // OSS 错误
   'error.oss.connection.failed': 'OSS 连接失败',
