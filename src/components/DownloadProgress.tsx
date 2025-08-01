@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { X, Download, Check, AlertCircle, StopCircle } from 'lucide-react';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import { X, Download, Check, AlertCircle, StopCircle, FolderOpen } from 'lucide-react';
 import { formatFileSize } from '../utils/fileUtils';
 
 interface DownloadProgressProps {
@@ -131,6 +132,14 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
     });
   };
 
+  const openFileLocation = async (filePath: string) => {
+    try {
+      await revealItemInDir(filePath);
+    } catch (error) {
+      console.error('Failed to open file location:', error);
+    }
+  };
+
   const clearCompleted = () => {
     setDownloads(prev => {
       const newMap = new Map();
@@ -216,10 +225,17 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
 
                 {download.status === 'completed' && download.filePath && (
                   <div className="mt-1">
-                    <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
-                      保存至: {download.filePath}
-                    </p>
-                    <p className="text-xs text-green-600 dark:text-green-400">
+                    <div 
+                      className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition-colors"
+                      onClick={() => openFileLocation(download.filePath!)}
+                      title="点击打开文件位置"
+                    >
+                      <FolderOpen className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                      <p className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">
+                        保存至: {download.filePath}
+                      </p>
+                    </div>
+                    <p className="text-xs text-green-600 dark:text-green-400 ml-4">
                       {formatFileSize(download.downloaded)} 下载完成
                     </p>
                   </div>

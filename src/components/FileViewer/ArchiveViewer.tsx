@@ -219,10 +219,10 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       if (!isTextFileType) {
         const isMediaFileType = isMediaFile(entry.path);
         const isDataFileType = isDataFile(entry.path) || isSpreadsheetFile(entry.path);
-        const shouldAutoLoadMedia = isMediaFileType && fileSize < 1024 * 1024; // 1MB
-        const shouldAutoLoadData = isDataFileType && fileSize < 1024 * 1024; // 1MB
+        const shouldAutoLoadMedia = isMediaFileType && fileSize < 10 * 1024 * 1024; // 10MB
+        const shouldAutoLoadData = isDataFileType && fileSize < 10 * 1024 * 1024; // 10MB
         
-        // 小于1MB的媒体文件和数据文件自动加载，其他非文本文件不加载
+        // 小于10MB的媒体文件和数据文件自动加载，其他非文本文件不加载
         if (!shouldAutoLoadMedia && !shouldAutoLoadData) {
           // 创建一个空的预览对象，只包含文件信息
           const emptyPreview: FilePreview = {
@@ -676,9 +676,9 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                         </div>
                       );
                     } else if (isMedia) {
-                      // 媒体文件：小于1MB自动加载，大于1MB需要手动加载
+                      // 媒体文件：小于100MB自动加载，大于10MB需要手动加载
                       const fileSize = selectedEntry.size || 0;
-                      const shouldAutoLoad = fileSize < 1024 * 1024; // 1MB
+                      const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
                       
                       if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
                         return (
@@ -700,9 +700,9 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                         />
                       );
                     } else if (isData || isSpreadsheet) {
-                      // 数据文件：小于1MB自动加载，大于1MB需要手动加载
+                      // 数据文件：小于10MB自动加载，大于10MB需要手动加载
                       const fileSize = selectedEntry.size || 0;
-                      const shouldAutoLoad = fileSize < 1024 * 1024; // 1MB
+                      const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
                       
                       if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
                         return (

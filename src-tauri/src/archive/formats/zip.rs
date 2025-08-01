@@ -48,13 +48,9 @@ impl ZipHandler {
         client: Arc<dyn StorageClient>,
         file_path: &str,
     ) -> Result<ArchiveInfo, String> {
-        println!("ZIP流式分析开始: {}", file_path);
-
         // 获取文件大小
         let file_size = client.get_file_size(file_path).await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
-
-        println!("ZIP文件大小: {} 字节", file_size);
 
         // 调用现有的分析方法
         Self::analyze_zip_with_client(client, file_path, file_size).await
@@ -65,66 +61,55 @@ impl ZipHandler {
 
     /// 在数据中查找EOCD记录位置
     fn find_eocd(data: &[u8]) -> Option<usize> {
-        let eocd_signature = [0x50, 0x4b, 0x05, 0x06];
+        const EOCD_SIGNATURE: [u8; 4] = [0x50, 0x4b, 0x05, 0x06];
+        const MIN_EOCD_SIZE: usize = 22;
 
-        println!("查找EOCD记录，数据长度: {} 字节", data.len());
-
-        if data.len() < 22 {
-            println!("数据太短，无法包含EOCD记录（需要至少22字节）");
+        if data.len() < MIN_EOCD_SIZE {
             return None;
         }
 
-        // 从尾部开始查找EOCD签名
-        for i in (0..=data.len().saturating_sub(4)).rev() {
-            if data[i..i+4] == eocd_signature {
-                // 检查剩余数据是否足够解析EOCD（至少22字节）
-                if data.len() >= i + 22 {
-                    println!("在位置 {} 找到EOCD签名", i);
+        // 从后往前搜索EOCD签名，优化搜索性能
+        for i in (0..=data.len() - MIN_EOCD_SIZE).rev() {
+            if data[i..i + 4] == EOCD_SIGNATURE {
+                // 验证这是一个有效的EOCD记录
+                let comment_len = u16::from_le_bytes([data[i + 20], data[i + 21]]) as usize;
+                if i + MIN_EOCD_SIZE + comment_len == data.len() {
                     return Some(i);
-                } else {
-                    println!("在位置 {} 找到EOCD签名，但数据不足（需要22字节，只有{}字节）", i, data.len() - i);
                 }
             }
         }
-
-        // 如果没找到，显示一些调试信息
-        let debug_bytes = if data.len() >= 32 {
-            &data[data.len()-32..]
-        } else {
-            data
-        };
-        println!("未找到EOCD签名，尾部{}字节: {:02x?}", debug_bytes.len(), debug_bytes);
 
         None
     }
 
     /// 查找ZIP64 End of Central Directory记录
     fn find_zip64_eocd(data: &[u8], eocd_pos: usize) -> Option<usize> {
-        let zip64_eocd_locator_signature = [0x50, 0x4b, 0x06, 0x07];
+        const ZIP64_LOCATOR_SIGNATURE: [u8; 4] = [0x50, 0x4b, 0x06, 0x07];
+        const ZIP64_LOCATOR_SIZE: usize = 20;
         
-        // ZIP64 EOCD定位器应该在EOCD记录之前
-        if eocd_pos < 20 {
+        if eocd_pos < ZIP64_LOCATOR_SIZE {
             return None;
         }
         
-        // 查找ZIP64 EOCD定位器（在EOCD之前20字节的位置）
-        let search_start = eocd_pos.saturating_sub(20);
-        for i in (0..=search_start).rev() {
-            if i + 4 <= data.len() && data[i..i+4] == zip64_eocd_locator_signature {
-                println!("[DEBUG] 找到ZIP64 EOCD定位器在位置: {}", i);
+        // ZIP64 EOCD定位器应该在EOCD记录之前
+        let search_start = eocd_pos.saturating_sub(ZIP64_LOCATOR_SIZE);
+        for i in (search_start..eocd_pos).rev() {
+            if i + 4 <= data.len() && data[i..i+4] == ZIP64_LOCATOR_SIGNATURE {
+
                 
-                // 读取ZIP64 EOCD记录的偏移量（8字节，小端序）
-                if i + 16 <= data.len() {
-                    let zip64_eocd_offset = u64::from_le_bytes([
-                        data[i + 8], data[i + 9], data[i + 10], data[i + 11],
-                        data[i + 12], data[i + 13], data[i + 14], data[i + 15]
+                // 验证这是一个有效的ZIP64 EOCD定位器
+                if i + ZIP64_LOCATOR_SIZE <= data.len() {
+                    // 检查磁盘号是否为0（单文件ZIP）
+                    let disk_number = u32::from_le_bytes([
+                        data[i + 4], data[i + 5], data[i + 6], data[i + 7]
                     ]);
-                    println!("[DEBUG] ZIP64 EOCD偏移量: {}", zip64_eocd_offset);
+                    let total_disks = u32::from_le_bytes([
+                        data[i + 16], data[i + 17], data[i + 18], data[i + 19]
+                    ]);
                     
-                    // 计算在当前数据中的相对位置
-                    // 注意：这里假设我们读取的是文件末尾的数据
-                    // 实际实现中可能需要重新读取ZIP64 EOCD记录
-                    return Some(i);
+                    if disk_number == 0 && total_disks == 1 {
+                        return Some(i);
+                    }
                 }
             }
         }
@@ -153,7 +138,7 @@ impl ZipHandler {
             footer_data[zip64_locator_pos + 14], footer_data[zip64_locator_pos + 15]
         ]);
         
-        println!("[DEBUG] ZIP64 EOCD记录偏移量: {}", zip64_eocd_offset);
+
         
         // 检查ZIP64 EOCD记录是否在我们已读取的数据范围内
         let zip64_eocd_data = if zip64_eocd_offset >= start_pos {
@@ -207,10 +192,7 @@ impl ZipHandler {
             data[52], data[53], data[54], data[55]
         ]);
         
-        println!("[DEBUG] ZIP64 EOCD解析结果:");
-        println!("[DEBUG] - total_entries: {}", total_entries);
-        println!("[DEBUG] - cd_size: {}", cd_size);
-        println!("[DEBUG] - cd_offset: {}", cd_offset);
+
         
         Ok((cd_offset, cd_size, total_entries))
     }
@@ -221,16 +203,26 @@ impl ZipHandler {
         compressed_size_32: u32,
         uncompressed_size_32: u32,
     ) -> (u64, u64) {
+        const ZIP64_EXTRA_FIELD_ID: u16 = 0x0001;
+        const FIELD_HEADER_SIZE: usize = 4;
+        const U64_SIZE: usize = 8;
+        const MAX_U32: u32 = 0xFFFFFFFF;
+        
         let mut offset = 0;
         
         // 查找ZIP64扩展字段（标识符：0x0001）
-        while offset + 4 <= extra_data.len() {
+        while offset + FIELD_HEADER_SIZE <= extra_data.len() {
             let header_id = u16::from_le_bytes([extra_data[offset], extra_data[offset + 1]]);
             let data_size = u16::from_le_bytes([extra_data[offset + 2], extra_data[offset + 3]]) as usize;
             
-            if header_id == 0x0001 && offset + 4 + data_size <= extra_data.len() {
+            // 验证数据大小的合理性
+            if offset + FIELD_HEADER_SIZE + data_size > extra_data.len() {
+                break;
+            }
+            
+            if header_id == ZIP64_EXTRA_FIELD_ID {
                 // 找到ZIP64扩展字段
-                let zip64_data = &extra_data[offset + 4..offset + 4 + data_size];
+                let zip64_data = &extra_data[offset + FIELD_HEADER_SIZE..offset + FIELD_HEADER_SIZE + data_size];
                 let mut zip64_offset = 0;
                 
                 let mut compressed_size = compressed_size_32 as u64;
@@ -238,30 +230,40 @@ impl ZipHandler {
                 
                 // 按照ZIP64规范的顺序读取字段
                 // 1. 未压缩大小（如果原始值为0xFFFFFFFF）
-                if uncompressed_size_32 == 0xFFFFFFFF && zip64_offset + 8 <= zip64_data.len() {
-                    uncompressed_size = u64::from_le_bytes([
-                        zip64_data[zip64_offset], zip64_data[zip64_offset + 1],
-                        zip64_data[zip64_offset + 2], zip64_data[zip64_offset + 3],
-                        zip64_data[zip64_offset + 4], zip64_data[zip64_offset + 5],
-                        zip64_data[zip64_offset + 6], zip64_data[zip64_offset + 7]
-                    ]);
-                    zip64_offset += 8;
+                if uncompressed_size_32 == MAX_U32 {
+                    if zip64_offset + U64_SIZE <= zip64_data.len() {
+                        uncompressed_size = u64::from_le_bytes([
+                            zip64_data[zip64_offset], zip64_data[zip64_offset + 1],
+                            zip64_data[zip64_offset + 2], zip64_data[zip64_offset + 3],
+                            zip64_data[zip64_offset + 4], zip64_data[zip64_offset + 5],
+                            zip64_data[zip64_offset + 6], zip64_data[zip64_offset + 7]
+                        ]);
+                        zip64_offset += U64_SIZE;
+                    } else {
+                        // 数据不足，无法读取64位未压缩大小
+                        break;
+                    }
                 }
                 
                 // 2. 压缩大小（如果原始值为0xFFFFFFFF）
-                if compressed_size_32 == 0xFFFFFFFF && zip64_offset + 8 <= zip64_data.len() {
-                    compressed_size = u64::from_le_bytes([
-                        zip64_data[zip64_offset], zip64_data[zip64_offset + 1],
-                        zip64_data[zip64_offset + 2], zip64_data[zip64_offset + 3],
-                        zip64_data[zip64_offset + 4], zip64_data[zip64_offset + 5],
-                        zip64_data[zip64_offset + 6], zip64_data[zip64_offset + 7]
-                    ]);
+                if compressed_size_32 == MAX_U32 {
+                    if zip64_offset + U64_SIZE <= zip64_data.len() {
+                        compressed_size = u64::from_le_bytes([
+                            zip64_data[zip64_offset], zip64_data[zip64_offset + 1],
+                            zip64_data[zip64_offset + 2], zip64_data[zip64_offset + 3],
+                            zip64_data[zip64_offset + 4], zip64_data[zip64_offset + 5],
+                            zip64_data[zip64_offset + 6], zip64_data[zip64_offset + 7]
+                        ]);
+                    } else {
+                        // 数据不足，无法读取64位压缩大小
+                        break;
+                    }
                 }
                 
                 return (compressed_size, uncompressed_size);
             }
             
-            offset += 4 + data_size;
+            offset += FIELD_HEADER_SIZE + data_size;
         }
         
         // 如果没有找到ZIP64扩展字段，返回原始值
@@ -331,28 +333,37 @@ impl ZipHandler {
 
 
 
+    /// 解析中央目录数据（优化版本）
+    fn parse_central_directory_optimized(cd_data: &[u8], total_entries: u64) -> Result<Vec<ArchiveEntry>, String> {
+        // 使用优化的解析逻辑
+        Self::parse_central_directory(cd_data, total_entries)
+    }
+
     /// 解析中央目录数据
     fn parse_central_directory(cd_data: &[u8], total_entries: u64) -> Result<Vec<ArchiveEntry>, String> {
-        let mut entries = Vec::new();
+        const CD_HEADER_SIGNATURE: u32 = 0x02014b50;
+        const MIN_CD_HEADER_SIZE: usize = 46;
+        const MAX_FIELD_SIZE: usize = 65535;
+        const MAX_ENTRIES_LIMIT: u64 = 10000;
+        
+        // 预分配容量以提高性能
+        let capacity = std::cmp::min(total_entries as usize, MAX_ENTRIES_LIMIT as usize);
+        let mut entries = Vec::with_capacity(capacity);
         let mut offset = 0;
+        let mut parsed_entries = 0;
         
         // 限制处理的条目数量，避免无限循环
-        let max_entries = total_entries.min(10000); // 最多处理10000个条目
-
-        for i in 0..max_entries {
-            // 添加偏移量合理性检查
-            if offset >= cd_data.len() || offset + 46 > cd_data.len() {
-                break;
-            }
-
+        let max_entries = total_entries.min(MAX_ENTRIES_LIMIT);
+        
+        while offset + MIN_CD_HEADER_SIZE <= cd_data.len() && parsed_entries < max_entries {
             // 检查中央目录文件头签名
             let signature = u32::from_le_bytes([
                 cd_data[offset], cd_data[offset + 1],
                 cd_data[offset + 2], cd_data[offset + 3]
             ]);
 
-            if signature != 0x02014b50 {
-                break;
+            if signature != CD_HEADER_SIGNATURE {
+                return Err(format!("无效的中央目录文件头签名: 0x{:08x}, 期望: 0x{:08x}", signature, CD_HEADER_SIGNATURE));
             }
 
             let compressed_size_32 = u32::from_le_bytes([
@@ -377,31 +388,35 @@ impl ZipHandler {
                 cd_data[offset + 32], cd_data[offset + 33]
             ]) as usize;
             
-            // 添加合理性检查，避免异常大的字段长度
-            if filename_len > 65535 || extra_len > 65535 || comment_len > 65535 {
-                break;
+            // 验证字段长度的合理性
+            if filename_len > MAX_FIELD_SIZE || extra_len > MAX_FIELD_SIZE || comment_len > MAX_FIELD_SIZE {
+                return Err(format!("中央目录条目字段长度异常: filename={}, extra={}, comment={}", filename_len, extra_len, comment_len));
             }
             
             // 检查总的记录大小是否合理
-            let total_record_size = 46 + filename_len + extra_len + comment_len;
+            let total_record_size = MIN_CD_HEADER_SIZE + filename_len + extra_len + comment_len;
             if offset + total_record_size > cd_data.len() {
-                break;
+                return Err(format!("中央目录条目超出数据范围: offset={}, size={}, data_len={}", offset, total_record_size, cd_data.len()));
             }
             
-            // 每处理1000个条目输出一次进度
-            if i % 1000 == 0 && i > 0 {
-                println!("已处理 {} / {} 个条目", i, max_entries);
+
+
+            if filename_len == 0 {
+                // 跳过没有文件名的条目
+                offset += total_record_size;
+                parsed_entries += 1;
+                continue;
             }
 
-            let filename = String::from_utf8_lossy(
-                &cd_data[offset + 46..offset + 46 + filename_len]
-            ).to_string();
+            // 安全地解析文件名
+            let filename_bytes = &cd_data[offset + MIN_CD_HEADER_SIZE..offset + MIN_CD_HEADER_SIZE + filename_len];
+            let filename = String::from_utf8_lossy(filename_bytes).to_string();
             
             // 处理ZIP64扩展字段
             let (compressed_size, uncompressed_size) = if compressed_size_32 == 0xFFFFFFFF || uncompressed_size_32 == 0xFFFFFFFF {
                 // 需要从扩展字段中读取64位值
                 if extra_len > 0 {
-                    let extra_data = &cd_data[offset + 46 + filename_len..offset + 46 + filename_len + extra_len];
+                    let extra_data = &cd_data[offset + MIN_CD_HEADER_SIZE + filename_len..offset + MIN_CD_HEADER_SIZE + filename_len + extra_len];
                     Self::parse_zip64_extra_field(extra_data, compressed_size_32, uncompressed_size_32)
                 } else {
                     (compressed_size_32 as u64, uncompressed_size_32 as u64)
@@ -423,11 +438,16 @@ impl ZipHandler {
                     cd_data[offset + 16], cd_data[offset + 17],
                     cd_data[offset + 18], cd_data[offset + 19]
                 ])),
-                index: i as usize,
+                index: parsed_entries as usize,
                 metadata: HashMap::new(),
             });
 
             offset += total_record_size;
+            parsed_entries += 1;
+        }
+        
+        if parsed_entries != total_entries && parsed_entries < max_entries {
+            return Err(format!("解析的条目数({})与预期数量({})不匹配", parsed_entries, total_entries));
         }
         
         Ok(entries)
@@ -452,6 +472,11 @@ impl ZipHandler {
 
             let compression_method = u16::from_le_bytes([
                 cd_data[offset + 10], cd_data[offset + 11]
+            ]);
+
+            let crc32 = u32::from_le_bytes([
+                cd_data[offset + 16], cd_data[offset + 17],
+                cd_data[offset + 18], cd_data[offset + 19]
             ]);
 
             let compressed_size_32 = u32::from_le_bytes([
@@ -507,6 +532,7 @@ impl ZipHandler {
                     compression_method,
                     compressed_size,
                     local_header_offset,
+                    crc32,
                 }));
             }
 
@@ -522,123 +548,108 @@ impl ZipHandler {
         file_path: &str,
         file_size: u64,
     ) -> Result<ArchiveInfo, String> {
-        println!("分析ZIP文件: {} (大小: {} 字节)", file_path, file_size);
+        const MIN_ZIP_SIZE: u64 = 22; // 最小ZIP文件大小（EOCD记录）
+        const MAX_FOOTER_SIZE: u64 = 65536; // 最多读取64KB的文件尾部
+        const MAX_ZIP_SIZE: u64 = 10 * 1024 * 1024 * 1024; // 10GB文件大小限制
+        const MAX_CD_SIZE: u64 = 500 * 1024 * 1024; // 500MB中央目录大小限制
+        const MAX_ENTRIES: u64 = 1_000_000; // 100万个文件数量限制
 
         // 检查文件大小是否足够
-        if file_size < 22 {
-            return Err(format!("文件太小，无法是有效的ZIP文件（{}字节 < 22字节）", file_size));
+        if file_size < MIN_ZIP_SIZE {
+            return Err(format!("文件太小，无法是有效的ZIP文件（{}字节 < {}字节）", file_size, MIN_ZIP_SIZE));
+        }
+
+        // 检查最大文件大小限制（防止处理过大的文件）
+        if file_size > MAX_ZIP_SIZE {
+            return Err(format!("ZIP文件过大: {} 字节，超过10GB限制", file_size));
         }
 
         // 读取文件末尾来查找中央目录
-        // 为了确保能找到EOCD，读取足够的数据，但对于大文件限制在合理范围内
-        let footer_size = std::cmp::min(65536, file_size); // 最多读取64KB
+        let footer_size = std::cmp::min(MAX_FOOTER_SIZE, file_size);
         let start_pos = file_size.saturating_sub(footer_size);
-
-        println!("读取文件末尾: 位置 {} 长度 {}", start_pos, footer_size);
-
+        
         let footer_data = client.read_file_range(file_path, start_pos, footer_size)
             .await
-            .map_err(|e| format!("Failed to read file footer: {}", e))?;
-
-        println!("成功读取 {} 字节的文件尾部数据", footer_data.len());
-
-        // 验证实际读取的数据长度
-        if footer_data.len() == 0 {
-            return Err("读取到的文件数据为空".to_string());
-        }
-
+            .map_err(|e| format!("读取文件尾部失败: {}", e))?;
+        
         if footer_data.len() != footer_size as usize {
-            println!("警告：请求读取 {} 字节，但只接收到 {} 字节", footer_size, footer_data.len());
-        }
-
-        // 显示最后几个字节用于调试
-        if footer_data.len() >= 16 {
-            let last_bytes = &footer_data[footer_data.len()-16..];
-            println!("文件最后16字节: {:02x?}", last_bytes);
-        } else {
-            println!("文件数据: {:02x?}", footer_data);
+            return Err(format!("读取的数据长度不匹配: 期望 {}, 实际 {}", footer_size, footer_data.len()));
         }
 
         // 查找EOCD记录
         let eocd_pos = Self::find_eocd(&footer_data)
-            .ok_or_else(|| {
-                // 如果找不到EOCD，提供更详细的错误信息
-                let debug_info = if footer_data.len() >= 16 {
-                    format!("最后16字节: {:02x?}", &footer_data[footer_data.len()-16..])
-                } else {
-                    format!("文件数据: {:02x?}", &footer_data[..])
-                };
-
-                format!("invalid Zip archive: Could not find central directory end. 文件: {}, 大小: {} 字节, 读取范围: {}-{}, 实际读取: {} 字节, {}",
-                    file_path,
-                    file_size,
-                    start_pos,
-                    start_pos + footer_size,
-                    footer_data.len(),
-                    debug_info
-                )
-            })?;
-
-        println!("找到EOCD记录位置: {}", eocd_pos);
-
-        let _eocd_offset = start_pos + eocd_pos as u64;
+            .ok_or_else(|| "无法找到ZIP文件的EOCD记录，文件可能损坏或不是有效的ZIP文件".to_string())?;
+        
         let eocd_data = &footer_data[eocd_pos..];
-
         if eocd_data.len() < 22 {
-            return Err(format!("Invalid EOCD record: only {} bytes available, need 22", eocd_data.len()));
+            return Err(format!("EOCD记录长度不足: 只有 {} 字节，需要 22 字节", eocd_data.len()));
         }
 
+        // 解析EOCD记录
         let total_entries = u16::from_le_bytes([eocd_data[10], eocd_data[11]]) as u64;
         let cd_size = u32::from_le_bytes([
             eocd_data[12], eocd_data[13], eocd_data[14], eocd_data[15]
-        ]);
-        let cd_offset = u32::from_le_bytes([
+        ]) as u64;
+        let cd_offset_32 = u32::from_le_bytes([
             eocd_data[16], eocd_data[17], eocd_data[18], eocd_data[19]
         ]);
         
-        // 调试信息：显示EOCD记录的原始字节
-        println!("[DEBUG] EOCD记录解析:");
-        println!("[DEBUG] - total_entries: {}", total_entries);
-        println!("[DEBUG] - cd_size: {}", cd_size);
-        println!("[DEBUG] - cd_offset: {} (原始字节: {:02x?})", cd_offset, &eocd_data[16..20]);
-        println!("[DEBUG] - file_size: {}", file_size);
+        // 验证条目数量的合理性
+        if total_entries > MAX_ENTRIES {
+            return Err(format!("ZIP文件条目数过多: {}, 超过{}限制", total_entries, MAX_ENTRIES));
+        }
         
-        // 检查是否为ZIP64格式（偏移量为0xFFFFFFFF表示需要使用ZIP64）
-        let (final_cd_offset, final_cd_size, final_total_entries) = if cd_offset == 0xFFFFFFFF {
-            println!("[DEBUG] 检测到ZIP64格式，查找ZIP64 EOCD记录");
-            
+        if cd_size > file_size {
+            return Err(format!("中央目录大小({})超过文件大小({})", cd_size, file_size));
+        }
+
+        // 验证中央目录大小的合理性
+        if cd_size > MAX_CD_SIZE {
+            return Err(format!("中央目录过大: {} 字节，超过500MB限制", cd_size));
+        }
+        
+        // 检查是否需要处理ZIP64格式
+        let (cd_offset, cd_size, total_entries) = if cd_offset_32 == 0xFFFFFFFF || cd_size == 0xFFFFFFFF as u64 || total_entries == 0xFFFF {
             // 查找ZIP64 EOCD定位器
             if let Some(zip64_locator_pos) = Self::find_zip64_eocd(&footer_data, eocd_pos) {
-                // 解析ZIP64 EOCD记录
-                let (zip64_cd_offset, zip64_cd_size, zip64_total_entries) = Self::parse_zip64_eocd(
-                    client.clone(),
-                    file_path,
-                    &footer_data,
-                    zip64_locator_pos,
-                    file_size,
-                    start_pos,
-                ).await?;
+                let zip64_result = Self::parse_zip64_eocd(client.clone(), file_path, &footer_data, zip64_locator_pos, file_size, start_pos).await?;
                 
-                (zip64_cd_offset, zip64_cd_size, zip64_total_entries)
+                // 验证ZIP64解析结果的合理性
+                if zip64_result.1 > MAX_CD_SIZE {
+                    return Err(format!("ZIP64中央目录过大: {} 字节，超过500MB限制", zip64_result.1));
+                }
+                if zip64_result.2 > MAX_ENTRIES {
+                    return Err(format!("ZIP64文件数量过多: {} 个，超过{}限制", zip64_result.2, MAX_ENTRIES));
+                }
+                
+                zip64_result
             } else {
-                return Err("ZIP64 format detected but ZIP64 EOCD locator not found".to_string());
+                return Err("检测到ZIP64标记但未找到ZIP64 EOCD定位器，文件可能损坏".to_string());
             }
         } else {
-            // 检查偏移量是否合理
-            if (cd_offset as u64) >= file_size {
-                return Err(format!("Invalid central directory offset: {} >= file size {}", cd_offset, file_size));
-            }
-            (cd_offset as u64, cd_size as u64, total_entries)
+            (cd_offset_32 as u64, cd_size, total_entries)
         };
         
-        println!("[DEBUG] 使用最终偏移量: {}", final_cd_offset);
+        // 验证中央目录偏移量的合理性
+        if cd_offset >= file_size {
+            return Err(format!("中央目录偏移量({})超出文件范围({})", cd_offset, file_size));
+        }
+        
+        if cd_offset + cd_size > file_size {
+            return Err(format!("中央目录结束位置({})超出文件范围({})", cd_offset + cd_size, file_size));
+        }
 
         // 读取中央目录
-        let cd_data = client.read_file_range(file_path, final_cd_offset, final_cd_size)
+        let cd_data = client.read_file_range(file_path, cd_offset, cd_size)
             .await
-            .map_err(|e| format!("Failed to read central directory: {}", e))?;
+            .map_err(|e| format!("读取中央目录失败: {}", e))?;
 
-        let entries = Self::parse_central_directory(&cd_data, final_total_entries)?;
+        if cd_data.len() != cd_size as usize {
+            return Err(format!("中央目录数据长度不匹配: 期望 {}, 实际 {}", cd_size, cd_data.len()));
+        }
+
+        // 使用优化的解析方法
+        let entries = Self::parse_central_directory_optimized(&cd_data, total_entries)?;
         let total_uncompressed_size = entries.iter().map(|e| e.size).sum();
 
         Ok(ArchiveInfoBuilder::new(CompressionType::Zip)
@@ -669,6 +680,19 @@ impl ZipHandler {
             .await?
             .ok_or_else(|| "File not found in archive".to_string())?;
 
+        // 验证文件大小限制
+        if file_info.compressed_size == 0 {
+            return Ok(PreviewBuilder::new()
+                .content(Vec::new())
+                .with_truncated(false)
+                .total_size(0)
+                .build());
+        }
+        
+        if file_info.compressed_size > 100 * 1024 * 1024 { // 100MB限制
+            return Err(format!("压缩文件过大: {} 字节，超过100MB限制", file_info.compressed_size));
+        }
+
         // 读取本地文件头
         let local_header = client.read_file_range(file_path, file_info.local_header_offset, 30)
             .await
@@ -682,25 +706,24 @@ impl ZipHandler {
         let extra_len = u16::from_le_bytes([local_header[28], local_header[29]]) as u64;
 
         let data_offset = file_info.local_header_offset + 30 + filename_len + extra_len;
-        let read_size = if max_size >= file_info.compressed_size as usize {
-            file_info.compressed_size
-        } else {
-            std::cmp::min(max_size as u64, file_info.compressed_size)
-        };
-
-        // 直接读取全部数据，避免人为分块导致的性能问题
-        // 注意：read_file_range_with_progress 本身就是高效的 HTTP Range 请求，并支持进度回调
+        
+        // 总是读取完整的压缩数据，因为CRC32校验需要完整的解压数据
+        // 只在解压后截取所需的预览大小
         let progress_cb = progress_callback.map(|cb| {
             Arc::new(move |current: u64, total: u64| {
                 cb(current, total);
             }) as ProgressCallback
         });
         
-        let compressed_data = client.read_file_range_with_progress(file_path, data_offset, read_size, progress_cb)
+        let compressed_data = client.read_file_range_with_progress(file_path, data_offset, file_info.compressed_size, progress_cb)
             .await
             .map_err(|e| format!("Failed to read compressed data: {}", e))?;
 
-        Self::decompress_zip_data(&compressed_data, file_info.compression_method, max_size)
+        if compressed_data.len() != file_info.compressed_size as usize {
+            return Err(format!("读取的数据长度({})与预期长度({})不匹配", compressed_data.len(), file_info.compressed_size));
+        }
+
+        Self::decompress_zip_data(&compressed_data, file_info.compression_method, max_size, file_info.crc32)
     }
 
     /// 通过存储客户端在ZIP中查找文件
@@ -734,11 +757,7 @@ impl ZipHandler {
             eocd_data[16], eocd_data[17], eocd_data[18], eocd_data[19]
         ]) as u64;
         
-        // 调试信息：显示EOCD记录的原始字节（在find_file_in_zip_with_client中）
-        println!("[DEBUG] find_file_in_zip_with_client EOCD解析:");
-        println!("[DEBUG] - cd_size: {}", cd_size);
-        println!("[DEBUG] - cd_offset: {} (原始字节: {:02x?})", cd_offset, &eocd_data[16..20]);
-        println!("[DEBUG] - file_size: {}", file_size);
+
         
         // 检查是否为ZIP64格式
         let (final_cd_offset, final_cd_size) = if cd_offset == 0xFFFFFFFF {
@@ -779,37 +798,69 @@ impl ZipHandler {
         compressed_data: &[u8],
         compression_method: u16,
         max_size: usize,
+        expected_crc32: u32,
     ) -> Result<FilePreview, String> {
-        let decompressed_data = if compression_method == 0 {
-            // 无压缩
-            compressed_data.to_vec()
-        } else if compression_method == 8 {
-            // Deflate压缩
-            use flate2::read::DeflateDecoder;
-            use std::io::Read;
-            let mut decoder = DeflateDecoder::new(compressed_data);
-            let mut decompressed = Vec::new();
-            decoder.read_to_end(&mut decompressed).map_err(|e| e.to_string())?;
-            decompressed
-        } else {
-            return Err(format!("Unsupported compression method: {}", compression_method));
+        // 验证输入参数
+        if compressed_data.is_empty() {
+            return Ok(PreviewBuilder::new()
+                .content(Vec::new())
+                .with_truncated(false)
+                .total_size(0)
+                .build());
+        }
+        
+        // 解压缩数据
+        let decompressed_data = match compression_method {
+            0 => {
+                // 无压缩 - 直接使用原始数据
+                compressed_data.to_vec()
+            }
+            8 => {
+                // Deflate压缩 (原始deflate格式，不包含zlib头部)
+                use flate2::read::DeflateDecoder;
+                use std::io::{Read, Cursor};
+                
+                let cursor = Cursor::new(compressed_data);
+                let decoder = DeflateDecoder::new(cursor);
+                let mut decompressed = Vec::new();
+                
+                // 限制解压缩后的最大大小以防止内存耗尽
+                let max_decompressed_size = std::cmp::max(max_size * 10, 50 * 1024 * 1024); // 最大50MB或10倍预览大小
+                
+                // 使用带限制的读取
+                let mut limited_reader = decoder.take(max_decompressed_size as u64);
+                limited_reader.read_to_end(&mut decompressed)
+                    .map_err(|e| format!("Deflate解压缩失败: {}. 数据可能损坏或格式不正确", e))?;
+                
+                decompressed
+            }
+            _ => {
+                return Err(format!("不支持的压缩方法: {}. 仅支持存储(0)和Deflate(8)", compression_method));
+            }
         };
 
-        // 默认为二进制，调用者需要根据文件路径确定
+        // 验证CRC32校验和
+        let actual_crc32 = crc32fast::hash(&decompressed_data);
+        if actual_crc32 != expected_crc32 {
+            return Err(format!(
+                "CRC32校验失败: 期望 {:08x}, 实际 {:08x}. 文件可能已损坏",
+                expected_crc32, actual_crc32
+            ));
+        }
+
+        // 截取预览数据
+        let total_size = decompressed_data.len() as u64;
         let preview_data = if decompressed_data.len() > max_size {
             decompressed_data[..max_size].to_vec()
         } else {
-            decompressed_data.clone()
+            decompressed_data
         };
-
-        let preview_data_len = preview_data.len();
-        let total_size = decompressed_data.len() as u64;
-
-
+        
+        let is_truncated = preview_data.len() < total_size as usize;
 
         Ok(PreviewBuilder::new()
             .content(preview_data)
-            .with_truncated(preview_data_len < total_size as usize)
+            .with_truncated(is_truncated)
             .total_size(total_size)
             .build())
     }
@@ -822,4 +873,5 @@ struct ZipFileInfo {
     compression_method: u16,
     compressed_size: u64,
     local_header_offset: u64,
+    crc32: u32,
 }

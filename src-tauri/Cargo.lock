@@ -842,6 +842,7 @@ dependencies = [
  "brotli 3.5.0",
  "bytes",
  "chrono",
+ "crc32fast",
  "dirs 5.0.1",
  "flate2",
  "futures-util",
