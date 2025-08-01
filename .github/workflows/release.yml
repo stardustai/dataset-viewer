@@ -104,7 +104,7 @@ jobs:
           CHANGES=$(cat CHANGELOG.md)
           VERSION_WITHOUT_V="${{ steps.get_version.outputs.VERSION }}"
           VERSION_WITHOUT_V="${VERSION_WITHOUT_V#v}"
-          
+
           # Create Windows-compatible version (for MSI filename)
           WINDOWS_VERSION="$VERSION_WITHOUT_V"
           WINDOWS_VERSION="${WINDOWS_VERSION/beta./}"
@@ -220,26 +220,27 @@ jobs:
           # Install Java 17
           sudo apt-get update
           sudo apt-get install -y openjdk-17-jdk
-          
+
           # Download and setup Android SDK
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools-linux-9477386_latest.zip
           mkdir -p $HOME/android-sdk/cmdline-tools
           mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          
-          # Set environment variables
+
+          # Set environment variables (清除 ANDROID_SDK_ROOT 避免冲突)
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=" >> $GITHUB_ENV
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-          
+
           # Accept licenses and install required packages
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
           $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
-          
+
           # Set NDK_HOME
           echo "NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          
+
           # Add Android Rust targets
           rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
@@ -292,7 +293,7 @@ jobs:
             const fs = require('fs');
             const path = 'src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk';
             const name = 'dataset-viewer-${{ needs.create-release.outputs.release_tag }}-android.apk';
-            
+
             await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -309,7 +310,7 @@ jobs:
             const fs = require('fs');
             const path = 'src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab';
             const name = 'dataset-viewer-${{ needs.create-release.outputs.release_tag }}-android.aab';
-            
+
             await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
