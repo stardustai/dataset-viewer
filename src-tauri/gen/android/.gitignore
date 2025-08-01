@@ -15,5 +15,12 @@ build
 local.properties
 key.properties
 
+# Keystore files (keep these secure!)
+*.keystore
+*.jks
+
+# Dynamic signing configuration (generated in CI/CD)
+signing-dynamic.gradle
+
 /.tauri
 /tauri.settings.gradle

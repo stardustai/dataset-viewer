@@ -56,3 +56,24 @@ hmac = "0.12"
 sha1 = "0.10"
 sha2 = "0.10"
 
+# 优化配置
+[profile.release]
+# 启用更激进的优化
+opt-level = 3
+# 启用链接时优化 (LTO)
+lto = true
+# 减少代码大小
+codegen-units = 1
+# 减少 panic 开销
+panic = "abort"
+# 去除调试信息
+debug = false
+# 优化二进制大小
+strip = true
+
+# Android 特定优化
+[profile.release-android]
+inherits = "release"
+# Android 特定的大小优化
+opt-level = "s"
+

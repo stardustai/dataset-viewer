@@ -71,17 +71,17 @@ jobs:
 
             | Platform | Download |
             |----------|----------|
-            | macOS (Apple Silicon) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_aarch64.dmg) |
-            | macOS (Intel) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_x64.dmg) |
-            | Windows x64 | [Download MSI](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_x64_en-US.msi) |
-            | Linux (AppImage) | [Download AppImage](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_amd64.AppImage) |
-            | Android | [Download APK](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/app-universal-release-unsigned.apk) |
+            | macOS (Apple Silicon) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/Dataset%20Viewer_${{ steps.get_version.outputs.VERSION }}_aarch64.dmg) |
+            | macOS (Intel) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/Dataset%20Viewer_${{ steps.get_version.outputs.VERSION }}_x64.dmg) |
+            | Windows x64 | [Download MSI](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/DatasetViewer_${{ steps.get_version.outputs.VERSION }}_x64_en-US.msi) |
+            | Linux (AppImage) | [Download AppImage](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/Dataset%20Viewer_${{ steps.get_version.outputs.VERSION }}_amd64.AppImage) |
+            | Android | [Download APK](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer-${{ steps.get_version.outputs.VERSION }}-arm64-signed.apk) |
 
             ### 🔧 Installation
 
             - **macOS**: Download DMG → Drag to Applications → Run: `sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"`
             - **Windows**: Download MSI → Run installer
-            - **Linux (AppImage)**: `chmod +x dataset-viewer_*.AppImage` → Run
+            - **Linux (AppImage)**: `chmod +x "Dataset Viewer_"*.AppImage` → Run
             - **Android**: Download APK → Enable "Install from unknown sources" → Install APK
 
   build-tauri:
@@ -194,12 +194,50 @@ jobs:
             $content = $content -replace '-rc', '-3'
             Set-Content $file $content
           }
+
+          # For Windows MSI compatibility, replace spaces with hyphens in productName
+          $tauriConfig = Get-Content "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $tauriConfig.productName = "DatasetViewer"
+          $tauriConfig | ConvertTo-Json -Depth 10 | Set-Content "src-tauri/tauri.conf.json"
         shell: pwsh
 
       - name: Initialize Android project (Android only)
         if: matrix.mobile
         run: |
           pnpm tauri android init --ci
+          # 确保自定义配置文件存在
+          if [ ! -f "src-tauri/gen/android/signing-config.gradle" ]; then
+            echo "警告: signing-config.gradle 不存在，可能需要重新创建"
+          fi
+
+      - name: Setup Android signing (Android only)
+        if: matrix.mobile
+        run: |
+          # 从 GitHub Secrets 恢复 keystore 文件
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > src-tauri/gen/android/release.keystore
+
+          # 动态创建签名配置文件
+          cat >> src-tauri/gen/android/signing-dynamic.gradle << 'EOF'
+          android {
+              signingConfigs {
+                  release {
+                      keyAlias '${{ secrets.ANDROID_KEY_ALIAS }}'
+                      keyPassword '${{ secrets.ANDROID_KEY_PASSWORD }}'
+                      storeFile file('../release.keystore')
+                      storePassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
+
+          # 验证文件创建
+          ls -la src-tauri/gen/android/release.keystore
+          echo "✅ Android 签名配置完成"
 
       - uses: tauri-apps/tauri-action@v0
         if: '!matrix.mobile && github.event_name != ''workflow_dispatch'''
@@ -218,10 +256,19 @@ jobs:
         if: matrix.mobile
         run: |
           pnpm tauri android build --apk
+          # 检查生成的 APK 文件
+          find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f
+          # 获取版本号
+          VERSION=$(echo "${{ needs.create-release.outputs.release_tag }}" | sed 's/^v//')
+          # 重命名 APK 为更友好的名称（现在已经是签名的了）
+          if [ -f "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk" ]; then
+            mv "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk" \
+               "src-tauri/gen/android/app/build/outputs/apk/universal/release/dataset-viewer-${VERSION}-arm64-signed.apk"
+          fi
 
       - name: Upload Android APK
         if: matrix.mobile && github.event_name != 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.release_tag }}
-          files: src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+          files: src-tauri/gen/android/app/build/outputs/apk/universal/release/dataset-viewer-*-arm64-signed.apk

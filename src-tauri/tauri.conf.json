@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "dataset-viewer",
+  "productName": "Dataset Viewer",
   "version": "1.0.0-beta.7",
   "identifier": "ai.stardust.dataset-viewer",
   "build": {

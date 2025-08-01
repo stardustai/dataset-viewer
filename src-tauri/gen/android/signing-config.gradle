@@ -1,0 +1,60 @@
+// Dataset Viewer - Android 构建优化配置
+// 这个文件包含构建优化设置，不包含敏感的签名信息
+// 签名配置将在 GitHub Actions 中动态设置
+
+android {
+    defaultConfig {
+        // 只保留 ARM64 架构，减少 APK 体积
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+        // 只保留中文和英文资源
+        resConfigs 'en', 'zh', 'zh-rCN'
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            // 签名配置将在构建时动态设置
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    
+    packagingOptions {
+        // 排除重复文件，减少 APK 体积
+        excludes += [
+            'META-INF/DEPENDENCIES',
+            'META-INF/LICENSE',
+            'META-INF/LICENSE.txt',
+            'META-INF/license.txt',
+            'META-INF/NOTICE',
+            'META-INF/NOTICE.txt',
+            'META-INF/notice.txt',
+            'META-INF/ASL2.0',
+            'META-INF/AL2.0',
+            'META-INF/LGPL2.1',
+            'META-INF/*.kotlin_module',
+            'kotlin/**',
+            '**/*.kotlin_metadata'
+        ]
+        
+        // 合并重复资源
+        pickFirsts += [
+            '**/libc++_shared.so',
+            '**/libjsc.so'
+        ]
+    }
+    
+    bundle {
+        language {
+            enableSplit = true
+        }
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = false  // 我们只保留 ARM64，不需要拆分
+        }
+    }
+}

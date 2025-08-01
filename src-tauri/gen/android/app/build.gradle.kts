@@ -67,3 +67,11 @@ dependencies {
 }
 
 apply(from = "tauri.build.gradle.kts")
+
+// 应用 Dataset Viewer 的构建优化配置
+apply(from = "../signing-config.gradle")
+
+// 应用动态生成的签名配置（仅在 CI/CD 中存在）
+if (file("../signing-dynamic.gradle").exists()) {
+    apply(from = "../signing-dynamic.gradle")
+}
