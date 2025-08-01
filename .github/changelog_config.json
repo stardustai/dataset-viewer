@@ -1,27 +1,27 @@
 {
   "categories": [
     {
-      "title": "## ✨ New Features",
+      "title": "### ✨ New Features",
       "labels": ["feature", "enhancement", "feat"]
     },
     {
-      "title": "## 🐛 Bug Fixes", 
+      "title": "### 🐛 Bug Fixes",
       "labels": ["fix", "bugfix", "bug"]
     },
     {
-      "title": "## 🚀 Performance Improvements",
+      "title": "### 🚀 Performance Improvements",
       "labels": ["performance", "perf"]
     },
     {
-      "title": "## 📚 Documentation",
+      "title": "### 📚 Documentation",
       "labels": ["documentation", "docs"]
     },
     {
-      "title": "## 🔧 Maintenance & Refactoring",
+      "title": "### 🔧 Maintenance & Refactoring",
       "labels": ["refactor", "chore", "style", "ci", "build"]
     },
     {
-      "title": "## 🛠️ Other Changes",
+      "title": "### 🛠️ Other Changes",
       "labels": []
     }
   ],
@@ -33,9 +33,9 @@
     "version-bump"
   ],
   "sort": "ASC",
-  "template": "${{CHANGELOG}}",
+  "template": "## 📋 What's Changed\n\n${{CHANGELOG}}",
   "pr_template": "- ${{TITLE}} (#${{NUMBER}})",
-  "empty_template": "- No changes",
+  "empty_template": "",
   "title_excludes": [
     "^[Bb]ump version",
     "^[Vv]ersion bump",
@@ -50,7 +50,7 @@
     },
     {
       "pattern": "^(fix|bugfix)(\\(.+\\))?(!)?:",
-      "target": "fix" 
+      "target": "fix"
     },
     {
       "pattern": "^(perf|performance)(\\(.+\\))?(!)?:",
@@ -94,6 +94,10 @@
     {
       "pattern": "^(chore|refactor|style|ci|build)(\\(.+\\))?(!)?:\\s*(.+)",
       "target": "🔧 $4"
+    },
+    {
+      "pattern": "(.+) \\(#0\\)$",
+      "target": "$1"
     }
   ],
   "max_tags_to_fetch": 200,
