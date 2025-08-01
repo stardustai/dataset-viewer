@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_id: ${{ steps.release.outputs.id || 'test-build' }}
-      release_tag: ${{ steps.get_version.outputs.VERSION }}
+      release_tag: v${{ steps.get_version.outputs.VERSION }}
       upload_url: ${{ steps.release.outputs.upload_url || 'test-build' }}
     steps:
       - uses: actions/checkout@v4
@@ -32,10 +32,15 @@ jobs:
         id: get_version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+            RAW_VERSION="${{ github.event.inputs.tag }}"
           else
-            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            RAW_VERSION="${GITHUB_REF#refs/tags/}"
           fi
+
+          # 去掉v前缀，统一使用不带v的版本号
+          VERSION="${RAW_VERSION#v}"
+
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build Changelog
         id: build_changelog
@@ -54,8 +59,8 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.get_version.outputs.VERSION }}
-          name: Dataset Viewer ${{ steps.get_version.outputs.VERSION }}
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: Dataset Viewer v${{ steps.get_version.outputs.VERSION }}
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'alpha') || contains(steps.get_version.outputs.VERSION, 'beta') || contains(steps.get_version.outputs.VERSION, 'rc') }}
           generate_release_notes: false
@@ -66,11 +71,11 @@ jobs:
 
             | Platform | Download |
             |----------|----------|
-            | macOS (Apple Silicon) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_aarch64.dmg) |
-            | macOS (Intel) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_x64.dmg) |
-            | Windows x64 | [Download MSI](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_x64_en-US.msi) |
-            | Linux (AppImage) | [Download AppImage](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_amd64.AppImage) |
-            | Android | [Download APK](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/dataset-viewer-${{ steps.get_version.outputs.VERSION }}-android.apk) |
+            | macOS (Apple Silicon) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_aarch64.dmg) |
+            | macOS (Intel) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_x64.dmg) |
+            | Windows x64 | [Download MSI](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_x64_en-US.msi) |
+            | Linux (AppImage) | [Download AppImage](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer_${{ steps.get_version.outputs.VERSION }}_amd64.AppImage) |
+            | Android | [Download APK](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/app-universal-release-unsigned.apk) |
 
             ### 🔧 Installation
 
@@ -209,21 +214,14 @@ jobs:
         run: |
           pnpm tauri build ${{ matrix.args }}
 
-      - name: Build Android APK and AAB
+      - name: Build Android APK
         if: matrix.mobile
         run: |
-          pnpm tauri android build --apk --aab
+          pnpm tauri android build --apk
 
       - name: Upload Android APK
         if: matrix.mobile && github.event_name != 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.release_tag }}
-          files: src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
-
-      - name: Upload Android AAB
-        if: matrix.mobile && github.event_name != 'workflow_dispatch'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.create-release.outputs.release_tag }}
-          files: src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab
+          files: src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
