@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,9 +22,9 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     outputs:
-      release_id: ${{ steps.create-release.outputs.result }}
+      release_id: ${{ steps.create-release.outputs.result || steps.dummy-release.outputs.result }}
       release_tag: ${{ steps.get_version.outputs.VERSION }}
-      upload_url: ${{ steps.create-release.outputs.upload_url }}
+      upload_url: ${{ steps.create-release.outputs.upload_url || steps.dummy-release.outputs.upload_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,7 +32,12 @@ jobs:
 
       - name: Get version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Generate release body
         id: generate_body
@@ -131,6 +142,7 @@ jobs:
 
       - name: Create Release
         id: create-release
+        if: github.event_name != 'workflow_dispatch'
         uses: actions/github-script@v7
         with:
           script: |
@@ -153,6 +165,13 @@ jobs:
             return data.id
         env:
           RELEASE_BODY: ${{ steps.generate_body.outputs.RELEASE_BODY }}
+
+      - name: Set dummy release ID for manual trigger
+        id: dummy-release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "result=test-build" >> $GITHUB_OUTPUT
+          echo "upload_url=test-build" >> $GITHUB_OUTPUT
 
   build-tauri:
     needs: create-release
@@ -273,12 +292,17 @@ jobs:
           pnpm tauri android init --ci
 
       - uses: tauri-apps/tauri-action@v0
-        if: '!matrix.mobile'
+        if: '!matrix.mobile && github.event_name != ''workflow_dispatch'''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
+
+      - name: Build only (manual trigger)
+        if: '!matrix.mobile && github.event_name == ''workflow_dispatch'''
+        run: |
+          pnpm tauri build ${{ matrix.args }}
 
       - name: Build Android APK and AAB
         if: matrix.mobile
@@ -286,7 +310,7 @@ jobs:
           pnpm tauri android build --apk --aab
 
       - name: Upload Android APK
-        if: matrix.mobile
+        if: matrix.mobile && github.event_name != 'workflow_dispatch'
         uses: actions/github-script@v7
         with:
           script: |
@@ -303,7 +327,7 @@ jobs:
             });
 
       - name: Upload Android AAB
-        if: matrix.mobile
+        if: matrix.mobile && github.event_name != 'workflow_dispatch'
         uses: actions/github-script@v7
         with:
           script: |
