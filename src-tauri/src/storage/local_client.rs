@@ -7,6 +7,7 @@ use tokio::fs;
 use tokio::io::AsyncReadExt;
 
 use super::traits::{StorageClient, StorageError, StorageRequest, StorageResponse, DirectoryResult, StorageFile, ListOptions, ConnectionConfig, StorageCapabilities, ProgressCallback};
+use crate::utils::chunk_size;
 
 /// 本机文件系统存储客户端
 pub struct LocalFileSystemClient {
@@ -349,34 +350,34 @@ impl StorageClient for LocalFileSystemClient {
             .map_err(|e| StorageError::IoError(format!("Failed to seek in file: {}", e)))?;
 
         // 使用分块读取来处理大文件，与其他存储客户端保持一致
-        const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks，适合本地文件读取
+        let chunk_size = chunk_size::calculate_local_read_chunk_size(length);
         let mut result = Vec::with_capacity(length as usize);
         let mut remaining = length;
         let mut total_read = 0u64;
-        
+
         while remaining > 0 {
-            let chunk_size = std::cmp::min(remaining, CHUNK_SIZE as u64) as usize;
-            let mut chunk = vec![0u8; chunk_size];
-            
+            let current_chunk_size = std::cmp::min(remaining, chunk_size as u64) as usize;
+            let mut chunk = vec![0u8; current_chunk_size];
+
             let bytes_read = file.read(&mut chunk).await
                 .map_err(|e| StorageError::IoError(format!("Failed to read file: {}", e)))?;
-            
+
             if bytes_read == 0 {
                 // 到达文件末尾
                 break;
             }
-            
+
             chunk.truncate(bytes_read);
             result.extend_from_slice(&chunk);
             total_read += bytes_read as u64;
             remaining = remaining.saturating_sub(bytes_read as u64);
-            
+
             // 调用进度回调
             if let Some(ref callback) = progress_callback {
                 callback(total_read, length);
             }
         }
-        
+
         log::debug!("本地文件实际读取到 {} 字节，请求 {} 字节", result.len(), length);
         Ok(result)
     }

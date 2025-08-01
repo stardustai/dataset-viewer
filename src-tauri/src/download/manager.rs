@@ -10,6 +10,7 @@ use tokio_util;
 use crate::download::{types::*, progress::ProgressTracker};
 use crate::storage::get_storage_manager;
 use crate::archive::handlers::ArchiveHandler;
+use crate::utils::chunk_size;
 
 pub struct DownloadManager {
     active_downloads: Arc<Mutex<HashMap<String, broadcast::Sender<()>>>>,
@@ -20,23 +21,21 @@ impl DownloadManager {
         Self {
             active_downloads: Arc::new(Mutex::new(HashMap::new())),
         }
-    }
-
-    /// 显示文件保存对话框的公共方法
+    }    /// 显示文件保存对话框的公共方法
     fn show_save_file_dialog(
         app: &tauri::AppHandle,
         filename: &str,
     ) -> Result<Option<std::path::PathBuf>, String> {
         use std::sync::mpsc;
         let (tx, rx) = mpsc::channel();
-        
+
         app.dialog()
             .file()
             .set_file_name(filename)
             .save_file(move |file_path| {
                 let _ = tx.send(file_path);
             });
-        
+
         match rx.recv() {
             Ok(Some(file)) => {
                 file.into_path()
@@ -130,7 +129,7 @@ impl DownloadManager {
         }
 
         // 设置下载（文件对话框、取消信号、进度跟踪器）
-        let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) = 
+        let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
             self.setup_download(&app, &request.filename, None)?;
 
         // 创建HTTP客户端和请求
@@ -208,7 +207,7 @@ impl DownloadManager {
         } else {
             &request.url
         };
-        
+
         // 构建完整的文件路径
         let source_file_path = {
             let path_buf = std::path::PathBuf::from(path_str);
@@ -223,19 +222,19 @@ impl DownloadManager {
                 path_buf
             }
         };
-        
+
         // 检查源文件是否存在
         if !source_file_path.exists() {
             return Err(format!("Source file does not exist: {:?}", source_file_path));
         }
-        
+
         let source_file_path = match source_file_path.canonicalize() {
              Ok(path) => path,
              Err(e) => {
                  return Err(format!("Failed to canonicalize source path: {}", e));
              }
          };
-         
+
          // 获取文件大小
          let file_size = match std::fs::metadata(&source_file_path) {
              Ok(metadata) => metadata.len(),
@@ -243,17 +242,17 @@ impl DownloadManager {
                  return Err(format!("Failed to get file metadata: {}", e));
              }
          };
-         
+
          // 设置下载（文件对话框、取消信号、进度跟踪器）
-         let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) = 
+         let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
              self.setup_download(&app, &request.filename, Some(file_size))?;
-         
+
          // 更新开始下载事件
          progress_tracker.emit_started(crate::download::types::DownloadStarted {
              filename: request.filename.clone(),
              total_size: file_size,
          });
-         
+
          // 执行本地文件复制
          let download_result = self
              .execute_local_file_download(
@@ -265,7 +264,7 @@ impl DownloadManager {
                  &mut cancel_rx,
              )
              .await;
-         
+
          self.handle_download_completion(
              &request.filename,
              download_result,
@@ -284,7 +283,7 @@ impl DownloadManager {
         entry_filename: String,
     ) -> DownloadResult {
         // 设置下载（文件对话框、取消信号、进度跟踪器）
-        let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) = 
+        let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
             self.setup_download(&app, &entry_filename, None)?;
 
         // 执行压缩包文件下载
@@ -417,7 +416,7 @@ impl DownloadManager {
             filename,
             total_size,
             cancel_rx,
-            8192, // 8KB chunks
+            chunk_size::calculate_optimal_chunk_size(total_size),
         ).await
     }
 
@@ -443,7 +442,7 @@ impl DownloadManager {
             filename,
             total_size,
             cancel_rx,
-            8192, // 8KB chunks
+            chunk_size::calculate_optimal_chunk_size(total_size),
         ).await
     }
 
@@ -506,7 +505,7 @@ impl DownloadManager {
         ).await.map_err(|e| {
             format!("Failed to extract file from archive: {}", e)
         })?;
-        
+
         let file_data = file_preview.content;
 
         // 检查取消信号

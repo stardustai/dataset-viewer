@@ -1,5 +1,6 @@
 use crate::archive::{types::*, formats};
 use crate::storage::traits::StorageClient;
+use crate::utils::chunk_size;
 use std::sync::Arc;
 
 /// 压缩包处理器的统一入口
@@ -102,7 +103,7 @@ impl ArchiveHandler {
 
         // 如果没有指定大小限制，使用4GB作为最大限制（用于下载完整文件）
         let max_size = max_preview_size.unwrap_or(4 * 1024 * 1024 * 1024); // 默认4GB
-        
+
         // 统一使用支持进度回调的方法
         let boxed_callback = progress_callback.map(|callback| {
             let boxed: Box<dyn Fn(u64, u64) + Send + Sync> = Box::new(callback);
@@ -172,21 +173,8 @@ impl ArchiveHandler {
     /// 获取推荐的分块大小
     pub fn get_recommended_chunk_size(&self, filename: &str, file_size: u64) -> usize {
         let compression_type = CompressionType::from_filename(filename);
-        let base_size = match compression_type {
-            CompressionType::Zip => 8192,    // 8KB for ZIP (random access)
-            CompressionType::TarGz => 32768, // 32KB for TAR.GZ (sequential)
-            CompressionType::Tar => 16384,   // 16KB for TAR
-            CompressionType::Gzip => 16384,  // 16KB for GZIP
-            _ => 8192,
-        };
+        let is_random_access = matches!(compression_type, CompressionType::Zip);
 
-        // 根据文件大小调整
-        if file_size > 100 * 1024 * 1024 { // >100MB
-            base_size * 4
-        } else if file_size > 10 * 1024 * 1024 { // >10MB
-            base_size * 2
-        } else {
-            base_size
-        }
+        chunk_size::calculate_archive_chunk_size(file_size, is_random_access)
     }
 }

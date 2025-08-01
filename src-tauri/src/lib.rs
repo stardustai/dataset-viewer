@@ -1,6 +1,7 @@
 mod storage;
 mod archive;  // 压缩包处理功能 - 前端需要使用
 mod download; // 下载管理功能
+mod utils;    // 通用工具模块
 
 use archive::{handlers::ArchiveHandler, types::*};
 use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
