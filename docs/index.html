@@ -8,284 +8,447 @@
     <meta name="description" content="100% AI 生成的现代化数据集查看器，支持大数据集查看、快速搜索和跨平台使用" data-i18n-attr="content:page.description">
     <meta name="keywords" content="数据集查看器,Dataset Viewer,大数据集查看,WebDAV,AI生成,Tauri,React" data-i18n-attr="content:page.keywords">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'gradient': 'gradient 8s linear infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        gradient: {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         .gradient-bg {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
-        }
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
-        }
-        .logo-animation {
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        .ai-badge {
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            animation: shimmer 2s infinite;
-        }
-        @keyframes shimmer {
-            0% { background-position: -200px 0; }
-            100% { background-position: 200px 0; }
-        }
-        .download-btn {
-            position: relative;
-            overflow: hidden;
-        }
-        .download-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-        .download-btn:hover::before {
-            left: 100%;
+            background: linear-gradient(-45deg, #000000, #1a1a1a, #0f0f0f, #262626);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
         }
 
-        /* 语言切换按钮样式 */
+        .text-gradient {
+            background: linear-gradient(135deg, #ffffff 0%, #a3a3a3 50%, #ffffff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .text-gradient-accent {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-glow {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-glow:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .feature-grid {
+            background: radial-gradient(600px circle at 50% 50%, rgba(147, 51, 234, 0.1) 0%, transparent 60%),
+                        linear-gradient(135deg,
+                            rgba(59, 130, 246, 0.1) 0%,
+                            rgba(139, 92, 246, 0.1) 25%,
+                            rgba(6, 182, 212, 0.1) 50%,
+                            rgba(16, 185, 129, 0.1) 75%,
+                            rgba(59, 130, 246, 0.1) 100%);
+            background-size: 400% 400%;
+            animation: gradient 20s ease infinite;
+        }
+
+        .lang-switch {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
         .lang-btn {
-            color: #6b7280;
             background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            transition: all 0.2s ease;
         }
+
         .lang-btn.active {
-            color: #374151;
-            background: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
         }
+
         .lang-btn:hover:not(.active) {
-            color: #374151;
-            background: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .download-card {
+            background: linear-gradient(135deg,
+                rgba(255, 255, 255, 0.1) 0%,
+                rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .download-card:hover {
+            background: linear-gradient(135deg,
+                rgba(255, 255, 255, 0.15) 0%,
+                rgba(255, 255, 255, 0.08) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
-<body class="gradient-bg min-h-screen">
-    <div class="min-h-screen flex items-center justify-center p-4 py-8">
-        <div class="max-w-5xl w-full">
-            <!-- Header with Logo -->
-            <div class="text-center mb-10">
-                <!-- 语言切换按钮 -->
-                <div class="flex justify-end mb-4">
-                    <div class="bg-white/90 backdrop-blur-sm rounded-xl p-1 shadow-md border border-gray-200/50">
-                        <button onclick="switchLanguage('zh')" id="btn-zh" class="lang-btn active px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200">中文</button>
-                        <button onclick="switchLanguage('en')" id="btn-en" class="lang-btn px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200">English</button>
-                    </div>
-                </div>
-                <div class="flex items-center justify-center mb-6">
-                    <img src="./logo.png" alt="Dataset Viewer Logo" class="logo-animation w-20 h-20 mr-4 rounded-3xl drop-shadow-xl">
-                    <div class="text-left relative">
-                        <h1 class="text-5xl font-bold text-gray-900 mb-2 pr-16" data-i18n="app.title">
-                            Dataset Viewer
-                        </h1>
-                        <span id="version-badge" class="absolute -top-4 right-0 text-xs font-medium text-gray-500 bg-gray-100/80 backdrop-blur-sm px-2 py-1 rounded-full opacity-0 transition-all duration-500 transform scale-95 whitespace-nowrap"></span>
-                        <div class="flex items-center space-x-3">
-                            <span class="ai-badge text-xs text-white px-3 py-1.5 rounded-full font-medium" data-i18n="app.ai_badge">
-                                🤖 100% AI 生成
-                            </span>
-                            <span class="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full font-medium" data-i18n="app.open_source">
-                                开源免费
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div class="max-w-3xl mx-auto">
-                    <p class="text-xl text-gray-700 mb-4 font-medium" data-i18n="app.subtitle">
-                        现代化的数据集查看器
-                    </p>
-                    <p class="text-base text-gray-600 leading-relaxed" data-i18n="app.description">
-                        支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能
-                    </p>
-                    <div class="flex items-center justify-center space-x-6 mt-4 text-sm text-gray-500">
-                        <div class="flex items-center space-x-1">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M24 12.001c0 6.627-5.373 12-12 12s-12-5.373-12-12c0-6.627 5.373-12 12-12s12 5.373 12 12zm-12-8.5c-4.694 0-8.5 3.806-8.5 8.5s3.806 8.5 8.5 8.5 8.5-3.806 8.5-8.5-3.806-8.5-8.5-8.5zm0 13c-2.485 0-4.5-2.015-4.5-4.5s2.015-4.5 4.5-4.5 4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5z"/>
-                            </svg>
-                            <span>Tauri + Rust</span>
-                        </div>
-                        <div class="flex items-center space-x-1">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 14l9-5-9-5-9 5 9 5z"/>
-                                <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                            </svg>
-                            <span>React + TypeScript</span>
-                        </div>
-                        <div class="flex items-center space-x-1">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-                            </svg>
-                            <span data-i18n="app.crossplatform">跨平台</span>
-                        </div>
+<body class="gradient-bg min-h-screen text-white overflow-x-hidden">
+    <!-- Language Switch -->
+    <div class="fixed top-6 right-6 z-50">
+        <div class="lang-switch rounded-full p-1">
+            <button onclick="switchLanguage('zh')" id="btn-zh" class="lang-btn active px-4 py-2 text-sm font-medium rounded-full transition-all duration-200">中文</button>
+            <button onclick="switchLanguage('en')" id="btn-en" class="lang-btn px-4 py-2 text-sm font-medium rounded-full transition-all duration-200">English</button>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="relative min-h-screen flex items-center justify-center px-6">
+        <div class="max-w-6xl mx-auto text-center">
+            <!-- Logo and Badge -->
+            <div class="flex items-center justify-center mb-8">
+                <img src="./logo.png" alt="Dataset Viewer Logo" class="w-20 h-20 rounded-2xl shadow-2xl animate-float mr-6">
+                <div class="text-left">
+                    <div class="flex items-center space-x-4 mb-2">
+                        <span class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium px-4 py-2 rounded-full" data-i18n="app.ai_badge">
+                            🤖 100% AI 生成
+                        </span>
+						<span class="min-w-36">
+                        	<span id="version-badge" class="bg-white/10 backdrop-blur text-white/80 text-sm font-medium px-4 py-2 rounded-full opacity-0 transition-all duration-500 transform scale-95"></span>
+						</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Download Cards -->
-            <div class="grid md:grid-cols-3 gap-8 mb-10">
-                <!-- macOS ARM64 -->
-                <div class="group bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-lg card-hover border border-gray-200/50 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-gray-100/30 to-transparent rounded-full -mr-16 -mt-16"></div>
-                    <div class="text-center relative z-10">
-                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                            <svg class="w-8 h-8 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+            <!-- Main Heading -->
+            <h1 class="text-6xl md:text-8xl font-bold mb-6 leading-tight">
+                <span class="text-gradient" data-i18n="hero.title">Dataset</span><br>
+                <span class="text-gradient-accent" data-i18n="hero.viewer">Viewer</span>
+            </h1>
+
+            <!-- Subtitle -->
+            <p class="text-xl md:text-2xl text-gray-300 mb-4 max-w-4xl mx-auto font-light" data-i18n="hero.subtitle">
+                现代化的数据集浏览器
+            </p>
+
+            <!-- Description -->
+            <p class="text-lg text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed" data-i18n="hero.description">
+                支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能
+            </p>
+
+            <!-- Tech Stack Icons -->
+            <div class="flex items-center justify-center space-x-8 mb-16 text-gray-400">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
+						<svg t="1754044662621" class="w-5 h-5 text-orange-400" viewBox="0 0 1024 1024"  version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3677" width="200" height="200"><path d="M660.36 396.732a80.612 80.612 0 0 1-137.604 57 80.608 80.608 0 1 1 137.6-57zM444.16 546.96c-44.52 0-80.608 36.088-80.608 80.604 0 44.52 36.088 80.608 80.608 80.608 44.516 0 80.608-36.088 80.608-80.608 0-44.516-36.092-80.6-80.608-80.6z" fill="currentColor" p-id="3678"></path><path d="M746.8 655.04a307.808 307.808 0 0 1-106.256 43.24 216.168 216.168 0 0 0 10.628-97.464 216.2 216.2 0 0 0 135.424-140.984 216.16 216.16 0 0 0-110.92-256.84 216.176 216.176 0 0 0-271.452 67.708 359.064 359.064 0 0 0-117.98 34.44 307.756 307.756 0 0 1 345.96-212.232 307.76 307.76 0 0 1 255.552 315.316 307.744 307.744 0 0 1-140.96 246.824zM289.92 361.192l75.476 9.16a216.2 216.2 0 0 1 9.524-42.868 307.812 307.812 0 0 0-85 33.708z" fill="currentColor" p-id="3679"></path><path d="M276.728 369.256a307.748 307.748 0 0 1 106.988-43.6 215.804 215.804 0 0 0-12.092 97.828 216.2 216.2 0 0 0-134.56 141.432 216.16 216.16 0 0 0 209.416 278.4 216.176 216.176 0 0 0 173.192-90.08 358.988 358.988 0 0 0 117.98-34.072 307.744 307.744 0 0 1-200.008 201.692 307.752 307.752 0 0 1-279.968-47.968A307.776 307.776 0 0 1 276.72 369.26z m456.88 293.848l-1.464 0.732z" fill="currentColor" p-id="3680"></path></svg>
+                    </div>
+                    <span class="text-sm font-medium">Tauri</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.41 0-.783.093-1.106.278-1.375.793-1.683 3.264-.973 6.365C1.98 8.917 0 10.42 0 12.004c0 1.59 1.99 3.097 5.043 4.03-.704 3.113-.39 5.588.988 6.38.32.187.69.275 1.102.275 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.41 0 .783-.09 1.106-.275 1.374-.792 1.683-3.263.973-6.365C22.02 15.096 24 13.59 24 12.004c0-1.59-1.99-3.097-5.043-4.032.704-3.11.39-5.587-.988-6.38-.318-.184-.688-.277-1.092-.278zm-.005 1.09v.006c.225 0 .406.044.558.127.666.382.955 1.835.73 3.704-.054.46-.142.945-.25 1.44-.96-.236-2.006-.417-3.107-.534-.66-.905-1.345-1.727-2.035-2.447 1.592-1.48 3.087-2.292 4.105-2.295zm-9.77.02c1.012 0 2.514.808 4.11 2.28-.686.72-1.37 1.537-2.02 2.442-1.107.117-2.154.298-3.113.538-.112-.49-.195-.964-.254-1.42-.23-1.868.054-3.32.714-3.707.19-.09.4-.127.563-.132zm4.882 3.05c.455.468.91.992 1.36 1.564-.44-.02-.89-.034-1.36-.034-.47 0-.92.014-1.36.034.45-.572.905-1.096 1.36-1.564zM12 8.1c.74 0 1.477.034 2.202.093.406.582.802 1.203 1.183 1.86.372.64.71 1.29 1.018 1.946-.308.655-.646 1.31-1.013 1.95-.38.66-.773 1.288-1.18 1.87-.728.063-1.466.098-2.21.098-.74 0-1.477-.035-2.202-.093-.406-.582-.802-1.204-1.183-1.86-.372-.64-.71-1.29-1.018-1.946.303-.657.646-1.313 1.013-1.954.38-.66.773-1.286 1.18-1.866.728-.064 1.466-.098 2.21-.098zm-3.635.254c-.24.377-.48.763-.704 1.16-.225.39-.435.782-.635 1.174-.265-.656-.49-1.31-.676-1.947.64-.15 1.315-.283 2.015-.386zm7.26 0c.695.103 1.365.23 2.006.387-.18.632-.405 1.282-.66 1.933-.2-.39-.41-.783-.64-1.174-.225-.392-.465-.774-.705-1.146zm3.063.675c.484.15.944.317 1.375.498 1.732.74 2.852 1.708 2.852 2.476-.005.768-1.125 1.74-2.857 2.475-.42.18-.88.342-1.355.493-.28-.958-.646-1.956-1.1-2.98.45-1.017.81-2.01 1.085-2.964zm-13.395.004c.278.96.645 1.957 1.1 2.98-.45 1.017-.812 2.01-1.086 2.964-.484-.15-.944-.318-1.37-.5-1.732-.737-2.852-1.706-2.852-2.474 0-.768 1.12-1.742 2.852-2.476.42-.18.88-.342 1.356-.494zm11.678 4.28c.265.657.49 1.312.676 1.948-.64.157-1.316.29-2.016.39.24-.375.48-.762.705-1.158.225-.39.435-.788.636-1.18zm-9.945.02c.2.392.41.783.64 1.175.23.39.465.772.705 1.143-.695-.102-1.365-.23-2.006-.386.18-.63.406-1.282.66-1.933zM17.92 16.32c.112.493.2.968.254 1.423.23 1.868-.054 3.32-.714 3.708-.147.09-.338.128-.563.128-1.012 0-2.514-.807-4.11-2.28.686-.72 1.37-1.536 2.02-2.44 1.107-.118 2.154-.3 3.113-.54zm-11.83.01c.96.234 2.006.415 3.107.532.66.905 1.345 1.727 2.035 2.446-1.595 1.483-3.092 2.295-4.11 2.295-.22-.005-.406-.05-.553-.132-.666-.38-.955-1.834-.73-3.703.054-.46.142-.944.25-1.438zm4.56.64c.44.02.89.034 1.36.034.47 0 .92-.014 1.36-.034-.45.572-.905 1.096-1.36 1.564-.455-.468-.91-.992-1.36-1.564z"/>
+                        </svg>
+                    </div>
+                    <span class="text-sm font-medium">React</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center">
+						<svg t="1754044874161" class="w-5 h-5 text-red-400" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4776" width="200" height="200"><path fill="currentColor" d="M1017.04003 499.502233l-43.639815-27.019885c-0.339999-3.999983-0.679997-7.859967-1.099995-11.75995l37.439841-34.999851a14.699937 14.699937 0 0 0-4.879979-24.499895l-47.999796-17.999924c-1.079995-3.759984-2.159991-7.559968-3.339986-11.279952l29.999872-41.659822a14.699937 14.699937 0 0 0-9.579959-23.079902l-50.839783-8.299965c-1.799992-3.459985-3.579985-6.899971-5.459977-10.299956l21.359909-46.8398a14.699937 14.699937 0 0 0-13.899941-20.779912l-51.63978 1.819992q-3.579985-4.439981-7.219969-8.799962L878.000622 163.683663a14.719937 14.719937 0 0 0-17.679925-17.679925L810.000911 157.863688q-4.339982-3.659984-8.799962-7.219969l1.819992-51.639781a14.699937 14.699937 0 0 0-20.779912-13.99994L735.401229 106.463907c-3.399986-1.879992-6.859971-3.679984-10.299956-5.459977l-8.299965-50.839784a14.699937 14.699937 0 0 0-23.079902-9.579959L652.001584 70.52406c-3.719984-1.179995-7.499968-2.25999-11.279952-3.339986l-17.999923-47.999796a14.699937 14.699937 0 0 0-24.499896-4.879979l-34.999851 37.439841c-3.899983-0.419998-7.819967-0.759997-11.75995-1.099996L524.502127 6.96433a14.699937 14.699937 0 0 0-24.999894 0L472.482348 50.604145c-3.999983 0.339999-7.859967 0.679997-11.75995 1.099995l-34.999851-37.439841a14.699937 14.699937 0 0 0-24.499895 4.879979l-17.999924 47.999796c-3.779984 1.099995-7.579968 2.159991-11.319951 3.359986l-41.639823-29.999872a14.699937 14.699937 0 0 0-23.079902 9.579959l-8.299965 50.819783c-3.459985 1.799992-6.899971 3.579985-10.319956 5.459977l-46.7998-21.259909a14.699937 14.699937 0 0 0-20.779912 13.99994l1.839992 51.61978c-2.979987 2.37999-5.999974 4.77998-8.839962 7.21997L163.683663 146.003738A14.719937 14.719937 0 0 0 146.003738 163.683663L157.863688 214.003449c-2.45999 2.899988-4.859979 5.859975-7.239969 8.819962l-51.619781-1.819992a14.839937 14.839937 0 0 0-12.739945 6.519972 14.699937 14.699937 0 0 0-1.139995 14.25994l21.319909 46.8198c-1.879992 3.399986-3.659984 6.859971-5.459977 10.319956l-50.819784 8.279965a14.699937 14.699937 0 0 0-9.579959 23.079902l29.999872 41.639822c-1.179995 3.739984-2.25999 7.539968-3.359985 11.319952l-47.999796 17.999924a14.699937 14.699937 0 0 0-4.879979 24.499895l37.439841 34.999851c-0.419998 3.899983-0.759997 7.819967-1.099996 11.75995l-43.719814 26.999885a14.699937 14.699937 0 0 0 0 24.999894l43.639815 27.019885c0.339999 3.999983 0.679997 7.839967 1.099995 11.73995l-37.439841 34.999851a14.699937 14.699937 0 0 0 4.87998 24.499895l47.999795 17.999924c1.099995 3.779984 2.159991 7.559968 3.359986 11.299952l-29.999872 41.659822a14.699937 14.699937 0 0 0 9.579959 23.079902l50.839783 8.299965c1.799992 3.439985 3.579985 6.899971 5.459977 10.279956l-21.259909 46.8598a14.699937 14.699937 0 0 0 1.139995 14.25994 14.259939 14.259939 0 0 0 12.739945 6.519972l51.659781-1.819992q3.539985 4.439981 7.199969 8.799962L146.003738 860.320697a14.719937 14.719937 0 0 0 17.679925 17.679925l50.319786-11.85995q4.359981 3.659984 8.819962 7.219969l-1.839992 51.639781a14.699937 14.699937 0 0 0 20.779912 13.89994l46.8598-21.359909c3.379986 1.879992 6.839971 3.659984 10.279956 5.459977l8.299965 50.839784a14.679937 14.679937 0 0 0 23.079902 9.559959l41.659822-29.999872c3.719984 1.199995 7.519968 2.25999 11.299952 3.359985l17.999924 47.999796a14.719937 14.719937 0 0 0 24.499895 4.879979l34.999851-37.43984c3.899983 0.419998 7.839967 0.759997 11.75995 1.099995l27.019885 43.639814a14.699937 14.699937 0 0 0 24.999894 0l27.019885-43.639814c3.999983-0.339999 7.859967-0.679997 11.75995-1.119995l34.999851 37.45984a14.719937 14.719937 0 0 0 24.499895-4.879979l17.999924-47.999796c3.779984-1.099995 7.559968-2.159991 11.299951-3.359985l41.639823 29.999872a14.679937 14.679937 0 0 0 23.079902-9.559959l8.299965-50.839784c3.439985-1.799992 6.899971-3.579985 10.299956-5.459977l46.8398 21.359909a14.699937 14.699937 0 0 0 20.779912-13.89994l-1.819992-51.639781q4.439981-3.579985 8.799962-7.219969l50.299786 11.85995a14.719937 14.719937 0 0 0 17.679925-17.679925L866.140672 810.000911q3.659984-4.339982 7.219969-8.799962l51.639781 1.819992a14.459938 14.459938 0 0 0 12.739945-6.519972 14.699937 14.699937 0 0 0 1.159995-14.25994l-21.359909-46.8398c1.879992-3.399986 3.659984-6.859971 5.459977-10.299956l50.839784-8.299965a14.699937 14.699937 0 0 0 9.579959-23.079902l-29.999872-41.659822c1.179995-3.739984 2.25999-7.519968 3.339985-11.299952l47.999796-17.999924a14.699937 14.699937 0 0 0 4.879979-24.499895l-37.43984-34.999851c0.419998-3.899983 0.759997-7.819967 1.099995-11.73995l43.639814-27.019885a14.699937 14.699937 0 0 0 0-24.999894z m-301.998714 258.158901A27.819882 27.819882 0 0 0 682.001456 779.021043l-15.279935 71.339696a375.018403 375.018403 0 0 1-312.718668-1.479993l-15.279935-71.319697a27.739882 27.739882 0 0 0-32.91986-21.359909l-63.019732 13.519943a374.758404 374.758404 0 0 1-32.519861-38.419837H516.60216c3.439985 0 5.779975-0.579998 5.779976-3.819983v-108.379539c0-3.139987-2.33999-3.819984-5.779976-3.819984h-89.659618l0.1-68.699707H524.002129c8.819962 0 47.319799 2.559989 59.579746 51.739779 3.819984 15.099936 12.339947 64.279726 18.119923 79.99966 5.779975 17.639925 29.199876 52.919775 54.199769 52.919775H814.000894a374.598405 374.598405 0 0 1-34.679852 40.179828z m51.53978 68.979706A30.47987 30.47987 0 1 1 736.001226 796.16097h0.879997a30.45987 30.45987 0 0 1 29.599873 30.47987z m-451.238079-1.359994a30.47987 30.47987 0 1 1-30.49987-30.49987h0.899996a30.49987 30.49987 0 0 1 29.499875 30.49987z m-176.199249-356.97848l65.65972-29.199876a27.759882 27.759882 0 0 0 14.11994-36.659844L205.383486 372.002776h53.119773v239.458981h-107.199543a375.298402 375.298402 0 0 1-12.159948-143.159391z m-22.519905-72.119693a30.47987 30.47987 0 0 1 30.459871-30.49987H148.00373a30.47987 30.47987 0 1 1-31.339867 30.47987z m310.318679 48.979792l0.1-70.6397h126.519461c6.559972 0 46.139804 7.539968 46.139804 37.239842 0 24.579895-30.379871 33.399858-55.359765 33.399858zM798.000962 613.421748c-19.599917 2.25999-41.259824-8.239965-43.999812-20.179914-11.559951-64.979723-30.779869-78.799664-61.13974-102.799562 37.719839-23.899898 76.919672-59.279748 76.919672-106.519547 0-51.039783-34.979851-83.179646-58.799749-98.959578-33.519857-21.999906-70.5597-26.459887-80.539657-26.459888h-397.798307a374.978403 374.978403 0 0 1 209.779107-118.379496l46.9398 49.199791a27.639882 27.639882 0 0 0 39.199834 0.879996l52.519776-49.999787a375.018403 375.018403 0 0 1 256.738907 182.859221l-35.999847 81.139655a27.999881 27.999881 0 0 0 14.17994 36.659844l69.179705 30.659869a374.238407 374.238407 0 0 1 0.799997 65.079723h-38.559836c-3.819984 0-5.379977 2.539989-5.379977 6.259974v17.639924C842.000775 602.001797 818.620874 611.161758 798.000962 613.421748zM480.002316 120.423847A30.47987 30.47987 0 0 1 510.422187 90.003977h0.899996A30.47987 30.47987 0 1 1 480.002316 120.423847zM873.68064 428.002538a30.47987 30.47987 0 1 1 0-60.959741h0.879996a30.47987 30.47987 0 0 1-0.879996 60.959741z" p-id="4777"></path></svg>
+                    </div>
+                    <span class="text-sm font-medium">Rust</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Elements -->
+        <div class="absolute top-20 left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse-slow"></div>
+        <div class="absolute bottom-20 right-10 w-40 h-40 bg-purple-500/10 rounded-full blur-xl animate-pulse-slow" style="animation-delay: 2s;"></div>
+        <div class="absolute top-1/2 left-1/4 w-20 h-20 bg-cyan-500/10 rounded-full blur-xl animate-pulse-slow" style="animation-delay: 4s;"></div>
+    </div>
+
+    <!-- Download Section -->
+    <div class="relative py-24 px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-6">
+                    <span class="text-gradient" data-i18n="download.title">立即下载</span>
+                </h2>
+                <p class="text-lg text-gray-300 max-w-2xl mx-auto" data-i18n="download.subtitle">
+                    为您的平台选择合适的版本
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- macOS -->
+                <div class="download-card rounded-2xl p-8 transition-all duration-300 group">
+                    <div class="text-center">
+                        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="platform.macos">
-                            macOS
-                        </h3>
-                        <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                            <span data-i18n="platform.macos_desc">Apple Silicon 原生优化</span><br>
-                            <span class="text-xs text-green-600 font-medium" data-i18n="platform.macos_chip">✓ M1/M2/M3/M4 芯片</span>
-                        </p>
+                        <h3 class="text-xl font-bold text-white mb-2" data-i18n="platform.macos">macOS</h3>
+                        <p class="text-gray-400 text-sm mb-1" data-i18n="platform.macos_desc">Apple Silicon 原生优化</p>
+                        <p class="text-green-400 text-xs mb-6" data-i18n="platform.macos_chip">✓ M1/M2/M3/M4 芯片</p>
                         <button
                             onclick="downloadMac()"
-                            class="download-btn w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg relative"
+                            class="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-1 h-12 whitespace-nowrap text-sm"
                         >
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            <svg class="w-5 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
                             </svg>
-                            <div class="flex flex-col items-center">
-                                <span data-i18n="download.dmg">下载 .dmg</span>
-                                <span id="macos-size" class="text-xs text-white/60 transition-opacity duration-500 opacity-0"></span>
-                            </div>
+                            <span data-i18n="download.dmg">下载 DMG</span>
+                            <span id="macos-size" class="text-xs text-white/50 opacity-0 transition-opacity duration-500 ml-1"></span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Windows x64 -->
-                <div class="group bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-lg card-hover border border-blue-200/50 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-100/30 to-transparent rounded-full -mr-16 -mt-16"></div>
-                    <div class="text-center relative z-10">
-                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                            <svg class="w-8 h-8 text-blue-700" fill="currentColor" viewBox="0 0 24 24">
+                <!-- Windows -->
+                <div class="download-card rounded-2xl p-8 transition-all duration-300 group">
+                    <div class="text-center">
+                        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <svg class="w-8 h-8 text-white scale-75" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-13.051-1.351"/>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="platform.windows">
-                            Windows
-                        </h3>
-                        <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                            <span data-i18n="platform.windows_desc">MSI 安装包</span><br>
-                            <span class="text-xs text-blue-600 font-medium" data-i18n="platform.windows_version">✓ Windows 10/11 64位</span>
-                        </p>
+                        <h3 class="text-xl font-bold text-white mb-2" data-i18n="platform.windows">Windows</h3>
+                        <p class="text-gray-400 text-sm mb-1" data-i18n="platform.windows_desc">MSI 安装包</p>
+                        <p class="text-blue-400 text-xs mb-6" data-i18n="platform.windows_version">✓ Windows 10/11 64位</p>
                         <button
                             onclick="downloadWindows()"
-                            class="download-btn w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+                            class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-1 h-12 whitespace-nowrap text-sm"
                         >
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            <svg class="w-5 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
                             </svg>
-                            <div class="flex flex-col items-center">
-                                <span data-i18n="download.msi">下载 .msi</span>
-                                <span id="windows-size" class="text-xs text-white/60 transition-opacity duration-500 opacity-0"></span>
-                            </div>
+                            <span data-i18n="download.msi">下载 MSI</span>
+                            <span id="windows-size" class="text-xs text-white/50 opacity-0 transition-opacity duration-500 ml-1"></span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Linux -->
-                <div class="group bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-lg card-hover border border-orange-200/50 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-orange-100/30 to-transparent rounded-full -mr-16 -mt-16"></div>
-                    <div class="text-center relative z-10">
-                        <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M316.9 187.3C317.9 187.8 318.7 189 319.9 189C321 189 322.7 188.6 322.8 187.5C323 186.1 320.9 185.2 319.6 184.6C317.9 183.9 315.7 183.6 314.1 184.5C313.7 184.7 313.3 185.2 313.5 185.6C313.8 186.9 315.8 186.7 316.9 187.3zM295 189C296.2 189 297 187.8 298 187.3C299.1 186.7 301.1 186.9 301.5 185.7C301.7 185.3 301.3 184.8 300.9 184.6C299.3 183.7 297.1 184 295.4 184.7C294.1 185.3 292 186.2 292.2 187.6C292.3 188.6 294 189.1 295 189zM516 467.8C512.4 463.8 510.7 456.2 508.8 448.1C507 440 504.9 431.3 498.3 425.7C497 424.6 495.7 423.6 494.3 422.8C493 422 491.6 421.3 490.2 420.8C499.4 393.5 495.8 366.3 486.5 341.7C475.1 311.6 455.2 285.3 440 267.3C422.9 245.8 406.3 225.4 406.6 195.3C407.1 149.4 411.7 64.1 330.8 64C228.4 63.8 254 167.4 252.9 199.2C251.2 222.6 246.5 241 230.4 263.9C211.5 286.4 184.9 322.7 172.3 360.6C166.3 378.5 163.5 396.7 166.1 413.9C159.6 419.7 154.7 428.6 149.5 434.1C145.3 438.4 139.2 440 132.5 442.4C125.8 444.8 118.5 448.4 114 456.9C111.9 460.8 111.2 465 111.2 469.3C111.2 473.2 111.8 477.2 112.4 481.1C113.6 489.2 114.9 496.8 113.2 501.9C108 516.3 107.3 526.3 111 533.6C114.8 540.9 122.4 544.1 131.1 545.9C148.4 549.5 171.9 548.6 190.4 558.4C210.2 568.8 230.3 572.5 246.3 568.8C257.9 566.2 267.4 559.2 272.2 548.6C284.7 548.5 298.5 543.2 320.5 542C335.4 540.8 354.1 547.3 375.6 546.1C376.2 548.4 377 550.7 378.1 552.8L378.1 552.9C386.4 569.6 401.9 577.2 418.4 575.9C435 574.6 452.5 564.9 466.7 548C480.3 531.6 502.7 524.8 517.6 515.8C525 511.3 531 505.7 531.5 497.5C531.9 489.3 527.1 480.2 516 467.8zM319.8 151.3C329.6 129.1 354 129.5 363.8 150.9C370.3 165.1 367.4 181.8 359.5 191.3C357.9 190.5 353.6 188.7 346.9 186.4C348 185.2 350 183.7 350.8 181.8C355.6 170 350.6 154.8 341.7 154.5C334.4 154 327.8 165.3 329.9 177.5C325.8 175.5 320.5 174 316.9 173.1C315.9 166.2 316.6 158.5 319.8 151.3zM279.1 139.8C289.2 139.8 299.9 154 298.2 173.3C294.7 174.3 291.1 175.8 288 177.9C289.2 169 284.7 157.8 278.4 158.3C270 159 268.6 179.5 276.6 186.4C277.6 187.2 278.5 186.2 270.7 191.9C255.1 177.3 260.2 139.8 279.1 139.8zM265.5 200.5C271.7 195.9 279.1 190.5 279.6 190C284.3 185.6 293.1 175.8 307.5 175.8C314.6 175.8 323.1 178.1 333.4 184.7C339.7 188.8 344.7 189.1 356 194C364.4 197.5 369.7 203.7 366.5 212.2C363.9 219.3 355.5 226.6 343.8 230.3C332.7 233.9 324 246.3 305.6 245.2C301.7 245 298.6 244.2 296 243.1C288 239.6 283.8 232.7 276 228.1C267.4 223.3 262.8 217.7 261.3 212.8C259.9 207.9 261.3 203.8 265.5 200.5zM268.8 534.5C266.1 569.6 224.9 568.9 193.5 552.5C163.6 536.7 124.9 546 117 530.6C114.6 525.9 114.6 517.9 119.6 504.2L119.6 504C122 496.4 120.2 488 119 480.1C117.8 472.3 117.2 465.1 119.9 460.1C123.4 453.4 128.4 451 134.7 448.8C145 445.1 146.5 445.4 154.3 438.9C159.8 433.2 163.8 426 168.6 420.9C173.7 415.4 178.6 412.8 186.3 414C194.4 415.2 201.4 420.8 208.2 430L227.8 465.6C237.3 485.5 270.9 514 268.8 534.5zM267.4 508.6C263.3 502 257.8 495 253 489C260.1 489 267.2 486.8 269.7 480.1C272 473.9 269.7 465.2 262.3 455.2C248.8 437 224 422.7 224 422.7C210.5 414.3 202.9 404 199.4 392.8C195.9 381.6 196.4 369.5 199.1 357.6C204.3 334.7 217.7 312.4 226.3 298.4C228.6 296.7 227.1 301.6 217.6 319.2C209.1 335.3 193.2 372.5 215 401.6C215.6 380.9 220.5 359.8 228.8 340.1C240.8 312.7 266.1 265.2 268.1 227.4C269.2 228.2 272.7 230.6 274.3 231.5C278.9 234.2 282.4 238.2 286.9 241.8C299.3 251.8 315.4 251 329.3 243C335.5 239.5 340.5 235.5 345.2 234C355.1 230.9 363 225.4 367.5 219C375.2 249.4 393.2 293.3 404.7 314.7C410.8 326.1 423 350.2 428.3 379.3C431.6 379.2 435.3 379.7 439.2 380.7C453 345 427.5 306.5 415.9 295.8C411.2 291.2 411 289.2 413.3 289.3C425.9 300.5 442.5 323 448.5 348.3C451.3 359.9 451.8 372 448.9 384C465.3 390.8 484.8 401.9 479.6 418.8C477.4 418.7 476.4 418.8 475.4 418.8C478.6 408.7 471.5 401.2 452.6 392.7C433 384.1 416.6 384.1 414.3 405.2C402.2 409.4 396 419.9 392.9 432.5C390.1 443.7 389.3 457.2 388.5 472.4C388 480.1 384.9 490.4 381.7 501.4C349.6 524.3 305 534.3 267.4 508.6zM524.8 497.1C523.9 513.9 483.6 517 461.6 543.6C448.4 559.3 432.2 568 418 569.1C403.8 570.2 391.5 564.3 384.3 549.8C379.6 538.7 381.9 526.7 385.4 513.5C389.1 499.3 394.6 484.7 395.3 472.9C396.1 457.7 397 444.4 399.5 434.2C402.1 423.9 406.1 417 413.2 413.1C413.5 412.9 413.9 412.8 414.2 412.6C415 425.8 421.5 439.2 433 442.1C445.6 445.4 463.7 434.6 471.4 425.8C480.4 425.5 487.1 424.9 494 430.9C503.9 439.4 501.1 461.2 511.1 472.5C521.7 484.1 525.1 492 524.8 497.1zM269.4 212.7C271.4 214.6 274.1 217.2 277.4 219.8C284 225 293.2 230.4 304.7 230.4C316.3 230.4 327.2 224.5 336.5 219.6C341.4 217 347.4 212.6 351.3 209.2C355.2 205.8 357.2 202.9 354.4 202.6C351.6 202.3 351.8 205.2 348.4 207.7C344 210.9 338.7 215.1 334.5 217.5C327.1 221.7 315 227.7 304.6 227.7C294.2 227.7 285.9 222.9 279.7 218C276.6 215.5 274 213 272 211.1C270.5 209.7 270.1 206.5 267.7 206.2C266.3 206.1 265.9 209.9 269.4 212.7z"/></svg>
+                <div class="download-card rounded-2xl p-8 transition-all duration-300 group">
+                    <div class="text-center">
+                        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-600 to-orange-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <svg t="1754044496839" class="icon scale-50" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2506" width="200" height="200" fill="currentColor"><path d="M833.828 772.167c-14.708-27.427-28.724-65.173-32.06-95.097-7.064-63.345 7.001-95.581-26.311-157.655-20.001-37.27-47.167-69.818-69.762-105.374-57.008-89.708-35.862-181.666-78.106-273.828-14.677-32.021-39.272-58.288-73.372-69.27-40.023-12.889-88.039-6.905-123.821 15.09-97.955 60.213-26.601 240.65-82.234 332.558-34.997 57.817-72.677 108.993-92.906 175.374-15.962 52.376-11.905 116.451-74.135 139.232-16.782 6.143-41.737 5.268-50.966 23.624-5.79 11.518-1.802 24.689 0.951 36.449 2.356 10.066 3.024 19.861 1.87 30.14-1.651 14.71-7.417 28.869-8.274 43.641-0.878 15.142 8.565 24.551 21.704 30.534 47.398 21.585 113.582 34.279 164.669 43.764 66.028 12.258 59.608-7.377 115.821-23.029 39.692-11.052 88.466-13.955 129.206-6.827 43.073 7.536 72.966 44.046 112.09 48.73 33.22 0 210.129-91.293 212.144-131.077 1.811-35.802-33.736-33.163-46.508-56.979zM561.696 188.612c34.429 24.892-1.788 99.81-14.799 87.114 41.625-32.641-34.982-83.122-29.425-11.704-53.249-11.693-3.247-109.731 44.224-75.41z m-4.039 117.923c1.857 28.37-64.491 48.349-85.296 56.455-79.455-0.65-53.966-82.141 7.617-88.858 11.889-1.296 76.451 13.646 77.679 32.403zM407.938 198.841c42.337-29.134 70.265 43.258 33.357 66.249 16.796-88.043-79.787-11.981-12.48 11.418-26.974 29.286-46.681-59.91-20.877-77.667z m-57.874 731.028c-38.514-10.84-181.601-28.379-200.949-63.937-0.276-0.507-0.351-2.272-0.282-4.883-0.019-0.032-0.042-0.063-0.06-0.095-0.833-1.415-0.113-8.165 1.246-16.547 1.879-19.977 5.394-46.894 6.514-49.347 12.905-28.267 12.771-23.836 21.86-26.291 5.612-3.079 13.887-7.607 27.549-19.429 37.781-32.691 49.648-51.05 71.076-37.382 8.427 2.949 16.297 11.207 25.986 25.067a570.9 570.9 0 0 1 8.53 10.204c16.954 20.727 55.205 71.093 68.786 114.074 13.447 30 13.992 58.501-30.256 68.566z m290.721-232.992c-16.92 43.195-1.196 82.899-35.488 120.646-58.579 64.48-168.292 61.287-220.377 1.598 61.991-24.918-79.397-135.334-84.198-181.037-10.461-99.563 81.484-201.457 102.457-296.773 77.359 82.013 125.198-33.75 189.934 21.718 50.436 43.215 102.409 212.603 87.712 277.829-8.345 37.034-32.364 36.425-40.04 56.019z m103.371 199.109c-159.991 95.734-70.13-147.276-65.785-178.44 11.336 103.265 74.062 18.695 110.579 7.453-17.789 5.477 57.616 96.436 56.788 86.041 3.123 39.223-63.176 61.965-101.582 84.946z" p-id="2507"></path></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="platform.linux">
-                            Linux
-                        </h3>
-                        <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                            <span data-i18n="platform.linux_desc">DEB 安装包 (推荐)</span><br>
-                            <span class="text-xs text-orange-600 font-medium" data-i18n="platform.linux_version">✓ Ubuntu/Debian x64</span>
-                        </p>
+                        <h3 class="text-xl font-bold text-white mb-2" data-i18n="platform.linux">Linux</h3>
+                        <p class="text-gray-400 text-sm mb-1" data-i18n="platform.linux_desc">DEB 安装包</p>
+                        <p class="text-orange-400 text-xs mb-6" data-i18n="platform.linux_version">✓ Ubuntu/Debian x64</p>
                         <div class="space-y-2">
                             <button
                                 onclick="downloadLinux()"
-                                class="download-btn w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+                                class="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-1 h-12 whitespace-nowrap text-sm"
                             >
-                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                <svg class="w-5 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
                                 </svg>
-                                <div class="flex flex-col items-center">
-                                    <span data-i18n="download.deb">下载 .deb</span>
-                                    <span id="linux-size" class="text-xs text-white/60 transition-opacity duration-500 opacity-0"></span>
-                                </div>
+                                <span data-i18n="download.deb">下载 DEB</span>
+                                <span id="linux-size" class="text-xs text-white/50 opacity-0 transition-opacity duration-500 ml-1"></span>
                             </button>
                             <button
                                 onclick="downloadLinuxAppImage()"
-                                class="w-full bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-sm"
+                                class="w-full bg-white/10 hover:bg-white/20 text-white/80 font-medium py-2 px-3 rounded-lg transition-all duration-300 text-sm whitespace-nowrap"
                             >
-                                <span data-i18n="download.appimage">便携版 .AppImage</span>
+                                <span data-i18n="download.appimage">AppImage</span>
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>            <!-- Features -->
-            <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md mb-6 border border-gray-200/50">
-                <h3 class="text-center text-lg font-semibold text-gray-900 mb-4" data-i18n="features.title">✨ 核心特性</h3>
-                <div class="grid md:grid-cols-4 gap-4 text-center">
-                    <div class="group hover:scale-105 transition-transform duration-200">
-                        <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9-9a9 9 0 00-9 9m0 0l5.25-5.25M15.75 6.75L12 3m0 0l-3.75 3.75M12 3v18"/>
-                            </svg>
-                        </div>
-                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.webdav.title">WebDAV 连接</h4>
-                        <p class="text-xs text-gray-600" data-i18n="features.webdav.desc">安全连接任意服务器</p>
-                    </div>
-                    <div class="group hover:scale-105 transition-transform duration-200">
-                        <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
-                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                        </div>
-                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.largefile.title">大文件支持</h4>
-                        <p class="text-xs text-gray-600" data-i18n="features.largefile.desc">百GB文件秒开查看</p>
-                    </div>
-                    <div class="group hover:scale-105 transition-transform duration-200">
-                        <div class="bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
-                            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </div>
-                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.search.title">快速搜索</h4>
-                        <p class="text-xs text-gray-600" data-i18n="features.search.desc">内容搜索与高亮</p>
-                    </div>
-                    <div class="group hover:scale-105 transition-transform duration-200">
-                        <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-3 w-12 h-12 mx-auto mb-2 flex items-center justify-center group-hover:shadow-md transition-shadow">
-                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                            </svg>
-                        </div>
-                        <h4 class="font-medium text-gray-900 text-sm mb-1" data-i18n="features.performance.title">原生性能</h4>
-                        <p class="text-xs text-gray-600" data-i18n="features.performance.desc">Tauri + Rust 引擎</p>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Footer -->
-            <div class="text-center">
-                <div class="flex justify-center">
-                    <a href="https://github.com/stardustai/dataset-viewer"
-                       target="_blank"
-                       class="group flex items-center space-x-3 text-gray-500 hover:text-gray-700 transition-all duration-300 hover:bg-white/60 px-6 py-3 rounded-xl">
-                        <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-                        </svg>
-                        <span class="font-medium" data-i18n="footer.source_code">查看源码</span>
-                    </a>
+                <!-- Android -->
+                <div class="download-card rounded-2xl p-8 transition-all duration-300 group">
+                    <div class="text-center">
+                        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <svg t="1754044398801" class="icon fill-white scale-50" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1501" width="160" height="160"><path d="M615.878882 177.494507l42.303478-61.521169c1.811252-2.619664 1.146103-6.252401-1.473561-8.063653l-1.054005-0.726547c-2.619664-1.821485-6.231935-1.146103-8.043187 1.473561l-43.521213 63.291488c-28.427446-12.361539-60.139705-19.268856-93.601818-19.268856-31.753191 0-61.950957 6.221702-89.232301 17.426905l-41.587164-60.477396c-1.801019-2.619664-5.423523-3.284813-8.043187-1.473561l-1.054005 0.726547c-2.619664 1.811252-3.284813 5.443989-1.483794 8.073886l40.215934 58.461483c-63.23009 30.300097-108.664885 88.075964-117.915573 156.299789l438.20018 0C720.552873 265.017886 676.919097 208.296023 615.878882 177.494507zM418.217057 265.621637c-12.054547 0-21.837354-9.813506-21.837354-21.908986 0-12.095479 9.782807-21.898753 21.837354-21.898753 12.06478 0 21.837354 9.803273 21.837354 21.898753C440.054411 255.80813 430.281837 265.621637 418.217057 265.621637zM606.710059 265.621637c-12.054547 0-21.837354-9.813506-21.837354-21.908986 0-12.095479 9.782807-21.898753 21.837354-21.898753 12.06478 0 21.837354 9.803273 21.837354 21.898753C628.547413 255.80813 618.774839 265.621637 606.710059 265.621637z" p-id="1502"></path><path d="M260.904195 419.506423l0 179.446975c0 30.760584-19.596314 55.933917-43.562145 55.933917l-9.680477 0c-23.955598 0-43.562145-25.173332-43.562145-55.933917l0-179.446975c0-30.760584 19.606547-55.923684 43.562145-55.923684l9.680477 0C241.307881 363.582739 260.904195 388.745838 260.904195 419.506423z" p-id="1503"></path><path d="M859.896478 420.570661l0 179.446975c0 30.770817-19.596314 55.933917-43.562145 55.933917l-9.680477 0c-23.955598 0-43.562145-25.163099-43.562145-55.933917l0-179.446975c0-30.760584 19.606547-55.923684 43.562145-55.923684l9.680477 0C840.300164 364.646977 859.896478 389.810077 859.896478 420.570661z" p-id="1504"></path><path d="M732.934878 360.830045l0 354.074178c0 24.579815-20.046568 44.687782-44.554752 44.687782l-36.746926 0 0 102.320387c0 30.760584-19.606547 55.923684-43.562145 55.923684l-9.680477 0c-23.955598 0-43.562145-25.163099-43.562145-55.923684l0-102.320387-81.864496 0 0 101.143585c0 30.760584-19.596314 55.933917-43.562145 55.933917l-9.680477 0c-23.955598 0-43.562145-25.173332-43.562145-55.933917l0-101.143585-40.062438 0c-24.508183 0-44.554752-20.107967-44.554752-44.687782l0-354.074178L732.934878 360.830045z" p-id="1505"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2" data-i18n="platform.android">Android</h3>
+                        <p class="text-gray-400 text-sm mb-1" data-i18n="platform.android_desc">APK 安装包</p>
+                        <p class="text-green-400 text-xs mb-6" data-i18n="platform.android_version">✓ Android 7.0+ ARM64</p>
+                        <button
+                            onclick="downloadAndroid()"
+                            class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-1 h-12 whitespace-nowrap text-sm"
+                        >
+                            <svg class="w-5 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                            </svg>
+                            <span data-i18n="download.apk">下载 APK</span>
+                            <span id="android-size" class="text-xs text-white/50 opacity-0 transition-opacity duration-500 ml-1"></span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    <!-- Features Section -->
+    <div class="relative py-24 px-6 feature-grid">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-20">
+                <h2 class="text-4xl md:text-5xl font-bold mb-6">
+                    <span class="text-gradient" data-i18n="features.title">强大功能</span>
+                </h2>
+                <p class="text-lg text-gray-300 max-w-3xl mx-auto" data-i18n="features.subtitle">
+                    一切您需要的功能，为数据集浏览而生
+                </p>
+            </div>
+
+            <!-- Primary Features -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                <div class="card-glow rounded-2xl p-8 text-center transition-all duration-300 hover:scale-105">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12l4-4m-4 4l4 4"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3" data-i18n="features.multiprotocol.title">多协议支持</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed" data-i18n="features.multiprotocol.desc">WebDAV、OSS、本地文件、HuggingFace Hub 统一接口</p>
+                </div>
+
+                <div class="card-glow rounded-2xl p-8 text-center transition-all duration-300 hover:scale-105">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3" data-i18n="features.largefile.title">大文件支持</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed" data-i18n="features.largefile.desc">百GB文件秒开查看，流式加载技术</p>
+                </div>
+
+                <div class="card-glow rounded-2xl p-8 text-center transition-all duration-300 hover:scale-105">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3" data-i18n="features.search.title">智能搜索</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed" data-i18n="features.search.desc">正则表达式搜索，实时高亮显示</p>
+                </div>
+
+                <div class="card-glow rounded-2xl p-8 text-center transition-all duration-300 hover:scale-105">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3" data-i18n="features.performance.title">原生性能</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed" data-i18n="features.performance.desc">Tauri + Rust 引擎，原生应用体验</p>
+                </div>
+            </div>
+
+            <!-- Secondary Features Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                <div class="card-glow rounded-xl p-6 text-center transition-all duration-200">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white text-sm mb-1" data-i18n="features.media.title">媒体预览</h4>
+                    <p class="text-gray-400 text-xs" data-i18n="features.media.desc">图片视频音频</p>
+                </div>
+
+                <div class="card-glow rounded-xl p-6 text-center transition-all duration-200">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white text-sm mb-1" data-i18n="features.archive.title">压缩包预览</h4>
+                    <p class="text-gray-400 text-xs" data-i18n="features.archive.desc">ZIP/TAR 免解压</p>
+                </div>
+
+                <div class="card-glow rounded-xl p-6 text-center transition-all duration-200">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white text-sm mb-1" data-i18n="features.table.title">数据表格</h4>
+                    <p class="text-gray-400 text-xs" data-i18n="features.table.desc">CSV/JSON 可视化</p>
+                </div>
+
+                <div class="card-glow rounded-xl p-6 text-center transition-all duration-200">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white text-sm mb-1" data-i18n="features.virtual.title">虚拟滚动</h4>
+                    <p class="text-gray-400 text-xs" data-i18n="features.virtual.desc">百万行流畅显示</p>
+                </div>
+
+                <div class="card-glow rounded-xl p-6 text-center transition-all duration-200">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white text-sm mb-1" data-i18n="features.security.title">安全连接</h4>
+                    <p class="text-gray-400 text-xs" data-i18n="features.security.desc">加密凭据存储</p>
+                </div>
+
+                <div class="card-glow rounded-xl p-6 text-center transition-all duration-200">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white text-sm mb-1" data-i18n="features.formats.title">多格式支持</h4>
+                    <p class="text-gray-400 text-xs" data-i18n="features.formats.desc">文本代码数据</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="relative py-16 px-6 border-t border-white/10">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="mb-8">
+                <a href="https://github.com/stardustai/dataset-viewer"
+                   target="_blank"
+                   class="inline-flex items-center space-x-3 bg-white/10 hover:bg-white/20 backdrop-blur text-white/90 hover:text-white px-6 py-3 rounded-2xl transition-all duration-300 border border-white/20 hover:border-white/30">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    <span class="font-semibold" data-i18n="footer.source_code">查看源码</span>
+                </a>
+            </div>
+            <p class="text-gray-400 text-sm">
+                © 2025 Dataset Viewer. <span data-i18n="footer.copyright">100% AI 生成，开源免费</span>
+            </p>
+        </div>
+    </footer>
 
     <script>
         // 国际化翻译配置
@@ -310,20 +473,44 @@
                 'platform.linux': 'Linux',
                 'platform.linux_desc': 'DEB 安装包 (推荐)',
                 'platform.linux_version': '✓ Ubuntu/Debian x64',
+                'platform.android': 'Android',
+                'platform.android_desc': 'APK 安装包',
+                'platform.android_version': '✓ Android 7.0+ ARM64',
                 'download.dmg': '下载 .dmg',
                 'download.msi': '下载 .msi',
                 'download.deb': '下载 .deb',
                 'download.appimage': '便携版 .AppImage',
+                'download.apk': '下载 .apk',
                 'features.title': '✨ 核心特性',
-                'features.webdav.title': 'WebDAV 连接',
-                'features.webdav.desc': '安全连接任意服务器',
+                'features.subtitle': '强大的功能，极致的体验',
+                'features.multiprotocol.title': '多协议支持',
+                'features.multiprotocol.desc': 'WebDAV、OSS、本地文件、HuggingFace Hub 统一接口',
                 'features.largefile.title': '大文件支持',
-                'features.largefile.desc': '百GB文件秒开查看',
-                'features.search.title': '快速搜索',
-                'features.search.desc': '内容搜索与高亮',
+                'features.largefile.desc': '百GB文件秒开查看，流式加载技术',
+                'features.search.title': '智能搜索',
+                'features.search.desc': '正则表达式搜索，实时高亮显示',
                 'features.performance.title': '原生性能',
-                'features.performance.desc': 'Tauri + Rust 引擎',
-                'footer.source_code': '查看源码'
+                'features.performance.desc': 'Tauri + Rust 引擎，原生应用体验',
+                'features.media.title': '媒体预览',
+                'features.media.desc': '图片视频音频',
+                'features.archive.title': '压缩包预览',
+                'features.archive.desc': 'ZIP/TAR 免解压',
+                'features.table.title': '数据表格',
+                'features.table.desc': 'CSV/JSON 可视化',
+                'features.virtual.title': '虚拟滚动',
+                'features.virtual.desc': '百万行流畅显示',
+                'features.security.title': '安全连接',
+                'features.security.desc': '加密凭据存储',
+                'features.formats.title': '多格式支持',
+                'features.formats.desc': '文本代码数据',
+                'footer.source_code': '查看源码',
+                'footer.copyright': '100% AI 生成，开源免费',
+                'hero.title': 'Dataset',
+                'hero.viewer': 'Viewer',
+                'hero.subtitle': '现代化的数据集浏览器',
+                'hero.description': '支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能',
+                'download.title': '立即下载',
+                'download.subtitle': '为您的平台选择合适的版本'
             },
             en: {
                 'page.title': 'Dataset Viewer - Modern Dataset Browser',
@@ -345,20 +532,44 @@
                 'platform.linux': 'Linux',
                 'platform.linux_desc': 'DEB Package (Recommended)',
                 'platform.linux_version': '✓ Ubuntu/Debian x64',
+                'platform.android': 'Android',
+                'platform.android_desc': 'APK Package',
+                'platform.android_version': '✓ Android 7.0+ ARM64',
                 'download.dmg': 'Download DMG',
                 'download.msi': 'Download MSI',
                 'download.deb': 'Download DEB',
                 'download.appimage': 'AppImage',
+                'download.apk': 'Download APK',
                 'features.title': '✨ Core Features',
-                'features.webdav.title': 'WebDAV Connection',
-                'features.webdav.desc': 'Secure connection to any server',
+                'features.subtitle': 'Powerful features, ultimate experience',
+                'features.multiprotocol.title': 'Multi-Protocol',
+                'features.multiprotocol.desc': 'WebDAV, OSS, Local Files, HuggingFace Hub unified interface',
                 'features.largefile.title': 'Large File Support',
-                'features.largefile.desc': 'Open 100GB+ files instantly',
-                'features.search.title': 'Fast Search',
-                'features.search.desc': 'Content search with highlighting',
+                'features.largefile.desc': 'Open 100GB+ files instantly with streaming technology',
+                'features.search.title': 'Smart Search',
+                'features.search.desc': 'Regex search with real-time highlighting',
                 'features.performance.title': 'Native Performance',
-                'features.performance.desc': 'Tauri + Rust Engine',
-                'footer.source_code': 'View Source Code'
+                'features.performance.desc': 'Tauri + Rust engine, native app experience',
+                'features.media.title': 'Media Preview',
+                'features.media.desc': 'Images, videos, audio',
+                'features.archive.title': 'Archive Preview',
+                'features.archive.desc': 'ZIP/TAR without extraction',
+                'features.table.title': 'Data Tables',
+                'features.table.desc': 'CSV/JSON visualization',
+                'features.virtual.title': 'Virtual Scrolling',
+                'features.virtual.desc': 'Million rows smoothly',
+                'features.security.title': 'Secure Connection',
+                'features.security.desc': 'Encrypted credential storage',
+                'features.formats.title': 'Multi-Format',
+                'features.formats.desc': 'Text, code, data',
+                'footer.source_code': 'View Source Code',
+                'footer.copyright': '100% AI Generated, Open Source',
+                'hero.title': 'Dataset',
+                'hero.viewer': 'Viewer',
+                'hero.subtitle': 'Modern Dataset Browser',
+                'hero.description': 'Support for real-time viewing of 100GB+ files, intelligent search highlighting, and cross-platform native performance',
+                'download.title': 'Download Now',
+                'download.subtitle': 'Choose the right version for your platform'
             }
         };
 
@@ -388,6 +599,23 @@
             localStorage.setItem('dataset-viewer-lang', lang);
             updateLanguage();
             updateLanguageButtons();
+            updateDownloadButtonsStyle();
+        }
+
+        // 更新下载按钮字体大小
+        function updateDownloadButtonsStyle() {
+            const downloadButtons = document.querySelectorAll('button[onclick*="download"]');
+            downloadButtons.forEach(button => {
+                if (currentLang === 'zh') {
+                    // 中文模式：稍大字体
+                    button.classList.remove('text-xs');
+                    button.classList.add('text-sm');
+                } else {
+                    // 英文模式：小字体防止换行
+                    button.classList.remove('text-sm');
+                    button.classList.add('text-xs');
+                }
+            });
         }
 
         // 更新语言按钮状态
@@ -436,14 +664,8 @@
                 const release = await response.json();
                 const version = release.tag_name.replace('v', ''); // 移除 v 前缀
 
-                // 获取文件大小信息
-                const fileSizes = {};
-                release.assets.forEach(asset => {
-                    fileSizes[asset.name] = asset.size;
-                });
-
-                // 根据版本号和文件名模式生成配置
-                appConfig = generateConfig(version, fileSizes);
+                // 直接传递 assets 数组，包含完整的下载 URL
+                appConfig = generateConfig(version, release.assets);
                 return appConfig;
             } catch (error) {
                 console.error('Failed to load release info:', error);
@@ -452,59 +674,40 @@
             }
         }
 
-         // Windows 版本处理函数
-        function getWindowsVersion(version) {
-            let windowsVersion = version;
-            // 移除 beta./alpha./rc. 后缀
-            windowsVersion = windowsVersion.replace(/beta\./g, '');
-            windowsVersion = windowsVersion.replace(/alpha\./g, '');
-            windowsVersion = windowsVersion.replace(/rc\./g, '');
-            // 替换预发布标签为数字
-            windowsVersion = windowsVersion.replace(/-beta/g, '-1');
-            windowsVersion = windowsVersion.replace(/-alpha/g, '-2');
-            windowsVersion = windowsVersion.replace(/-rc/g, '-3');
-            return windowsVersion;
-        }
+        // 根据 GitHub API 数据生成配置
+        function generateConfig(version, assets = []) {
+            // 根据文件后缀和名称模式匹配平台
+            const releases = {};
 
-        // 根据版本号生成配置
-        function generateConfig(version, fileSizes = {}) {
-            const baseUrl = `https://github.com/stardustai/dataset-viewer/releases/download/v${version}`;
+            assets.forEach(asset => {
+                const name = asset.name.toLowerCase();
+                const config = {
+                    downloadUrl: asset.browser_download_url,
+                    filename: asset.name,
+                    size: formatFileSize(asset.size)
+                };
 
-            const getFileSize = (filename) => {
-                const size = fileSizes[filename];
-                if (!size) return null;
-                return formatFileSize(size);
-            };
+                // 根据文件后缀和架构匹配平台
+                if (name.endsWith('.dmg')) {
+                    if (name.includes('aarch64')) {
+                        releases['macos-arm64'] = config;
+                    } else if (name.includes('x64')) {
+                        releases['macos-x64'] = config;
+                    }
+                } else if (name.endsWith('.msi')) {
+                    releases['windows'] = config;
+                } else if (name.endsWith('.deb')) {
+                    releases['linux'] = config;
+                } else if (name.endsWith('.appimage')) {
+                    releases['linux-appimage'] = config;
+                } else if (name.endsWith('.apk')) {
+                    releases['android'] = config;
+                }
+            });
 
             return {
                 version: version,
-                releases: {
-                    "macos-arm64": {
-                        downloadUrl: `${baseUrl}/Dataset%20Viewer_${version}_aarch64.dmg`,
-                        filename: `Dataset Viewer_${version}_aarch64.dmg`,
-                        size: getFileSize(`Dataset Viewer_${version}_aarch64.dmg`)
-                    },
-                    "macos-x64": {
-                        downloadUrl: `${baseUrl}/Dataset%20Viewer_${version}_x64.dmg`,
-                        filename: `Dataset Viewer_${version}_x64.dmg`,
-                        size: getFileSize(`Dataset Viewer_${version}_x64.dmg`)
-                    },
-                    "windows": {
-                        downloadUrl: `${baseUrl}/DatasetViewer_${getWindowsVersion(version)}_x64_en-US.msi`,
-                        filename: `DatasetViewer_${getWindowsVersion(version)}_x64_en-US.msi`,
-                        size: getFileSize(`DatasetViewer_${getWindowsVersion(version)}_x64_en-US.msi`)
-                    },
-                    "linux": {
-                        downloadUrl: `${baseUrl}/Dataset%20Viewer_${version}_amd64.deb`,
-                        filename: `Dataset Viewer_${version}_amd64.deb`,
-                        size: getFileSize(`Dataset Viewer_${version}_amd64.deb`)
-                    },
-                    "linux-appimage": {
-                        downloadUrl: `${baseUrl}/Dataset%20Viewer_${version}_amd64.AppImage`,
-                        filename: `Dataset Viewer_${version}_amd64.AppImage`,
-                        size: getFileSize(`Dataset Viewer_${version}_amd64.AppImage`)
-                    }
-                },
+                releases: releases,
                 github: {
                     repoUrl: "https://github.com/stardustai/dataset-viewer"
                 }
@@ -550,7 +753,8 @@
             const updates = [
                 { id: 'macos-size', platform: 'macos-arm64' },
                 { id: 'windows-size', platform: 'windows' },
-                { id: 'linux-size', platform: 'linux' }
+                { id: 'linux-size', platform: 'linux' },
+                { id: 'android-size', platform: 'android' }
             ];
 
             updates.forEach(({ id, platform }) => {
@@ -626,6 +830,24 @@
             const config = appConfig?.releases?.['linux-appimage'];
             if (config && config.size) {
                 downloadFile(config.downloadUrl, config.filename);
+            } else {
+                // 文件不存在或无法获取大小，跳转到 GitHub releases
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
+            }
+        }
+
+        function downloadAndroid() {
+            if (!appConfig) {
+                // 配置加载失败，直接跳转到 GitHub releases
+                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
+                return;
+            }
+
+            const config = appConfig?.releases?.android;
+            if (config && config.size) {
+                downloadFile(config.downloadUrl, config.filename);
+                // 显示 Android 安装提示
+                showAndroidInstallationTip();
             } else {
                 // 文件不存在或无法获取大小，跳转到 GitHub releases
                 window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
@@ -773,6 +995,95 @@
             }
         }
 
+        function showAndroidInstallationTip() {
+            // 检查当前语言
+            const currentLang = localStorage.getItem('dataset-viewer-lang') || getDefaultLanguage();
+
+            // 创建模态框背景
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+
+            // 创建模态框内容
+            const modal = document.createElement('div');
+            modal.className = 'bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300';
+
+            const content = currentLang === 'en' ? {
+                title: '🤖 Android Installation Guide',
+                subtitle: 'APK Installation Steps',
+                steps: [
+                    'Enable "Unknown sources" in Settings → Security',
+                    'Open the downloaded APK file',
+                    'Tap "Install" to install the app',
+                    'Launch "Dataset Viewer" from your app drawer'
+                ],
+                warning: 'Important:',
+                warningText: 'This APK is signed but not distributed through Google Play Store. The app is completely safe - verify the source code on GitHub.',
+                note: 'Requirements: Android 7.0+ (API level 24) with ARM64 processor.',
+                button: 'Got it!'
+            } : {
+                title: '🤖 Android 安装指南',
+                subtitle: 'APK 安装步骤',
+                steps: [
+                    '在设置 → 安全性中启用"未知来源"',
+                    '打开下载的 APK 文件',
+                    '点击"安装"来安装应用',
+                    '从应用抽屉启动 "Dataset Viewer"'
+                ],
+                warning: '重要提示：',
+                warningText: '此 APK 已签名但未通过 Google Play 商店分发。应用完全安全 - 可在 GitHub 上验证源代码。',
+                note: '系统要求：Android 7.0+（API 级别 24）且为 ARM64 处理器。',
+                button: '知道了！'
+            };
+
+            modal.innerHTML = `
+                <div class="text-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">${content.title}</h3>
+                    <p class="text-sm text-green-600 font-medium">${content.subtitle}</p>
+                </div>
+                <div class="space-y-3 mb-4">
+                    ${content.steps.map((step, index) => `
+                        <div class="flex items-start space-x-3">
+                            <span class="flex-shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">${index + 1}</span>
+                            <div class="text-gray-700 text-sm">${step}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                    <p class="text-sm font-medium text-orange-800 mb-1">${content.warning}</p>
+                    <p class="text-xs text-orange-700">${content.warningText}</p>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-gray-600">${content.note}</p>
+                </div>
+                <button onclick="closeAndroidTip()" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200">
+                    ${content.button}
+                </button>
+            `;
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            // 显示动画
+            setTimeout(() => {
+                modal.classList.remove('scale-95');
+                modal.classList.add('scale-100');
+            }, 100);
+
+            // 设置全局变量以便关闭
+            window.currentAndroidTipOverlay = overlay;
+        }
+
+        function closeAndroidTip() {
+            if (window.currentAndroidTipOverlay) {
+                const modal = window.currentAndroidTipOverlay.querySelector('div');
+                modal.classList.add('scale-95');
+                setTimeout(() => {
+                    document.body.removeChild(window.currentAndroidTipOverlay);
+                    window.currentAndroidTipOverlay = null;
+                }, 300);
+            }
+        }
+
         // 页面加载动画和配置加载
         document.addEventListener('DOMContentLoaded', function() {
             // 预设语言，避免闪动
@@ -781,6 +1092,7 @@
             // 初始化语言
             updateLanguage();
             updateLanguageButtons();
+            updateDownloadButtonsStyle();
 
             // 异步加载配置
             loadConfig().then(() => {
