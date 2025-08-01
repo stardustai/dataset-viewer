@@ -4,6 +4,7 @@ import { fileBrowser } from './fileBrowser';
 import { fileViewer } from './fileViewer';
 import { errors } from './errors';
 import { settings } from './settings';
+import { download } from './download';
 
 export const zh = {
   ...common,
@@ -12,4 +13,5 @@ export const zh = {
   ...fileViewer,
   ...errors,
   ...settings,
+  ...download,
 };

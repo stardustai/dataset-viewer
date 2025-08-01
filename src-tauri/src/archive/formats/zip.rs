@@ -363,7 +363,7 @@ impl ZipHandler {
             ]);
 
             if signature != CD_HEADER_SIGNATURE {
-                return Err(format!("无效的中央目录文件头签名: 0x{:08x}, 期望: 0x{:08x}", signature, CD_HEADER_SIGNATURE));
+                return Err(format!("Invalid central directory file header signature: 0x{:08x}, expected: 0x{:08x}", signature, CD_HEADER_SIGNATURE));
             }
 
             let compressed_size_32 = u32::from_le_bytes([
@@ -390,13 +390,13 @@ impl ZipHandler {
             
             // 验证字段长度的合理性
             if filename_len > MAX_FIELD_SIZE || extra_len > MAX_FIELD_SIZE || comment_len > MAX_FIELD_SIZE {
-                return Err(format!("中央目录条目字段长度异常: filename={}, extra={}, comment={}", filename_len, extra_len, comment_len));
+                return Err(format!("Abnormal central directory entry field length: filename={}, extra={}, comment={}", filename_len, extra_len, comment_len));
             }
             
             // 检查总的记录大小是否合理
             let total_record_size = MIN_CD_HEADER_SIZE + filename_len + extra_len + comment_len;
             if offset + total_record_size > cd_data.len() {
-                return Err(format!("中央目录条目超出数据范围: offset={}, size={}, data_len={}", offset, total_record_size, cd_data.len()));
+                return Err(format!("Central directory entry exceeds data range: offset={}, size={}, data_len={}", offset, total_record_size, cd_data.len()));
             }
             
 
@@ -447,7 +447,7 @@ impl ZipHandler {
         }
         
         if parsed_entries != total_entries && parsed_entries < max_entries {
-            return Err(format!("解析的条目数({})与预期数量({})不匹配", parsed_entries, total_entries));
+            return Err(format!("Parsed entry count ({}) does not match expected count ({})", parsed_entries, total_entries));
         }
         
         Ok(entries)
@@ -556,12 +556,12 @@ impl ZipHandler {
 
         // 检查文件大小是否足够
         if file_size < MIN_ZIP_SIZE {
-            return Err(format!("文件太小，无法是有效的ZIP文件（{}字节 < {}字节）", file_size, MIN_ZIP_SIZE));
+            return Err(format!("File too small to be a valid ZIP file ({} bytes < {} bytes)", file_size, MIN_ZIP_SIZE));
         }
 
         // 检查最大文件大小限制（防止处理过大的文件）
         if file_size > MAX_ZIP_SIZE {
-            return Err(format!("ZIP文件过大: {} 字节，超过10GB限制", file_size));
+            return Err(format!("ZIP file too large: {} bytes, exceeds 10GB limit", file_size));
         }
 
         // 读取文件末尾来查找中央目录
@@ -570,19 +570,19 @@ impl ZipHandler {
         
         let footer_data = client.read_file_range(file_path, start_pos, footer_size)
             .await
-            .map_err(|e| format!("读取文件尾部失败: {}", e))?;
+            .map_err(|e| format!("Failed to read file footer: {}", e))?;
         
         if footer_data.len() != footer_size as usize {
-            return Err(format!("读取的数据长度不匹配: 期望 {}, 实际 {}", footer_size, footer_data.len()));
+            return Err(format!("Read data length mismatch: expected {}, actual {}", footer_size, footer_data.len()));
         }
 
         // 查找EOCD记录
         let eocd_pos = Self::find_eocd(&footer_data)
-            .ok_or_else(|| "无法找到ZIP文件的EOCD记录，文件可能损坏或不是有效的ZIP文件".to_string())?;
+            .ok_or_else(|| "Could not find EOCD record in ZIP file, file may be corrupted or not a valid ZIP file".to_string())?;
         
         let eocd_data = &footer_data[eocd_pos..];
         if eocd_data.len() < 22 {
-            return Err(format!("EOCD记录长度不足: 只有 {} 字节，需要 22 字节", eocd_data.len()));
+            return Err(format!("Insufficient EOCD record length: only {} bytes, need 22 bytes", eocd_data.len()));
         }
 
         // 解析EOCD记录
@@ -596,16 +596,16 @@ impl ZipHandler {
         
         // 验证条目数量的合理性
         if total_entries > MAX_ENTRIES {
-            return Err(format!("ZIP文件条目数过多: {}, 超过{}限制", total_entries, MAX_ENTRIES));
+            return Err(format!("Too many entries in ZIP file: {}, exceeds {} limit", total_entries, MAX_ENTRIES));
         }
         
         if cd_size > file_size {
-            return Err(format!("中央目录大小({})超过文件大小({})", cd_size, file_size));
+            return Err(format!("Central directory size ({}) exceeds file size ({})", cd_size, file_size));
         }
 
         // 验证中央目录大小的合理性
         if cd_size > MAX_CD_SIZE {
-            return Err(format!("中央目录过大: {} 字节，超过500MB限制", cd_size));
+            return Err(format!("Central directory too large: {} bytes, exceeds 500MB limit", cd_size));
         }
         
         // 检查是否需要处理ZIP64格式
@@ -616,15 +616,15 @@ impl ZipHandler {
                 
                 // 验证ZIP64解析结果的合理性
                 if zip64_result.1 > MAX_CD_SIZE {
-                    return Err(format!("ZIP64中央目录过大: {} 字节，超过500MB限制", zip64_result.1));
+                    return Err(format!("ZIP64 central directory too large: {} bytes, exceeds 500MB limit", zip64_result.1));
                 }
                 if zip64_result.2 > MAX_ENTRIES {
-                    return Err(format!("ZIP64文件数量过多: {} 个，超过{}限制", zip64_result.2, MAX_ENTRIES));
+                    return Err(format!("Too many files in ZIP64: {} files, exceeds {} limit", zip64_result.2, MAX_ENTRIES));
                 }
                 
                 zip64_result
             } else {
-                return Err("检测到ZIP64标记但未找到ZIP64 EOCD定位器，文件可能损坏".to_string());
+                return Err("ZIP64 format detected but ZIP64 EOCD locator not found, file may be corrupted".to_string());
             }
         } else {
             (cd_offset_32 as u64, cd_size, total_entries)
@@ -632,20 +632,20 @@ impl ZipHandler {
         
         // 验证中央目录偏移量的合理性
         if cd_offset >= file_size {
-            return Err(format!("中央目录偏移量({})超出文件范围({})", cd_offset, file_size));
+            return Err(format!("Central directory offset ({}) exceeds file range ({})", cd_offset, file_size));
         }
         
         if cd_offset + cd_size > file_size {
-            return Err(format!("中央目录结束位置({})超出文件范围({})", cd_offset + cd_size, file_size));
+            return Err(format!("Central directory end position ({}) exceeds file range ({})", cd_offset + cd_size, file_size));
         }
 
         // 读取中央目录
         let cd_data = client.read_file_range(file_path, cd_offset, cd_size)
             .await
-            .map_err(|e| format!("读取中央目录失败: {}", e))?;
+            .map_err(|e| format!("Failed to read central directory: {}", e))?;
 
         if cd_data.len() != cd_size as usize {
-            return Err(format!("中央目录数据长度不匹配: 期望 {}, 实际 {}", cd_size, cd_data.len()));
+            return Err(format!("Central directory data length mismatch: expected {}, actual {}", cd_size, cd_data.len()));
         }
 
         // 使用优化的解析方法
@@ -690,7 +690,7 @@ impl ZipHandler {
         }
         
         if file_info.compressed_size > 100 * 1024 * 1024 { // 100MB限制
-            return Err(format!("压缩文件过大: {} 字节，超过100MB限制", file_info.compressed_size));
+            return Err(format!("Compressed file too large: {} bytes, exceeds 100MB limit", file_info.compressed_size));
         }
 
         // 读取本地文件头
@@ -720,7 +720,7 @@ impl ZipHandler {
             .map_err(|e| format!("Failed to read compressed data: {}", e))?;
 
         if compressed_data.len() != file_info.compressed_size as usize {
-            return Err(format!("读取的数据长度({})与预期长度({})不匹配", compressed_data.len(), file_info.compressed_size));
+            return Err(format!("Read data length ({}) does not match expected length ({})", compressed_data.len(), file_info.compressed_size));
         }
 
         Self::decompress_zip_data(&compressed_data, file_info.compression_method, max_size, file_info.crc32)
@@ -830,12 +830,12 @@ impl ZipHandler {
                 // 使用带限制的读取
                 let mut limited_reader = decoder.take(max_decompressed_size as u64);
                 limited_reader.read_to_end(&mut decompressed)
-                    .map_err(|e| format!("Deflate解压缩失败: {}. 数据可能损坏或格式不正确", e))?;
+                    .map_err(|e| format!("Deflate decompression failed: {}. Data may be corrupted or format incorrect", e))?;
                 
                 decompressed
             }
             _ => {
-                return Err(format!("不支持的压缩方法: {}. 仅支持存储(0)和Deflate(8)", compression_method));
+                return Err(format!("Unsupported compression method: {}. Only supports Store(0) and Deflate(8)", compression_method));
             }
         };
 
@@ -843,7 +843,7 @@ impl ZipHandler {
         let actual_crc32 = crc32fast::hash(&decompressed_data);
         if actual_crc32 != expected_crc32 {
             return Err(format!(
-                "CRC32校验失败: 期望 {:08x}, 实际 {:08x}. 文件可能已损坏",
+                "CRC32 verification failed: expected {:08x}, actual {:08x}. File may be corrupted",
                 expected_crc32, actual_crc32
             ));
         }

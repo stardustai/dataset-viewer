@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { X, Download, Check, AlertCircle, StopCircle, FolderOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../utils/fileUtils';
 
 interface DownloadProgressProps {
@@ -21,6 +22,7 @@ interface DownloadState {
 }
 
 export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, onClose }) => {
+  const { t } = useTranslation();
   const [downloads, setDownloads] = useState<Map<string, DownloadState>>(new Map());
 
   useEffect(() => {
@@ -114,7 +116,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
           newMap.set(filename, {
             ...existing,
             status: 'error',
-            error: 'Download cancelled by user'
+            error: t('download.cancelled')
           });
         }
         return newMap;
@@ -163,7 +165,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-2">
           <Download className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">下载进度</h3>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('download.progress.title')}</h3>
           <span className="text-xs text-gray-500 dark:text-gray-400">({downloads.size})</span>
         </div>
         <div className="flex items-center space-x-2">
@@ -172,7 +174,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
               onClick={clearCompleted}
               className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              清除已完成
+              {t('download.clear.completed')}
             </button>
           )}
           <button
@@ -228,22 +230,22 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
                     <div 
                       className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition-colors"
                       onClick={() => openFileLocation(download.filePath!)}
-                      title="点击打开文件位置"
+                      title={t('download.open.location.tooltip')}
                     >
                       <FolderOpen className="w-3 h-3 text-gray-500 dark:text-gray-400" />
                       <p className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">
-                        保存至: {download.filePath}
+                        {t('download.saved.to')}: {download.filePath}
                       </p>
                     </div>
                     <p className="text-xs text-green-600 dark:text-green-400 ml-4">
-                      {formatFileSize(download.downloaded)} 下载完成
+                      {formatFileSize(download.downloaded)} {t('download.completed')}
                     </p>
                   </div>
                 )}
 
                 {download.status === 'error' && (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    错误: {download.error}
+                    {t('download.error')}: {download.error}
                   </p>
                 )}
               </div>
@@ -252,7 +254,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
                 <button
                   onClick={() => cancelDownload(download.filename)}
                   className="ml-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                  title="取消下载"
+                  title={t('download.cancel.tooltip')}
                 >
                   <StopCircle className="w-4 h-4" />
                 </button>

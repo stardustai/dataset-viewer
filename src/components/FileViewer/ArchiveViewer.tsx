@@ -676,7 +676,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                         </div>
                       );
                     } else if (isMedia) {
-                      // 媒体文件：小于100MB自动加载，大于10MB需要手动加载
+                      // 媒体文件：小于10MB自动加载，大于10MB需要手动加载
                       const fileSize = selectedEntry.size || 0;
                       const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
                       
