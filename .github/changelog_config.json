@@ -1,0 +1,105 @@
+{
+  "categories": [
+    {
+      "title": "## ✨ New Features",
+      "labels": ["feature", "enhancement", "feat"]
+    },
+    {
+      "title": "## 🐛 Bug Fixes", 
+      "labels": ["fix", "bugfix", "bug"]
+    },
+    {
+      "title": "## 🚀 Performance Improvements",
+      "labels": ["performance", "perf"]
+    },
+    {
+      "title": "## 📚 Documentation",
+      "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "## 🔧 Maintenance & Refactoring",
+      "labels": ["refactor", "chore", "style", "ci", "build"]
+    },
+    {
+      "title": "## 🛠️ Other Changes",
+      "labels": []
+    }
+  ],
+  "ignore_labels": [
+    "ignore",
+    "wontfix",
+    "invalid",
+    "duplicate",
+    "version-bump"
+  ],
+  "sort": "ASC",
+  "template": "${{CHANGELOG}}",
+  "pr_template": "- ${{TITLE}} (#${{NUMBER}})",
+  "empty_template": "- No changes",
+  "title_excludes": [
+    "^[Bb]ump version",
+    "^[Vv]ersion bump",
+    "^[Rr]elease v?\\d+\\.\\d+\\.\\d+",
+    "^[Pp]repare release",
+    "^[Uu]pdate version"
+  ],
+  "label_extractor": [
+    {
+      "pattern": "^(feat|feature)(\\(.+\\))?(!)?:",
+      "target": "feature"
+    },
+    {
+      "pattern": "^(fix|bugfix)(\\(.+\\))?(!)?:",
+      "target": "fix" 
+    },
+    {
+      "pattern": "^(perf|performance)(\\(.+\\))?(!)?:",
+      "target": "performance"
+    },
+    {
+      "pattern": "^(docs|documentation)(\\(.+\\))?(!)?:",
+      "target": "documentation"
+    },
+    {
+      "pattern": "^(chore|refactor|style|ci|build)(\\(.+\\))?(!)?:",
+      "target": "chore"
+    },
+    {
+      "pattern": "^[Bb]ump version|^[Vv]ersion bump|^[Rr]elease v?\\d+|^[Pp]repare release|^[Uu]pdate version",
+      "target": "version-bump"
+    }
+  ],
+  "duplicate_filter": {
+    "pattern": "\\[.*\\]",
+    "on_property": "title",
+    "method": "match"
+  },
+  "transformers": [
+    {
+      "pattern": "^(feat|feature)(\\(.+\\))?(!)?:\\s*(.+)",
+      "target": "✨ $4"
+    },
+    {
+      "pattern": "^(fix|bugfix)(\\(.+\\))?(!)?:\\s*(.+)",
+      "target": "🐛 $4"
+    },
+    {
+      "pattern": "^(perf|performance)(\\(.+\\))?(!)?:\\s*(.+)",
+      "target": "🚀 $4"
+    },
+    {
+      "pattern": "^(docs|documentation)(\\(.+\\))?(!)?:\\s*(.+)",
+      "target": "📚 $4"
+    },
+    {
+      "pattern": "^(chore|refactor|style|ci|build)(\\(.+\\))?(!)?:\\s*(.+)",
+      "target": "🔧 $4"
+    }
+  ],
+  "max_tags_to_fetch": 200,
+  "max_pull_requests": 200,
+  "max_back_track_time_days": 365,
+  "exclude_merge_branches": [
+    "Owner/qa"
+  ]
+}

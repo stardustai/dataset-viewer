@@ -37,6 +37,18 @@ jobs:
             echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Build Changelog
+        id: build_changelog
+        if: github.event_name != 'workflow_dispatch'
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          configuration: ".github/changelog_config.json"
+          ignorePreReleases: false
+          fetchViaCommits: true
+          commitMode: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release
         id: release
         if: github.event_name != 'workflow_dispatch'
@@ -46,8 +58,10 @@ jobs:
           name: Dataset Viewer ${{ steps.get_version.outputs.VERSION }}
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'alpha') || contains(steps.get_version.outputs.VERSION, 'beta') || contains(steps.get_version.outputs.VERSION, 'rc') }}
-          generate_release_notes: true
+          generate_release_notes: false
           body: |
+            ${{ steps.build_changelog.outputs.changelog }}
+
             ### 💾 Downloads
 
             | Platform | Download |
