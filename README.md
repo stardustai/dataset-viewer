@@ -92,6 +92,7 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 | 🍎 **macOS** | [.dmg installer](https://github.com/stardustai/dataset-viewer/releases/latest) |
 | 🪟 **Windows** | [.msi installer](https://github.com/stardustai/dataset-viewer/releases/latest) |
 | 🐧 **Linux** | [.AppImage/.deb/.rpm](https://github.com/stardustai/dataset-viewer/releases/latest) |
+| 🤖 **Android** | [.apk/.aab](https://github.com/stardustai/dataset-viewer/releases/latest) |
 
 ### 🛠️ Build from Source
 
@@ -104,7 +105,6 @@ pnpm install
 pnpm tauri dev  # Development
 pnpm package    # Build
 ```
-
 
 
 > **📱 macOS Note**: The app is unsigned. If you get security warnings, run: `sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"` or right-click → "Open" → "Open".

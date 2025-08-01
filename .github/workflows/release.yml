@@ -18,6 +18,7 @@ jobs:
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
       release_tag: ${{ steps.get_version.outputs.VERSION }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -148,6 +149,7 @@ jobs:
               generate_release_notes: false
             })
 
+            core.setOutput('upload_url', data.upload_url);
             return data.id
         env:
           RELEASE_BODY: ${{ steps.generate_body.outputs.RELEASE_BODY }}
@@ -171,6 +173,10 @@ jobs:
           - platform: 'windows-latest'
             args: ''
             arch: 'x64'
+          - platform: 'ubuntu-22.04'
+            args: '--target aarch64-linux-android'
+            arch: 'android'
+            mobile: true
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -203,10 +209,39 @@ jobs:
           cache-all-crates: true
 
       - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-22.04' && !matrix.mobile
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Android environment (Android only)
+        if: matrix.mobile
+        run: |
+          # Install Java 17
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk
+          
+          # Download and setup Android SDK
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools-linux-9477386_latest.zip
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+          
+          # Set environment variables
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+          
+          # Accept licenses and install required packages
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
+          
+          # Set NDK_HOME
+          echo "NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          
+          # Add Android Rust targets
+          rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
       - name: Install frontend dependencies
         run: pnpm install
@@ -231,9 +266,54 @@ jobs:
           }
         shell: pwsh
 
+      - name: Initialize Android project (Android only)
+        if: matrix.mobile
+        run: |
+          pnpm tauri android init --ci
+
       - uses: tauri-apps/tauri-action@v0
+        if: '!matrix.mobile'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
+
+      - name: Build Android APK and AAB
+        if: matrix.mobile
+        run: |
+          pnpm tauri android build --apk --aab
+
+      - name: Upload Android APK
+        if: matrix.mobile
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk';
+            const name = 'dataset-viewer-${{ needs.create-release.outputs.release_tag }}-android.apk';
+            
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ needs.create-release.outputs.release_id }},
+              name: name,
+              data: fs.readFileSync(path)
+            });
+
+      - name: Upload Android AAB
+        if: matrix.mobile
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab';
+            const name = 'dataset-viewer-${{ needs.create-release.outputs.release_tag }}-android.aab';
+            
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ needs.create-release.outputs.release_id }},
+              name: name,
+              data: fs.readFileSync(path)
+            });
