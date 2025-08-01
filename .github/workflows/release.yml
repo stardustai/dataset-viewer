@@ -229,6 +229,8 @@ jobs:
               }
               buildTypes {
                   release {
+                      minifyEnabled false
+                      shrinkResources false
                       signingConfig signingConfigs.release
                   }
               }
@@ -237,7 +239,7 @@ jobs:
 
           # 验证文件创建
           ls -la src-tauri/gen/android/release.keystore
-          echo "✅ Android 签名配置完成"
+          echo "✅ Android 签名配置完成（已禁用代码压缩）"
 
       - uses: tauri-apps/tauri-action@v0
         if: '!matrix.mobile && github.event_name != ''workflow_dispatch'''
@@ -255,16 +257,23 @@ jobs:
       - name: Build Android APK
         if: matrix.mobile
         run: |
+          # 使用 Tauri 官方构建命令，简单可靠
           pnpm tauri android build --apk
+
           # 检查生成的 APK 文件
           find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f
-          # 获取版本号
+
+          # 获取版本号并重命名 APK
           VERSION=$(echo "${{ needs.create-release.outputs.release_tag }}" | sed 's/^v//')
-          # 重命名 APK 为更友好的名称（现在已经是签名的了）
-          if [ -f "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk" ]; then
-            mv "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk" \
-               "src-tauri/gen/android/app/build/outputs/apk/universal/release/dataset-viewer-${VERSION}-arm64-signed.apk"
-          fi
+
+          # 查找并重命名 APK 文件
+          for apk_file in src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk; do
+            if [ -f "$apk_file" ]; then
+              mv "$apk_file" "src-tauri/gen/android/app/build/outputs/apk/universal/release/dataset-viewer-${VERSION}-arm64-signed.apk"
+              echo "✅ APK 重命名完成: dataset-viewer-${VERSION}-arm64-signed.apk"
+              break
+            fi
+          done
 
       - name: Upload Android APK
         if: matrix.mobile && github.event_name != 'workflow_dispatch'
