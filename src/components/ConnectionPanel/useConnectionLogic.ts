@@ -25,7 +25,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
   // 获取最近的本地连接路径
   const getRecentLocalPath = () => {
     const connections = StorageServiceManager.getStoredConnections();
-    const localConnections = connections.filter(conn => conn.url.startsWith('local://'));
+    const localConnections = connections.filter(conn => conn.url.startsWith('file:///'));
 
     if (localConnections.length > 0) {
       const sorted = localConnections.sort((a, b) => {
@@ -34,7 +34,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
         return bTime - aTime;
       });
 
-      return sorted[0].url.replace('local://', '');
+      return sorted[0].url.replace('file:///', '');
     }
 
     return '';
@@ -46,9 +46,9 @@ export const useConnectionLogic = (onConnect: () => void) => {
     if (!wasDisconnected) {
       const defaultConnection = StorageServiceManager.getDefaultConnection();
       if (defaultConnection) {
-        if (defaultConnection.url.startsWith('local://')) {
+        if (defaultConnection.url.startsWith('file:///')) {
           setStorageType('local');
-          const localPath = defaultConnection.url.replace('local://', '');
+          const localPath = defaultConnection.url.replace('file:///', '');
           setDefaultLocalPath(localPath);
         } else if (defaultConnection.url.startsWith('oss://')) {
           setStorageType('oss');
@@ -70,9 +70,9 @@ export const useConnectionLogic = (onConnect: () => void) => {
     setSelectedStoredConnection(connection);
     setError('');
 
-    if (connection.url.startsWith('local://')) {
+    if (connection.url.startsWith('file:///')) {
       setStorageType('local');
-      const localPath = connection.url.replace('local://', '');
+      const localPath = connection.url.replace('file:///', '');
       setDefaultLocalPath(localPath);
     } else if (connection.url.startsWith('oss://')) {
       setStorageType('oss');
@@ -158,7 +158,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
     setError('');
 
     if (type === 'webdav') {
-      if (selectedStoredConnection && !selectedStoredConnection.url.startsWith('local://') && !selectedStoredConnection.url.startsWith('oss://') && !selectedStoredConnection.url.startsWith('huggingface://')) {
+      if (selectedStoredConnection && !selectedStoredConnection.url.startsWith('file:///') && !selectedStoredConnection.url.startsWith('oss://') && !selectedStoredConnection.url.startsWith('huggingface://')) {
         // 保持 WebDAV 连接选择
       } else {
         setSelectedStoredConnection(null);
@@ -168,8 +168,8 @@ export const useConnectionLogic = (onConnect: () => void) => {
         setIsPasswordFromStorage(false);
       }
     } else if (type === 'local') {
-      if (selectedStoredConnection && selectedStoredConnection.url.startsWith('local://')) {
-        const localPath = selectedStoredConnection.url.replace('local://', '');
+      if (selectedStoredConnection && selectedStoredConnection.url.startsWith('file:///')) {
+        const localPath = selectedStoredConnection.url.replace('file:///', '');
         setDefaultLocalPath(localPath);
       } else {
         setSelectedStoredConnection(null);

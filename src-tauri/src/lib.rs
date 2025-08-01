@@ -278,21 +278,24 @@ async fn download_file_with_progress(
     headers: std::collections::HashMap<String, String>,
     filename: String,
 ) -> Result<String, String> {
-    // 获取存储管理器
-    let manager = get_storage_manager().await;
-    let manager = manager.lock().await;
+    // 获取存储管理器并处理下载URL（避免死锁）
+    let download_url = {
+        let manager = get_storage_manager().await;
+        let manager = manager.lock().await;
 
-    // 通过存储客户端获取正确的下载 URL
-    // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
-    let download_url = match manager.get_download_url(&url) {
-        Ok(processed_url) => {
-            println!("Generated download URL: {} -> {}", url, processed_url);
-            processed_url
-        },
-        Err(e) => {
-            println!("Failed to generate download URL for {}: {}, using original URL", url, e);
-            url
+        // 通过存储客户端获取正确的下载 URL
+        // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
+        match manager.get_download_url(&url) {
+            Ok(processed_url) => {
+                println!("Generated download URL: {} -> {}", url, processed_url);
+                processed_url
+            },
+            Err(e) => {
+                println!("Failed to generate download URL for {}: {}, using original URL", url, e);
+                url
+            }
         }
+        // 锁在这里自动释放
     };
 
     let request = DownloadRequest {

@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Download } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { getFileType } from '../../utils/fileTypes';
 import { FileIcon } from '../../utils/fileIcons';
@@ -169,9 +168,6 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
                   >
                     {file.basename}
                   </span>
-                  {file.type === 'file' && getFileType(file.filename) === 'unknown' && (
-                    <Download className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-2 flex-shrink-0" />
-                  )}
                 </div>
 
                 {/* 文件大小 */}

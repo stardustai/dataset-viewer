@@ -25,10 +25,10 @@ impl LocalFileSystemClient {
     /// 构建完整路径并进行安全检查
     /// 支持绝对路径和相对路径两种模式，以及 file:// 协议
     fn build_safe_path(&self, path: &str) -> Result<PathBuf, StorageError> {
-        // 处理 file:// 协议 URL
-        let actual_path = if path.starts_with("file://") {
-            // 移除 file:// 前缀，保留路径部分
-            path.strip_prefix("file://").unwrap_or(path)
+        // 处理 file:/// 协议 URL（统一使用三个斜杠）
+        let actual_path = if path.starts_with("file:///") {
+            let stripped = path.strip_prefix("file:///").unwrap_or(path);
+            stripped
         } else {
             path
         };
@@ -58,9 +58,14 @@ impl LocalFileSystemClient {
         }
 
         // 获取根路径
-        let root = self.root_path
-            .as_ref()
-            .ok_or(StorageError::NotConnected)?;
+        let root = match self.root_path.as_ref() {
+            Some(root) => {
+                root
+            }
+            None => {
+                return Err(StorageError::NotConnected);
+            }
+        };
 
         // 对于相对路径，与根目录拼接
         let clean_path = actual_path.trim_start_matches('/');
@@ -452,13 +457,20 @@ impl StorageClient for LocalFileSystemClient {
     }
 
     fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 如果传入的已经是 file:// URL，直接返回
-        if path.starts_with("file://") {
+        // 如果传入的已经是 file:/// URL，直接返回
+        if path.starts_with("file:///") {
             return Ok(path.to_string());
         }
 
-        // 否则，构建完整路径并转换为 file:// URL
-        let full_path = self.build_safe_path(path)?;
+        // 否则，构建完整路径并转换为 file:/// URL
+        let full_path = match self.build_safe_path(path) {
+            Ok(path) => {
+                path
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        };
 
         // 规范化路径分隔符（Windows 使用反斜杠，需要转换为正斜杠）
         let normalized_path = if cfg!(windows) {

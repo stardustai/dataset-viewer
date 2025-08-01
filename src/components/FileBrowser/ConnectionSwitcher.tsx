@@ -63,7 +63,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
     
     try {
       // 根据StoredConnection构建ConnectionConfig
-      const isLocal = connection.url?.startsWith('local://');
+      const isLocal = connection.url?.startsWith('file:///');
       const config = {
         type: isLocal ? 'local' as const :
               connection.url?.startsWith('oss://') ? 'oss' as const :
@@ -73,7 +73,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
         username: connection.username,
         password: connection.password,
         name: connection.name,
-        rootPath: isLocal ? connection.url.replace('local://', '') : undefined,
+        rootPath: isLocal ? connection.url.replace('file:///', '') : undefined,
         bucket: connection.metadata?.bucket,
         region: connection.metadata?.region,
         endpoint: connection.metadata?.endpoint,
@@ -200,8 +200,8 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
                       )}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {connection.url?.startsWith('local://')
-                        ? connection.url.replace('local://', '')
+                      {connection.url?.startsWith('file:///')
+                  ? connection.url.replace('file:///', '')
                         : connection.url?.startsWith('oss://')
                         ? `OSS: ${connection.username}`
                         : connection.url && connection.username

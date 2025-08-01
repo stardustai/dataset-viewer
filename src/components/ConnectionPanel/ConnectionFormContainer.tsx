@@ -116,8 +116,8 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               onConnect={onLocalConnect}
               connecting={connecting}
               error={error}
-              defaultPath={selectedStoredConnection?.url.startsWith('local://')
-                ? selectedStoredConnection.url.replace('local://', '')
+              defaultPath={selectedStoredConnection?.url.startsWith('file:///')
+                ? selectedStoredConnection.url.replace('file:///', '')
                 : defaultLocalPath}
             />
           ) : storageType === 'oss' ? (

@@ -169,7 +169,7 @@ export class StorageServiceManager {
 
       case 'local': {
         connectionData = {
-          url: `local://${config.rootPath || config.url!}`,
+          url: `file:///${config.rootPath || config.url!}`,
           username: 'local',
           password: '',
           connected: true
@@ -223,7 +223,7 @@ export class StorageServiceManager {
         case 'webdav':
           return conn.url === config.url && conn.username === config.username;
         case 'local':
-          return conn.url.startsWith('local://') && conn.url.includes(config.rootPath || config.url!);
+          return conn.url.startsWith('file:///') && conn.url.includes(config.rootPath || config.url!);
         case 'oss':
           return conn.url.startsWith('oss://') && conn.username === config.username;
         case 'huggingface':
@@ -364,9 +364,9 @@ export class StorageServiceManager {
 
     try {
       // 根据连接类型进行不同的处理
-      if (defaultConnection.url.startsWith('local://')) {
-        // 本地文件系统连接
-        const rootPath = defaultConnection.url.replace('local://', '');
+      if (defaultConnection.url.startsWith('file:///')) {
+      // 本地连接
+      const rootPath = defaultConnection.url.replace('file:///', '');
         return await this.connectToLocal(rootPath, defaultConnection.name);
       } else if (defaultConnection.url.startsWith('oss://')) {
         // OSS 连接 - 从 metadata 获取信息
