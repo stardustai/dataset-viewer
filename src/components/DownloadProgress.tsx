@@ -81,6 +81,17 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
 
     const unlistenError = listen('download-error', (event) => {
       const { filename, error } = event.payload as { filename: string; error: string };
+      
+      // 如果是用户取消，直接移除下载项，不显示错误
+      if (error === 'CANCELLED') {
+        setDownloads(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(filename);
+          return newMap;
+        });
+        return;
+      }
+      
       setDownloads(prev => {
         const newMap = new Map(prev);
         const existing = newMap.get(filename);

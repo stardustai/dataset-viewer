@@ -51,20 +51,20 @@ export class LocalStorageClient extends BaseStorageClient {
    */
   /**
    * 将前端路径转换为协议统一的地址格式
-   * 本地存储协议格式：file://path/to/file
+   * 本地存储协议格式：file:///path/to/file
    */
   toProtocolUrl(path: string): string {
     if (!path) {
-      return 'file://';
+      return 'file:///';
     }
 
     // 如果路径已经是绝对路径（以 / 开头），直接使用
     if (path.startsWith('/')) {
-      return `file://${path}`;
+      return `file:///${path}`;
     }
 
-    // 对于相对路径，构建 file:// 协议 URL（不添加额外的斜杠）
-    return `file://${path}`;
+    // 对于相对路径，构建 file:/// 协议 URL
+    return `file:///${path}`;
   }
 
   /**
@@ -226,13 +226,8 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    // 对于本机文件，可以直接复制而不需要下载
-    return await this.downloadWithProgress(
-      'COPY_FILE',
-      path, // 直接传递路径
-      filename,
-      {}
-    );
+    // 对于本地文件，使用正常的GET方法获取数据
+    return await this.downloadWithProgress('GET', this.toProtocolUrl(path), filename);
   }
 
   /**

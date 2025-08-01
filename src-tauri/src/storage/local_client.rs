@@ -7,6 +7,7 @@ use tokio::fs;
 use tokio::io::AsyncReadExt;
 
 use super::traits::{StorageClient, StorageError, StorageRequest, StorageResponse, DirectoryResult, StorageFile, ListOptions, ConnectionConfig, StorageCapabilities, ProgressCallback};
+use crate::utils::chunk_size;
 
 /// 本机文件系统存储客户端
 pub struct LocalFileSystemClient {
@@ -25,10 +26,10 @@ impl LocalFileSystemClient {
     /// 构建完整路径并进行安全检查
     /// 支持绝对路径和相对路径两种模式，以及 file:// 协议
     fn build_safe_path(&self, path: &str) -> Result<PathBuf, StorageError> {
-        // 处理 file:// 协议 URL
-        let actual_path = if path.starts_with("file://") {
-            // 移除 file:// 前缀，保留路径部分
-            path.strip_prefix("file://").unwrap_or(path)
+        // 处理 file:/// 协议 URL（统一使用三个斜杠）
+        let actual_path = if path.starts_with("file:///") {
+            let stripped = path.strip_prefix("file:///").unwrap_or(path);
+            stripped
         } else {
             path
         };
@@ -58,9 +59,14 @@ impl LocalFileSystemClient {
         }
 
         // 获取根路径
-        let root = self.root_path
-            .as_ref()
-            .ok_or(StorageError::NotConnected)?;
+        let root = match self.root_path.as_ref() {
+            Some(root) => {
+                root
+            }
+            None => {
+                return Err(StorageError::NotConnected);
+            }
+        };
 
         // 对于相对路径，与根目录拼接
         let clean_path = actual_path.trim_start_matches('/');
@@ -344,34 +350,34 @@ impl StorageClient for LocalFileSystemClient {
             .map_err(|e| StorageError::IoError(format!("Failed to seek in file: {}", e)))?;
 
         // 使用分块读取来处理大文件，与其他存储客户端保持一致
-        const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks，适合本地文件读取
+        let chunk_size = chunk_size::calculate_local_read_chunk_size(length);
         let mut result = Vec::with_capacity(length as usize);
         let mut remaining = length;
         let mut total_read = 0u64;
-        
+
         while remaining > 0 {
-            let chunk_size = std::cmp::min(remaining, CHUNK_SIZE as u64) as usize;
-            let mut chunk = vec![0u8; chunk_size];
-            
+            let current_chunk_size = std::cmp::min(remaining, chunk_size as u64) as usize;
+            let mut chunk = vec![0u8; current_chunk_size];
+
             let bytes_read = file.read(&mut chunk).await
                 .map_err(|e| StorageError::IoError(format!("Failed to read file: {}", e)))?;
-            
+
             if bytes_read == 0 {
                 // 到达文件末尾
                 break;
             }
-            
+
             chunk.truncate(bytes_read);
             result.extend_from_slice(&chunk);
             total_read += bytes_read as u64;
             remaining = remaining.saturating_sub(bytes_read as u64);
-            
+
             // 调用进度回调
             if let Some(ref callback) = progress_callback {
                 callback(total_read, length);
             }
         }
-        
+
         log::debug!("本地文件实际读取到 {} 字节，请求 {} 字节", result.len(), length);
         Ok(result)
     }
@@ -452,13 +458,20 @@ impl StorageClient for LocalFileSystemClient {
     }
 
     fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 如果传入的已经是 file:// URL，直接返回
-        if path.starts_with("file://") {
+        // 如果传入的已经是 file:/// URL，直接返回
+        if path.starts_with("file:///") {
             return Ok(path.to_string());
         }
 
-        // 否则，构建完整路径并转换为 file:// URL
-        let full_path = self.build_safe_path(path)?;
+        // 否则，构建完整路径并转换为 file:/// URL
+        let full_path = match self.build_safe_path(path) {
+            Ok(path) => {
+                path
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        };
 
         // 规范化路径分隔符（Windows 使用反斜杠，需要转换为正斜杠）
         let normalized_path = if cfg!(windows) {

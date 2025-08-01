@@ -263,8 +263,8 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                       )}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {connection.url.startsWith('local://')
-                        ? connection.url.replace('local://', '')
+                      {connection.url.startsWith('file:///')
+                        ? connection.url.replace('file:///', '')
                         : connection.url.startsWith('oss://')
                         ? `OSS: ${connection.username}`
                         : `${connection.username}@${new URL(connection.url).hostname}`}

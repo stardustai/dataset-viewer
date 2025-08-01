@@ -124,7 +124,9 @@ impl StorageManager {
 static STORAGE_MANAGER: tokio::sync::OnceCell<Arc<Mutex<StorageManager>>> = tokio::sync::OnceCell::const_new();
 
 pub async fn get_storage_manager() -> Arc<Mutex<StorageManager>> {
-    STORAGE_MANAGER.get_or_init(|| async {
-        Arc::new(Mutex::new(StorageManager::new()))
-    }).await.clone()
+    let result = STORAGE_MANAGER.get_or_init(|| async {
+        let manager = StorageManager::new();
+        Arc::new(Mutex::new(manager))
+    }).await.clone();
+    result
 }

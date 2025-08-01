@@ -95,7 +95,7 @@ class ConnectionStorageService {
 
         // 确定连接类型
         let type: 'webdav' | 'oss' | 'local' = 'webdav';
-        if (normalizedUrl.startsWith('local://')) {
+        if (normalizedUrl.startsWith('file:///')) {
           type = 'local';
         } else if (normalizedUrl.startsWith('oss://') || this.isOSSEndpoint(normalizedUrl)) {
           type = 'oss';

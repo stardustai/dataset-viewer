@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use futures_util::StreamExt;
 use tauri_plugin_dialog::DialogExt;
 use reqwest;
+use tokio_util;
 
 use crate::download::{types::*, progress::ProgressTracker};
 use crate::storage::get_storage_manager;
 use crate::archive::handlers::ArchiveHandler;
+use crate::utils::chunk_size;
 
 pub struct DownloadManager {
     active_downloads: Arc<Mutex<HashMap<String, broadcast::Sender<()>>>>,
@@ -19,6 +21,101 @@ impl DownloadManager {
         Self {
             active_downloads: Arc::new(Mutex::new(HashMap::new())),
         }
+    }    /// 显示文件保存对话框的公共方法
+    fn show_save_file_dialog(
+        app: &tauri::AppHandle,
+        filename: &str,
+    ) -> Result<Option<std::path::PathBuf>, String> {
+        use std::sync::mpsc;
+        let (tx, rx) = mpsc::channel();
+
+        app.dialog()
+            .file()
+            .set_file_name(filename)
+            .save_file(move |file_path| {
+                let _ = tx.send(file_path);
+            });
+
+        match rx.recv() {
+            Ok(Some(file)) => {
+                file.into_path()
+                    .map(Some)
+                    .map_err(|e| format!("Failed to get path: {}", e))
+            },
+            Ok(None) => Ok(None), // 用户取消不再是错误
+            Err(_) => Err("Failed to receive file path".to_string()),
+        }
+    }
+
+    /// 设置下载的公共逻辑：文件对话框、取消信号、进度跟踪器
+    fn setup_download(
+        &self,
+        app: &tauri::AppHandle,
+        filename: &str,
+        total_size: Option<u64>,
+    ) -> Result<(std::path::PathBuf, broadcast::Sender<()>, broadcast::Receiver<()>, ProgressTracker), String> {
+        // 显示保存文件对话框
+        let save_path = match Self::show_save_file_dialog(app, filename)? {
+            Some(path) => path,
+            None => return Err("CANCELLED".to_string()), // 特殊错误标识用户取消
+        };
+
+        // 创建取消信号
+        let (cancel_tx, cancel_rx) = broadcast::channel::<()>(1);
+
+        // 将取消发送器存储到管理器
+        {
+            let mut downloads = self.active_downloads.lock().unwrap();
+            downloads.insert(filename.to_string(), cancel_tx.clone());
+        }
+
+        // 创建进度跟踪器
+        let progress_tracker = ProgressTracker::new(app.clone());
+
+        // 发送开始下载事件
+        progress_tracker.emit_started(DownloadStarted {
+            filename: filename.to_string(),
+            total_size: total_size.unwrap_or(0),
+        });
+
+        Ok((save_path, cancel_tx, cancel_rx, progress_tracker))
+    }
+
+    /// 处理下载完成的公共逻辑
+    fn handle_download_completion(
+        &self,
+        filename: &str,
+        result: Result<String, String>,
+        save_path: &std::path::Path,
+        progress_tracker: &ProgressTracker,
+    ) -> DownloadResult {
+        // 从管理器中移除下载任务
+        {
+            let mut downloads = self.active_downloads.lock().unwrap();
+            downloads.remove(filename);
+        }
+
+        match result {
+            Ok(success_msg) => {
+                progress_tracker.emit_completed(DownloadCompleted {
+                    filename: filename.to_string(),
+                    file_path: save_path.display().to_string(),
+                });
+                Ok(success_msg)
+            }
+            Err(error) => {
+                // 如果不是用户取消，删除部分下载的文件
+                if !error.contains("cancelled") {
+                    let _ = std::fs::remove_file(save_path);
+                }
+
+                progress_tracker.emit_error(DownloadError {
+                    filename: filename.to_string(),
+                    error: error.clone(),
+                });
+                Err(error)
+            }
+        }
     }
 
     pub async fn download_with_progress(
@@ -26,19 +123,14 @@ impl DownloadManager {
         app: tauri::AppHandle,
         request: DownloadRequest,
     ) -> DownloadResult {
-        // 显示保存文件对话框
-        let file_path = app
-            .dialog()
-            .file()
-            .set_file_name(&request.filename)
-            .blocking_save_file();
+        // 检测URL协议，如果是本地文件则使用专门的处理方法
+        if request.url.starts_with("file:///") {
+            return self.handle_local_file_download(app, request).await;
+        }
 
-        let save_path = match file_path {
-            Some(path) => path
-                .into_path()
-                .map_err(|e| format!("Failed to get path: {}", e))?,
-            None => return Err("User cancelled file save".to_string()),
-        };
+        // 设置下载（文件对话框、取消信号、进度跟踪器）
+        let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
+            self.setup_download(&app, &request.filename, None)?;
 
         // 创建HTTP客户端和请求
         let client = reqwest::Client::new();
@@ -65,26 +157,14 @@ impl DownloadManager {
         // 获取文件总大小
         let total_size = response.content_length().unwrap_or(0);
 
-        // 创建取消信号
-        let (cancel_tx, mut cancel_rx) = broadcast::channel::<()>(1);
-
-        // 将取消发送器存储到管理器
-        {
-            let mut downloads = self.active_downloads.lock().unwrap();
-            downloads.insert(request.filename.clone(), cancel_tx);
-        }
-
-        // 创建进度跟踪器
-        let progress_tracker = ProgressTracker::new(app);
-
-        // 发送开始下载事件
+        // 更新开始下载事件的总大小
         progress_tracker.emit_started(DownloadStarted {
             filename: request.filename.clone(),
             total_size,
         });
 
         // 执行实际下载
-        match self
+        let download_result = self
             .execute_download(
                 &progress_tracker,
                 response,
@@ -93,42 +173,14 @@ impl DownloadManager {
                 total_size,
                 &mut cancel_rx,
             )
-            .await
-        {
-            Ok(result) => {
-                // 下载完成，从管理器中移除
-                {
-                    let mut downloads = self.active_downloads.lock().unwrap();
-                    downloads.remove(&request.filename);
-                }
+            .await;
 
-                progress_tracker.emit_completed(DownloadCompleted {
-                    filename: request.filename,
-                    file_path: save_path.display().to_string(),
-                });
-
-                Ok(result)
-            }
-            Err(error) => {
-                // 下载失败，清理资源
-                {
-                    let mut downloads = self.active_downloads.lock().unwrap();
-                    downloads.remove(&request.filename);
-                }
-
-                // 如果不是用户取消，删除部分下载的文件
-                if !error.contains("cancelled") {
-                    let _ = tokio::fs::remove_file(&save_path).await;
-                }
-
-                progress_tracker.emit_error(DownloadError {
-                    filename: request.filename,
-                    error: error.clone(),
-                });
-
-                Err(error)
-            }
-        }
+        self.handle_download_completion(
+            &request.filename,
+            download_result,
+            &save_path,
+            &progress_tracker,
+        )
     }
 
     pub fn cancel_download(&self, filename: &str) -> Result<String, String> {
@@ -143,6 +195,84 @@ impl DownloadManager {
         }
     }
 
+    /// 处理本地文件下载
+    async fn handle_local_file_download(
+        &self,
+        app: tauri::AppHandle,
+        request: DownloadRequest,
+    ) -> DownloadResult {
+        // 从URL中提取路径部分
+        let path_str = if request.url.starts_with("file:///") {
+            request.url.strip_prefix("file:///").unwrap_or(&request.url)
+        } else {
+            &request.url
+        };
+
+        // 构建完整的文件路径
+        let source_file_path = {
+            let path_buf = std::path::PathBuf::from(path_str);
+            if path_buf.is_relative() {
+                // 对于相对路径，使用下载目录作为基础路径
+                if let Some(downloads_dir) = dirs::download_dir() {
+                    downloads_dir.join(path_buf)
+                } else {
+                    path_buf
+                }
+            } else {
+                path_buf
+            }
+        };
+
+        // 检查源文件是否存在
+        if !source_file_path.exists() {
+            return Err(format!("Source file does not exist: {:?}", source_file_path));
+        }
+
+        let source_file_path = match source_file_path.canonicalize() {
+             Ok(path) => path,
+             Err(e) => {
+                 return Err(format!("Failed to canonicalize source path: {}", e));
+             }
+         };
+
+         // 获取文件大小
+         let file_size = match std::fs::metadata(&source_file_path) {
+             Ok(metadata) => metadata.len(),
+             Err(e) => {
+                 return Err(format!("Failed to get file metadata: {}", e));
+             }
+         };
+
+         // 设置下载（文件对话框、取消信号、进度跟踪器）
+         let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
+             self.setup_download(&app, &request.filename, Some(file_size))?;
+
+         // 更新开始下载事件
+         progress_tracker.emit_started(crate::download::types::DownloadStarted {
+             filename: request.filename.clone(),
+             total_size: file_size,
+         });
+
+         // 执行本地文件复制
+         let download_result = self
+             .execute_local_file_download(
+                 &progress_tracker,
+                 &source_file_path,
+                 &save_path,
+                 &request.filename,
+                 file_size,
+                 &mut cancel_rx,
+             )
+             .await;
+
+         self.handle_download_completion(
+             &request.filename,
+             download_result,
+             &save_path,
+             &progress_tracker,
+         )
+     }
+
     /// 下载压缩包内文件的统一方法，支持取消功能
     pub async fn download_archive_file_with_progress(
         &self,
@@ -152,40 +282,12 @@ impl DownloadManager {
         entry_path: String,
         entry_filename: String,
     ) -> DownloadResult {
-        // 显示保存文件对话框
-        let file_path = app
-            .dialog()
-            .file()
-            .set_file_name(&entry_filename)
-            .blocking_save_file();
-
-        let save_path = match file_path {
-            Some(path) => path
-                .into_path()
-                .map_err(|e| format!("Failed to get path: {}", e))?,
-            None => return Err("User cancelled file save".to_string()),
-        };
-
-        // 创建取消信号
-        let (cancel_tx, mut cancel_rx) = broadcast::channel::<()>(1);
-
-        // 将取消发送器存储到管理器
-        {
-            let mut downloads = self.active_downloads.lock().unwrap();
-            downloads.insert(entry_filename.clone(), cancel_tx);
-        }
-
-        // 创建进度跟踪器
-        let progress_tracker = ProgressTracker::new(app.clone());
-
-        // 发送开始下载事件
-        progress_tracker.emit_started(DownloadStarted {
-            filename: entry_filename.clone(),
-            total_size: 0, // 初始时未知大小
-        });
+        // 设置下载（文件对话框、取消信号、进度跟踪器）
+        let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
+            self.setup_download(&app, &entry_filename, None)?;
 
         // 执行压缩包文件下载
-        match self
+        let result = self
             .execute_archive_download(
                 &progress_tracker,
                 &archive_path,
@@ -195,42 +297,10 @@ impl DownloadManager {
                 &save_path,
                 &mut cancel_rx,
             )
-            .await
-        {
-            Ok(result) => {
-                // 下载完成，从管理器中移除
-                {
-                    let mut downloads = self.active_downloads.lock().unwrap();
-                    downloads.remove(&entry_filename);
-                }
+            .await;
 
-                progress_tracker.emit_completed(DownloadCompleted {
-                    filename: entry_filename,
-                    file_path: save_path.display().to_string(),
-                });
-
-                Ok(result)
-            }
-            Err(error) => {
-                // 下载失败，清理资源
-                {
-                    let mut downloads = self.active_downloads.lock().unwrap();
-                    downloads.remove(&entry_filename);
-                }
-
-                // 如果不是用户取消，删除部分下载的文件
-                if !error.contains("cancelled") {
-                    let _ = tokio::fs::remove_file(&save_path).await;
-                }
-
-                progress_tracker.emit_error(DownloadError {
-                    filename: entry_filename,
-                    error: error.clone(),
-                });
-
-                Err(error)
-            }
-        }
+        // 处理下载完成
+        self.handle_download_completion(&entry_filename, result, &save_path, &progress_tracker)
     }
 
     fn build_request(
@@ -254,25 +324,29 @@ impl DownloadManager {
         Ok(request_builder)
     }
 
-    async fn execute_download(
+    /// 通用的文件写入和进度跟踪方法
+    async fn write_file_with_progress<R>(
         &self,
         progress_tracker: &ProgressTracker,
-        response: reqwest::Response,
+        mut reader: R,
         save_path: &std::path::Path,
         filename: &str,
         total_size: u64,
         cancel_rx: &mut broadcast::Receiver<()>,
-    ) -> Result<String, String> {
+        chunk_size: usize,
+    ) -> Result<String, String>
+    where
+        R: AsyncReadExt + Unpin,
+    {
         // 创建文件
         let mut file = tokio::fs::File::create(save_path)
             .await
             .map_err(|e| format!("Failed to create file: {}", e))?;
 
-        // 流式下载
-        let mut downloaded: u64 = 0;
-        let mut stream = response.bytes_stream();
+        let mut written: u64 = 0;
+        let mut buffer = vec![0u8; chunk_size];
 
-        while let Some(chunk_result) = stream.next().await {
+        loop {
             // 检查是否收到取消信号
             if cancel_rx.try_recv().is_ok() {
                 // 删除部分下载的文件
@@ -280,22 +354,29 @@ impl DownloadManager {
                 return Err("Download cancelled by user".to_string());
             }
 
-            let chunk = chunk_result.map_err(|e| format!("Failed to read chunk: {}", e))?;
+            // 读取数据块
+            let bytes_read = reader.read(&mut buffer)
+                .await
+                .map_err(|e| format!("Failed to read data: {}", e))?;
+
+            if bytes_read == 0 {
+                break; // 读取完成
+            }
 
             // 写入文件
-            file.write_all(&chunk)
+            file.write_all(&buffer[..bytes_read])
                 .await
-                .map_err(|e| format!("Failed to write chunk: {}", e))?;
+                .map_err(|e| format!("Failed to write data: {}", e))?;
 
-            downloaded += chunk.len() as u64;
+            written += bytes_read as u64;
 
             // 发送进度更新事件
-            if progress_tracker.should_emit_progress(downloaded, chunk.len()) {
-                let progress = progress_tracker.calculate_progress(downloaded, total_size);
+            if progress_tracker.should_emit_progress(written, bytes_read) {
+                let progress = progress_tracker.calculate_progress(written, total_size);
 
                 progress_tracker.emit_progress(DownloadProgress {
                     filename: filename.to_string(),
-                    downloaded,
+                    downloaded: written,
                     total_size,
                     progress,
                 });
@@ -310,6 +391,59 @@ impl DownloadManager {
             "File downloaded successfully to: {}",
             save_path.display()
         ))
+    }
+
+    async fn execute_download(
+        &self,
+        progress_tracker: &ProgressTracker,
+        response: reqwest::Response,
+        save_path: &std::path::Path,
+        filename: &str,
+        total_size: u64,
+        cancel_rx: &mut broadcast::Receiver<()>,
+    ) -> Result<String, String> {
+        // 使用流式读取器包装HTTP响应
+        let stream_reader = tokio_util::io::StreamReader::new(
+            response.bytes_stream().map(|result| {
+                result.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+            })
+        );
+
+        self.write_file_with_progress(
+            progress_tracker,
+            stream_reader,
+            save_path,
+            filename,
+            total_size,
+            cancel_rx,
+            chunk_size::calculate_optimal_chunk_size(total_size),
+        ).await
+    }
+
+    /// 执行本地文件下载的核心逻辑
+    async fn execute_local_file_download(
+        &self,
+        progress_tracker: &ProgressTracker,
+        source_path: &std::path::Path,
+        save_path: &std::path::Path,
+        filename: &str,
+        total_size: u64,
+        cancel_rx: &mut broadcast::Receiver<()>,
+    ) -> Result<String, String> {
+        // 打开源文件
+        let source_file = tokio::fs::File::open(source_path)
+            .await
+            .map_err(|e| format!("Failed to open source file: {}", e))?;
+
+        self.write_file_with_progress(
+            progress_tracker,
+            source_file,
+            save_path,
+            filename,
+            total_size,
+            cancel_rx,
+            chunk_size::calculate_optimal_chunk_size(total_size),
+        ).await
     }
 
     /// 执行压缩包文件下载的核心逻辑
@@ -371,7 +505,7 @@ impl DownloadManager {
         ).await.map_err(|e| {
             format!("Failed to extract file from archive: {}", e)
         })?;
-        
+
         let file_data = file_preview.content;
 
         // 检查取消信号
