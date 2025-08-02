@@ -18,9 +18,9 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
         <LanguageSwitcher />
       </div>
 
-      <div className="flex items-center justify-center min-h-screen p-4 lg:p-8">
-        <div className="w-full max-w-6xl">
-          <div className="grid lg:grid-cols-2 gap-8 items-center px-4 lg:px-0">
+      <div className="flex items-center justify-center h-screen sm:min-h-screen p-0 sm:p-4 lg:p-8">
+        <div className="w-full max-w-none sm:max-w-6xl h-full">
+          <div className="grid lg:grid-cols-2 gap-0 sm:gap-8 items-center px-0 sm:px-4 lg:px-0 h-full">
             {/* 左侧：功能介绍和品牌展示 */}
             <FeatureShowcase />
 
