@@ -14,7 +14,11 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const storageTypes = [
+  // 检测是否为安卓平台
+  const isAndroid = typeof navigator !== 'undefined' && 
+    /android/i.test(navigator.userAgent);
+
+  const allStorageTypes = [
     {
       type: 'webdav' as StorageClientType,
       label: t('storage.type.webdav'),
@@ -40,6 +44,11 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
       description: t('storage.type.local.description')
     }
   ];
+
+  // 在安卓平台上过滤掉本地文件类型
+  const storageTypes = isAndroid 
+    ? allStorageTypes.filter(type => type.type !== 'local')
+    : allStorageTypes;
 
   return (
     <div className="space-y-2">
