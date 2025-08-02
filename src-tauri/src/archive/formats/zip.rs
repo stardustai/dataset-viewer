@@ -551,7 +551,7 @@ impl ZipHandler {
     ) -> Result<ArchiveInfo, String> {
         const MIN_ZIP_SIZE: u64 = 22; // 最小ZIP文件大小（EOCD记录）
         const MAX_FOOTER_SIZE: u64 = 65536; // 最多读取64KB的文件尾部
-        const MAX_ZIP_SIZE: u64 = 10 * 1024 * 1024 * 1024; // 10GB文件大小限制
+        const MAX_ZIP_SIZE: u64 = 500 * 1024 * 1024 * 1024; // 500GB文件大小限制
         const MAX_CD_SIZE: u64 = 500 * 1024 * 1024; // 500MB中央目录大小限制
         const MAX_ENTRIES: u64 = 1_000_000; // 100万个文件数量限制
 
