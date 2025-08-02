@@ -760,19 +760,27 @@ impl StorageClient for HuggingFaceClient {
         } else {
             // 降级到 HEAD 请求
             let download_url = self.build_download_url(&dataset_id, &file_path);
+            
+            println!("[DEBUG] - fallback to HEAD request: {}", download_url);
 
-            let request = StorageRequest {
-                method: "HEAD".to_string(),
-                url: download_url,
-                headers: HashMap::new(),
-                body: None,
-                options: None,
-            };
+            let response = self.client
+                .head(&download_url)
+                .headers(self.get_reqwest_headers())
+                .send()
+                .await
+                .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
-            let response = self.request(&request).await?;
+            if !response.status().is_success() {
+                return Err(StorageError::RequestFailed(
+                    format!("HEAD request failed: {}", response.status())
+                ));
+            }
 
-            if let Some(content_length) = response.headers.get("content-length") {
-                content_length.parse::<u64>().map_err(|e| StorageError::RequestFailed(e.to_string()))
+            if let Some(content_length) = response.headers().get("content-length") {
+                content_length.to_str()
+                    .map_err(|e| StorageError::RequestFailed(e.to_string()))?
+                    .parse::<u64>()
+                    .map_err(|e| StorageError::RequestFailed(e.to_string()))
             } else {
                 Err(StorageError::RequestFailed("Content-Length header not found".to_string()))
             }
