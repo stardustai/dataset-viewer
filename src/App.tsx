@@ -9,9 +9,10 @@ import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
 import { navigationHistoryService } from './services/navigationHistory';
 import { useTheme } from './hooks/useTheme';
-import { useRouter } from './hooks/useRouter';
 import './i18n';
 import './App.css';
+
+type AppState = 'initializing' | 'connecting' | 'browsing' | 'viewing';
 
 function App() {
   // 初始化主题系统
@@ -20,20 +21,11 @@ function App() {
   // 更新通知功能
   const { showNotification, hideUpdateDialog } = useUpdateNotification();
 
-  // 使用路由系统替代状态管理
-  const {
-    appState,
-    selectedFile,
-    selectedFilePath,
-    selectedStorageClient,
-    currentDirectory,
-    navigateToConnecting,
-    navigateToBrowsing,
-    navigateToViewing,
-    setCurrentDirectory
-  } = useRouter();
-
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [appState, setAppState] = useState<AppState>('initializing');
+  const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
+  const [selectedFilePath, setSelectedFilePath] = useState<string>('');
+  const [selectedStorageClient, setSelectedStorageClient] = useState<any>(null);
+  const [currentDirectory, setCurrentDirectory] = useState<string>('');
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
 
   useEffect(() => {
@@ -53,35 +45,32 @@ function App() {
 
         if (wasDisconnected) {
           // 如果用户主动断开过连接，直接显示连接页面
-          navigateToConnecting();
+          setAppState('connecting');
           removeInitialLoader();
-          setIsInitializing(false);
           return;
         }
 
         const success = await StorageServiceManager.autoConnect();
         if (success) {
-          navigateToBrowsing();
+          setAppState('browsing');
         } else {
-          navigateToConnecting();
+          setAppState('connecting');
         }
         removeInitialLoader();
-        setIsInitializing(false);
       } catch (error) {
         console.warn('Auto connect failed:', error);
-        navigateToConnecting();
+        setAppState('connecting');
         removeInitialLoader();
-        setIsInitializing(false);
       }
     };
 
     tryAutoConnect();
-  }, [navigateToConnecting, navigateToBrowsing]);
+  }, []);
 
   const handleConnect = () => {
     // 连接成功时清除断开连接标记
     localStorage.removeItem('userDisconnected');
-    navigateToBrowsing();
+    setAppState('browsing');
   };
 
   const handleDisconnect = () => {
@@ -97,22 +86,31 @@ function App() {
     localStorage.setItem('userDisconnected', 'true');
 
     // 重置应用状态
-    navigateToConnecting();
+    setAppState('connecting');
+    setSelectedFile(null);
+    setSelectedFilePath('');
+    setCurrentDirectory('');
   };
 
   const handleFileSelect = (file: StorageFile, path: string, storageClient?: any) => {
-    navigateToViewing(file, path, storageClient);
+    setSelectedFile(file);
+    setSelectedFilePath(path);
+    setSelectedStorageClient(storageClient); // 保存存储客户端引用
+    setAppState('viewing');
   };
 
   const handleBackToBrowser = () => {
-    navigateToBrowsing();
+    setAppState('browsing');
+    setSelectedFile(null);
+    setSelectedFilePath('');
+    setSelectedStorageClient(null);
   };
 
   const handleDirectoryChange = (path: string) => {
     setCurrentDirectory(path);
   };
 
-  if (isInitializing) {
+  if (appState === 'initializing') {
     return <SplashScreen />;
   }
 
