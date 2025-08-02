@@ -25,6 +25,7 @@ import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../commo
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { configManager } from '../../config';
 import { formatFileSize } from '../../utils/fileUtils';
+import { androidBackHandler } from '../../services/androidBackHandler';
 
 // Import VirtualizedTextViewerRef type
 interface VirtualizedTextViewerRef {
@@ -556,6 +557,38 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [fullFileSearchMode, fullFileSearchResults, searchResults, nextResult, prevResult, searchTerm]);
+
+  // 安卓返回按钮处理逻辑
+  useEffect(() => {
+    const handleAndroidBack = () => {
+      // 如果有搜索词，清除搜索
+      if (searchTerm.trim()) {
+        setSearchTerm('');
+        setCurrentSearchIndex(-1);
+        setSearchResults([]);
+        setFullFileSearchResults([]);
+        return true; // 表示已处理
+      }
+      
+      // 如果显示百分比输入框，隐藏它
+      if (showPercentInput) {
+        setShowPercentInput(false);
+        return true; // 表示已处理
+      }
+      
+      // 否则返回到文件浏览器
+      onBack();
+      return true; // 表示已处理
+    };
+
+    // 注册安卓返回按钮处理器
+    androidBackHandler.addHandler(handleAndroidBack);
+
+    // 清理函数
+    return () => {
+      androidBackHandler.removeHandler(handleAndroidBack);
+    };
+  }, [searchTerm, showPercentInput, onBack]);
 
   useEffect(() => {
     loadFileContent();

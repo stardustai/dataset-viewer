@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, Folder, Cloud, Bot } from 'lucide-react';
 import { StorageClientType } from '../services/storage/types';
+import { AndroidBackHandlerService } from '../services/androidBackHandler';
 
 interface StorageTypeSelectorProps {
   selectedType: StorageClientType;
@@ -15,8 +16,7 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
   const { t } = useTranslation();
 
   // 检测是否为安卓平台
-  const isAndroid = typeof navigator !== 'undefined' && 
-    /android/i.test(navigator.userAgent);
+  const isAndroid = AndroidBackHandlerService.isAndroid();
 
   const allStorageTypes = [
     {

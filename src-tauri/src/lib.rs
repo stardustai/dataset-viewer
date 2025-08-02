@@ -7,6 +7,7 @@ use archive::{handlers::ArchiveHandler, types::*};
 use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
+use tauri::Emitter;
 
 
 // 移除参数结构体，直接在命令中使用 serde rename 属性
@@ -482,13 +483,26 @@ async fn get_recommended_chunk_size(filename: String, file_size: u64) -> Result<
     Ok(ARCHIVE_HANDLER.get_recommended_chunk_size(&filename, file_size))
 }
 
+// 安卓返回按钮处理
+#[tauri::command]
+async fn handle_android_back_button(app: tauri::AppHandle) -> Result<bool, String> {
+    // 发送自定义事件到前端
+    app.emit("android-back-button", ())
+        .map_err(|e| format!("Failed to emit android back button event: {}", e))?;
+    
+    // 返回 true 表示事件已被处理，阻止默认行为
+    Ok(true)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_http::init())
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             // 统一存储接口命令
             storage_request,
@@ -517,8 +531,25 @@ pub fn run() {
             get_recommended_chunk_size,
             // 新增：通过存储客户端的压缩包处理命令
             analyze_archive_with_client,
-            get_archive_preview_with_client
-        ])
+            get_archive_preview_with_client,
+            handle_android_back_button
+        ]);
+
+    #[cfg(target_os = "android")]
+    {
+        builder = builder.on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // 在安卓上拦截关闭事件，转换为返回按钮事件
+                let app_handle = window.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = handle_android_back_button(app_handle).await;
+                });
+                api.prevent_close();
+            }
+        });
+    }
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
