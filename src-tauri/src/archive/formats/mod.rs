@@ -24,7 +24,7 @@ pub trait CompressionHandlerDispatcher: Send + Sync {
         max_size: Option<usize>,
     ) -> Result<ArchiveInfo, String>;
 
-    /// 通过存储客户端提取文件预览（统一接口，支持流式提取和进度回调）
+    /// 通过存储客户端提取文件预览（统一接口，支持流式提取、进度回调和取消信号）
     async fn extract_preview_with_client(
         &self,
         client: Arc<dyn StorageClient>,
@@ -32,6 +32,7 @@ pub trait CompressionHandlerDispatcher: Send + Sync {
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String>;
 
     /// 获取压缩类型

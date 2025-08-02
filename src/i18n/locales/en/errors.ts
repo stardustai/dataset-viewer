@@ -2,6 +2,7 @@ export const errors = {
   // Connection errors
   'error.connection.failed': 'Failed to connect to WebDAV server. Please check your credentials.',
   'error.credentials': 'Connection failed. Please verify the server URL and credentials.',
+  'error.unknown': 'Unknown error',
 
   // File operation errors
   'error.load.directory': 'Failed to load directory contents',
@@ -13,7 +14,10 @@ export const errors = {
   'error.preview.file': 'Failed to preview file',
 
   // Download errors
-  'errors.download.failed': 'Download failed: {{error}}',
+  'download.failed': 'Download failed',
+  'errors.download.failed': 'File download failed: {{error}}',
+  'error.failedToLoadDataFile': 'Failed to load data file',
+  'error.failedToSwitchSheet': 'Failed to switch sheet',
 
   // Viewer errors
   'viewer.load.error': 'Failed to load file',

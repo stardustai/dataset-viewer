@@ -163,7 +163,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
                 <div className="flex items-center flex-1 min-w-0 pr-2 lg:pr-4">
                   {renderFileIcon(file)}
                   <span
-                    className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-32 sm:max-w-48 lg:max-w-md"
+                    className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
                     title={file.basename}
                   >
                     {file.basename}

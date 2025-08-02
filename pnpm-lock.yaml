@@ -20,6 +20,12 @@ dependencies:
   '@tauri-apps/plugin-opener':
     specifier: ^2
     version: 2.4.0
+  '@tauri-apps/plugin-os':
+    specifier: ^2.3.0
+    version: 2.3.0
+  '@tauri-apps/plugin-process':
+    specifier: ^2.3.0
+    version: 2.3.0
   dav1d.js:
     specifier: ^0.1.1
     version: 0.1.1
@@ -910,6 +916,18 @@ packages:
 
   /@tauri-apps/plugin-opener@2.4.0:
     resolution: {integrity: sha512-43VyN8JJtvKWJY72WI/KNZszTpDpzHULFxQs0CJBIYUdCRowQ6Q1feWTDb979N7nldqSuDOaBupZ6wz2nvuWwQ==}
+    dependencies:
+      '@tauri-apps/api': 2.7.0
+    dev: false
+
+  /@tauri-apps/plugin-os@2.3.0:
+    resolution: {integrity: sha512-dm3bDsMuUngpIQdJ1jaMkMfyQpHyDcaTIKTFaAMHoKeUd+Is3UHO2uzhElr6ZZkfytIIyQtSVnCWdW2Kc58f3g==}
+    dependencies:
+      '@tauri-apps/api': 2.7.0
+    dev: false
+
+  /@tauri-apps/plugin-process@2.3.0:
+    resolution: {integrity: sha512-0DNj6u+9csODiV4seSxxRbnLpeGYdojlcctCuLOCgpH9X3+ckVZIEj6H7tRQ7zqWr7kSTEWnrxtAdBb0FbtrmQ==}
     dependencies:
       '@tauri-apps/api': 2.7.0
     dev: false

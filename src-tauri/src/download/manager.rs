@@ -57,7 +57,7 @@ impl DownloadManager {
         // 显示保存文件对话框
         let save_path = match Self::show_save_file_dialog(app, filename)? {
             Some(path) => path,
-            None => return Err("CANCELLED".to_string()), // 特殊错误标识用户取消
+            None => return Err("download.cancelled".to_string()), // 特殊错误标识用户取消
         };
 
         // 创建取消信号
@@ -150,7 +150,7 @@ impl DownloadManager {
             return Err(format!(
                 "Download failed with status: {} - {}",
                 response.status().as_u16(),
-                response.status().canonical_reason().unwrap_or("Unknown error")
+                response.status().canonical_reason().unwrap_or("error.unknown")
             ));
         }
 
@@ -351,7 +351,7 @@ impl DownloadManager {
             if cancel_rx.try_recv().is_ok() {
                 // 删除部分下载的文件
                 let _ = tokio::fs::remove_file(save_path).await;
-                return Err("Download cancelled by user".to_string());
+                return Err("download.cancelled".to_string());
             }
 
             // 读取数据块
@@ -459,21 +459,22 @@ impl DownloadManager {
     ) -> Result<String, String> {
         // 检查是否收到取消信号
         if cancel_rx.try_recv().is_ok() {
-            return Err("Download cancelled by user".to_string());
+            return Err("download.cancelled".to_string());
         }
 
         // 获取存储管理器和客户端
-        let manager = get_storage_manager().await;
-        let manager = manager.lock().await;
+        let manager_arc = get_storage_manager().await;
+        let manager = manager_arc.read().await;
         let client = manager.get_current_client()
             .ok_or_else(|| "No storage client available".to_string())?;
+        drop(manager);
 
         // 创建压缩包处理器
         let archive_handler = ArchiveHandler::new();
 
         // 检查取消信号
         if cancel_rx.try_recv().is_ok() {
-            return Err("Download cancelled by user".to_string());
+            return Err("download.cancelled".to_string());
         }
 
         // 创建文件
@@ -502,15 +503,21 @@ impl DownloadManager {
             entry_path.to_string(),
             Some(4 * 1024 * 1024 * 1024), // 4GB 限制
             Some(progress_callback), // 使用进度回调显示提取进度
+            Some(cancel_rx), // 传递取消信号
         ).await.map_err(|e| {
-            format!("Failed to extract file from archive: {}", e)
+            // 如果是取消操作，直接返回取消标识
+            if e.contains("download.cancelled") {
+                "download.cancelled".to_string()
+            } else {
+                format!("Failed to extract file from archive: {}", e)
+            }
         })?;
 
         let file_data = file_preview.content;
 
         // 检查取消信号
         if cancel_rx.try_recv().is_ok() {
-            return Err("Download cancelled by user".to_string());
+            return Err("download.cancelled".to_string());
         }
 
         // 写入文件

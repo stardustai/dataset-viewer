@@ -55,10 +55,10 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   const { t } = useTranslation();
 
   return (
-    <div className="w-full max-w-md mx-auto lg:mx-0">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full">
+    <div className="w-full max-w-none sm:max-w-md mx-0 sm:mx-auto lg:mx-0 h-full sm:h-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl shadow-xl p-4 sm:p-6 w-full h-full sm:h-auto flex flex-col justify-center">
         {/* 移动端标题和描述 */}
-        <div className="lg:hidden text-center mb-6">
+        <div className="lg:hidden text-center mb-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             {t('app.name')}
           </h1>

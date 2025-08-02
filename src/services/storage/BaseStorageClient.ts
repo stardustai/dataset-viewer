@@ -10,12 +10,65 @@ import {
 import { ArchiveInfo, FilePreview } from '../../types';
 
 /**
+ * 超时配置
+ */
+interface TimeoutConfig {
+  /** 默认超时时间（毫秒） */
+  default: number;
+  /** 连接超时时间（毫秒） */
+  connect: number;
+  /** 下载超时时间（毫秒） */
+  download: number;
+  /** 列表操作超时时间（毫秒） */
+  list: number;
+}
+
+/**
+ * 默认超时配置
+ */
+export const DEFAULT_TIMEOUTS: TimeoutConfig = {
+  default: 30000,   // 30秒
+  connect: 15000,   // 15秒
+  download: 300000, // 5分钟
+  list: 60000,      // 1分钟
+};
+
+/**
  * 统一存储客户端基类
  * 提供所有存储类型的通用接口实现
  */
 export abstract class BaseStorageClient implements StorageClient {
   protected abstract protocol: string;
   protected connected: boolean = false;
+
+  /**
+   * 带超时的 Tauri invoke 包装器
+   * @param command Tauri 命令名
+   * @param args 命令参数
+   * @param timeoutMs 超时时间（毫秒），默认使用 DEFAULT_TIMEOUTS.default
+   * @returns Promise<T>
+   */
+  protected async invokeWithTimeout<T>(
+    command: string,
+    args?: Record<string, any>,
+    timeoutMs: number = DEFAULT_TIMEOUTS.default
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Tauri command '${command}' timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      invoke<T>(command, args)
+        .then((result) => {
+          clearTimeout(timeoutId);
+          resolve(result);
+        })
+        .catch((error) => {
+          clearTimeout(timeoutId);
+          reject(error);
+        });
+    });
+  }
 
   /**
    * 获取连接的显示名称
@@ -66,12 +119,16 @@ export abstract class BaseStorageClient implements StorageClient {
     filename: string,
     headers: Record<string, string> = {}
   ): Promise<string> {
-    return await invoke('download_file_with_progress', {
-      method,
-      url,
-      headers,
-      filename,
-    });
+    return await this.invokeWithTimeout(
+      'download_file_with_progress',
+      {
+        method,
+        url,
+        headers,
+        filename,
+      },
+      DEFAULT_TIMEOUTS.download
+    );
   }
 
   /**
@@ -122,12 +179,12 @@ export abstract class BaseStorageClient implements StorageClient {
     maxSize?: number
   ): Promise<ArchiveInfo> {
     // 通过Tauri命令调用后端的存储客户端接口
-    return await invoke('analyze_archive_with_client', {
+    return await this.invokeWithTimeout('analyze_archive_with_client', {
       protocol: this.protocol,
       filePath: path,
       filename,
       maxSize
-    });
+    }, DEFAULT_TIMEOUTS.default);
   }
 
   /**
@@ -140,13 +197,13 @@ export abstract class BaseStorageClient implements StorageClient {
     maxPreviewSize?: number
   ): Promise<FilePreview> {
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await invoke('get_archive_preview_with_client', {
+    const result = await this.invokeWithTimeout('get_archive_preview_with_client', {
       protocol: this.protocol,
       filePath: path,
       filename,
       entryPath,
       maxPreviewSize
-    }) as FilePreview;
+    }, DEFAULT_TIMEOUTS.default) as FilePreview;
 
     // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据
     if (result.content && !(result.content instanceof Uint8Array)) {
@@ -198,7 +255,11 @@ export abstract class BaseStorageClient implements StorageClient {
     extraOptions?: any;
   }): Promise<boolean> {
     try {
-      const connected = await invoke<boolean>('storage_connect', { config });
+      const connected = await this.invokeWithTimeout<boolean>(
+        'storage_connect',
+        { config },
+        DEFAULT_TIMEOUTS.connect
+      );
       this.connected = connected;
       return connected;
     } catch (error) {
@@ -213,7 +274,7 @@ export abstract class BaseStorageClient implements StorageClient {
    */
   protected async disconnectFromBackend(): Promise<void> {
     try {
-      await invoke('storage_disconnect');
+      await this.invokeWithTimeout('storage_disconnect', undefined, 5000); // 5秒超时
     } catch (error) {
       console.warn('Failed to disconnect from storage backend:', error);
     }

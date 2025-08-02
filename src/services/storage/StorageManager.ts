@@ -485,12 +485,22 @@ export class StorageServiceManager {
   ): Promise<string> {
     const { invoke } = await import('@tauri-apps/api/core');
     
-    return invoke('download_archive_file_with_progress', {
-      archivePath,
-      archiveFilename,
-      entryPath,
-      entryFilename,
-    });
+    // 使用超时保护，下载操作使用较长的超时时间
+    const timeoutMs = 300000; // 5分钟
+    
+    return Promise.race([
+      invoke('download_archive_file_with_progress', {
+        archivePath,
+        archiveFilename,
+        entryPath,
+        entryFilename,
+      }) as Promise<string>,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`下载操作超时 (${timeoutMs}ms)`));
+        }, timeoutMs);
+      })
+    ]);
   }
 
   /**

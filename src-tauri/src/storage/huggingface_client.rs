@@ -636,7 +636,7 @@ impl StorageClient for HuggingFaceClient {
     }
 
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None).await
+        self.read_file_range_with_progress(path, start, length, None, None).await
     }
 
     async fn read_file_range_with_progress(
@@ -645,6 +645,7 @@ impl StorageClient for HuggingFaceClient {
         start: u64,
         length: u64,
         progress_callback: Option<ProgressCallback>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
         let (dataset_id, file_path) = self.parse_path(path)?;
         let download_url = self.build_download_url(&dataset_id, &file_path);
@@ -665,7 +666,7 @@ impl StorageClient for HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown error"))));
+            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("error.unknown"))));
         }
 
         // 使用流式读取以支持进度回调
@@ -674,6 +675,13 @@ impl StorageClient for HuggingFaceClient {
         let mut stream = response.bytes_stream();
 
         while let Some(chunk_result) = stream.next().await {
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if cancel_rx.try_recv().is_ok() {
+                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                }
+            }
+
             let chunk = chunk_result
                 .map_err(|e| StorageError::NetworkError(format!("Failed to read chunk: {}", e)))?;
             
@@ -701,7 +709,7 @@ impl StorageClient for HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown error"))));
+            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("error.unknown"))));
         }
 
         let bytes = response.bytes().await
@@ -760,19 +768,27 @@ impl StorageClient for HuggingFaceClient {
         } else {
             // 降级到 HEAD 请求
             let download_url = self.build_download_url(&dataset_id, &file_path);
+            
+            println!("[DEBUG] - fallback to HEAD request: {}", download_url);
 
-            let request = StorageRequest {
-                method: "HEAD".to_string(),
-                url: download_url,
-                headers: HashMap::new(),
-                body: None,
-                options: None,
-            };
+            let response = self.client
+                .head(&download_url)
+                .headers(self.get_reqwest_headers())
+                .send()
+                .await
+                .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
-            let response = self.request(&request).await?;
+            if !response.status().is_success() {
+                return Err(StorageError::RequestFailed(
+                    format!("HEAD request failed: {}", response.status())
+                ));
+            }
 
-            if let Some(content_length) = response.headers.get("content-length") {
-                content_length.parse::<u64>().map_err(|e| StorageError::RequestFailed(e.to_string()))
+            if let Some(content_length) = response.headers().get("content-length") {
+                content_length.to_str()
+                    .map_err(|e| StorageError::RequestFailed(e.to_string()))?
+                    .parse::<u64>()
+                    .map_err(|e| StorageError::RequestFailed(e.to_string()))
             } else {
                 Err(StorageError::RequestFailed("Content-Length header not found".to_string()))
             }

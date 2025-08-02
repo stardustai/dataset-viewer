@@ -25,6 +25,8 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-http": "^2.5.1",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-os": "^2.3.0",
+    "@tauri-apps/plugin-process": "^2.3.0",
     "dav1d.js": "^0.1.1",
     "hyparquet": "^1.17.1",
     "i18next": "^25.3.2",

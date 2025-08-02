@@ -76,7 +76,7 @@ pub struct ConnectionConfig {
 }
 
 /// 存储客户端错误类型
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum StorageError {
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),
@@ -127,15 +127,17 @@ pub trait StorageClient: Send + Sync {
     /// 读取文件的指定范围（用于压缩包等需要随机访问的场景）
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError>;
 
-    /// 读取文件的指定范围，支持进度回调
+    /// 读取文件的指定范围，支持进度回调和取消信号
     async fn read_file_range_with_progress(
         &self,
         path: &str,
         start: u64,
         length: u64,
         progress_callback: Option<ProgressCallback>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
-        // 默认实现：调用不带进度的版本，并在完成后调用一次进度回调
+        // 默认实现：忽略取消信号，调用不带进度的版本，并在完成后调用一次进度回调
+        let _ = cancel_rx; // 避免未使用警告
         let result = self.read_file_range(path, start, length).await?;
         if let Some(callback) = progress_callback {
             callback(length, length);
@@ -146,13 +148,15 @@ pub trait StorageClient: Send + Sync {
     /// 读取完整文件（用于小文件或完整下载）
     async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError>;
 
-    /// 读取完整文件，支持进度回调
+    /// 读取完整文件，支持进度回调和取消信号
     async fn read_full_file_with_progress(
         &self,
         path: &str,
         progress_callback: Option<ProgressCallback>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
-        // 默认实现：调用不带进度的版本，并在完成后调用一次进度回调
+        // 默认实现：忽略取消信号，调用不带进度的版本，并在完成后调用一次进度回调
+        let _ = cancel_rx; // 避免未使用警告
         let result = self.read_full_file(path).await?;
         if let Some(callback) = progress_callback {
             let size = result.len() as u64;

@@ -478,7 +478,7 @@ impl StorageClient for OSSClient {
     }
 
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None).await
+        self.read_file_range_with_progress(path, start, length, None, None).await
     }
 
     async fn read_file_range_with_progress(
@@ -487,6 +487,7 @@ impl StorageClient for OSSClient {
         start: u64,
         length: u64,
         progress_callback: Option<ProgressCallback>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
         if !self.is_connected().await {
             return Err(StorageError::NotConnected);
@@ -565,6 +566,13 @@ impl StorageClient for OSSClient {
         let mut stream = response.bytes_stream();
 
         while let Some(chunk_result) = stream.next().await {
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if cancel_rx.try_recv().is_ok() {
+                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                }
+            }
+
             let chunk = chunk_result
                 .map_err(|e| StorageError::RequestFailed(format!("Failed to read chunk: {}", e)))?;
             

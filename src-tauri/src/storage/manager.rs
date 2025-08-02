@@ -1,6 +1,7 @@
 use std::collections::HashMap;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, StorageCapabilities, DirectoryResult, ListOptions};
 use super::webdav_client::WebDAVClient;
 use super::local_client::LocalFileSystemClient;
@@ -10,6 +11,8 @@ use super::huggingface_client::HuggingFaceClient;
 pub struct StorageManager {
     clients: HashMap<String, Arc<dyn StorageClient + Send + Sync>>,
     active_client: Option<String>,
+    last_health_check: Option<Instant>,
+    health_check_interval: Duration,
 }
 
 impl StorageManager {
@@ -17,6 +20,8 @@ impl StorageManager {
         Self {
             clients: HashMap::new(),
             active_client: None,
+            last_health_check: None,
+            health_check_interval: Duration::from_secs(30), // 30秒检查一次
         }
     }
 
@@ -67,30 +72,51 @@ impl StorageManager {
         self.active_client.is_some()
     }
 
-    pub async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
-        let client_id = self.active_client.as_ref()
-            .ok_or(StorageError::NotConnected)?;
-        let client = self.clients.get(client_id)
-            .ok_or(StorageError::NotConnected)?;
-
+    pub async fn request(&mut self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
+        self.ensure_healthy_connection().await?;
+        let client = if let Some(client_id) = &self.active_client {
+            if let Some(client) = self.clients.get(client_id) {
+                client.clone()
+            } else {
+                return Err(StorageError::NotConnected);
+            }
+        } else {
+            return Err(StorageError::NotConnected);
+        };
+        
+        // Release the lock before making the async request
         client.request(request).await
     }
 
-    pub async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
-        let client_id = self.active_client.as_ref()
-            .ok_or(StorageError::NotConnected)?;
-        let client = self.clients.get(client_id)
-            .ok_or(StorageError::NotConnected)?;
-
+    pub async fn request_binary(&mut self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
+        self.ensure_healthy_connection().await?;
+        let client = if let Some(client_id) = &self.active_client {
+            if let Some(client) = self.clients.get(client_id) {
+                client.clone()
+            } else {
+                return Err(StorageError::NotConnected);
+            }
+        } else {
+            return Err(StorageError::NotConnected);
+        };
+        
+        // Release the lock before making the async request
         client.request_binary(request).await
     }
 
-    pub async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
-        let client_id = self.active_client.as_ref()
-            .ok_or(StorageError::NotConnected)?;
-        let client = self.clients.get(client_id)
-            .ok_or(StorageError::NotConnected)?;
-
+    pub async fn list_directory(&mut self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+        self.ensure_healthy_connection().await?;
+        let client = if let Some(client_id) = &self.active_client {
+            if let Some(client) = self.clients.get(client_id) {
+                client.clone()
+            } else {
+                return Err(StorageError::NotConnected);
+            }
+        } else {
+            return Err(StorageError::NotConnected);
+        };
+        
+        // Release the lock before making the async request
         client.list_directory(path, options).await
     }
 
@@ -114,19 +140,49 @@ impl StorageManager {
 
         client.get_download_url(path)
     }
-
     pub fn supported_protocols(&self) -> Vec<&str> {
-        vec!["webdav", "local", "oss", "huggingface"] // 支持 WebDAV、本机文件系统、OSS 和 HuggingFace
+        vec!["webdav", "local", "oss", "huggingface"]
     }
+
+    /// 健康检查：验证当前连接是否正常
+    pub async fn health_check(&mut self) -> Result<bool, StorageError> {
+        if let Some(client_id) = &self.active_client {
+            if let Some(client) = self.clients.get(client_id) {
+                let is_healthy = client.is_connected().await;
+                self.last_health_check = Some(Instant::now());
+                return Ok(is_healthy);
+            }
+        }
+        Ok(false)
+    }
+
+    /// 检查是否需要进行健康检查
+    fn should_health_check(&self) -> bool {
+        match self.last_health_check {
+            Some(last_check) => last_check.elapsed() >= self.health_check_interval,
+            None => true,
+        }
+    }
+
+    /// 在关键操作前自动进行健康检查
+    async fn ensure_healthy_connection(&mut self) -> Result<(), StorageError> {
+        if self.should_health_check() {
+            let is_healthy = self.health_check().await?;
+            if !is_healthy {
+                return Err(StorageError::ConnectionFailed("Connection health check failed".to_string()));
+            }
+        }
+        Ok(())
+     }
 }
 
 // 全局存储管理器
-static STORAGE_MANAGER: tokio::sync::OnceCell<Arc<Mutex<StorageManager>>> = tokio::sync::OnceCell::const_new();
+static STORAGE_MANAGER: tokio::sync::OnceCell<Arc<RwLock<StorageManager>>> = tokio::sync::OnceCell::const_new();
 
-pub async fn get_storage_manager() -> Arc<Mutex<StorageManager>> {
+pub async fn get_storage_manager() -> Arc<RwLock<StorageManager>> {
     let result = STORAGE_MANAGER.get_or_init(|| async {
         let manager = StorageManager::new();
-        Arc::new(Mutex::new(manager))
+        Arc::new(RwLock::new(manager))
     }).await.clone();
     result
 }

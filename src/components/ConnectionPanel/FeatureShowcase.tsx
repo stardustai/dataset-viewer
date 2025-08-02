@@ -5,7 +5,7 @@ export const FeatureShowcase: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="hidden lg:block space-y-8 pl-8">
+    <div className="hidden lg:flex lg:flex-col lg:justify-center space-y-8 pl-8 h-full">
       {/* 主标题和介绍 */}
       <div className="text-left">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">

@@ -1,5 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
-import { BaseStorageClient } from './BaseStorageClient';
+import { BaseStorageClient, DEFAULT_TIMEOUTS } from './BaseStorageClient';
 import {
   ConnectionConfig,
   DirectoryResult,
@@ -152,18 +151,22 @@ export class WebDAVStorageClient extends BaseStorageClient {
     if (!this.connection) throw new Error('Not connected to WebDAV server');
 
     try {
-      // 使用统一的后端命令
-      const result = await invoke<DirectoryResult>('storage_list_directory', {
-        path,
-        options: options ? {
-          pageSize: options.pageSize,
-          marker: options.marker,
-          prefix: options.prefix,
-          recursive: options.recursive,
-          sortBy: options.sortBy,
-          sortOrder: options.sortOrder,
-        } : null,
-      });
+      // 使用统一的后端命令，带超时保护
+      const result = await this.invokeWithTimeout<DirectoryResult>(
+        'storage_list_directory',
+        {
+          path,
+          options: options ? {
+            pageSize: options.pageSize,
+            marker: options.marker,
+            prefix: options.prefix,
+            recursive: options.recursive,
+            sortBy: options.sortBy,
+            sortOrder: options.sortOrder,
+          } : null,
+        },
+        60000 // 1分钟超时
+      );
 
       return result;
     } catch (error) {
@@ -183,14 +186,18 @@ export class WebDAVStorageClient extends BaseStorageClient {
       headers['Range'] = `bytes=${options.start}-${options.start + options.length - 1}`;
     }
 
-    const response = await invoke<StorageResponse>('storage_request', {
-      protocol: this.protocol,
-      method: 'GET',
-      url: this.toProtocolUrl(path),
-      headers,
-      body: undefined,
-      options: undefined
-    });
+    const response = await this.invokeWithTimeout<StorageResponse>(
+      'storage_request',
+      {
+        protocol: this.protocol,
+        method: 'GET',
+        url: this.toProtocolUrl(path),
+        headers,
+        body: undefined,
+        options: undefined
+      },
+      30000 // 30秒超时
+    );
 
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`Failed to get file content: ${response.status}`);
@@ -207,16 +214,20 @@ export class WebDAVStorageClient extends BaseStorageClient {
     if (!this.connection) throw new Error('Not connected');
 
     // 使用完整URL，与其他接口保持一致
-    const response = await invoke<StorageResponse>('storage_request', {
-      protocol: this.protocol,
-      method: 'HEAD',
-      url: this.toProtocolUrl(path),
-      headers: {
-        'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
+    const response = await this.invokeWithTimeout<StorageResponse>(
+      'storage_request',
+      {
+        protocol: this.protocol,
+        method: 'HEAD',
+        url: this.toProtocolUrl(path),
+        headers: {
+          'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
+        },
+        body: undefined,
+        options: undefined
       },
-      body: undefined,
-      options: undefined
-    });
+      15000 // 15秒超时
+    );
 
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`Failed to get file size: ${response.status}`);
@@ -229,15 +240,19 @@ export class WebDAVStorageClient extends BaseStorageClient {
   async downloadFile(path: string): Promise<Blob> {
     if (!this.connection) throw new Error('Not connected');
 
-    const response = await invoke<number[]>('storage_request_binary', {
-      protocol: this.protocol,
-      method: 'GET',
-      url: this.toProtocolUrl(path),
-      headers: {
-        'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
+    const response = await this.invokeWithTimeout<number[]>(
+      'storage_request_binary',
+      {
+        protocol: this.protocol,
+        method: 'GET',
+        url: this.toProtocolUrl(path),
+        headers: {
+          'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
+        },
+        options: undefined
       },
-      options: undefined
-    });
+      300000 // 5分钟超时，适合大文件下载
+    );
 
     // 直接使用返回的二进制数据创建 Blob
     const uint8Array = new Uint8Array(response);
@@ -295,12 +310,12 @@ export class WebDAVStorageClient extends BaseStorageClient {
   ): Promise<ArchiveInfo> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    return await invoke('analyze_archive_with_client', {
+    return await this.invokeWithTimeout('analyze_archive_with_client', {
       protocol: this.protocol,
       filePath: path, // 直接使用传入的路径
       filename,
       maxSize
-    });
+    }, DEFAULT_TIMEOUTS.default);
   }
 
   /**
@@ -314,13 +329,13 @@ export class WebDAVStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await invoke('get_archive_preview_with_client', {
+    const result = await this.invokeWithTimeout('get_archive_preview_with_client', {
       protocol: this.protocol,
       filePath: path, // 直接使用传入的路径
       filename,
       entryPath,
       maxPreviewSize
-    }) as FilePreview;
+    }, DEFAULT_TIMEOUTS.default) as FilePreview;
 
     // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据
     if (result.content && !(result.content instanceof Uint8Array)) {

@@ -509,7 +509,11 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       );
     } catch (err) {
       console.error('Failed to download file:', err);
-      // 可以添加错误提示
+      // 如果是用户取消操作，不显示错误弹窗
+      const errorMessage = extractErrorMessage(err, 'error.unknown', t);
+      if (errorMessage !== 'download.cancelled') {
+        alert(`${t('download.failed')}: ${errorMessage}`);
+      }
     }
   };
 

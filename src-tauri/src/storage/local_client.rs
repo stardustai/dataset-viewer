@@ -318,7 +318,7 @@ impl StorageClient for LocalFileSystemClient {
 
     /// 读取文件的指定范围
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None).await
+        self.read_file_range_with_progress(path, start, length, None, None).await
     }
 
     async fn read_file_range_with_progress(
@@ -327,6 +327,7 @@ impl StorageClient for LocalFileSystemClient {
         start: u64,
         length: u64,
         progress_callback: Option<ProgressCallback>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
         if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
@@ -356,6 +357,13 @@ impl StorageClient for LocalFileSystemClient {
         let mut total_read = 0u64;
 
         while remaining > 0 {
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if cancel_rx.try_recv().is_ok() {
+                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                }
+            }
+
             let current_chunk_size = std::cmp::min(remaining, chunk_size as u64) as usize;
             let mut chunk = vec![0u8; current_chunk_size];
 

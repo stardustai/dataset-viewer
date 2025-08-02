@@ -3,6 +3,7 @@ export const errors = {
   'error.connection.failed': '连接失败，请检查服务器地址和凭据。',
   'error.credentials': '连接失败，请验证服务器地址和凭据。',
   'error.oss.connection.failed': 'OSS 连接失败，请检查配置信息。',
+  'error.unknown': '未知错误',
 
   // 文件操作错误
   'error.load.directory': '加载目录内容失败',
@@ -14,7 +15,10 @@ export const errors = {
   'error.preview.file': '预览文件失败',
 
   // 下载错误
+  'download.failed': '下载失败',
   'errors.download.failed': '文件下载失败：{{error}}',
+  'error.failedToLoadDataFile': '加载数据文件失败',
+  'error.failedToSwitchSheet': '切换工作表失败',
 
   // 查看器错误
   'viewer.load.error': '加载文件失败',
