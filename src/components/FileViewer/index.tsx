@@ -725,9 +725,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
 
     } catch (err) {
       console.error('Failed to start download:', err);
-      // Show user-friendly error message
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      alert(`下载失败: ${errorMessage}`);
+      // 如果是用户取消操作，不显示错误弹窗
+      const errorMessage = err instanceof Error ? err.message : (typeof err === 'string' ? err : t('error.unknown'));
+      if (errorMessage !== 'download.cancelled') {
+        alert(`${t('download.failed')}: ${errorMessage}`);
+      }
     }
   };
 

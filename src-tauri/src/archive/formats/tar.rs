@@ -27,8 +27,9 @@ impl CompressionHandlerDispatcher for TarHandler {
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_tar_preview_with_progress(client, file_path, entry_path, max_size, progress_callback).await
+        Self::extract_tar_preview_with_progress(client, file_path, entry_path, max_size, progress_callback, cancel_rx).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -79,13 +80,14 @@ impl TarHandler {
         magic_ustar == b"ustar" || magic_gnu == b"ustar  \0"
     }
 
-    /// 流式提取TAR文件预览（支持进度回调）
+    /// 流式提取TAR文件预览（支持进度回调和取消信号）
     async fn extract_tar_preview_with_progress(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        _cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
         log::debug!("开始流式提取TAR文件预览（带进度）: {} -> {}", file_path, entry_path);
 

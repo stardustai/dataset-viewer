@@ -636,7 +636,7 @@ impl StorageClient for HuggingFaceClient {
     }
 
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None).await
+        self.read_file_range_with_progress(path, start, length, None, None).await
     }
 
     async fn read_file_range_with_progress(
@@ -645,6 +645,7 @@ impl StorageClient for HuggingFaceClient {
         start: u64,
         length: u64,
         progress_callback: Option<ProgressCallback>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
         let (dataset_id, file_path) = self.parse_path(path)?;
         let download_url = self.build_download_url(&dataset_id, &file_path);
@@ -665,7 +666,7 @@ impl StorageClient for HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown error"))));
+            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("error.unknown"))));
         }
 
         // 使用流式读取以支持进度回调
@@ -674,6 +675,13 @@ impl StorageClient for HuggingFaceClient {
         let mut stream = response.bytes_stream();
 
         while let Some(chunk_result) = stream.next().await {
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if cancel_rx.try_recv().is_ok() {
+                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                }
+            }
+
             let chunk = chunk_result
                 .map_err(|e| StorageError::NetworkError(format!("Failed to read chunk: {}", e)))?;
             
@@ -701,7 +709,7 @@ impl StorageClient for HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown error"))));
+            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("error.unknown"))));
         }
 
         let bytes = response.bytes().await

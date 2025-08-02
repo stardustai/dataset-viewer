@@ -30,8 +30,9 @@ impl CompressionHandlerDispatcher for TarGzHandler {
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_tar_gz_preview_with_progress(client, file_path, entry_path, max_size, progress_callback).await
+        Self::extract_tar_gz_preview_with_progress(client, file_path, entry_path, max_size, progress_callback, cancel_rx).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -64,7 +65,7 @@ impl TarGzHandler {
         log::debug!("开始流式分析TAR.GZ文件: {}", file_path);
 
         // 统一使用流式处理，限制内存使用
-        const MAX_MEMORY_USAGE: usize = 50 * 1024 * 1024; // 50MB 内存限制
+        const MAX_MEMORY_USAGE: usize = 100 * 1024 * 1024; // 100MB 内存限制
 
         let file_size = client.get_file_size(file_path).await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
@@ -92,18 +93,19 @@ impl TarGzHandler {
 
 
 
-    /// 流式提取TAR.GZ文件预览（支持进度回调）
+    /// 流式提取TAR.GZ文件预览（支持进度回调和取消信号）
     async fn extract_tar_gz_preview_with_progress(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
         log::debug!("开始流式提取TAR.GZ预览（带进度）: {} -> {}", file_path, entry_path);
 
         // 统一使用内存限制
-        const MAX_MEMORY_USAGE: usize = 50 * 1024 * 1024; // 50MB
+        const MAX_MEMORY_USAGE: usize = 100 * 1024 * 1024; // 100MB
 
         let file_size = client.get_file_size(file_path).await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
@@ -123,7 +125,7 @@ impl TarGzHandler {
             }) as ProgressCallback
         });
         
-        let data = client.read_full_file_with_progress(file_path, progress_cb).await
+        let data = client.read_full_file_with_progress(file_path, progress_cb, cancel_rx).await
             .map_err(|e| format!("Failed to read file: {}", e))?;
 
         Self::extract_tar_gz_preview_from_data(&data, entry_path, max_size)
@@ -201,17 +203,27 @@ impl TarGzHandler {
                     let path = entry.path().map_err(|e| e.to_string())?;
                     if path.to_string_lossy() == entry_path {
                         let total_size = entry.header().size().map_err(|e| e.to_string())?;
-                        let preview_size = max_size.min(total_size as usize);
-                        let mut buffer = vec![0u8; preview_size];
-                        let bytes_read = entry.read(&mut buffer).map_err(|e| e.to_string())?;
-                        buffer.truncate(bytes_read);
-
-                
+                        
+                        // 读取完整文件内容，然后截取预览部分（参考ZIP格式的处理方式）
+                        let mut full_content = Vec::new();
+                        entry.read_to_end(&mut full_content).map_err(|e| e.to_string())?;
+                        
+                        // 保存完整内容长度
+                        let full_content_len = full_content.len();
+                        
+                        // 截取预览数据
+                        let preview_data = if full_content_len > max_size {
+                            full_content[..max_size].to_vec()
+                        } else {
+                            full_content
+                        };
+                        
+                        let is_truncated = preview_data.len() < full_content_len;
 
                         return Ok(PreviewBuilder::new()
-                            .content(buffer)
+                            .content(preview_data)
                             .total_size(total_size)
-                            .with_truncated(bytes_read >= max_size || (bytes_read as u64) < total_size)
+                            .with_truncated(is_truncated)
                             .build());
                     }
                 }

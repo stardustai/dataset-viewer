@@ -43,6 +43,18 @@ impl CompressionHandlerDispatcher for SevenZipHandler {
         Self::extract_7z_preview(url, headers, entry_path, max_size).await
     }
 
+    async fn extract_preview_with_client(
+        &self,
+        _client: std::sync::Arc<dyn crate::storage::traits::StorageClient>,
+        _file_path: &str,
+        _entry_path: &str,
+        _max_size: usize,
+        _progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        _cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<FilePreview, String> {
+        Err("7z format does not support client-based extraction yet".to_string())
+    }
+
     fn compression_type(&self) -> CompressionType {
         CompressionType::SevenZip
     }

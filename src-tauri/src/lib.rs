@@ -177,6 +177,7 @@ async fn get_archive_preview_with_client(
         entry_path,
         max_preview_size,
         None::<fn(u64, u64)>, // 不使用进度回调
+        None, // 不使用取消信号
     ).await
 }
 
@@ -429,6 +430,7 @@ async fn get_file_preview(
             entry_path,
             max_preview_size,
             None::<fn(u64, u64)>, // 不使用进度回调
+            None, // 不使用取消信号
         ).await
     } else {
         Err("No storage client available. Please connect to a storage first (Local, WebDAV, OSS, or HuggingFace)".to_string())
