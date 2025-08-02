@@ -48,6 +48,20 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+
+  // 监听浏览器返回按钮
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // 当用户点击浏览器返回按钮时，调用onBack函数
+      onBack();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [onBack]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(-1);
   const [searchLoading, setSearchLoading] = useState(false);
   const [isLargeFile, setIsLargeFile] = useState(false);
