@@ -141,16 +141,28 @@ export const LoadingDisplay: React.FC<{
   );
 };
 
+// 错误信息翻译辅助函数
+const translateErrorMessage = (error: string, t: (key: string) => string): string => {
+  // 检查是否是翻译键（以字母开头，包含点号）
+  if (error.match(/^[a-zA-Z][a-zA-Z0-9.]+$/)) {
+    return t(error);
+  }
+  
+  // 否则返回原始错误信息
+  return error;
+};
+
 export const ErrorDisplay: React.FC<{
   message: string;
   onRetry?: () => void;
   className?: string;
 }> = ({ message, onRetry, className }) => {
   const { t } = useTranslation();
+  const translatedMessage = translateErrorMessage(message, t);
   return (
     <StatusDisplay
       type="error"
-      message={message}
+      message={translatedMessage}
       action={onRetry ? { label: t('status.retry'), onClick: onRetry, variant: "secondary" } : undefined}
       className={className}
     />

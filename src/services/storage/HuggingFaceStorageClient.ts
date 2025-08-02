@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { BaseStorageClient } from './BaseStorageClient';
+import { BaseStorageClient, DEFAULT_TIMEOUTS } from './BaseStorageClient';
 import { ConnectionConfig, DirectoryResult, ListOptions, ReadOptions, FileContent, StorageResponse } from './types';
 import type { ArchiveInfo, FilePreview } from '../../types';
 
@@ -352,12 +352,12 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     // 使用协议URL格式
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    return await invoke('analyze_archive_with_client', {
+    return await this.invokeWithTimeout('analyze_archive_with_client', {
       protocol: this.protocol,
       filePath: path, // 直接使用传入的路径
       filename,
       maxSize
-    });
+    }, DEFAULT_TIMEOUTS.default);
   }
 
   /**
@@ -371,13 +371,13 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await invoke('get_archive_preview_with_client', {
+    const result = await this.invokeWithTimeout('get_archive_preview_with_client', {
       protocol: this.protocol,
       filePath: path, // 直接使用传入的路径
       filename,
       entryPath,
       maxPreviewSize
-    }) as FilePreview;
+    }, DEFAULT_TIMEOUTS.default) as FilePreview;
 
     // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据
     if (result.content && !(result.content instanceof Uint8Array)) {

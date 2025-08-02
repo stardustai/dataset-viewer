@@ -21,6 +21,17 @@ interface DownloadState {
   error?: string;
 }
 
+// 错误信息翻译辅助函数
+const translateDownloadError = (error: string, t: (key: string) => string): string => {
+  // 检查是否是翻译键（以字母开头，包含点号）
+  if (error.match(/^[a-zA-Z][a-zA-Z0-9.]+$/)) {
+    return t(error);
+  }
+  
+  // 否则返回原始错误信息
+  return error;
+};
+
 export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, onClose }) => {
   const { t } = useTranslation();
   const [downloads, setDownloads] = useState<Map<string, DownloadState>>(new Map());
@@ -82,15 +93,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
     const unlistenError = listen('download-error', (event) => {
       const { filename, error } = event.payload as { filename: string; error: string };
       
-      // 如果是用户取消，直接移除下载项，不显示错误
-      if (error === 'CANCELLED') {
-        setDownloads(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(filename);
-          return newMap;
-        });
-        return;
-      }
+      // 所有错误都正常显示，包括取消状态
       
       setDownloads(prev => {
         const newMap = new Map(prev);
@@ -118,20 +121,29 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
 
   const cancelDownload = async (filename: string) => {
     try {
-      await invoke('cancel_download', { filename });
-      // 立即更新状态为取消
-      setDownloads(prev => {
-        const newMap = new Map(prev);
-        const existing = newMap.get(filename);
-        if (existing && existing.status === 'downloading') {
-          newMap.set(filename, {
-            ...existing,
-            status: 'error',
-            error: t('download.cancelled')
-          });
-        }
-        return newMap;
-      });
+      const timeoutMs = 5000; // 5秒
+      
+      await Promise.race([
+        invoke('cancel_download', { filename }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`取消下载超时 (${timeoutMs}ms)`));
+          }, timeoutMs);
+        })
+      ]);
+      // 显示取消状态
+        setDownloads(prev => {
+          const newMap = new Map(prev);
+          const existing = newMap.get(filename);
+          if (existing && existing.status === 'downloading') {
+            newMap.set(filename, {
+              ...existing,
+              status: 'error',
+              error: t('download.cancelled')
+            });
+          }
+          return newMap;
+        });
     } catch (error) {
       console.error('Failed to cancel download:', error);
     }
@@ -256,7 +268,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
 
                 {download.status === 'error' && (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    {t('download.error')}: {download.error}
+                    {t('download.error')}: {translateDownloadError(download.error || '', t)}
                   </p>
                 )}
               </div>

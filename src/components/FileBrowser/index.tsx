@@ -15,6 +15,7 @@ import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../../services/navigationHistory';
+import { androidBackHandler } from '../../services/androidBackHandler';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
@@ -333,6 +334,40 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       }
     };
   }, [currentPath, files.length]); // 当路径或文件列表变化时重新绑定事件
+
+  // 安卓返回按钮处理逻辑
+  useEffect(() => {
+    const handleAndroidBack = () => {
+      // 如果在远程搜索模式，返回到目录浏览
+      if (currentView === 'remote-search') {
+        returnToDirectory();
+        return true; // 表示已处理
+      }
+      
+      // 如果有搜索词，清除搜索
+      if (searchTerm.trim()) {
+        handleClearSearch();
+        return true; // 表示已处理
+      }
+      
+      // 如果不在根目录，返回上级目录
+      if (currentPath && currentPath !== '') {
+        navigateUp();
+        return true; // 表示已处理
+      }
+      
+      // 如果在根目录，返回 false 让上级组件处理
+      return false;
+    };
+
+    // 注册安卓返回按钮处理器
+    androidBackHandler.addHandler(handleAndroidBack);
+
+    // 清理函数
+    return () => {
+      androidBackHandler.removeHandler(handleAndroidBack);
+    };
+  }, [currentPath, currentView, searchTerm]);
 
   // 组件卸载时保存当前滚动位置
   useEffect(() => {

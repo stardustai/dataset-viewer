@@ -18,12 +18,21 @@ export class CompressionService {
     filename: string,
     maxSize?: number
   ): Promise<ArchiveInfo> {
-    return await invoke('analyze_archive', {
-      url,
-      headers,
-      filename,
-      maxSize,
-    });
+    const timeoutMs = 30000; // 30秒
+    
+    return Promise.race([
+      invoke('analyze_archive', {
+        url,
+        headers,
+        filename,
+        maxSize,
+      }) as Promise<ArchiveInfo>,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`压缩文件分析超时 (${timeoutMs}ms)`));
+        }, timeoutMs);
+      })
+    ]);
   }
 
   /**
@@ -36,13 +45,22 @@ export class CompressionService {
     entryPath: string,
     maxPreviewSize?: number
   ): Promise<FilePreview> {
-    const result = await invoke('get_file_preview', {
-      url,
-      headers,
-      filename,
-      entryPath,
-      maxPreviewSize,
-    }) as FilePreviewInvokeResponse;
+    const timeoutMs = 30000; // 30秒
+    
+    const result = await Promise.race([
+      invoke('get_file_preview', {
+        url,
+        headers,
+        filename,
+        entryPath,
+        maxPreviewSize,
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`文件预览提取超时 (${timeoutMs}ms)`));
+        }, timeoutMs);
+      })
+    ]) as FilePreviewInvokeResponse;
     
     const content = new Uint8Array(result.content);
     

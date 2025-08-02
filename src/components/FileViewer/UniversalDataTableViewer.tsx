@@ -153,7 +153,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
     } catch (err) {
       console.error('Failed to load data file:', err);
-      setError(`Failed to load data file: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setError(`${t('error.failedToLoadDataFile')}: ${err instanceof Error ? err.message : t('error.unknown')}`);
     } finally {
       setLoading(false);
     }
@@ -235,7 +235,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
       setLoadedRows(result.length);
     } catch (err) {
       console.error('Failed to switch sheet:', err);
-      setError(`Failed to switch sheet: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setError(`${t('error.failedToSwitchSheet')}: ${err instanceof Error ? err.message : t('error.unknown')}`);
     } finally {
       setLoading(false);
     }

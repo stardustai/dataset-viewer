@@ -26,8 +26,9 @@ impl CompressionHandlerDispatcher for ZipHandler {
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_zip_preview_with_progress(client, file_path, entry_path, max_size, progress_callback).await
+        Self::extract_zip_preview_with_progress(client, file_path, entry_path, max_size, progress_callback, cancel_rx).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -550,7 +551,7 @@ impl ZipHandler {
     ) -> Result<ArchiveInfo, String> {
         const MIN_ZIP_SIZE: u64 = 22; // 最小ZIP文件大小（EOCD记录）
         const MAX_FOOTER_SIZE: u64 = 65536; // 最多读取64KB的文件尾部
-        const MAX_ZIP_SIZE: u64 = 10 * 1024 * 1024 * 1024; // 10GB文件大小限制
+        const MAX_ZIP_SIZE: u64 = 500 * 1024 * 1024 * 1024; // 500GB文件大小限制
         const MAX_CD_SIZE: u64 = 500 * 1024 * 1024; // 500MB中央目录大小限制
         const MAX_ENTRIES: u64 = 1_000_000; // 100万个文件数量限制
 
@@ -664,13 +665,14 @@ impl ZipHandler {
 
 
 
-    /// 通过存储客户端提取ZIP文件预览（支持进度回调）
+    /// 通过存储客户端提取ZIP文件预览（支持进度回调和取消信号）
     async fn extract_zip_preview_with_progress(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
         // 先找到文件信息
         let file_size = client.get_file_size(file_path).await
@@ -715,7 +717,7 @@ impl ZipHandler {
             }) as ProgressCallback
         });
         
-        let compressed_data = client.read_file_range_with_progress(file_path, data_offset, file_info.compressed_size, progress_cb)
+        let compressed_data = client.read_file_range_with_progress(file_path, data_offset, file_info.compressed_size, progress_cb, cancel_rx)
             .await
             .map_err(|e| format!("Failed to read compressed data: {}", e))?;
 

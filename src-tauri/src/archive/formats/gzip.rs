@@ -29,8 +29,9 @@ impl CompressionHandlerDispatcher for GzipHandler {
         _entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_gzip_preview_streaming(client, file_path, max_size, progress_callback).await
+        Self::extract_gzip_preview_streaming(client, file_path, max_size, progress_callback, cancel_rx).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -130,6 +131,7 @@ impl GzipHandler {
         file_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
         log::debug!("开始流式提取GZIP预览: {}", file_path);
 
@@ -148,7 +150,7 @@ impl GzipHandler {
             }) as ProgressCallback
         });
         
-        let compressed_data = client.read_file_range_with_progress(file_path, 0, read_size, progress_cb).await
+        let compressed_data = client.read_file_range_with_progress(file_path, 0, read_size, progress_cb, cancel_rx).await
             .map_err(|e| format!("Failed to read GZIP data: {}", e))?;
 
         if !Self::validate_gzip_header(&compressed_data) {
@@ -157,18 +159,26 @@ impl GzipHandler {
 
         // 流式解压缩预览数据
         let preview_data = Self::decompress_sample(&compressed_data, max_size)?;
+        
+        // 基于样本数据估算总文件大小
+        let compression_ratio = if preview_data.len() > 0 {
+            compressed_data.len() as f64 / preview_data.len() as f64
+        } else {
+            3.0 // 默认压缩比
+        };
+        
+        // 估算完整解压后的文件大小
+        let estimated_total_size = (file_size as f64 / compression_ratio) as u64;
+        
+        // 判断是否被截断
+        let is_truncated = preview_data.len() >= max_size || estimated_total_size > preview_data.len() as u64;
 
         // 检测内容类型
         let _mime_type = detect_mime_type(&preview_data);
 
-
-        // 判断是否被截断（如果解压数据达到了最大size，可能还有更多内容）
-        let is_truncated = preview_data.len() >= max_size;
-        let data_len = preview_data.len() as u64;
-
         Ok(PreviewBuilder::new()
             .content(preview_data)
-            .total_size(data_len) // 这里只能给出已解压的大小
+            .total_size(estimated_total_size)
             .with_truncated(is_truncated)
             .build())
     }
@@ -184,6 +194,8 @@ impl GzipHandler {
         buffer.truncate(bytes_read);
         Ok(buffer)
     }
+
+
 
     // 辅助方法
     fn validate_gzip_header(data: &[u8]) -> bool {

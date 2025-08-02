@@ -8,6 +8,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
 import { navigationHistoryService } from './services/navigationHistory';
+import { androidBackHandler, AndroidBackHandlerService } from './services/androidBackHandler';
 import { useTheme } from './hooks/useTheme';
 import './i18n';
 import './App.css';
@@ -37,9 +38,24 @@ function App() {
       }
     };
 
+    // 初始化安卓返回按钮处理
+    const initializeAndroidBackHandler = async () => {
+      try {
+        const isAndroid = AndroidBackHandlerService.isAndroid();
+        if (isAndroid) {
+          await androidBackHandler.initialize();
+        }
+      } catch (error) {
+        console.error('Failed to initialize Android back handler:', error);
+      }
+    };
+
     // 尝试自动连接到上次的服务
     const tryAutoConnect = async () => {
       try {
+        // 初始化安卓返回按钮处理
+        await initializeAndroidBackHandler();
+
         // 检查用户是否主动断开了连接
         const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
 
@@ -66,6 +82,47 @@ function App() {
 
     tryAutoConnect();
   }, []);
+
+  // 安卓返回按钮处理逻辑
+  useEffect(() => {
+    const handleAndroidBack = () => {
+      // 根据当前应用状态处理返回逻辑
+      switch (appState) {
+        case 'viewing':
+          // 从文件查看器返回到文件浏览器
+          handleBackToBrowser();
+          return true; // 表示已处理
+        
+        case 'browsing':
+          // 在文件浏览器中，如果不在根目录，则返回上级目录
+          if (currentDirectory && currentDirectory !== '') {
+            // 计算父目录路径
+            const segments = currentDirectory.split('/').filter(s => s);
+            segments.pop();
+            const parentPath = segments.join('/');
+            setCurrentDirectory(parentPath);
+            return true; // 表示已处理
+          }
+          // 如果在根目录，返回 false 让系统处理（退出应用）
+          return false;
+        
+        case 'connecting':
+          // 在连接页面，返回 false 让系统处理（退出应用）
+          return false;
+        
+        default:
+          return false;
+      }
+    };
+
+    // 注册安卓返回按钮处理器
+    androidBackHandler.addHandler(handleAndroidBack);
+
+    // 清理函数
+    return () => {
+      androidBackHandler.removeHandler(handleAndroidBack);
+    };
+  }, [appState, currentDirectory]);
 
   const handleConnect = () => {
     // 连接成功时清除断开连接标记
