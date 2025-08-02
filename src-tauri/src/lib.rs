@@ -189,7 +189,7 @@ async fn storage_request_binary(
     options: Option<serde_json::Value>,
 ) -> Result<Vec<u8>, String> {
     let manager = get_storage_manager().await;
-    let manager = manager.lock().await;
+    let mut manager = manager.lock().await;
 
     let request = StorageRequest {
         method,
@@ -261,7 +261,7 @@ async fn storage_list_directory(
     options: Option<ListOptions>,
 ) -> Result<serde_json::Value, String> {
     let manager = get_storage_manager().await;
-    let manager = manager.lock().await;
+    let mut manager = manager.lock().await;
 
     match manager.list_directory(&path, options.as_ref()).await {
         Ok(result) => Ok(serde_json::to_value(result).unwrap()),

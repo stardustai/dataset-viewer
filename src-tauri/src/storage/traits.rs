@@ -76,7 +76,7 @@ pub struct ConnectionConfig {
 }
 
 /// 存储客户端错误类型
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum StorageError {
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),

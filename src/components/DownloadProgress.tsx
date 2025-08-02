@@ -118,7 +118,16 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
 
   const cancelDownload = async (filename: string) => {
     try {
-      await invoke('cancel_download', { filename });
+      const timeoutMs = 5000; // 5秒
+      
+      await Promise.race([
+        invoke('cancel_download', { filename }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`取消下载超时 (${timeoutMs}ms)`));
+          }, timeoutMs);
+        })
+      ]);
       // 立即更新状态为取消
       setDownloads(prev => {
         const newMap = new Map(prev);
