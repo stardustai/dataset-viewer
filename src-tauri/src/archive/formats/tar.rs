@@ -87,7 +87,7 @@ impl TarHandler {
         entry_path: &str,
         max_size: usize,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
-        _cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
         log::debug!("开始流式提取TAR文件预览（带进度）: {} -> {}", file_path, entry_path);
 
@@ -101,6 +101,13 @@ impl TarHandler {
         const BLOCK_SIZE: u64 = 512;
 
         while current_offset < file_size {
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if let Ok(_) = cancel_rx.try_recv() {
+                    return Err("download.cancelled".to_string());
+                }
+            }
+
             // 更新进度
             if let Some(ref callback) = progress_callback {
                 callback(current_offset, file_size);
@@ -144,6 +151,13 @@ impl TarHandler {
                         let mut read_offset = 0u64;
                         
                         while read_offset < preview_size as u64 {
+                            // 检查取消信号
+                             if let Some(ref mut cancel_rx) = cancel_rx {
+                                 if let Ok(_) = cancel_rx.try_recv() {
+                                     return Err("download.cancelled".to_string());
+                                 }
+                             }
+
                             let current_chunk_size = std::cmp::min(chunk_size, preview_size as u64 - read_offset);
                             let chunk = client.read_file_range(file_path, file_offset + read_offset, current_chunk_size)
                                 .await

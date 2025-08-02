@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, StorageCapabilities, DirectoryResult, ListOptions};
@@ -74,32 +74,50 @@ impl StorageManager {
 
     pub async fn request(&mut self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
         self.ensure_healthy_connection().await?;
-        if let Some(client_id) = &self.active_client {
+        let client = if let Some(client_id) = &self.active_client {
             if let Some(client) = self.clients.get(client_id) {
-                return client.request(request).await;
+                client.clone()
+            } else {
+                return Err(StorageError::NotConnected);
             }
-        }
-        Err(StorageError::NotConnected)
+        } else {
+            return Err(StorageError::NotConnected);
+        };
+        
+        // Release the lock before making the async request
+        client.request(request).await
     }
 
     pub async fn request_binary(&mut self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
         self.ensure_healthy_connection().await?;
-        if let Some(client_id) = &self.active_client {
+        let client = if let Some(client_id) = &self.active_client {
             if let Some(client) = self.clients.get(client_id) {
-                return client.request_binary(request).await;
+                client.clone()
+            } else {
+                return Err(StorageError::NotConnected);
             }
-        }
-        Err(StorageError::NotConnected)
+        } else {
+            return Err(StorageError::NotConnected);
+        };
+        
+        // Release the lock before making the async request
+        client.request_binary(request).await
     }
 
     pub async fn list_directory(&mut self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
         self.ensure_healthy_connection().await?;
-        if let Some(client_id) = &self.active_client {
+        let client = if let Some(client_id) = &self.active_client {
             if let Some(client) = self.clients.get(client_id) {
-                return client.list_directory(path, options).await;
+                client.clone()
+            } else {
+                return Err(StorageError::NotConnected);
             }
-        }
-        Err(StorageError::NotConnected)
+        } else {
+            return Err(StorageError::NotConnected);
+        };
+        
+        // Release the lock before making the async request
+        client.list_directory(path, options).await
     }
 
     pub fn current_capabilities(&self) -> Option<StorageCapabilities> {
@@ -159,12 +177,12 @@ impl StorageManager {
 }
 
 // 全局存储管理器
-static STORAGE_MANAGER: tokio::sync::OnceCell<Arc<Mutex<StorageManager>>> = tokio::sync::OnceCell::const_new();
+static STORAGE_MANAGER: tokio::sync::OnceCell<Arc<RwLock<StorageManager>>> = tokio::sync::OnceCell::const_new();
 
-pub async fn get_storage_manager() -> Arc<Mutex<StorageManager>> {
+pub async fn get_storage_manager() -> Arc<RwLock<StorageManager>> {
     let result = STORAGE_MANAGER.get_or_init(|| async {
         let manager = StorageManager::new();
-        Arc::new(Mutex::new(manager))
+        Arc::new(RwLock::new(manager))
     }).await.clone();
     result
 }

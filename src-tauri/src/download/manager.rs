@@ -463,10 +463,11 @@ impl DownloadManager {
         }
 
         // 获取存储管理器和客户端
-        let manager = get_storage_manager().await;
-        let manager = manager.lock().await;
+        let manager_arc = get_storage_manager().await;
+        let manager = manager_arc.read().await;
         let client = manager.get_current_client()
             .ok_or_else(|| "No storage client available".to_string())?;
+        drop(manager);
 
         // 创建压缩包处理器
         let archive_handler = ArchiveHandler::new();
