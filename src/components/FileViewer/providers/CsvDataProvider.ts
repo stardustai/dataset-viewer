@@ -1,4 +1,3 @@
-import { StorageServiceManager } from '../../../services/storage';
 import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
 import { getFileText } from '../../../utils/fileDataUtils';

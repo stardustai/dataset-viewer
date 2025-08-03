@@ -8,6 +8,8 @@ use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
 use tauri::Emitter;
+#[cfg(target_os = "android")]
+use tauri::Manager;
 
 
 // 移除参数结构体，直接在命令中使用 serde rename 属性
@@ -563,18 +565,16 @@ pub fn run() {
         ]);
 
     #[cfg(target_os = "android")]
-    {
-        builder = builder.on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // 在安卓上拦截关闭事件，转换为返回按钮事件
-                let app_handle = window.app_handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    let _ = handle_android_back_button(app_handle).await;
-                });
-                api.prevent_close();
-            }
-        });
-    }
+    let builder = builder.on_window_event(|window, event| {
+        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            // 在安卓上拦截关闭事件，转换为返回按钮事件
+            let app_handle = window.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = handle_android_back_button(app_handle).await;
+            });
+            api.prevent_close();
+        }
+    });
 
     builder
         .run(tauri::generate_context!())

@@ -1,4 +1,3 @@
-import { StorageServiceManager } from '../../../services/storage';
 import { parquetReadObjects, parquetMetadataAsync } from 'hyparquet';
 import { getFileArrayBuffer } from '../../../utils/fileDataUtils';
 
