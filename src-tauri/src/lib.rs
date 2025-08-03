@@ -280,6 +280,15 @@ async fn storage_list_directory(
     }
 }
 
+#[tauri::command]
+async fn storage_get_download_url(path: String) -> Result<String, String> {
+    let manager_arc = get_storage_manager().await;
+    let manager = manager_arc.read().await;
+    
+    manager.get_download_url(&path)
+        .map_err(|e| format!("Failed to get download URL: {}", e))
+}
+
 // 下载进度命令
 
 #[tauri::command]
@@ -524,6 +533,7 @@ pub fn run() {
             storage_get_capabilities,
             storage_get_supported_protocols,
             storage_list_directory,
+            storage_get_download_url,
             // 下载进度命令
             download_file_with_progress,
             cancel_download,

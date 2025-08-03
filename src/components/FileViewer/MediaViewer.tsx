@@ -4,43 +4,76 @@ import { ZoomIn, ZoomOut, RotateCcw, GalleryHorizontal } from 'lucide-react';
 import { StorageServiceManager } from '../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common/StatusDisplay';
 import { formatFileSize } from '../../utils/fileUtils';
+import { getFileUrl, getFileArrayBuffer, getFileHeader, getMimeType } from '../../utils/fileDataUtils';
 import AV1VideoPlayer from './AV1VideoPlayer';
 import { Dav1dDecoderService } from '../../services/dav1dDecoder';
 
-// 将 MIME 类型映射移到组件外部，避免重复创建
-const MIME_TYPES: { [key: string]: string } = {
-  // Images
-  'jpg': 'image/jpeg',
-  'jpeg': 'image/jpeg',
-  'png': 'image/png',
-  'gif': 'image/gif',
-  'webp': 'image/webp',
-  'svg': 'image/svg+xml',
-  'bmp': 'image/bmp',
-  'ico': 'image/x-icon',
-  // PDF
-  'pdf': 'application/pdf',
-  // Video
-  'mp4': 'video/mp4',
-  'webm': 'video/webm',
-  'ogv': 'video/ogg',
-  'avi': 'video/x-msvideo',
-  'mov': 'video/quicktime',
-  'wmv': 'video/x-ms-wmv',
-  'flv': 'video/x-flv',
-  'mkv': 'video/x-matroska',
-  'm4v': 'video/mp4',
-  // Audio
-  'mp3': 'audio/mpeg',
-  'wav': 'audio/wav',
-  'oga': 'audio/ogg',
-  'aac': 'audio/aac',
-  'flac': 'audio/flac'
-};
 
-const getMimeType = (filename: string): string => {
-  const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-  return MIME_TYPES[ext] || 'application/octet-stream';
+
+// AV1 视频播放器包装组件，处理按需加载
+const AV1VideoPlayerWrapper: React.FC<{
+  filePath: string;
+  fileName?: string;
+  onError?: (error: string) => void;
+}> = ({ filePath, fileName, onError }) => {
+  const { t } = useTranslation();
+  const [videoData, setVideoData] = useState<Uint8Array | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 加载视频数据
+  const loadVideoData = useCallback(async () => {
+    if (videoData || isLoading) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const arrayBuffer = await getFileArrayBuffer(filePath);
+      const data = new Uint8Array(arrayBuffer);
+      setVideoData(data);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : t('av1.player.error.load');
+      setError(errorMsg);
+      onError?.(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filePath, videoData, isLoading, t, onError]);
+
+  // 组件挂载时开始加载
+  useEffect(() => {
+    loadVideoData();
+  }, [loadVideoData]);
+
+  if (error) {
+    return (
+      <div className="h-full">
+        <ErrorDisplay
+          message={error}
+          onRetry={loadVideoData}
+          className="h-full"
+        />
+      </div>
+    );
+  }
+
+  if (isLoading || !videoData) {
+    return (
+      <LoadingDisplay
+        message={t('av1.player.loading')}
+        className="h-full"
+      />
+    );
+  }
+
+  return (
+    <AV1VideoPlayer
+      videoData={videoData}
+      fileName={fileName}
+      onError={onError}
+    />
+  );
 };
 
 // 检测是否为 AV1 视频文件
@@ -96,9 +129,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [rotation, setRotation] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false); // 是否显示进度条
-  const [videoData, setVideoData] = useState<Uint8Array | null>(null);
+
   const [isAV1Video, setIsAV1Video] = useState(false);
   const [useWasmDecoder, setUseWasmDecoder] = useState(false);
+  const [videoPlaybackFailed, setVideoPlaybackFailed] = useState(false);
 
   const loadMediaContent = useCallback(async () => {
     setLoading(true);
@@ -108,7 +142,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
     // 清理之前的 mediaUrl
     setMediaUrl(prevUrl => {
-      if (prevUrl) {
+      if (prevUrl && prevUrl.startsWith('blob:')) {
         URL.revokeObjectURL(prevUrl);
       }
       return '';
@@ -119,59 +153,84 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       setShowProgress(true);
     }, 300);
 
-    let progressInterval: NodeJS.Timeout | null = null;
-
     const cleanup = () => {
-      if (progressInterval) clearInterval(progressInterval);
       clearTimeout(showProgressTimer);
     };
 
     try {
-      let response: Uint8Array;
+      let mediaUrl: string;
       
-      // 如果有预览内容，直接使用，避免重复请求
+      // 如果有预览内容，使用二进制数据创建 blob URL
       if (previewContent) {
-        response = previewContent;
         clearTimeout(showProgressTimer);
         setLoadingProgress(100);
+        
+        // 检测是否为 AV1 视频
+        const isAV1 = detectAV1Video(fileName, previewContent);
+        setIsAV1Video(isAV1);
+        
+        if (isAV1) {
+          const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
+          setUseWasmDecoder(needsWasmDecoder);
+          
+          if (!needsWasmDecoder) {
+            const blob = new Blob([previewContent], { type: 'video/mp4' });
+            mediaUrl = URL.createObjectURL(blob);
+          } else {
+            mediaUrl = '';
+          }
+        } else {
+          const blob = new Blob([previewContent], { type: getMimeType(fileName) });
+          mediaUrl = URL.createObjectURL(blob);
+        }
       } else {
-        // 模拟进度更新
-        progressInterval = setInterval(() => {
-          setLoadingProgress(prev => {
-            if (prev >= 90) {
-              if (progressInterval) clearInterval(progressInterval);
-              return prev;
-            }
-            return prev + Math.random() * 20;
-          });
-        }, 200);
-
-        const arrayBuffer = await StorageServiceManager.getFileBlob(filePath);
-        response = new Uint8Array(arrayBuffer);
-
+        // 重置视频播放失败状态
+        setVideoPlaybackFailed(false);
+        
+        // 对于视频文件，预先检测是否为 AV1 格式
+         if (fileType === 'video') {
+           try {
+             // 只获取文件头部数据进行高效 AV1 检测（2KB）
+             const headerData = await getFileHeader(filePath, 2048);
+             
+             const isAV1 = detectAV1Video(fileName, headerData);
+             setIsAV1Video(isAV1);
+             
+             if (isAV1) {
+               const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
+               setUseWasmDecoder(needsWasmDecoder);
+               
+               if (needsWasmDecoder) {
+                  // 对于需要 WASM 解码器的 AV1 视频，不需要 mediaUrl
+                  mediaUrl = '';
+                } else {
+                  // 对于原生支持的 AV1 视频，使用普通的文件 URL
+                  mediaUrl = await getFileUrl(filePath);
+                }
+              } else {
+                // 不是 AV1 视频，使用普通的文件 URL
+                setUseWasmDecoder(false);
+                mediaUrl = await getFileUrl(filePath);
+              }
+           } catch (err) {
+             console.warn('Failed to pre-detect AV1 video, falling back to normal loading:', err);
+             // 检测失败时回退到普通加载方式
+              setIsAV1Video(false);
+              setUseWasmDecoder(false);
+              mediaUrl = await getFileUrl(filePath);
+           }
+        } else {
+          // 非视频文件，使用普通的文件 URL
+          setIsAV1Video(false);
+          setUseWasmDecoder(false);
+          mediaUrl = await getFileUrl(filePath);
+        }
+        
         cleanup();
         setLoadingProgress(100);
       }
-
-      // 检测是否为 AV1 视频
-      const isAV1 = detectAV1Video(fileName, response);
-      setIsAV1Video(isAV1);
       
-      if (isAV1) {
-        setVideoData(response);
-        const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
-        setUseWasmDecoder(needsWasmDecoder);
-        
-        if (!needsWasmDecoder) {
-          const blob = new Blob([response], { type: 'video/mp4' });
-          const url = URL.createObjectURL(blob);
-          setMediaUrl(url);
-        }
-      } else {
-        const blob = new Blob([response], { type: getMimeType(fileName) });
-        const url = URL.createObjectURL(blob);
-        setMediaUrl(url);
-      }
+      setMediaUrl(mediaUrl);
     } catch (err) {
       console.error('Failed to load media:', err);
       setError(t('viewer.load.error'));
@@ -183,18 +242,43 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   }, [filePath, fileName, previewContent, t]);
 
+  // 处理视频播放失败的回调函数
+  const handleVideoPlaybackError = useCallback(async () => {
+    if (fileType === 'video' && !videoPlaybackFailed) {
+      setVideoPlaybackFailed(true);
+      
+      try {
+        // 获取视频数据用于检测 AV1 编码
+        const arrayBuffer = await getFileArrayBuffer(filePath);
+        const videoData = new Uint8Array(arrayBuffer);
+        
+        // 检测是否为 AV1 视频
+        const isAV1 = detectAV1Video(fileName, videoData);
+        setIsAV1Video(isAV1);
+        
+        if (isAV1) {
+          const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
+          setUseWasmDecoder(needsWasmDecoder);
+        } else {
+          // 不是 AV1 视频，显示通用错误
+          setError(t('viewer.video.playback.error'));
+        }
+      } catch (err) {
+        console.error('Failed to handle video playback error:', err);
+        setError(t('viewer.video.playback.error'));
+      }
+    }
+  }, [fileType, videoPlaybackFailed, fileName, filePath, t]);
+
   const downloadFile = useCallback(async () => {
     try {
-      const response = await StorageServiceManager.getFileBlob(filePath);
-      const blob = new Blob([response], { type: getMimeType(fileName) });
-      const url = URL.createObjectURL(blob);
+      const downloadUrl = await StorageServiceManager.getDownloadUrl(filePath);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = downloadUrl;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download file:', err);
     }
@@ -313,10 +397,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
       case 'video':
         // AV1 视频且需要使用 WASM 解码器
-        if (isAV1Video && useWasmDecoder && videoData) {
+        if (isAV1Video && useWasmDecoder) {
           return (
-            <AV1VideoPlayer
-              videoData={videoData}
+            <AV1VideoPlayerWrapper
+              filePath={filePath}
               fileName={fileName}
               onError={(error) => setError(error)}
             />
@@ -335,7 +419,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               style={{ maxWidth: '100%', maxHeight: '100%' }}
               onError={(e) => {
                 console.error('Video playback error:', e);
-                setError(t('viewer.video.playback.error'));
+                handleVideoPlaybackError();
               }}
               onCanPlay={(e) => {
                 // 视频有足够数据可以播放时自动开始播放

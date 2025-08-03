@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Check, Star, Loader, AlertCircle } from 'lucide-react';
+import { ChevronDown, Check, Star, Loader2, AlertCircle } from 'lucide-react';
 import { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
 
@@ -193,7 +193,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
                         <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />
                       )}
                       {isSwitching && (
-                        <Loader className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0 animate-spin" />
+                        <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0 animate-spin" />
                       )}
                       {isActive && !isSwitching && (
                         <Check className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />

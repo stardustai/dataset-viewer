@@ -1,6 +1,7 @@
 import { StorageServiceManager } from '../../../services/storage';
 import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
+import { getFileText } from '../../../utils/fileDataUtils';
 
 export class CsvDataProvider implements DataProvider {
   private filePath: string;
@@ -19,8 +20,8 @@ export class CsvDataProvider implements DataProvider {
     }
 
     try {
-      const arrayBuffer = await StorageServiceManager.getFileBlob(this.filePath);
-      const text = new TextDecoder('utf-8').decode(arrayBuffer);
+      // 获取文件文本内容
+      const text = await getFileText(this.filePath);
 
       // 使用 papaparse 解析 CSV
       const parseResult = Papa.parse<string[]>(text, {

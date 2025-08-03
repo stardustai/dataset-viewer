@@ -526,6 +526,14 @@ export class StorageServiceManager {
   }
 
   /**
+   * 获取文件下载URL（直接可用的URL）
+   */
+  static async getDownloadUrl(path: string): Promise<string> {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return await invoke<string>('storage_get_download_url', { path });
+  }
+
+  /**
    * 获取请求headers
    */
   static getHeaders(): Record<string, string> {

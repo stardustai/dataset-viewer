@@ -131,12 +131,14 @@ export const fileViewer = {
 
   // AV1 视频播放器
   'av1.player.loading': '正在加载 AV1 解码器...',
+  
   'av1.player.initializing': '正在初始化视频...',
   'av1.player.decoding': '正在解码视频帧...',
   'av1.player.error.load': '加载 AV1 解码器失败',
   'av1.player.error.init': '初始化 AV1 解码器失败',
   'av1.player.error.decode': '解码视频失败',
   'av1.player.error.invalid.format': '无效的 AV1 视频格式',
+  'av1.player.error.noData': '没有可用的视频数据',
   'av1.player.play': '播放',
   'av1.player.pause': '暂停',
   'av1.player.reset': '重置',
