@@ -109,9 +109,6 @@ pub trait StorageClient: Send + Sync {
     /// 连接到存储服务
     async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError>;
 
-    /// 断开连接
-    async fn disconnect(&self);
-
     /// 检查是否已连接
     async fn is_connected(&self) -> bool;
 

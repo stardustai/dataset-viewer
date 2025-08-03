@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use tokio::sync::RwLock;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use tokio::sync::{RwLock, Semaphore, broadcast};
+use std::sync::{Arc, Mutex};
+use uuid::Uuid;
 use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, StorageCapabilities, DirectoryResult, ListOptions};
 use super::webdav_client::WebDAVClient;
 use super::local_client::LocalFileSystemClient;
@@ -11,8 +11,10 @@ use super::huggingface_client::HuggingFaceClient;
 pub struct StorageManager {
     clients: HashMap<String, Arc<dyn StorageClient + Send + Sync>>,
     active_client: Option<String>,
-    last_health_check: Option<Instant>,
-    health_check_interval: Duration,
+    // 缓存的活跃客户端引用，减少锁竞争
+    cached_client: Option<Arc<dyn StorageClient + Send + Sync>>,
+    // 并发控制：限制同时进行的请求数量
+    request_semaphore: Arc<Semaphore>,
 }
 
 impl StorageManager {
@@ -20,8 +22,8 @@ impl StorageManager {
         Self {
             clients: HashMap::new(),
             active_client: None,
-            last_health_check: None,
-            health_check_interval: Duration::from_secs(30), // 30秒检查一次
+            cached_client: None,
+            request_semaphore: Arc::new(Semaphore::new(10)), // 限制最多10个并发请求
         }
     }
 
@@ -52,19 +54,26 @@ impl StorageManager {
 
         let client_id = format!("{}_{}", config.protocol, chrono::Utc::now().timestamp());
 
-        self.clients.insert(client_id.clone(), client);
+        self.clients.insert(client_id.clone(), client.clone());
         self.active_client = Some(client_id);
+        
+        // 更新缓存的客户端引用
+        self.cached_client = Some(client.clone());
 
         Ok(())
     }
 
     pub async fn disconnect(&mut self) -> Result<(), StorageError> {
         if let Some(client_id) = &self.active_client {
-            if let Some(client) = self.clients.remove(client_id) {
-                client.disconnect().await;
+            if let Some(_client) = self.clients.remove(client_id) {
+                // 客户端会在 drop 时自动断开连接
             }
-            self.active_client = None;
         }
+        self.active_client = None;
+        
+        // 清空缓存的客户端引用
+        self.cached_client = None;
+        
         Ok(())
     }
 
@@ -72,51 +81,61 @@ impl StorageManager {
         self.active_client.is_some()
     }
 
-    pub async fn request(&mut self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
-        self.ensure_healthy_connection().await?;
-        let client = if let Some(client_id) = &self.active_client {
-            if let Some(client) = self.clients.get(client_id) {
+    pub async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
+        // 获取并发许可
+        let _permit = self.request_semaphore.acquire().await.map_err(|_| {
+            StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
+        })?;
+        
+        // 快速获取缓存的客户端引用（短暂持有读锁）
+        let client = {
+            let manager = self;
+            if let Some(ref client) = manager.cached_client {
                 client.clone()
             } else {
                 return Err(StorageError::NotConnected);
             }
-        } else {
-            return Err(StorageError::NotConnected);
         };
         
-        // Release the lock before making the async request
+        // 在不持有锁的情况下执行请求
         client.request(request).await
     }
 
-    pub async fn request_binary(&mut self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
-        self.ensure_healthy_connection().await?;
-        let client = if let Some(client_id) = &self.active_client {
-            if let Some(client) = self.clients.get(client_id) {
+    pub async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
+        // 获取并发许可
+        let _permit = self.request_semaphore.acquire().await.map_err(|_| {
+            StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
+        })?;
+        
+        // 快速获取缓存的客户端引用
+        let client = {
+            if let Some(ref client) = self.cached_client {
                 client.clone()
             } else {
                 return Err(StorageError::NotConnected);
             }
-        } else {
-            return Err(StorageError::NotConnected);
         };
         
-        // Release the lock before making the async request
+        // 在不持有锁的情况下执行请求
         client.request_binary(request).await
     }
 
-    pub async fn list_directory(&mut self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
-        self.ensure_healthy_connection().await?;
-        let client = if let Some(client_id) = &self.active_client {
-            if let Some(client) = self.clients.get(client_id) {
+    pub async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+        // 获取并发许可
+        let _permit = self.request_semaphore.acquire().await.map_err(|_| {
+            StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
+        })?;
+        
+        // 快速获取缓存的客户端引用
+        let client = {
+            if let Some(ref client) = self.cached_client {
                 client.clone()
             } else {
                 return Err(StorageError::NotConnected);
             }
-        } else {
-            return Err(StorageError::NotConnected);
         };
         
-        // Release the lock before making the async request
+        // 在不持有锁的情况下执行请求
         client.list_directory(path, options).await
     }
 
@@ -144,36 +163,7 @@ impl StorageManager {
         vec!["webdav", "local", "oss", "huggingface"]
     }
 
-    /// 健康检查：验证当前连接是否正常
-    pub async fn health_check(&mut self) -> Result<bool, StorageError> {
-        if let Some(client_id) = &self.active_client {
-            if let Some(client) = self.clients.get(client_id) {
-                let is_healthy = client.is_connected().await;
-                self.last_health_check = Some(Instant::now());
-                return Ok(is_healthy);
-            }
-        }
-        Ok(false)
-    }
 
-    /// 检查是否需要进行健康检查
-    fn should_health_check(&self) -> bool {
-        match self.last_health_check {
-            Some(last_check) => last_check.elapsed() >= self.health_check_interval,
-            None => true,
-        }
-    }
-
-    /// 在关键操作前自动进行健康检查
-    async fn ensure_healthy_connection(&mut self) -> Result<(), StorageError> {
-        if self.should_health_check() {
-            let is_healthy = self.health_check().await?;
-            if !is_healthy {
-                return Err(StorageError::ConnectionFailed("Connection health check failed".to_string()));
-            }
-        }
-        Ok(())
-     }
 }
 
 // 全局存储管理器

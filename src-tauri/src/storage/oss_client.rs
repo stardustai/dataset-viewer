@@ -345,10 +345,6 @@ impl StorageClient for OSSClient {
         }
     }
 
-    async fn disconnect(&self) {
-        self.connected.store(false, Ordering::Relaxed);
-    }
-
     async fn is_connected(&self) -> bool {
         self.connected.load(Ordering::Relaxed)
     }

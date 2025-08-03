@@ -176,11 +176,6 @@ impl StorageClient for LocalFileSystemClient {
         Ok(())
     }
 
-    async fn disconnect(&self) {
-        // 本地文件系统连接无需特殊清理，只需要更新连接状态
-        self.connected.store(false, Ordering::Relaxed);
-    }
-
     async fn is_connected(&self) -> bool {
         self.connected.load(Ordering::Relaxed)
     }

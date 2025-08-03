@@ -122,8 +122,8 @@ async fn storage_request(
         options,
     };
 
-    // 对于普通请求，使用写锁（因为request方法需要&mut self）
-    let mut manager = manager_arc.write().await;
+    // 对于普通请求，使用读锁（已优化为支持并发）
+    let manager = manager_arc.read().await;
     match manager.request(&request).await {
         Ok(response) => Ok(serde_json::json!({
             "status": response.status,
@@ -200,7 +200,7 @@ async fn storage_request_binary(
     options: Option<serde_json::Value>,
 ) -> Result<Vec<u8>, String> {
     let manager_arc = get_storage_manager().await;
-    let mut manager = manager_arc.write().await;
+    let manager = manager_arc.read().await;
 
     let request = StorageRequest {
         method,
@@ -272,7 +272,7 @@ async fn storage_list_directory(
     options: Option<ListOptions>,
 ) -> Result<serde_json::Value, String> {
     let manager_arc = get_storage_manager().await;
-    let mut manager = manager_arc.write().await;
+    let manager = manager_arc.read().await;
 
     match manager.list_directory(&path, options.as_ref()).await {
         Ok(result) => Ok(serde_json::to_value(result).unwrap()),
