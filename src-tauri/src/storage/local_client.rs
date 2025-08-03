@@ -488,13 +488,6 @@ impl StorageClient for LocalFileSystemClient {
 
         Ok(file_url)
     }
-
-    async fn disconnect(&mut self) -> Result<(), StorageError> {
-        self.connected.store(false, Ordering::Relaxed);
-        self.root_path = None;
-        // 本地文件系统客户端无需特殊清理
-        Ok(())
-    }
 }
 
 impl LocalFileSystemClient {

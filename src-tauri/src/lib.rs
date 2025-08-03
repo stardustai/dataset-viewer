@@ -4,7 +4,7 @@ mod download; // 下载管理功能
 mod utils;    // 通用工具模块
 
 use archive::{handlers::ArchiveHandler, types::*};
-use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions, client_wrapper::StorageClientWrapper, traits::StorageClient};
+use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
 use tauri::Emitter;
@@ -152,8 +152,8 @@ async fn analyze_archive_with_client(
     // 释放读锁后进行分析
     drop(manager);
     
-    // Create a wrapper to convert RwLock-wrapped client to StorageClient
-    let client = Arc::new(StorageClientWrapper::new(client_lock).await);
+    // 直接使用客户端，无需包装
+    let client = client_lock;
     
     // 使用压缩包处理器分析文件
     ARCHIVE_HANDLER.analyze_archive_with_client(
@@ -182,8 +182,8 @@ async fn get_archive_preview_with_client(
     // 释放读锁后进行预览
     drop(manager);
     
-    // Create a wrapper to convert RwLock-wrapped client to StorageClient
-    let client = Arc::new(StorageClientWrapper::new(client_lock).await);
+    // 直接使用客户端，无需包装
+    let client = client_lock;
     
     // 使用压缩包处理器获取文件预览
     ARCHIVE_HANDLER.get_file_preview_with_client(
@@ -416,14 +416,13 @@ async fn analyze_archive(
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    if let Some(client_lock) = manager.get_current_client() {
-        let wrapped_client = Arc::new(StorageClientWrapper::new(client_lock).await);
-        let protocol = wrapped_client.protocol();
+    if let Some(client) = manager.get_current_client() {
+        let protocol = client.protocol();
         println!("使用{}存储客户端进行流式分析: {}", protocol, url);
         drop(manager);
 
         ARCHIVE_HANDLER.analyze_archive_with_client(
-            wrapped_client,
+            client,
             url,
             filename,
             max_size
@@ -446,9 +445,7 @@ async fn get_file_preview(
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    if let Some(client_lock) = manager.get_current_client() {
-        // Create a wrapper to convert RwLock-wrapped client to StorageClient
-        let client = Arc::new(StorageClientWrapper::new(client_lock).await);
+    if let Some(client) = manager.get_current_client() {
         let protocol = client.protocol();
         println!("使用{}存储客户端进行流式预览: {} -> {}", protocol, url, entry_path);
         drop(manager);

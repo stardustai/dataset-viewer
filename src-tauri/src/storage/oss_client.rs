@@ -825,11 +825,7 @@ impl StorageClient for OSSClient {
         self.generate_download_url(&object_key, 3600)
     }
 
-    async fn disconnect(&mut self) -> Result<(), StorageError> {
-        self.connected.store(false, Ordering::Relaxed);
-        // reqwest::Client 会在 drop 时自动清理连接池
-        Ok(())
-    }
+
 }
 
 impl OSSClient {
