@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Check, Star, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronDown, Check, Star, Loader2 } from 'lucide-react';
 import { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
+import { showErrorToast } from '../../utils/clipboard';
 
 interface ConnectionSwitcherProps {
   onConnectionChange?: () => void;
@@ -16,7 +17,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
   const [connections, setConnections] = useState<StoredConnection[]>([]);
   const [currentConnection, setCurrentConnection] = useState<string>('');
   const [switchingConnection, setSwitchingConnection] = useState<string | null>(null);
-  const [switchError, setSwitchError] = useState<string>('');
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,7 +52,6 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
     if (switchingConnection) return; // 防止重复点击
     
     setSwitchingConnection(connection.id);
-    setSwitchError('');
     
     // 保存当前连接状态，以便失败时恢复
     let previousConnection: any = null;
@@ -61,13 +61,18 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
       // 如果没有当前连接，previousConnection保持为null
     }
     
+    // 根据StoredConnection推断连接类型（在try块外定义，以便在catch块中使用）
+    const isLocal = connection.url?.startsWith('file:///');
+    const isOSS = connection.url?.startsWith('oss://') || connection.metadata?.bucket;
+    const isHuggingFace = connection.url?.startsWith('huggingface://') || connection.metadata?.organization;
+    
     try {
       // 根据StoredConnection构建ConnectionConfig
-      const isLocal = connection.url?.startsWith('file:///');
+      
       const config = {
         type: isLocal ? 'local' as const :
-              connection.url?.startsWith('oss://') ? 'oss' as const :
-              connection.metadata?.organization ? 'huggingface' as const :
+              isOSS ? 'oss' as const :
+              isHuggingFace ? 'huggingface' as const :
               'webdav' as const,
         url: isLocal ? undefined : connection.url,
         username: connection.username,
@@ -95,7 +100,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
             console.error('恢复之前连接失败:', restoreError);
           }
         }
-        setSwitchError(t('connection.switch.failed'));
+        showErrorToast(t('connection.switch.failed'));
       }
     } catch (error) {
       console.error('切换连接失败:', error);
@@ -107,8 +112,33 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
           console.error('恢复之前连接失败:', restoreError);
         }
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setSwitchError(t('connection.switch.error', { error: errorMessage }));
+      let errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // 提供更友好的错误信息
+       if (errorMessage.includes('WebDAV client cannot handle')) {
+         // 使用与上面相同的连接类型推断逻辑
+         let connectionType = 'unknown';
+         if (isLocal) {
+           connectionType = 'LOCAL';
+         } else if (isOSS) {
+           connectionType = 'OSS';
+         } else if (isHuggingFace) {
+           connectionType = 'HUGGINGFACE';
+         } else {
+           connectionType = 'WEBDAV';
+         }
+         
+         errorMessage = t('connection.switch.type_mismatch', { 
+           connectionType: connectionType,
+           connectionName: connection.name 
+         });
+       } else if (errorMessage.includes('requires URL, username, and password')) {
+         errorMessage = t('connection.switch.missing_credentials', { 
+           connectionName: connection.name 
+         });
+       }
+      
+      showErrorToast(errorMessage);
     } finally {
       setSwitchingConnection(null);
     }
@@ -159,6 +189,8 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
 
   return (
     <div className="relative" ref={dropdownRef}>
+
+      
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors max-w-32 lg:max-w-48"
@@ -218,24 +250,6 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
               </div>
             );
           })}
-          {switchError && (
-            <div className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
-              <div className="flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-red-700 dark:text-red-300">
-                    {switchError}
-                  </div>
-                  <button
-                    onClick={() => setSwitchError('')}
-                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 mt-1"
-                  >
-                    {t('dismiss')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

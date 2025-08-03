@@ -8,7 +8,7 @@ use reqwest;
 use tokio_util;
 
 use crate::download::{types::*, progress::ProgressTracker};
-use crate::storage::get_storage_manager;
+use crate::storage::{get_storage_manager, client_wrapper::StorageClientWrapper};
 use crate::archive::handlers::ArchiveHandler;
 use crate::utils::chunk_size;
 
@@ -465,9 +465,12 @@ impl DownloadManager {
         // 获取存储管理器和客户端
         let manager_arc = get_storage_manager().await;
         let manager = manager_arc.read().await;
-        let client = manager.get_current_client()
+        let client_lock = manager.get_current_client()
             .ok_or_else(|| "No storage client available".to_string())?;
         drop(manager);
+        
+        // Create a wrapper to convert RwLock-wrapped client to StorageClient
+        let client = Arc::new(StorageClientWrapper::new(client_lock).await);
 
         // 创建压缩包处理器
         let archive_handler = ArchiveHandler::new();

@@ -177,9 +177,15 @@ pub trait StorageClient: Send + Sync {
     /// 获取协议名称
     fn protocol(&self) -> &str;
 
-    /// 验证配置
+    /// 验证配置是否有效
     #[allow(dead_code)] // API 保留方法
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError>;
+
+    /// 断开连接并清理资源
+    async fn disconnect(&mut self) -> Result<(), StorageError> {
+        // 默认实现为空，子类可以重写
+        Ok(())
+    }
 }
 
 /// 存储能力描述

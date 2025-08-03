@@ -126,5 +126,7 @@ export const connection = {
   // Connection switching
   'connection.switch.failed': 'Failed to switch connection',
   'connection.switch.error': 'Error occurred while switching connection: {{error}}',
+  'connection.switch.type_mismatch': 'Connection type mismatch: Cannot use {{connectionType}} client to connect to "{{connectionName}}"',
+  'connection.switch.missing_credentials': 'Connection "{{connectionName}}" is missing required credentials',
   'dismiss': 'Dismiss',
 };

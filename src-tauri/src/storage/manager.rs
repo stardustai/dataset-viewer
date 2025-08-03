@@ -8,10 +8,10 @@ use super::oss_client::OSSClient;
 use super::huggingface_client::HuggingFaceClient;
 
 pub struct StorageManager {
-    clients: HashMap<String, Arc<dyn StorageClient + Send + Sync>>,
+    clients: HashMap<String, Arc<RwLock<dyn StorageClient + Send + Sync>>>,
     active_client: Option<String>,
     // 缓存的活跃客户端引用，减少锁竞争
-    cached_client: Option<Arc<dyn StorageClient + Send + Sync>>,
+    cached_client: Option<Arc<RwLock<dyn StorageClient + Send + Sync>>>,
     // 并发控制：限制同时进行的请求数量
     request_semaphore: Arc<Semaphore>,
 }
@@ -27,26 +27,26 @@ impl StorageManager {
     }
 
     pub async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError> {
-        let client: Arc<dyn StorageClient + Send + Sync> = match config.protocol.as_str() {
+        let client: Arc<RwLock<dyn StorageClient + Send + Sync>> = match config.protocol.as_str() {
             "webdav" => {
                 let mut client = WebDAVClient::new(config.clone())?;
                 client.connect(config).await?;
-                Arc::new(client)
+                Arc::new(RwLock::new(client))
             },
             "local" => {
                 let mut client = LocalFileSystemClient::new();
                 client.connect(config).await?;
-                Arc::new(client)
+                Arc::new(RwLock::new(client))
             },
             "oss" => {
                 let mut client = OSSClient::new(config.clone())?;
                 client.connect(config).await?;
-                Arc::new(client)
+                Arc::new(RwLock::new(client))
             },
             "huggingface" => {
                 let mut client = HuggingFaceClient::new(config.clone())?;
                 client.connect(config).await?;
-                Arc::new(client)
+                Arc::new(RwLock::new(client))
             },
             _ => return Err(StorageError::UnsupportedProtocol(config.protocol.clone())),
         };
@@ -64,8 +64,12 @@ impl StorageManager {
 
     pub async fn disconnect(&mut self) -> Result<(), StorageError> {
         if let Some(client_id) = &self.active_client {
-            if let Some(_client) = self.clients.remove(client_id) {
-                // 客户端会在 drop 时自动断开连接
+            if let Some(client) = self.clients.remove(client_id) {
+                // 显式调用客户端的断开连接方法进行资源清理
+                let mut client_guard = client.write().await;
+                if let Err(e) = client_guard.disconnect().await {
+                    eprintln!("Warning: Failed to cleanly disconnect client: {}", e);
+                }
             }
         }
         self.active_client = None;
@@ -97,7 +101,8 @@ impl StorageManager {
         };
         
         // 在不持有锁的情况下执行请求
-        client.request(request).await
+        let client_guard = client.read().await;
+        client_guard.request(request).await
     }
 
     pub async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
@@ -116,7 +121,8 @@ impl StorageManager {
         };
         
         // 在不持有锁的情况下执行请求
-        client.request_binary(request).await
+        let client_guard = client.read().await;
+        client_guard.request_binary(request).await
     }
 
     pub async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
@@ -135,28 +141,31 @@ impl StorageManager {
         };
         
         // 在不持有锁的情况下执行请求
-        client.list_directory(path, options).await
+        let client_guard = client.read().await;
+        client_guard.list_directory(path, options).await
     }
 
-    pub fn current_capabilities(&self) -> Option<StorageCapabilities> {
+    pub async fn current_capabilities(&self) -> Option<StorageCapabilities> {
         let client_id = self.active_client.as_ref()?;
         let client = self.clients.get(client_id)?;
-        Some(client.capabilities())
+        let client_guard = client.read().await;
+        Some(client_guard.capabilities())
     }
 
-    pub fn get_current_client(&self) -> Option<Arc<dyn StorageClient>> {
+    pub fn get_current_client(&self) -> Option<Arc<RwLock<dyn StorageClient + Send + Sync>>> {
         let client_id = self.active_client.as_ref()?;
         let client = self.clients.get(client_id)?;
         Some(client.clone())
     }
 
-    pub fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
+    pub async fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
         let client_id = self.active_client.as_ref()
             .ok_or(StorageError::NotConnected)?;
         let client = self.clients.get(client_id)
             .ok_or(StorageError::NotConnected)?;
 
-        client.get_download_url(path)
+        let client_guard = client.read().await;
+        client_guard.get_download_url(path)
     }
     pub fn supported_protocols(&self) -> Vec<&str> {
         vec!["webdav", "local", "oss", "huggingface"]

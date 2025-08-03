@@ -126,5 +126,7 @@ export const connection = {
   // 连接切换
   'connection.switch.failed': '切换连接失败',
   'connection.switch.error': '切换连接时发生错误：{{error}}',
+  'connection.switch.type_mismatch': '连接类型不匹配：无法使用 {{connectionType}} 客户端连接到 "{{connectionName}}"',
+  'connection.switch.missing_credentials': '连接 "{{connectionName}}" 缺少必要的认证信息',
   'dismiss': '关闭',
 };

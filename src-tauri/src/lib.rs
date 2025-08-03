@@ -4,7 +4,7 @@ mod download; // 下载管理功能
 mod utils;    // 通用工具模块
 
 use archive::{handlers::ArchiveHandler, types::*};
-use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
+use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions, client_wrapper::StorageClientWrapper, traits::StorageClient};
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
 use tauri::Emitter;
@@ -146,11 +146,14 @@ async fn analyze_archive_with_client(
     let manager = manager_arc.read().await;
 
     // 获取对应的存储客户端
-    let client = manager.get_current_client()
+    let client_lock = manager.get_current_client()
         .ok_or_else(|| "No storage client connected".to_string())?;
 
     // 释放读锁后进行分析
     drop(manager);
+    
+    // Create a wrapper to convert RwLock-wrapped client to StorageClient
+    let client = Arc::new(StorageClientWrapper::new(client_lock).await);
     
     // 使用压缩包处理器分析文件
     ARCHIVE_HANDLER.analyze_archive_with_client(
@@ -173,11 +176,14 @@ async fn get_archive_preview_with_client(
     let manager = manager_arc.read().await;
 
     // 获取对应的存储客户端
-    let client = manager.get_current_client()
+    let client_lock = manager.get_current_client()
         .ok_or_else(|| "No storage client connected".to_string())?;
 
     // 释放读锁后进行预览
     drop(manager);
+    
+    // Create a wrapper to convert RwLock-wrapped client to StorageClient
+    let client = Arc::new(StorageClientWrapper::new(client_lock).await);
     
     // 使用压缩包处理器获取文件预览
     ARCHIVE_HANDLER.get_file_preview_with_client(
@@ -252,7 +258,7 @@ async fn storage_get_capabilities() -> Result<serde_json::Value, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    match manager.current_capabilities() {
+    match manager.current_capabilities().await {
         Some(caps) => Ok(serde_json::to_value(caps).unwrap()),
         None => Err("No active connection".to_string())
     }
@@ -285,7 +291,7 @@ async fn storage_get_download_url(path: String) -> Result<String, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
     
-    manager.get_download_url(&path)
+    manager.get_download_url(&path).await
         .map_err(|e| format!("Failed to get download URL: {}", e))
 }
 
@@ -306,7 +312,7 @@ async fn download_file_with_progress(
 
         // 通过存储客户端获取正确的下载 URL
         // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
-        match manager.get_download_url(&url) {
+        match manager.get_download_url(&url).await {
             Ok(processed_url) => {
                 println!("Generated download URL: {} -> {}", url, processed_url);
                 processed_url
@@ -410,13 +416,14 @@ async fn analyze_archive(
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    if let Some(client) = manager.get_current_client() {
-        let protocol = client.protocol();
+    if let Some(client_lock) = manager.get_current_client() {
+        let wrapped_client = Arc::new(StorageClientWrapper::new(client_lock).await);
+        let protocol = wrapped_client.protocol();
         println!("使用{}存储客户端进行流式分析: {}", protocol, url);
         drop(manager);
 
         ARCHIVE_HANDLER.analyze_archive_with_client(
-            client.clone(),
+            wrapped_client,
             url,
             filename,
             max_size
@@ -439,13 +446,15 @@ async fn get_file_preview(
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    if let Some(client) = manager.get_current_client() {
+    if let Some(client_lock) = manager.get_current_client() {
+        // Create a wrapper to convert RwLock-wrapped client to StorageClient
+        let client = Arc::new(StorageClientWrapper::new(client_lock).await);
         let protocol = client.protocol();
         println!("使用{}存储客户端进行流式预览: {} -> {}", protocol, url, entry_path);
         drop(manager);
 
         ARCHIVE_HANDLER.get_file_preview_with_client(
-            client.clone(),
+            client,
             url,
             filename,
             entry_path,

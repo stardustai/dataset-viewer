@@ -37,12 +37,37 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
  * @param message 提示消息
  */
 export const showCopyToast = (message: string) => {
+  showToast(message, 'success');
+};
+
+/**
+ * 显示错误提示
+ * @param message 提示消息
+ */
+export const showErrorToast = (message: string) => {
+  showToast(message, 'error');
+};
+
+/**
+ * 显示通用提示
+ * @param message 提示消息
+ * @param type 提示类型
+ */
+export const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
   // 创建提示元素
   const toast = document.createElement('div');
   toast.textContent = message;
+  
+  // 根据类型设置不同的样式
+  const typeStyles = {
+    success: 'bg-green-600',
+    error: 'bg-red-600',
+    info: 'bg-blue-600'
+  };
+  
   toast.className = `
     fixed bottom-4 right-4 z-50
-    bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg
+    ${typeStyles[type]} text-white px-4 py-2 rounded-lg shadow-lg
     transform transition-all duration-300 ease-in-out
     pointer-events-none
   `;

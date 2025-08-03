@@ -823,4 +823,10 @@ impl StorageClient for HuggingFaceClient {
         // API token 是可选的
         Ok(())
     }
+
+    async fn disconnect(&mut self) -> Result<(), StorageError> {
+        self.connected.store(false, Ordering::Relaxed);
+        // reqwest::Client 会在 drop 时自动清理连接池
+        Ok(())
+    }
 }

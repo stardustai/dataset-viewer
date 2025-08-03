@@ -49,13 +49,19 @@ export class StorageClientFactory {
    */
   static async connectToStorage(config: ConnectionConfig, key?: string): Promise<BaseStorageClient> {
     const client = this.getInstance(config.type, key);
-    const connected = await client.connect(config);
-
-    if (!connected) {
-      throw new Error(`Failed to connect to ${config.type} storage`);
+    
+    try {
+      const connected = await client.connect(config);
+      
+      if (!connected) {
+        throw new Error(`Failed to connect to ${config.type} storage`);
+      }
+      
+      return client;
+    } catch (error) {
+      // 重新抛出错误，保持原始错误信息
+      throw error;
     }
-
-    return client;
   }
 
   /**

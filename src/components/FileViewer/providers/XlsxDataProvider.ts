@@ -1,4 +1,3 @@
-import { StorageServiceManager } from '../../../services/storage';
 import * as XLSX from 'xlsx';
 import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import { getFileArrayBuffer } from '../../../utils/fileDataUtils';

@@ -512,6 +512,12 @@ impl StorageClient for WebDAVClient {
 
         Ok(download_url)
     }
+
+    async fn disconnect(&mut self) -> Result<(), StorageError> {
+        self.connected.store(false, Ordering::Relaxed);
+        // reqwest::Client 会在 drop 时自动清理连接池
+        Ok(())
+    }
 }
 
 impl WebDAVClient {
