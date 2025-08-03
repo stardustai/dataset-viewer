@@ -135,17 +135,15 @@
     <div class="relative min-h-screen flex items-center justify-center px-6">
         <div class="max-w-6xl mx-auto text-center">
             <!-- Logo and Badge -->
-            <div class="flex items-center justify-center mb-8">
-                <img src="./logo.png" alt="Dataset Viewer Logo" class="w-20 h-20 rounded-2xl shadow-2xl animate-float mr-6">
-                <div class="text-left">
-                    <div class="flex items-center space-x-4 mb-2">
-                        <span class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium px-4 py-2 rounded-full" data-i18n="app.ai_badge">
-                            🤖 100% AI 生成
-                        </span>
-						<span class="min-w-36">
-                        	<span id="version-badge" class="bg-white/10 backdrop-blur text-white/80 text-sm font-medium px-4 py-2 rounded-full opacity-0 transition-all duration-500 transform scale-95"></span>
-						</span>
-                    </div>
+            <div class="flex flex-col sm:flex-row items-center justify-center mb-8 gap-4 sm:gap-6">
+                <img src="./logo.png" alt="Dataset Viewer Logo" class="w-20 h-20 rounded-2xl shadow-2xl animate-float">
+                <div class="flex flex-col sm:flex-row items-center gap-3 sm:gap-0">
+                    <span class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium px-4 py-1.5 rounded-full whitespace-nowrap" data-i18n="app.ai_badge">
+                        🤖 100% AI 生成
+                    </span>
+                    <span class="min-w-0 sm:min-w-36">
+                        <span id="version-badge" class="bg-white/10 backdrop-blur text-white/80 text-sm font-medium px-4 py-2 rounded-full opacity-0 transition-all duration-500 transform scale-95 whitespace-nowrap"></span>
+                    </span>
                 </div>
             </div>
 
@@ -161,7 +159,7 @@
             </p>
 
             <!-- Description -->
-            <p class="text-lg text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed" data-i18n="hero.description">
+            <p class="text-lg text-gray-400 mb-8 max-w-3xl mx-auto leading-relaxed" data-i18n="hero.description">
                 支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能
             </p>
 
