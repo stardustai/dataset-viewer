@@ -43,4 +43,11 @@ export const errors = {
   'archive.format.lz4.not.supported': '暂不支持 LZ4 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
   'archive.format.zstd.not.supported': '暂不支持 Zstd 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
   'archive.format.unsupported': '不支持的压缩文件格式',
+
+  // 错误边界
+  'error.boundary.title': '应用出现错误',
+  'error.boundary.description': '很抱歉，应用遇到了一个意外错误。您可以尝试刷新页面或返回首页。',
+  'error.boundary.details': '错误详情',
+  'error.boundary.retry': '重试',
+  'error.boundary.home': '返回首页',
 };

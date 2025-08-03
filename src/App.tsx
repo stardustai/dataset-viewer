@@ -5,6 +5,7 @@ import { FileViewer } from './components/FileViewer';
 import { DownloadProgress } from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
 import { SplashScreen } from './components/SplashScreen';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
 import { navigationHistoryService } from './services/navigationHistory';
@@ -167,54 +168,71 @@ function App() {
     setCurrentDirectory(path);
   };
 
-  if (appState === 'initializing') {
-    return <SplashScreen />;
-  }
+  const renderContent = () => {
+    if (appState === 'initializing') {
+      return <SplashScreen />;
+    }
 
-  if (appState === 'connecting') {
-    return (
-      <div className="page-transition">
-        <ConnectionPanel onConnect={handleConnect} />
-      </div>
-    );
-  }
-
-  // 主应用区域 - FileBrowser 和 FileViewer 都存在，但只显示其中一个
-  return (
-    <div className="h-screen page-transition">
-      {/* 数据浏览器 - 始终渲染但可能隐藏 */}
-      <div className={appState === 'viewing' ? 'hidden' : ''}>
-        <FileBrowser
-          onFileSelect={handleFileSelect}
-          onDisconnect={handleDisconnect}
-          initialPath={currentDirectory}
-          onDirectoryChange={handleDirectoryChange}
-        />
-      </div>
-
-      {/* 文件查看器 - 只在查看状态时显示 */}
-      {appState === 'viewing' && selectedFile && (
+    if (appState === 'connecting') {
+      return (
         <div className="page-transition">
-          <FileViewer
-            file={selectedFile}
-            filePath={selectedFilePath}
-            storageClient={selectedStorageClient}
-            onBack={handleBackToBrowser}
+          <ConnectionPanel onConnect={handleConnect} />
+        </div>
+      );
+    }
+
+    // 主应用区域 - FileBrowser 和 FileViewer 都存在，但只显示其中一个
+    return (
+      <div className="h-screen page-transition">
+        {/* 数据浏览器 - 始终渲染但可能隐藏 */}
+        <div className={appState === 'viewing' ? 'hidden' : ''}>
+          <FileBrowser
+            onFileSelect={handleFileSelect}
+            onDisconnect={handleDisconnect}
+            initialPath={currentDirectory}
+            onDirectoryChange={handleDirectoryChange}
           />
         </div>
-      )}
 
-      {/* 下载进度组件 */}
-      <DownloadProgress
-        isVisible={showDownloadProgress}
-        onClose={() => setShowDownloadProgress(false)}
-      />
+        {/* 文件查看器 - 只在查看状态时显示 */}
+        {appState === 'viewing' && selectedFile && (
+          <div className="page-transition">
+            <FileViewer
+              file={selectedFile}
+              filePath={selectedFilePath}
+              storageClient={selectedStorageClient}
+              onBack={handleBackToBrowser}
+            />
+          </div>
+        )}
 
-      {/* 更新通知 */}
-      {showNotification && (
-        <UpdateNotification onClose={hideUpdateDialog} />
-      )}
-    </div>
+        {/* 下载进度组件 */}
+        <DownloadProgress
+          isVisible={showDownloadProgress}
+          onClose={() => setShowDownloadProgress(false)}
+        />
+
+        {/* 更新通知 */}
+        {showNotification && (
+          <UpdateNotification onClose={hideUpdateDialog} />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // 记录错误到控制台，便于调试
+        console.error('Application Error:', error);
+        console.error('Error Info:', errorInfo);
+        
+        // 可以在这里添加错误上报逻辑
+        // 例如发送到错误监控服务
+      }}
+    >
+      {renderContent()}
+    </ErrorBoundary>
   );
 }
 
