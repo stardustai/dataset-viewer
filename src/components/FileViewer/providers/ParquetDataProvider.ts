@@ -1,5 +1,6 @@
 import { StorageServiceManager } from '../../../services/storage';
 import { parquetReadObjects, parquetMetadataAsync } from 'hyparquet';
+import { getFileArrayBuffer } from '../../../utils/fileDataUtils';
 
 export interface DataColumn {
   name: string;
@@ -34,7 +35,7 @@ export class ParquetDataProvider implements DataProvider {
 
   private async getFileBuffer(): Promise<ArrayBuffer> {
     if (!this.fileBuffer) {
-      this.fileBuffer = await StorageServiceManager.getFileBlob(this.filePath);
+      this.fileBuffer = await getFileArrayBuffer(this.filePath);
     }
     return this.fileBuffer;
   }

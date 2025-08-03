@@ -122,8 +122,8 @@ async fn storage_request(
         options,
     };
 
-    // 对于普通请求，使用写锁（因为request方法需要&mut self）
-    let mut manager = manager_arc.write().await;
+    // 对于普通请求，使用读锁（已优化为支持并发）
+    let manager = manager_arc.read().await;
     match manager.request(&request).await {
         Ok(response) => Ok(serde_json::json!({
             "status": response.status,
@@ -146,11 +146,14 @@ async fn analyze_archive_with_client(
     let manager = manager_arc.read().await;
 
     // 获取对应的存储客户端
-    let client = manager.get_current_client()
+    let client_lock = manager.get_current_client()
         .ok_or_else(|| "No storage client connected".to_string())?;
 
     // 释放读锁后进行分析
     drop(manager);
+    
+    // 直接使用客户端，无需包装
+    let client = client_lock;
     
     // 使用压缩包处理器分析文件
     ARCHIVE_HANDLER.analyze_archive_with_client(
@@ -173,11 +176,14 @@ async fn get_archive_preview_with_client(
     let manager = manager_arc.read().await;
 
     // 获取对应的存储客户端
-    let client = manager.get_current_client()
+    let client_lock = manager.get_current_client()
         .ok_or_else(|| "No storage client connected".to_string())?;
 
     // 释放读锁后进行预览
     drop(manager);
+    
+    // 直接使用客户端，无需包装
+    let client = client_lock;
     
     // 使用压缩包处理器获取文件预览
     ARCHIVE_HANDLER.get_file_preview_with_client(
@@ -200,7 +206,7 @@ async fn storage_request_binary(
     options: Option<serde_json::Value>,
 ) -> Result<Vec<u8>, String> {
     let manager_arc = get_storage_manager().await;
-    let mut manager = manager_arc.write().await;
+    let manager = manager_arc.read().await;
 
     let request = StorageRequest {
         method,
@@ -252,7 +258,7 @@ async fn storage_get_capabilities() -> Result<serde_json::Value, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    match manager.current_capabilities() {
+    match manager.current_capabilities().await {
         Some(caps) => Ok(serde_json::to_value(caps).unwrap()),
         None => Err("No active connection".to_string())
     }
@@ -272,12 +278,21 @@ async fn storage_list_directory(
     options: Option<ListOptions>,
 ) -> Result<serde_json::Value, String> {
     let manager_arc = get_storage_manager().await;
-    let mut manager = manager_arc.write().await;
+    let manager = manager_arc.read().await;
 
     match manager.list_directory(&path, options.as_ref()).await {
         Ok(result) => Ok(serde_json::to_value(result).unwrap()),
         Err(e) => Err(format!("List directory failed: {}", e))
     }
+}
+
+#[tauri::command]
+async fn storage_get_download_url(path: String) -> Result<String, String> {
+    let manager_arc = get_storage_manager().await;
+    let manager = manager_arc.read().await;
+    
+    manager.get_download_url(&path).await
+        .map_err(|e| format!("Failed to get download URL: {}", e))
 }
 
 // 下载进度命令
@@ -297,7 +312,7 @@ async fn download_file_with_progress(
 
         // 通过存储客户端获取正确的下载 URL
         // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
-        match manager.get_download_url(&url) {
+        match manager.get_download_url(&url).await {
             Ok(processed_url) => {
                 println!("Generated download URL: {} -> {}", url, processed_url);
                 processed_url
@@ -407,7 +422,7 @@ async fn analyze_archive(
         drop(manager);
 
         ARCHIVE_HANDLER.analyze_archive_with_client(
-            client.clone(),
+            client,
             url,
             filename,
             max_size
@@ -436,7 +451,7 @@ async fn get_file_preview(
         drop(manager);
 
         ARCHIVE_HANDLER.get_file_preview_with_client(
-            client.clone(),
+            client,
             url,
             filename,
             entry_path,
@@ -524,6 +539,7 @@ pub fn run() {
             storage_get_capabilities,
             storage_get_supported_protocols,
             storage_list_directory,
+            storage_get_download_url,
             // 下载进度命令
             download_file_with_progress,
             cancel_download,

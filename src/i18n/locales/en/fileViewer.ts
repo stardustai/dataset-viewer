@@ -152,9 +152,11 @@ export const fileViewer = {
   'av1.player.error.init': 'Failed to initialize AV1 decoder',
   'av1.player.error.decode': 'Failed to decode video',
   'av1.player.error.invalid.format': 'Invalid AV1 video format',
+  'av1.player.error.noData': 'No video data available',
   'av1.player.play': 'Play',
   'av1.player.pause': 'Pause',
   'av1.player.reset': 'Reset',
   'av1.player.frame': 'Frame {{current}} / {{total}}',
   'av1.player.fps': 'FPS: {{fps}}',
+
 };

@@ -1,6 +1,6 @@
-import { StorageServiceManager } from '../../../services/storage';
 import * as XLSX from 'xlsx';
 import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
+import { getFileArrayBuffer } from '../../../utils/fileDataUtils';
 
 export class XlsxDataProvider implements DataProvider {
   private filePath: string;
@@ -28,7 +28,7 @@ export class XlsxDataProvider implements DataProvider {
         );
       } else {
         // 没有预览内容时才请求
-        arrayBuffer = await StorageServiceManager.getFileBlob(this.filePath);
+        arrayBuffer = await getFileArrayBuffer(this.filePath);
       }
       try {
         this.workbook = XLSX.read(arrayBuffer, { type: 'array' });

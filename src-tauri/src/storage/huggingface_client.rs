@@ -421,10 +421,6 @@ impl StorageClient for HuggingFaceClient {
         Ok(())
     }
 
-    async fn disconnect(&self) {
-        self.connected.store(false, Ordering::Relaxed);
-    }
-
     async fn is_connected(&self) -> bool {
         self.connected.load(Ordering::Relaxed)
     }
@@ -827,4 +823,6 @@ impl StorageClient for HuggingFaceClient {
         // API token 是可选的
         Ok(())
     }
+
+
 }

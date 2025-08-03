@@ -345,10 +345,6 @@ impl StorageClient for OSSClient {
         }
     }
 
-    async fn disconnect(&self) {
-        self.connected.store(false, Ordering::Relaxed);
-    }
-
     async fn is_connected(&self) -> bool {
         self.connected.load(Ordering::Relaxed)
     }
@@ -828,6 +824,8 @@ impl StorageClient for OSSClient {
         // 生成 1 小时有效期的预签名下载 URL
         self.generate_download_url(&object_key, 3600)
     }
+
+
 }
 
 impl OSSClient {

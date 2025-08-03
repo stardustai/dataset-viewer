@@ -61,8 +61,12 @@ export class WebDAVStorageClient extends BaseStorageClient {
   }
 
   async connect(config: ConnectionConfig): Promise<boolean> {
-    if (config.type !== 'webdav' || !config.url || !config.username || !config.password) {
-      throw new Error('Invalid WebDAV configuration');
+    if (config.type !== 'webdav') {
+      throw new Error(`WebDAV client cannot handle ${config.type} connections`);
+    }
+    
+    if (!config.url || !config.username || !config.password) {
+      throw new Error('WebDAV connection requires URL, username, and password');
     }
 
     try {

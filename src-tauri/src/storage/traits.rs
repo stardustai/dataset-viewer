@@ -109,9 +109,6 @@ pub trait StorageClient: Send + Sync {
     /// 连接到存储服务
     async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError>;
 
-    /// 断开连接
-    async fn disconnect(&self);
-
     /// 检查是否已连接
     async fn is_connected(&self) -> bool;
 
@@ -180,9 +177,11 @@ pub trait StorageClient: Send + Sync {
     /// 获取协议名称
     fn protocol(&self) -> &str;
 
-    /// 验证配置
+    /// 验证配置是否有效
     #[allow(dead_code)] // API 保留方法
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError>;
+
+
 }
 
 /// 存储能力描述
