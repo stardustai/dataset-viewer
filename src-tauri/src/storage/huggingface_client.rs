@@ -468,19 +468,20 @@ impl StorageClient for HuggingFaceClient {
 
         // 处理 huggingface:// 协议 URL
         let actual_url = if request.url.starts_with("huggingface://") {
-            // 解析 huggingface://owner:dataset/file_path 格式
+            // 解析 huggingface://owner:dataset/file_path 或 huggingface://organization 格式
             let hf_url = request.url.strip_prefix("huggingface://").unwrap_or(&request.url);
 
             if hf_url.is_empty() {
                 // 根路径，返回数据集列表页面
                 "https://huggingface.co/datasets".to_string()
             } else {
-                // 路径格式：owner:dataset/file_path
+                // 检查是否包含路径分隔符
                 let parts: Vec<&str> = hf_url.splitn(2, '/').collect();
-                let dataset_id_part = parts[0];
+                let first_part = parts[0];
                 
-                if dataset_id_part.contains(':') {
-                    let dataset_parts: Vec<&str> = dataset_id_part.split(':').collect();
+                if first_part.contains(':') {
+                    // 路径格式：owner:dataset/file_path
+                    let dataset_parts: Vec<&str> = first_part.split(':').collect();
                     if dataset_parts.len() == 2 {
                         let owner = dataset_parts[0];
                         let dataset = dataset_parts[1];
@@ -497,9 +498,12 @@ impl StorageClient for HuggingFaceClient {
                     } else {
                         return Err(StorageError::RequestFailed("Invalid dataset identifier format".to_string()));
                     }
+                } else if !first_part.contains('/') {
+                    // 这是一个组织名称，返回组织页面
+                    format!("https://huggingface.co/{}", first_part)
                 } else {
                     // 只有 owner，返回 owner 的数据集列表
-                    format!("https://huggingface.co/datasets?search={}", dataset_id_part)
+                    format!("https://huggingface.co/datasets?search={}", first_part)
                 }
             }
         } else {

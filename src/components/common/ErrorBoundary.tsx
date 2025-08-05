@@ -40,8 +40,8 @@ const ErrorDisplay: React.FC<{
           {t('error.boundary.description')}
         </p>
 
-        {/* 错误详情（开发模式下显示） */}
-        {process.env.NODE_ENV === 'development' && error && (
+        {/* 错误详情 */}
+        {error && (
           <details className="mb-4 text-left">
             <summary className="cursor-pointer text-sm text-gray-500 dark:text-gray-400 mb-2">
               {t('error.boundary.details')}
@@ -50,10 +50,13 @@ const ErrorDisplay: React.FC<{
               <div className="mb-2">
                 <strong>Error:</strong> {error.message}
               </div>
-              <div>
-                <strong>Stack:</strong>
-                <pre className="whitespace-pre-wrap">{error.stack}</pre>
-              </div>
+              {/* Stack trace 只在开发模式显示 */}
+              {process.env.NODE_ENV === 'development' && (
+                <div>
+                  <strong>Stack:</strong>
+                  <pre className="whitespace-pre-wrap">{error.stack}</pre>
+                </div>
+              )}
             </div>
           </details>
         )}
