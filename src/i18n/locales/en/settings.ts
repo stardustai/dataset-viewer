@@ -3,6 +3,7 @@ export const settings = {
   'settings': 'Settings',
   'settings.theme': 'Theme Settings',
   'settings.update': 'Update Settings',
+  'settings.cache': 'Cache Management',
 
   // Update functionality
   'auto.check.updates': 'Auto check updates',
@@ -16,6 +17,13 @@ export const settings = {
   'file.size': 'File size',
   'update.check.failed': 'Update check failed',
   'update.download.failed': 'Failed to open download page',
+
+  // Cache management
+  'cache.description': 'Clear local cache and saved connections to free up storage space and resolve display issues',
+  'clear.cache': 'Clear Cache',
+  'clearing.cache': 'Clearing...',
+  'cache.cleared.success': 'Cache and connections cleared successfully',
+  'cache.clear.failed': 'Failed to clear cache',
 
   // About
   'about': 'About',

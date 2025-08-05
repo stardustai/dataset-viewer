@@ -5,6 +5,7 @@ import { OSSStorageClient } from './OSSStorageClient';
 import { HuggingFaceStorageClient } from './HuggingFaceStorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
 import { connectionStorage, StoredConnection } from '../connectionStorage';
+import { formatServiceName } from '../../utils/urlUtils';
 
 /**
  * 存储客户端工厂
@@ -622,7 +623,7 @@ export class StorageServiceManager {
       url,
       username,
       password,
-      name: connectionName || `WebDAV(${new URL(url).hostname})`
+      name: connectionName || formatServiceName(url, 'WebDAV')
     };
     return await this.connectWithConfig(config);
   }

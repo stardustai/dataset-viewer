@@ -70,16 +70,23 @@ class ConnectionStorageService {
   async saveConnection(connection: StorageConnection, name?: string, savePassword: boolean = false): Promise<string> {
     const connections = this.getStoredConnections();
 
+    // 清理输入数据：去除首尾空格
+    const cleanedConnection = {
+      ...connection,
+      url: connection.url.trim(),
+      username: connection.username.trim()
+    };
+
     // 标准化 URL 格式
-    const normalizedUrl = this.normalizeUrl(connection.url);
+    const normalizedUrl = this.normalizeUrl(cleanedConnection.url);
 
     // 检查是否已存在相同的连接（基于标准化的 URL 和用户名）
-    const existingConnection = this.findConnection(normalizedUrl, connection.username);
+    const existingConnection = this.findConnection(normalizedUrl, cleanedConnection.username);
     if (existingConnection) {
       // 如果连接已存在，更新最后连接时间和密码（如果需要）
       this.updateLastConnected(existingConnection.id);
-      if (savePassword && connection.password) {
-        this.updatePassword(existingConnection.id, connection.password);
+      if (savePassword && cleanedConnection.password) {
+        this.updatePassword(existingConnection.id, cleanedConnection.password);
       }
       return existingConnection.id;
     }
@@ -104,8 +111,8 @@ class ConnectionStorageService {
         connectionName = StorageClientFactory.generateConnectionName({
           type,
           url: normalizedUrl,
-          username: connection.username,
-          password: connection.password,
+          username: cleanedConnection.username,
+          password: cleanedConnection.password,
         });
       } catch (error) {
         console.warn('Failed to generate connection name with client, using fallback:', error);
@@ -117,18 +124,18 @@ class ConnectionStorageService {
       id,
       name: connectionName,
       url: normalizedUrl, // 使用标准化的 URL
-      username: connection.username,
+      username: cleanedConnection.username,
       lastConnected: new Date().toISOString(),
     };
 
     // 根据选择决定是否保存密码
-    if (savePassword && connection.password) {
-      storedConnection.password = connection.password;
+    if (savePassword && cleanedConnection.password) {
+      storedConnection.password = cleanedConnection.password;
     }
 
     // 保存扩展的 metadata 信息
-    if (connection.metadata) {
-      storedConnection.metadata = connection.metadata;
+    if (cleanedConnection.metadata) {
+      storedConnection.metadata = cleanedConnection.metadata;
     }
 
     // 如果是第一个连接，设为默认

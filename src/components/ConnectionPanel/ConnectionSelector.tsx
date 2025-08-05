@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
 import { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
+import { formatConnectionDisplayName } from '../../utils/urlUtils';
 
 interface UndoToastProps {
   deletedConnection: StoredConnection;
@@ -267,7 +268,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                         ? connection.url.replace('file:///', '')
                         : connection.url.startsWith('oss://')
                         ? `OSS: ${connection.username}`
-                        : `${connection.username}@${new URL(connection.url).hostname}`}
+                        : formatConnectionDisplayName(connection.url, connection.username)}
                     </div>
                     {connection.lastConnected && (
                       <div className="text-xs text-gray-400 dark:text-gray-500">

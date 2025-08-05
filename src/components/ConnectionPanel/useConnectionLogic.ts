@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StorageClientType, ConnectionConfig } from '../../services/storage/types';
 import { StorageServiceManager } from '../../services/storage';
 import { StoredConnection } from '../../services/connectionStorage';
+import { getHostnameFromUrl } from '../../utils/urlUtils';
 
 export const useConnectionLogic = (onConnect: () => void) => {
   const { t } = useTranslation();
@@ -97,7 +98,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
 
     const connectionName = selectedStoredConnection ?
       selectedStoredConnection.name :
-      t('connection.name.webdav', 'WebDAV({{host}})', { host: new URL(url).hostname });
+      t('connection.name.webdav', 'WebDAV({{host}})', { host: getHostnameFromUrl(url) });
 
     const actualPassword = isPasswordFromStorage && selectedStoredConnection?.password
       ? selectedStoredConnection.password
@@ -199,7 +200,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
   };
 
   const handleUrlChange = (value: string) => {
-    setUrl(value);
+    setUrl(value.trim());
     setSelectedStoredConnection(null);
     if (isPasswordFromStorage) {
       setPassword('');
@@ -208,7 +209,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
   };
 
   const handleUsernameChange = (value: string) => {
-    setUsername(value);
+    setUsername(value.trim());
     setSelectedStoredConnection(null);
     if (isPasswordFromStorage) {
       setPassword('');

@@ -49,12 +49,17 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
       ? (selectedConnection.metadata?.apiToken || '')
       : formData.apiToken;
 
+    // 检查组织名是否发生变化
+    const originalOrg = selectedConnection?.metadata?.organization || '';
+    const currentOrg = formData.organization || '';
+    const orgChanged = originalOrg !== currentOrg;
+
     const config: ConnectionConfig = {
       type: 'huggingface',
       apiToken: actualApiToken || undefined,
       organization: formData.organization || undefined,
       url: 'https://huggingface.co', // 固定URL
-      name: selectedConnection?.name // 保留连接名称
+      name: orgChanged ? undefined : selectedConnection?.name // 如果组织名变化，清除名称让系统重新生成
     };
 
     await onConnect(config);
@@ -65,7 +70,7 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
   ) => {
     setFormData(prev => ({
       ...prev,
-      [field]: e.target.value
+      [field]: e.target.value.trim()
     }));
   };
 

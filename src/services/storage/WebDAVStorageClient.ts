@@ -9,6 +9,7 @@ import {
   StorageResponse
 } from './types';
 import type { ArchiveInfo, FilePreview } from '../../types';
+import { getHostnameFromUrl } from '../../utils/urlUtils';
 
 interface WebDAVConnection {
   url: string;
@@ -37,11 +38,7 @@ export class WebDAVStorageClient extends BaseStorageClient {
   getDisplayName(): string {
     if (!this.connection?.url) return 'WebDAV';
 
-    try {
-      return new URL(this.connection.url).hostname;
-    } catch {
-      return this.connection.url;
-    }
+    return getHostnameFromUrl(this.connection.url);
   }
 
   /**

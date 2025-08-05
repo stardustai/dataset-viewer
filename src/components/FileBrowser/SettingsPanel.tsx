@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X, Sun, Moon } from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
+import { navigationHistoryService } from '../../services/navigationHistory';
+import { connectionStorage } from '../../services/connectionStorage';
+import { showToast } from '../../utils/clipboard';
 import type { UpdateCheckResult } from '../../types';
 
 interface SettingsPanelProps {
@@ -16,6 +19,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [autoCheck, setAutoCheck] = useState(true);
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
   const checkForUpdates = async () => {
     setIsChecking(true);
@@ -34,6 +38,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       await updateService.openDownloadPage();
     } catch (error) {
       console.error('Failed to open download page:', error);
+    }
+  };
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      // 清理导航历史缓存
+      navigationHistoryService.clearHistory();
+      navigationHistoryService.clearScrollPositions();
+      navigationHistoryService.clearDirectoryCache();
+      
+      // 清理保存的连接
+      connectionStorage.clearAllConnections();
+      
+      // 清理其他本地存储缓存
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('cache') || key.includes('temp'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      console.log('Cache cleared successfully');
+      showToast(t('cache.cleared.success'), 'success');
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      showToast(t('cache.clear.failed'), 'error');
+    } finally {
+      setIsClearingCache(false);
     }
   };
 
@@ -157,6 +192,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   )}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Cache Management */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.cache')}</h3>
+            <div className="space-y-3">
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                {t('cache.description')}
+              </p>
+              <button
+                onClick={handleClearCache}
+                disabled={isClearingCache}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Trash2 className={`w-4 h-4 ${isClearingCache ? 'animate-pulse' : ''}`} />
+                <span className="text-sm">{isClearingCache ? t('clearing.cache') : t('clear.cache')}</span>
+              </button>
             </div>
           </div>
 

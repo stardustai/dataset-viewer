@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConnectionConfig } from '../../services/storage/types';
 import { StoredConnection } from '../../services/connectionStorage';
+import { getHostnameFromUrl } from '../../utils/urlUtils';
 
 interface OSSConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;
@@ -113,7 +114,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     }
 
     // 生成默认连接名称
-    const hostname = new URL(config.endpoint).hostname;
+    const hostname = getHostnameFromUrl(config.endpoint);
     const defaultName = t('connection.name.oss', 'OSS({{host}}-{{bucket}})', {
       host: hostname,
       bucket: config.bucket
@@ -127,7 +128,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     const connectionConfig: ConnectionConfig = {
       type: 'oss',
       name: selectedConnection?.name || defaultName,
-      url: `oss://${new URL(config.endpoint).hostname}/${config.bucket}`, // 使用 oss:// 格式保存
+      url: `oss://${getHostnameFromUrl(config.endpoint)}/${config.bucket}`, // 使用 oss:// 格式保存
       username: config.accessKey, // 使用 username 字段存储 accessKey
       password: actualSecretKey,  // 使用 password 字段存储 secretKey
       bucket: config.bucket,      // 添加 bucket 字段
@@ -144,7 +145,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setConfig(prev => ({ ...prev, [field]: value }));
+    setConfig(prev => ({ ...prev, [field]: value.trim() }));
     // 清除对应字段的错误
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));

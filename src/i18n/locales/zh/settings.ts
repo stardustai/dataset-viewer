@@ -3,6 +3,7 @@ export const settings = {
   'settings': '设置',
   'settings.theme': '主题设置',
   'settings.update': '更新设置',
+  'settings.cache': '缓存管理',
 
   // 更新功能
   'auto.check.updates': '自动检查更新',
@@ -16,6 +17,13 @@ export const settings = {
   'file.size': '文件大小',
   'update.check.failed': '检查更新失败',
   'update.download.failed': '打开下载页面失败',
+
+  // 缓存管理
+  'cache.description': '清理本地缓存和保存的连接，可以释放存储空间并解决一些显示问题',
+  'clear.cache': '清理缓存',
+  'clearing.cache': '清理中...',
+  'cache.cleared.success': '缓存和连接清理成功',
+  'cache.clear.failed': '缓存清理失败',
 
   // 关于
   'about': '关于',

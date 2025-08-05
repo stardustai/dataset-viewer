@@ -4,6 +4,7 @@ import { ChevronDown, Check, Star, Loader2 } from 'lucide-react';
 import { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
 import { showErrorToast } from '../../utils/clipboard';
+import { formatConnectionDisplayName } from '../../utils/urlUtils';
 
 interface ConnectionSwitcherProps {
   onConnectionChange?: () => void;
@@ -236,9 +237,9 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
                   ? connection.url.replace('file:///', '')
                         : connection.url?.startsWith('oss://')
                         ? `OSS: ${connection.username}`
-                        : connection.url && connection.username
-                        ? `${connection.username}@${new URL(connection.url).hostname}`
-                        : connection.url || ''}
+                        : connection.url?.startsWith('huggingface://')
+                        ? `HuggingFace: ${connection.url.replace('huggingface://', '')}`
+                        : formatConnectionDisplayName(connection.url, connection.username) || ''}
                     </div>
                     {connection.lastConnected && (
                       <div className="text-xs text-gray-400 dark:text-gray-500">
