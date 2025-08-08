@@ -2,7 +2,7 @@
   "name": "dataset-viewer",
   "displayName": "Dataset Viewer",
   "private": true,
-  "version": "1.0.0-beta.10",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
