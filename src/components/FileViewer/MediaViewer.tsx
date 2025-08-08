@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ZoomIn, ZoomOut, RotateCcw, GalleryHorizontal } from 'lucide-react';
 import { StorageServiceManager } from '../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common/StatusDisplay';
 import { formatFileSize } from '../../utils/fileUtils';
 import { getFileUrl, getFileArrayBuffer, getFileHeader, getMimeType } from '../../utils/fileDataUtils';
 import AV1VideoPlayer from './AV1VideoPlayer';
 import { Dav1dDecoderService } from '../../services/dav1dDecoder';
-
-
+import { ImageRenderer } from './ImageRenderer';
 
 // AV1 视频播放器包装组件，处理按需加载
 const AV1VideoPlayerWrapper: React.FC<{
@@ -125,8 +123,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string>('');
-  const [zoom, setZoom] = useState(100);
-  const [rotation, setRotation] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false); // 是否显示进度条
 
@@ -284,24 +280,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   }, [filePath, fileName]);
 
-  const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(500, prev + 25));
-  }, []);
 
-  const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(25, prev - 25));
-  }, []);
-
-  const handleRotate = useCallback(() => {
-    setRotation(prev => (prev + 90) % 360);
-  }, []);
-
-  const resetView = useCallback(() => {
-    setZoom(100);
-    setRotation(0);
-  }, []);
-
-  const showImageControls = useMemo(() => fileType === 'image', [fileType]);
 
   useEffect(() => {
     loadMediaContent();
@@ -346,20 +325,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   const renderContent = () => {
     switch (fileType) {
-      case 'image':
-        return (
-          <div className="flex justify-center items-center h-full p-4 overflow-auto">
-            <img
-              src={mediaUrl}
-              alt={fileName}
-              className="max-w-full max-h-full object-contain transition-transform duration-200"
-              style={{
-                transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-                transformOrigin: 'center'
-              }}
-            />
-          </div>
-        );
 
       case 'pdf':
         return (
@@ -489,55 +454,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   };
 
+  // 对于图片类型，直接返回ImageRenderer
+  if (fileType === 'image') {
+      return (
+        <ImageRenderer
+          mediaUrl={mediaUrl}
+          fileName={fileName}
+          filePath={filePath}
+        />
+      );
+    }
+
+  // 对于其他类型，使用原有的布局
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">
-      {/* Controls */}
-      {showImageControls && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleZoomOut}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title={t('viewer.zoom.out')}
-              >
-                <ZoomOut className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
-
-              <span className="text-sm text-gray-600 dark:text-gray-300 min-w-[60px] text-center">
-                {zoom}%
-              </span>
-
-              <button
-                onClick={handleZoomIn}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title={t('viewer.zoom.in')}
-              >
-                <ZoomIn className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
-
-              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2" />
-
-              <button
-                onClick={handleRotate}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title={t('viewer.rotate')}
-              >
-                <RotateCcw className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
-
-              <button
-                onClick={resetView}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title={t('viewer.reset')}
-              >
-                <GalleryHorizontal className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {renderContent()}
