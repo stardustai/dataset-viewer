@@ -156,6 +156,7 @@ export const fileViewer = {
   'markdown.viewer': 'Markdown Viewer',
   'markdown.rendered': 'Rendered View',
   'markdown.raw': 'Raw Content',
+  'markdown.parsing': 'Parsing Markdown...',
 
   // Word document viewer
   'word.viewer': 'Word Document Viewer',

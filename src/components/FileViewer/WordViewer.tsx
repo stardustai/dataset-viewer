@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 import mammoth from 'mammoth';
@@ -28,7 +28,7 @@ const extractTextFromDocx = async (arrayBuffer: ArrayBuffer): Promise<{ html: st
 };
 
 // 简单的 RTF 文本提取
-const extractTextFromRtf = (content: string): string => {
+const extractTextFromRtf = (content: string, t: (key: string) => string): string => {
   try {
     // 移除 RTF 控制字符和格式代码
     let text = content
@@ -39,17 +39,16 @@ const extractTextFromRtf = (content: string): string => {
       .replace(/\s+/g, ' ') // 合并多个空格
       .trim();
     
-    return text || '无法提取 RTF 文档内容。请下载文件以查看完整内容。';
+    return text || t('word.rtf.extract.failed');
   } catch (error) {
     console.error('Error extracting text from RTF:', error);
-    return '解析 RTF 文档时出错。请下载文件以查看完整内容。';
+    return t('word.rtf.parse.error');
   }
 };
 
 export const WordViewer: React.FC<WordViewerProps> = ({
   filePath,
   fileName,
-  fileSize,
   className = ''
 }) => {
   const { t } = useTranslation();
@@ -58,10 +57,15 @@ export const WordViewer: React.FC<WordViewerProps> = ({
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [textContent, setTextContent] = useState<string>('');
 
-  const fileExtension = fileName.toLowerCase().split('.').pop();
-  const isDocx = fileExtension === 'docx';
-  const isDoc = fileExtension === 'doc';
-  const isRtf = fileExtension === 'rtf';
+  // 使用 useMemo 缓存文件类型判断
+  const { isDocx, isDoc, isRtf } = useMemo(() => {
+    const ext = fileName.toLowerCase().split('.').pop();
+    return {
+      isDocx: ext === 'docx',
+      isDoc: ext === 'doc',
+      isRtf: ext === 'rtf'
+    };
+  }, [fileName]);
 
   useEffect(() => {
     const loadDocument = async () => {
@@ -78,20 +82,19 @@ export const WordViewer: React.FC<WordViewerProps> = ({
         } else if (isRtf) {
           // 对于 RTF 文件，可以作为文本读取
           const fileContent = await StorageServiceManager.getFileContent(filePath);
-          const text = extractTextFromRtf(fileContent.content);
+          const text = extractTextFromRtf(fileContent.content, t);
           setTextContent(text);
           setHtmlContent('');
         } else if (isDoc) {
           // 对于老版本的 DOC 文件，显示不支持的消息
-          const message = '此文件是旧版本的 Word 文档格式 (.doc)，需要专门的解析器。\n\n建议：\n1. 下载文件并使用 Microsoft Word 打开\n2. 将文件转换为 .docx 格式以获得更好的支持';
-          setTextContent(message);
+          setTextContent(t('word.doc.legacy.message'));
           setHtmlContent('');
         } else {
-          setError('不支持的文件格式');
+          setError(t('word.unsupported.format'));
         }
       } catch (err) {
         console.error('Error loading document:', err);
-        setError(err instanceof Error ? err.message : '加载文档失败。请尝试下载文件以查看内容。');
+        setError(err instanceof Error ? err.message : t('word.load.failed'));
       } finally {
         setLoading(false);
       }
@@ -128,7 +131,7 @@ export const WordViewer: React.FC<WordViewerProps> = ({
           <div className="max-w-md mx-auto">
             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-              旧版 Word 文档
+              {t('word.doc.legacy.title')}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
               {textContent}

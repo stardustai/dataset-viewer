@@ -1036,6 +1036,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                 content={content}
                 fileName={file.basename}
                 className="h-full"
+                onScrollToBottom={isLargeFile ? handleScrollToBottom : undefined}
+                isLargeFile={isLargeFile}
+                loadingMore={loadingMore}
+                loadedChunks={loadedChunks}
+                loadedContentSize={loadedContentSize}
               />
             ) : isWord ? (
               <WordViewer

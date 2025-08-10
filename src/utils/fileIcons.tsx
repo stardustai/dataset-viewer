@@ -13,10 +13,11 @@ import {
   FileType2,
   BookOpen
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { FileType } from './fileTypes';
 
 interface FileIconConfig {
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   color: string;
 }
 
