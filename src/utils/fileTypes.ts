@@ -1,13 +1,23 @@
-export type FileType = 'text' | 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet' | 'data' | 'archive' | 'unknown';
+export type FileType = 'text' | 'markdown' | 'word' | 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet' | 'data' | 'archive' | 'unknown';
 
 export const getFileType = (filename: string): FileType => {
   const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
 
   // Text files
   const textExtensions = [
-    'txt', 'md', 'json', 'jsonl', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'scss', 'less',
+    'txt', 'json', 'jsonl', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'scss', 'less',
     'py', 'java', 'cpp', 'c', 'php', 'rb', 'go', 'rs', 'xml', 'yaml', 'yml',
     'sql', 'sh', 'bat', 'ps1', 'log', 'config', 'ini', 'tsv'
+  ];
+
+  // Markdown files
+  const markdownExtensions = [
+    'md', 'markdown', 'mdown', 'mkd', 'mdx'
+  ];
+
+  // Word document files
+  const wordExtensions = [
+    'doc', 'docx', 'rtf'
   ];
 
   // Image files
@@ -45,6 +55,8 @@ export const getFileType = (filename: string): FileType => {
   ];
 
   if (textExtensions.includes(ext)) return 'text';
+  if (markdownExtensions.includes(ext)) return 'markdown';
+  if (wordExtensions.includes(ext)) return 'word';
   if (imageExtensions.includes(ext)) return 'image';
   if (pdfExtensions.includes(ext)) return 'pdf';
   if (videoExtensions.includes(ext)) return 'video';
@@ -80,4 +92,12 @@ export const isArchiveFile = (filename: string): boolean => {
 
 export const isTextFile = (filename: string): boolean => {
   return getFileType(filename) === 'text';
+};
+
+export const isMarkdownFile = (filename: string): boolean => {
+  return getFileType(filename) === 'markdown';
+};
+
+export const isWordFile = (filename: string): boolean => {
+  return getFileType(filename) === 'word';
 };

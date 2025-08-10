@@ -511,11 +511,18 @@ export class StorageServiceManager {
   }
 
   /**
-   * 获取文件二进制数据
+   * 获取文件ArrayBuffer数据
    */
-  static async getFileBlob(path: string): Promise<ArrayBuffer> {
+  static async getFileArrayBuffer(path: string): Promise<ArrayBuffer> {
     const blob = await this.downloadFile(path);
     return await blob.arrayBuffer();
+  }
+
+  /**
+   * 获取文件二进制数据
+   */
+  static async getFileBlob(path: string): Promise<Blob> {
+    return await this.downloadFile(path);
   }
 
   /**

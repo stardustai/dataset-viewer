@@ -9,7 +9,9 @@ import {
   FileImage,
   FileSpreadsheet,
   Archive,
-  Database
+  Database,
+  FileType2,
+  BookOpen
 } from 'lucide-react';
 import { FileType } from './fileTypes';
 
@@ -25,6 +27,8 @@ const FILE_ICON_CONFIG: Record<FileType | 'directory', FileIconConfig> = {
   audio: { icon: Music, color: 'text-pink-500' },
   pdf: { icon: FileImage, color: 'text-red-500' },
   text: { icon: FileText, color: 'text-gray-500 dark:text-gray-400' },
+  markdown: { icon: BookOpen, color: 'text-indigo-500' },
+  word: { icon: FileType2, color: 'text-blue-600' },
   spreadsheet: { icon: FileSpreadsheet, color: 'text-emerald-500' },
   archive: { icon: Archive, color: 'text-orange-500' },
   data: { icon: Database, color: 'text-cyan-500' },

@@ -71,7 +71,9 @@
 
 ## 📚 支持的文件类型
 
-**📄 文本代码**：纯文本、Markdown、JSON、YAML、XML、JavaScript、Python、Java、C/C++、Rust、Go、PHP 等
+**📄 文本代码**：纯文本、JSON、YAML、XML、JavaScript、Python、Java、C/C++、Rust、Go、PHP 等
+
+**📝 文档格式**：**Markdown**（渲染预览）、**Word 文档**（.doc/.docx/.rtf，文本提取预览）
 
 **📦 压缩包**：ZIP、TAR（流式预览，无需解压）
 

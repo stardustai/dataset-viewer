@@ -137,6 +137,19 @@ export const fileViewer = {
   'av1.player.error.load': '加载 AV1 解码器失败',
   'av1.player.error.init': '初始化 AV1 解码器失败',
   'av1.player.error.decode': '解码视频失败',
+
+  // Markdown 查看器
+  'markdown.viewer': 'Markdown 查看器',
+  'markdown.rendered': '渲染视图',
+  'markdown.raw': '原始内容',
+
+  // Word 文档查看器
+  'word.viewer': 'Word 文档查看器',
+  'word.extracted.text': '提取的文本',
+  'word.raw.content': '原始内容',
+  'word.doc.unsupported': '此文件是旧版本的 Word 文档格式',
+  'word.doc.suggestion': '建议下载文件并使用 Microsoft Word 打开，或转换为 .docx 格式',
+  'word.preview.limitation': '这是一个简化的文档预览。为了获得最佳的查看体验，建议下载文件并使用专门的 Word 处理软件打开。',
   'av1.player.error.invalid.format': '无效的 AV1 视频格式',
   'av1.player.error.noData': '没有可用的视频数据',
   'av1.player.play': '播放',

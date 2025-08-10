@@ -15,10 +15,12 @@ import {
 import { StorageFile, SearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
+import { MarkdownViewer } from './MarkdownViewer';
+import { WordViewer } from './WordViewer';
 import { MediaViewer } from './MediaViewer';
 import { UniversalDataTableViewer } from './UniversalDataTableViewer';
 import { LanguageSwitcher } from '../LanguageSwitcher';
-import { getFileType, isTextFile, isMediaFile, isArchiveFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
+import { getFileType, isTextFile, isMarkdownFile, isWordFile, isMediaFile, isArchiveFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
 import { FileIcon } from '../../utils/fileIcons';
 import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common';
@@ -73,13 +75,15 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   const fileType = getFileType(file.basename);
   const isMedia = isMediaFile(file.basename);
   const isText = isTextFile(file.basename);
+  const isMarkdown = isMarkdownFile(file.basename);
+  const isWord = isWordFile(file.basename);
   const isArchive = isArchiveFile(file.basename);
   const isData = isDataFile(file.basename);
   const isSpreadsheet = isSpreadsheetFile(file.basename);
 
   const loadFileContent = useCallback(async () => {
-    // Only load content for text files
-    if (!isText && !isArchive && !isData) {
+    // Only load content for text and markdown files
+    if (!isText && !isMarkdown && !isArchive && !isData) {
       setLoading(false);
       return;
     }
@@ -93,6 +97,12 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
 
     // For archive files, no need to load content as ArchiveViewer handles it
     if (isArchive) {
+      setLoading(false);
+      return;
+    }
+
+    // For word files, no need to load content here as WordViewer handles it
+    if (isWord) {
       setLoading(false);
       return;
     }
@@ -128,7 +138,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     } finally {
       setLoading(false);
     }
-  }, [filePath, isText]);
+  }, [filePath, isText, isMarkdown]);
 
   const loadMoreContent = useCallback(async () => {
     if (!isLargeFile || loadingMore) return;
@@ -1021,6 +1031,19 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                   </div>
                 )}
               </>
+            ) : isMarkdown ? (
+              <MarkdownViewer
+                content={content}
+                fileName={file.basename}
+                className="h-full"
+              />
+            ) : isWord ? (
+              <WordViewer
+                filePath={filePath}
+                fileName={file.basename}
+                fileSize={file.size}
+                className="h-full"
+              />
             ) : isMedia ? (
               <MediaViewer
                 filePath={filePath}
