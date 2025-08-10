@@ -144,13 +144,27 @@ export const fileViewer = {
   'media.large.file.manual.load': 'Large media files require manual loading',
   'data.large.file.manual.load': 'Large data files require manual loading',
 
-  // AV1 Video Player
+  // AV1 video player
   'av1.player.loading': 'Loading AV1 decoder...',
   'av1.player.initializing': 'Initializing video...',
   'av1.player.decoding': 'Decoding video frames...',
   'av1.player.error.load': 'Failed to load AV1 decoder',
   'av1.player.error.init': 'Failed to initialize AV1 decoder',
   'av1.player.error.decode': 'Failed to decode video',
+
+  // Markdown viewer
+  'markdown.viewer': 'Markdown Viewer',
+  'markdown.rendered': 'Rendered View',
+  'markdown.raw': 'Raw Content',
+  'markdown.parsing': 'Parsing Markdown...',
+
+  // Word document viewer
+  'word.viewer': 'Word Document Viewer',
+  'word.extracted.text': 'Extracted Text',
+  'word.raw.content': 'Raw Content',
+  'word.doc.unsupported': 'This is an old version Word document format',
+  'word.doc.suggestion': 'Please download and open with Microsoft Word, or convert to .docx format',
+  'word.preview.limitation': 'This is a simplified document preview. For the best viewing experience, please download and open with dedicated Word processing software.',
   'av1.player.error.invalid.format': 'Invalid AV1 video format',
   'av1.player.error.noData': 'No video data available',
   'av1.player.play': 'Play',

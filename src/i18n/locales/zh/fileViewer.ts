@@ -7,7 +7,6 @@ export const fileViewer = {
 
   // 搜索功能
   'search.in.file': '在文件中搜索...',
-  'viewer.search.placeholder': '在文件中搜索...',
   'viewer.search.results': '{{current}} / {{total}}',
   'search.results': '搜索结果',
   'previous.result': '上一个结果',
@@ -30,7 +29,6 @@ export const fileViewer = {
   // 加载控制
   'load.more': '加载更多内容',
   'loaded': '已加载',
-  'viewer.load.more': '加载更多内容',
   'viewer.load.all': '加载全部内容',
   'viewer.fully.loaded': '文件已完全加载',
   'viewer.position.info': '已查看 {{current}} / {{total}} ({{percent}}%)',
@@ -38,7 +36,6 @@ export const fileViewer = {
   'file.complete': '完整文件',
   'file.remaining': '剩余',
   'load.more.chunk': '加载更多 (512KB)',
-  'load.complete.content': '加载完整内容',
 
   // 查看器功能
   'viewer.toggle.wrap': '切换自动换行',
@@ -137,6 +134,24 @@ export const fileViewer = {
   'av1.player.error.load': '加载 AV1 解码器失败',
   'av1.player.error.init': '初始化 AV1 解码器失败',
   'av1.player.error.decode': '解码视频失败',
+
+  // Markdown 查看器
+  'markdown.viewer': 'Markdown 查看器',
+  'markdown.rendered': '渲染视图',
+  'markdown.raw': '原始内容',
+  'markdown.parsing': '正在解析 Markdown...',
+
+  // Word 文档查看器
+  'word.viewer': 'Word 文档查看器',
+  'word.extracted.text': '提取的文本',
+  'word.raw.content': '原始内容',
+  'word.preview.limitation': '这是一个简化的文档预览。为了获得最佳的查看体验，建议下载文件并使用专门的 Word 处理软件打开。',
+  'word.doc.legacy.title': '旧版 Word 文档',
+  'word.doc.legacy.message': '此文件是旧版本的 Word 文档格式 (.doc)，需要专门的解析器。\n\n建议：\n1. 下载文件并使用 Microsoft Word 打开\n2. 将文件转换为 .docx 格式以获得更好的支持',
+  'word.rtf.extract.failed': '无法提取 RTF 文档内容。请下载文件以查看完整内容。',
+  'word.rtf.parse.error': '解析 RTF 文档时出错。请下载文件以查看完整内容。',
+  'word.unsupported.format': '不支持的文件格式',
+  'word.load.failed': '加载文档失败。请尝试下载文件以查看内容。',
   'av1.player.error.invalid.format': '无效的 AV1 视频格式',
   'av1.player.error.noData': '没有可用的视频数据',
   'av1.player.play': '播放',
