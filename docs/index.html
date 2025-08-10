@@ -142,7 +142,7 @@
                         🤖 100% AI 生成
                     </span>
                     <span class="min-w-0 sm:min-w-36">
-                        <span id="version-badge" class="bg-white/10 backdrop-blur text-white/80 text-sm font-medium px-4 py-2 rounded-full opacity-0 transition-all duration-500 transform scale-95 whitespace-nowrap"></span>
+                        <span id="version-badge" class="bg-white/10 backdrop-blur text-white/80 text-sm font-medium px-4 py-2 rounded-full opacity-0 transition-all duration-500 transform scale-95 whitespace-nowrap cursor-pointer hover:bg-white/20 hover:text-white hover:scale-105" onclick="openReleases()" title="查看变更日志"></span>
                     </span>
                 </div>
             </div>
@@ -645,6 +645,13 @@
                 }
             });
 
+            // 更新版本号badge的title属性
+            const versionBadge = document.getElementById('version-badge');
+            if (versionBadge && appConfig && appConfig.version) {
+                const titleText = currentLang === 'zh' ? '查看变更日志' : 'View Changelog';
+                versionBadge.setAttribute('title', titleText);
+            }
+
             // 更新页面语言属性
             document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
         }
@@ -729,6 +736,10 @@
                 versionBadge.textContent = `v${appConfig.version}`;
                 versionBadge.classList.remove('opacity-0', 'scale-95');
                 versionBadge.classList.add('opacity-100', 'scale-100');
+                
+                // 更新title属性的多语言支持
+                const titleText = currentLang === 'zh' ? '查看变更日志' : 'View Changelog';
+                versionBadge.setAttribute('title', titleText);
             }
 
             // 更新文件大小显示
@@ -1080,6 +1091,11 @@
                     window.currentAndroidTipOverlay = null;
                 }, 300);
             }
+        }
+
+        // 打开 GitHub Releases 页面
+        function openReleases() {
+            window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
         }
 
         // 页面加载动画和配置加载
