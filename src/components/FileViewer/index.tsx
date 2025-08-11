@@ -922,7 +922,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                           })}
                         </span>
                         {currentSearchIndex >= 0 && currentResults[currentSearchIndex] && (
-                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs font-medium">
+                          <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded-full text-xs font-medium">
                             {t('line.number', { line: currentResults[currentSearchIndex].line })}
                           </span>
                         )}
@@ -930,11 +930,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                           <span className="hidden sm:inline text-yellow-600 dark:text-yellow-400 text-xs">{t('search.sampling')}</span>
                         )}
                         {isCurrentResultsLimited && (
-                          <span className="hidden sm:inline text-blue-600 dark:text-blue-400 text-xs">{limitText}</span>
+                          <span className="hidden sm:inline text-orange-600 dark:text-orange-400 text-xs">{limitText}</span>
                         )}
                       </div>
                       {isCurrentResultsLimited && (
-                        <span className="hidden sm:block text-xs text-blue-500 dark:text-blue-400 mt-1">
+                        <span className="hidden sm:block text-xs text-orange-500 dark:text-orange-400 mt-1">
                           {limitDescription}
                         </span>
                       )}
