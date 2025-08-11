@@ -165,6 +165,18 @@ export const fileViewer = {
   'word.doc.unsupported': 'This is an old version Word document format',
   'word.doc.suggestion': 'Please download and open with Microsoft Word, or convert to .docx format',
   'word.preview.limitation': 'This is a simplified document preview. For the best viewing experience, please download and open with dedicated Word processing software.',
+
+  // Presentation viewer
+  'presentation.viewer': 'Presentation Viewer',
+  'presentation.fileSize': 'File size: {{size}} MB',
+  'presentation.slideCount': '{{count}} slides',
+  'presentation.preview.title': 'PowerPoint Presentation Preview',
+  'presentation.preview.description': 'This file is a PowerPoint presentation format containing slides, animations, and multimedia content.',
+  'presentation.preview.limitation.title': 'Preview Limitations',
+  'presentation.preview.limitation.description': 'Due to the complexity of presentations, not all content and effects can be fully displayed in the browser. We recommend downloading the file and opening it with PowerPoint or compatible software for the best experience.',
+  'presentation.download.to.view': 'Download file to view complete presentation',
+  'presentation.load.error': 'Failed to load presentation. Please try downloading the file to view content.',
+  'loading.presentation': 'Loading presentation "{{filename}}"...',
   'av1.player.error.invalid.format': 'Invalid AV1 video format',
   'av1.player.error.noData': 'No video data available',
   'av1.player.play': 'Play',
@@ -172,5 +184,9 @@ export const fileViewer = {
   'av1.player.reset': 'Reset',
   'av1.player.frame': 'Frame {{current}} / {{total}}',
   'av1.player.fps': 'FPS: {{fps}}',
+
+  // Presentation viewer - additional translations
+  'presentation.table.no.data': 'Table (No Data)',
+  'presentation.speaker.notes': 'Speaker Notes',
 
 };

@@ -152,6 +152,18 @@ export const fileViewer = {
   'word.rtf.parse.error': '解析 RTF 文档时出错。请下载文件以查看完整内容。',
   'word.unsupported.format': '不支持的文件格式',
   'word.load.failed': '加载文档失败。请尝试下载文件以查看内容。',
+
+  // 演示文稿查看器
+  'presentation.viewer': '演示文稿查看器',
+  'presentation.fileSize': '文件大小: {{size}} MB',
+  'presentation.slideCount': '{{count}} 张幻灯片',
+  'presentation.preview.title': 'PowerPoint 演示文稿预览',
+  'presentation.preview.description': '此文件是 PowerPoint 演示文稿格式，包含幻灯片、动画和多媒体内容。',
+  'presentation.preview.limitation.title': '预览限制',
+  'presentation.preview.limitation.description': '由于演示文稿的复杂性，无法在浏览器中完整显示所有内容和效果。建议下载文件并使用 PowerPoint 或兼容软件打开以获得最佳体验。',
+  'presentation.download.to.view': '下载文件以查看完整演示文稿',
+  'presentation.load.error': '加载演示文稿失败。请尝试下载文件以查看内容。',
+  'loading.presentation': '正在加载演示文稿 "{{filename}}"...',
   'av1.player.error.invalid.format': '无效的 AV1 视频格式',
   'av1.player.error.noData': '没有可用的视频数据',
   'av1.player.play': '播放',
@@ -159,4 +171,8 @@ export const fileViewer = {
   'av1.player.reset': '重置',
   'av1.player.frame': '帧 {{current}} / {{total}}',
   'av1.player.fps': 'FPS: {{fps}}',
+
+  // 演示文稿查看器 - 额外翻译
+  'presentation.table.no.data': '表格 (无数据)',
+  'presentation.speaker.notes': '演讲者备注',
 };

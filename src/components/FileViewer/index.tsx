@@ -17,10 +17,11 @@ import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MarkdownViewer } from './MarkdownViewer';
 import { WordViewer } from './WordViewer';
+import { PresentationViewer } from './PresentationViewer';
 import { MediaViewer } from './MediaViewer';
 import { UniversalDataTableViewer } from './UniversalDataTableViewer';
 import { LanguageSwitcher } from '../LanguageSwitcher';
-import { getFileType, isTextFile, isMarkdownFile, isWordFile, isMediaFile, isArchiveFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
+import { getFileType, isTextFile, isMarkdownFile, isWordFile, isPresentationFile, isMediaFile, isArchiveFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
 import { FileIcon } from '../../utils/fileIcons';
 import { ArchiveViewer } from './ArchiveViewer';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../common';
@@ -70,6 +71,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   const [fullFileSearchLimited, setFullFileSearchLimited] = useState(false); // 全文件搜索结果是否被限制
   const [baselineStartLineNumber, setBaselineStartLineNumber] = useState<number | null>(null); // 跳转后的基准起始行号
   const [dataMetadata, setDataMetadata] = useState<any>(null); // 数据文件元数据
+  const [presentationMetadata, setPresentationMetadata] = useState<any>(null); // 演示文稿元数据
 
   // Determine file type
   const fileType = getFileType(file.basename);
@@ -77,6 +79,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   const isText = isTextFile(file.basename);
   const isMarkdown = isMarkdownFile(file.basename);
   const isWord = isWordFile(file.basename);
+  const isPresentation = isPresentationFile(file.basename);
   const isArchive = isArchiveFile(file.basename);
   const isData = isDataFile(file.basename);
   const isSpreadsheet = isSpreadsheetFile(file.basename);
@@ -103,6 +106,12 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
 
     // For word files, no need to load content here as WordViewer handles it
     if (isWord) {
+      setLoading(false);
+      return;
+    }
+
+    // For presentation files, no need to load content here as PresentationViewer handles it
+    if (isPresentation) {
       setLoading(false);
       return;
     }
@@ -820,6 +829,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                 <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">
                   {formatFileSize(file.size)} • {(isData || isSpreadsheet) && dataMetadata ?
                     `${dataMetadata.numRows.toLocaleString()} rows • ${dataMetadata.numColumns} columns` :
+                    isPresentation && presentationMetadata ?
+                    `${presentationMetadata.slideCount} slides • ${presentationMetadata.size.width} × ${presentationMetadata.size.height} pt` :
                     isText ? getLanguageFromExtension(getFileExtension(file.basename)) : fileType
                   }
                   {isLargeFile && (
@@ -1048,6 +1059,14 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
                 fileName={file.basename}
                 fileSize={file.size}
                 className="h-full"
+              />
+            ) : isPresentation ? (
+              <PresentationViewer
+                filePath={filePath}
+                fileName={file.basename}
+                fileSize={file.size}
+                className="h-full"
+                onMetadataLoaded={setPresentationMetadata}
               />
             ) : isMedia ? (
               <MediaViewer
