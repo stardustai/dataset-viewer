@@ -27,7 +27,7 @@ interface FileViewerHeaderProps {
     isArchive: boolean;
     isData: boolean;
     isSpreadsheet: boolean;
-    isTextBased: () => boolean;
+    isTextBased: boolean;
     canPreview: () => boolean;
     needsSpecialViewer: () => boolean;
   };

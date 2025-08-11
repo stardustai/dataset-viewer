@@ -156,7 +156,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
           totalSize={totalSize}
         />
 
-      {fileInfo.isTextBased() && (
+      {fileInfo.isTextBased && (
           <FileViewerSearchBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
