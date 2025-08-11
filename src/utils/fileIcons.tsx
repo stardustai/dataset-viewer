@@ -11,7 +11,8 @@ import {
   Archive,
   Database,
   FileType2,
-  BookOpen
+  BookOpen,
+  Presentation
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { FileType } from './fileTypes';
@@ -30,6 +31,7 @@ const FILE_ICON_CONFIG: Record<FileType | 'directory', FileIconConfig> = {
   text: { icon: FileText, color: 'text-gray-500 dark:text-gray-400' },
   markdown: { icon: BookOpen, color: 'text-indigo-500' },
   word: { icon: FileType2, color: 'text-blue-600' },
+  presentation: { icon: Presentation, color: 'text-orange-600' },
   spreadsheet: { icon: FileSpreadsheet, color: 'text-emerald-500' },
   archive: { icon: Archive, color: 'text-orange-500' },
   data: { icon: Database, color: 'text-cyan-500' },
