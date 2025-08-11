@@ -9,7 +9,7 @@ import {
   Move,
   Percent
 } from 'lucide-react';
-import { SearchResult } from '../../types';
+import { SearchResult, FullFileSearchResult } from '../../types';
 
 interface FileViewerSearchBarProps {
   searchTerm: string;
@@ -19,7 +19,7 @@ interface FileViewerSearchBarProps {
   searchLoading: boolean;
   fullFileSearchLoading: boolean;
   searchResults: SearchResult[];
-  fullFileSearchResults: Array<{ line: number; column: number; text: string; match: string; filePosition: number }>;
+  fullFileSearchResults: FullFileSearchResult[];
   currentSearchIndex: number;
   searchResultsLimited: boolean;
   fullFileSearchLimited: boolean;

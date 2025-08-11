@@ -35,6 +35,10 @@ export interface SearchResult {
   match: string;
 }
 
+export interface FullFileSearchResult extends SearchResult {
+  filePosition: number;
+}
+
 export interface ReleaseInfo {
   downloadUrl: string;
   filename: string;

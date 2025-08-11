@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { StorageFile, SearchResult } from '../../../types';
+import { StorageFile, SearchResult, FullFileSearchResult } from '../../../types';
 import { StorageServiceManager } from '../../../services/storage';
 import { configManager } from '../../../config';
 import { getFileType } from '../../../utils/fileTypes';
@@ -21,7 +21,7 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
   // 搜索相关状态
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [fullFileSearchResults, setFullFileSearchResults] = useState<Array<{ line: number; column: number; text: string; match: string; filePosition: number }>>([]);
+  const [fullFileSearchResults, setFullFileSearchResults] = useState<FullFileSearchResult[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(-1);
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [fullFileSearchLoading, setFullFileSearchLoading] = useState<boolean>(false);
@@ -36,6 +36,7 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
 
   const config = configManager.getConfig();
   const fileType = getFileType(file.basename);
+  const isTextBased = ['text', 'markdown'].includes(fileType);
   
   // 创建文件信息对象，包含所有文件类型判断逻辑
   const fileInfo = {
@@ -48,8 +49,8 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     isArchive: fileType === 'archive',
     isData: fileType === 'data',
     isSpreadsheet: fileType === 'spreadsheet',
+    isTextBased: isTextBased,
     // 辅助方法
-    isTextBased: () => ['text', 'markdown'].includes(fileType),
     canPreview: () => !['archive', 'unknown'].includes(fileType),
     needsSpecialViewer: () => ['word', 'presentation', 'data', 'spreadsheet'].includes(fileType)
   };
@@ -60,7 +61,14 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
       setError(null);
 
       // 对于非文本文件，不需要加载内容
-      if (!fileInfo.isTextBased()) {
+      if (!fileInfo.isTextBased) {
+        // 清除之前的文本相关状态
+        setContent('');
+        setTotalSize(0);
+        setCurrentFilePosition(0);
+        setLoadedContentSize(0);
+        setLoadedChunks(0);
+        setError(null);
         setLoading(false);
         return;
       }
@@ -77,16 +85,18 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
         // 大文件：流式加载
         const chunkSize = config.streaming.chunkSize;
         const result = await StorageServiceManager.getFileContent(filePath, 0, chunkSize);
+        const byteLength = new TextEncoder().encode(result.content).length;
         setContent(result.content);
-        setCurrentFilePosition(0);
-        setLoadedContentSize(result.content.length);
+        setCurrentFilePosition(byteLength);
+        setLoadedContentSize(byteLength);
         setLoadedChunks(1);
       } else {
         // 小文件：一次性加载
         const result = await StorageServiceManager.getFileContent(filePath);
+        const byteLength = new TextEncoder().encode(result.content).length;
         setContent(result.content);
-        setCurrentFilePosition(0);
-        setLoadedContentSize(result.content.length);
+        setCurrentFilePosition(byteLength);
+        setLoadedContentSize(byteLength);
         setLoadedChunks(1);
       }
     } catch (err) {
@@ -95,12 +105,12 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     } finally {
       setLoading(false);
     }
-  }, [filePath, fileInfo.isTextBased(), config.streaming.maxInitialLoad, config.streaming.chunkSize]);
+  }, [filePath, isTextBased, config.streaming.maxInitialLoad, config.streaming.chunkSize]);
 
   const handleScrollToBottom = useCallback(async () => {
-    if (!isLargeFile || loadingMore) return;
+    if (!isLargeFile || loadingMore || loading) return;
 
-    const nextPosition = currentFilePosition + loadedContentSize;
+    const nextPosition = currentFilePosition;
     if (nextPosition >= totalSize) return;
 
     try {
@@ -108,9 +118,11 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
       const chunkSize = config.streaming.chunkSize;
       const endPosition = Math.min(nextPosition + chunkSize, totalSize);
       const result = await StorageServiceManager.getFileContent(filePath, nextPosition, endPosition - nextPosition);
+      const byteLength = new TextEncoder().encode(result.content).length;
 
       setContent(prev => prev + result.content);
-      setLoadedContentSize(prev => prev + result.content.length);
+      setCurrentFilePosition(prev => prev + byteLength);
+      setLoadedContentSize(prev => prev + byteLength);
       setLoadedChunks(prev => prev + 1);
     } catch (err) {
       console.error('Failed to load more content:', err);
@@ -118,7 +130,7 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     } finally {
       setLoadingMore(false);
     }
-  }, [isLargeFile, loadingMore, currentFilePosition, loadedContentSize, totalSize, filePath, config.streaming.chunkSize]);
+  }, [isLargeFile, loadingMore, loading, currentFilePosition, totalSize, filePath, config.streaming.chunkSize]);
 
   const jumpToFilePercentage = useCallback(async (percentage: number) => {
     if (!isLargeFile) return;
@@ -130,9 +142,10 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
       const endPosition = Math.min(targetPosition + chunkSize, totalSize);
 
       const result = await StorageServiceManager.getFileContent(filePath, targetPosition, endPosition - targetPosition);
+      const byteLength = new TextEncoder().encode(result.content).length;
       setContent(result.content);
-      setCurrentFilePosition(targetPosition);
-      setLoadedContentSize(result.content.length);
+      setCurrentFilePosition(targetPosition + byteLength);
+      setLoadedContentSize(byteLength);
       setLoadedChunks(1);
 
       // 估算起始行号
@@ -158,7 +171,7 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
 
     // 对于小文件，直接在当前内容中搜索
     if (!isLargeFile) {
-      const results: Array<{ line: number; column: number; text: string; match: string; filePosition: number }> = [];
+      const results: FullFileSearchResult[] = [];
       const lines = content.split('\n');
       const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
 
@@ -182,7 +195,7 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     // 对于大文件，使用采样搜索
     setFullFileSearchLoading(true);
     try {
-      const results: Array<{ line: number; column: number; text: string; match: string; filePosition: number }> = [];
+      const results: FullFileSearchResult[] = [];
       const sampleSize = 1024 * 512; // 512KB 采样块大小
       const maxSamples = 50; // 最多采样50个块
       const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');

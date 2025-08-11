@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { SearchResult } from '../../../types';
+import { SearchResult, FullFileSearchResult } from '../../../types';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -11,17 +11,17 @@ interface UseFileSearchProps {
   searchTerm: string;
   fullFileSearchMode: boolean;
   searchResults: SearchResult[];
-  fullFileSearchResults: Array<{ line: number; column: number; text: string; match: string; filePosition: number }>;
+  fullFileSearchResults: FullFileSearchResult[];
   currentSearchIndex: number;
   navigatingToResult: boolean;
   isLargeFile: boolean;
   filePath: string;
   totalSize: number;
-  performFullFileSearch: (term: string) => Promise<Array<{ line: number; column: number; text: string; match: string; filePosition: number }>>;
+  performFullFileSearch: (term: string) => Promise<FullFileSearchResult[]>;
   setSearchLoading: (loading: boolean) => void;
   setFullFileSearchLoading: (loading: boolean) => void;
   setSearchResults: (results: SearchResult[]) => void;
-  setFullFileSearchResults: (results: Array<{ line: number; column: number; text: string; match: string; filePosition: number }>) => void;
+  setFullFileSearchResults: (results: FullFileSearchResult[]) => void;
   setCurrentSearchIndex: (index: number) => void;
   setSearchResultsLimited: (limited: boolean) => void;
   setFullFileSearchLimited: (limited: boolean) => void;
@@ -122,7 +122,7 @@ export const useFileSearch = ({
   }, [fullFileSearchMode, performFullFileSearch, setSearchResults, setFullFileSearchResults, setCurrentSearchIndex, setSearchLoading, setFullFileSearchLoading, setSearchResultsLimited, setFullFileSearchLimited]);
 
   // 处理全文件搜索结果导航
-  const navigateToFullFileSearchResult = useCallback(async (result: { line: number; column: number; text: string; match: string; filePosition: number }) => {
+  const navigateToFullFileSearchResult = useCallback(async (result: FullFileSearchResult) => {
     if (!isLargeFile) {
       // 小文件直接滚动到行和列
       if (textViewerRef.current) {
@@ -185,7 +185,7 @@ export const useFileSearch = ({
 
     if (fullFileSearchMode && 'filePosition' in result) {
       // 全文件搜索结果导航
-      navigateToFullFileSearchResult(result as { line: number; column: number; text: string; match: string; filePosition: number });
+      navigateToFullFileSearchResult(result as FullFileSearchResult);
     } else {
       // 当前内容搜索结果导航
       if (textViewerRef.current) {

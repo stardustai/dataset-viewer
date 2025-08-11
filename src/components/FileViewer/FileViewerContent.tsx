@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
-import { StorageFile, SearchResult } from '../../types';
+import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './viewers/VirtualizedTextViewer';
 import { MarkdownViewer } from './viewers/MarkdownViewer';
@@ -29,7 +29,7 @@ interface FileViewerContentProps {
   searchTerm: string;
   currentSearchIndex: number;
   searchResults: SearchResult[];
-  fullFileSearchResults: Array<{ line: number; column: number; text: string; match: string; filePosition: number }>;
+  fullFileSearchResults: FullFileSearchResult[];
   fullFileSearchMode: boolean;
   containerHeight: number;
   calculateStartLineNumber?: (filePosition: number) => number;
