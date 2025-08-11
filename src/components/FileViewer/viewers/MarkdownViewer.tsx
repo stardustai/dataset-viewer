@@ -5,6 +5,7 @@ import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
 import { LoadingDisplay } from '../../common/StatusDisplay';
 import { formatFileSize } from '../../../utils/fileUtils';
+import DOMPurify from 'dompurify';
 
 interface MarkdownViewerProps {
   content: string;
@@ -229,7 +230,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
         ) : (
           <div 
             className="prose prose-gray dark:prose-invert max-w-none p-6"
-            dangerouslySetInnerHTML={{ __html: parsedContent }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(parsedContent) }}
           />
         )}
       </div>
