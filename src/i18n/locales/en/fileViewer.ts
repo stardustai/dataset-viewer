@@ -185,4 +185,8 @@ export const fileViewer = {
   'av1.player.frame': 'Frame {{current}} / {{total}}',
   'av1.player.fps': 'FPS: {{fps}}',
 
+  // Presentation viewer - additional translations
+  'presentation.table.no.data': 'Table (No Data)',
+  'presentation.speaker.notes': 'Speaker Notes',
+
 };

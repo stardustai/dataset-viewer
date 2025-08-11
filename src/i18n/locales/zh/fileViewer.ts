@@ -171,4 +171,8 @@ export const fileViewer = {
   'av1.player.reset': '重置',
   'av1.player.frame': '帧 {{current}} / {{total}}',
   'av1.player.fps': 'FPS: {{fps}}',
+
+  // 演示文稿查看器 - 额外翻译
+  'presentation.table.no.data': '表格 (无数据)',
+  'presentation.speaker.notes': '演讲者备注',
 };

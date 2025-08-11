@@ -47,7 +47,7 @@ interface RenderableElement {
 }
 
 // 渲染单个幻灯片元素
-const renderSlideElement = (element: RenderableElement, key: string) => {
+const renderSlideElement = (element: RenderableElement, key: string, t: (key: string) => string) => {
   const style: React.CSSProperties = {
     position: 'absolute',
     left: `${element.left}pt`,
@@ -195,7 +195,7 @@ const renderSlideElement = (element: RenderableElement, key: string) => {
           style={style}
           className="overflow-visible border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-500"
         >
-          表格 (无数据)
+          {t('presentation.table.no.data')}
         </div>
       );
     
@@ -213,7 +213,7 @@ const renderSlideElement = (element: RenderableElement, key: string) => {
 };
 
 // 渲染单个幻灯片
-const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height: number } }> = ({ slide, slideSize }) => {
+const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height: number }; t: (key: string) => string }> = ({ slide, slideSize, t }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5); // 设置一个合理的初始缩放值，避免初始渲染时的突然变化
 
@@ -284,12 +284,12 @@ const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height
     >
       {/* 渲染布局元素 */}
       {slide.layoutElements?.map((element, index) => 
-        renderSlideElement(element as RenderableElement, `layout-${index}`)
+        renderSlideElement(element as RenderableElement, `layout-${index}`, t)
       )}
       
       {/* 渲染幻灯片元素 */}
       {slide.elements.map((element, index) => 
-        renderSlideElement(element as RenderableElement, `element-${index}`)
+        renderSlideElement(element as RenderableElement, `element-${index}`, t)
       )}
     </div>
   );
@@ -403,6 +403,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
                 <SlideRenderer 
                   slide={slide} 
                   slideSize={presentationData.size}
+                  t={t}
                 />
               </div>
               
@@ -417,7 +418,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
               {slide.note && (
                 <div className="mt-6 max-w-4xl mx-auto">
                   <h3 className="text-md font-medium text-gray-900 dark:text-white mb-2">
-                    演讲者备注
+                    {t('presentation.speaker.notes')}
                   </h3>
                   <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <p className="text-gray-700 dark:text-gray-300 text-sm">
