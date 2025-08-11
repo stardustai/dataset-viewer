@@ -73,7 +73,7 @@
 
 **📄 文本代码**：纯文本、JSON、YAML、XML、JavaScript、Python、Java、C/C++、Rust、Go、PHP 等
 
-**📝 文档格式**：**Markdown**（渲染预览）、**Word 文档**（.doc/.docx/.rtf，文本提取预览）
+**📝 文档格式**：**Markdown**（渲染预览）、**Word 文档**（.docx/.rtf，文本提取预览）、**PowerPoint 演示文稿**（.pptx，幻灯片预览）
 
 **📦 压缩包**：ZIP、TAR（流式预览，无需解压）
 
