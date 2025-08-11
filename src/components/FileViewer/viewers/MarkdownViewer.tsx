@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
-import { LoadingDisplay } from '../common/StatusDisplay';
-import { formatFileSize } from '../../utils/fileUtils';
+import { LoadingDisplay } from '../../common/StatusDisplay';
+import { formatFileSize } from '../../../utils/fileUtils';
 
 interface MarkdownViewerProps {
   content: string;

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle,
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Copy, Braces } from 'lucide-react';
-import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
+import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -229,7 +229,6 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   onSearchResults,
   onScrollToBottom,
   className = '',
-  height,
   startLineNumber = 1,
   currentSearchIndex = -1,
   searchResults = [],
@@ -238,7 +237,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   const lines = useMemo(() => content.split('\n'), [content]);
 
   // Refs
-  const parentRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lineNumberRef = useRef<HTMLDivElement>(null);
   const highlightCacheRef = useRef<Map<string, React.ReactNode>>(new Map());
@@ -546,9 +545,8 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
   return (
     <div
-      ref={parentRef}
+      ref={containerRef}
       className={`w-full h-full flex bg-white dark:bg-gray-900 ${className}`}
-      style={{ height: height ? `${height}px` : '100%' }}
     >
       {/* 固定的行号区域 */}
       <div

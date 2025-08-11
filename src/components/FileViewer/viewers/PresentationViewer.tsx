@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Presentation, AlertCircle } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
-import { StorageServiceManager } from '../../services/storage';
+import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
+import { StorageServiceManager } from '../../../services/storage';
 import { parse } from 'pptxtojson';
 
 interface PresentationMetadata {

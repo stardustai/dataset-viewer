@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 import mammoth from 'mammoth';
-import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
-import { StorageServiceManager } from '../../services/storage';
+import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
+import { StorageServiceManager } from '../../../services/storage';
 
 interface WordViewerProps {
   filePath: string;

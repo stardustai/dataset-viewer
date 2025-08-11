@@ -196,7 +196,7 @@ function App() {
 
         {/* 文件查看器 - 只在查看状态时显示 */}
         {appState === 'viewing' && selectedFile && (
-          <div className="page-transition">
+          <div className="page-transition h-full">
             <FileViewer
               file={selectedFile}
               filePath={selectedFilePath}
