@@ -55,13 +55,13 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     needsSpecialViewer: () => ['word', 'presentation', 'data', 'spreadsheet'].includes(fileType)
   };
 
-  const loadFileContent = useCallback(async () => {
+  const loadFileContent = useCallback(async (forceLoad = false) => {
     try {
       setLoading(true);
       setError(null);
 
-      // 对于非文本文件，不需要加载内容
-      if (!fileInfo.isTextBased) {
+      // 对于非文本文件，不需要加载内容（除非强制加载）
+      if (!fileInfo.isTextBased && !forceLoad) {
         // 清除之前的文本相关状态
         setContent('');
         setTotalSize(0);

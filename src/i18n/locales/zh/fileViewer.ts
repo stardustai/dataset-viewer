@@ -175,4 +175,7 @@ export const fileViewer = {
   // 演示文稿查看器 - 额外翻译
   'presentation.table.no.data': '表格 (无数据)',
   'presentation.speaker.notes': '演讲者备注',
+
+  // 不支持格式的文本查看选项
+  'viewer.open.as.text': '以文本格式打开',
 };

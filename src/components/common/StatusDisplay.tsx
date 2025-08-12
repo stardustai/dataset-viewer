@@ -186,10 +186,12 @@ export const UnsupportedFormatDisplay: React.FC<{
   message?: string;
   secondaryMessage?: string;
   className?: string;
+  onOpenAsText?: () => void;
 }> = ({
   message,
   secondaryMessage,
-  className
+  className,
+  onOpenAsText
 }) => {
   const { t } = useTranslation();
   return (
@@ -197,6 +199,11 @@ export const UnsupportedFormatDisplay: React.FC<{
       type="unsupported"
       message={message || t('status.unsupported.format')}
       secondaryMessage={secondaryMessage || t('status.unsupported.download')}
+      action={onOpenAsText ? {
+        label: t('viewer.open.as.text'),
+        onClick: onOpenAsText,
+        variant: 'primary'
+      } : undefined}
       className={className}
     />
   );

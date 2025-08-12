@@ -86,7 +86,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     fullFileSearchLoading,
     searchResultsLimited,
     fullFileSearchLimited,
-    navigatingToResult
+    navigatingToResult,
+    loadFileContent
   } = fileLoader;
 
 
@@ -216,6 +217,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
         loadMoreSectionRef={loadMoreSectionRef}
         isMarkdownPreviewOpen={isMarkdownPreviewOpen}
         setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
+        loadFileContent={loadFileContent}
       />
     </div>
   );

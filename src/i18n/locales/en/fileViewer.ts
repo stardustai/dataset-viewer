@@ -189,4 +189,7 @@ export const fileViewer = {
   'presentation.table.no.data': 'Table (No Data)',
   'presentation.speaker.notes': 'Speaker Notes',
 
+  // Unsupported format text view option
+  'viewer.open.as.text': 'Open as Text',
+
 };
