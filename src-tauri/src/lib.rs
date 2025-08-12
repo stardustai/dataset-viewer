@@ -6,13 +6,8 @@ mod utils;    // 通用工具模块
 use archive::{handlers::ArchiveHandler, types::*};
 use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
 use download::{DownloadManager, DownloadRequest};
-use std::sync::{Arc, LazyLock};
-use tauri::Emitter;
-#[cfg(target_os = "android")]
-use tauri::Manager;
-
-
-// 移除参数结构体，直接在命令中使用 serde rename 属性
+use std::sync::{Arc, LazyLock, Mutex};
+use tauri::{Emitter, Manager, Listener};
 
 // 全局下载管理器
 static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
@@ -21,6 +16,52 @@ static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
 // 全局压缩包处理器
 static ARCHIVE_HANDLER: LazyLock<Arc<ArchiveHandler>> =
     LazyLock::new(|| Arc::new(ArchiveHandler::new()));
+
+// 前端就绪状态和待处理文件队列
+static FRONTEND_STATE: LazyLock<Mutex<FrontendState>> = LazyLock::new(|| {
+    Mutex::new(FrontendState {
+        is_ready: false,
+        pending_files: Vec::new(),
+    })
+});
+
+#[derive(Debug)]
+struct FrontendState {
+    is_ready: bool,
+    pending_files: Vec<String>,
+}
+
+// 处理文件打开请求的辅助函数
+fn handle_file_open_request(app: &tauri::AppHandle, file_path: String) {
+    // 将窗口置于前台
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_focus();
+        let _ = window.unminimize();
+    }
+    
+    // 检查前端是否就绪
+    if let Ok(mut state) = FRONTEND_STATE.lock() {
+        if state.is_ready {
+            // 前端已就绪，立即发送事件
+            let _ = app.emit("file-opened", &file_path);
+        } else {
+            // 前端未就绪，加入待处理队列
+            state.pending_files.push(file_path);
+        }
+    }
+}
+
+// 处理前端就绪事件的辅助函数
+fn handle_frontend_ready(app: &tauri::AppHandle) {
+    if let Ok(mut state) = FRONTEND_STATE.lock() {
+        state.is_ready = true;
+        
+        // 处理所有待处理的文件
+        for file_path in state.pending_files.drain(..) {
+            let _ = app.emit("file-opened", &file_path);
+        }
+    }
+}
 
 #[tauri::command]
 async fn storage_request(
@@ -522,9 +563,165 @@ async fn handle_android_back_button(app: tauri::AppHandle) -> Result<bool, Strin
     Ok(true)
 }
 
+/// Windows 平台文件关联注册
+#[cfg(target_os = "windows")]
+async fn register_windows_file_associations() -> Result<String, String> {
+    use std::process::Command;
+    
+    // 获取当前可执行文件路径
+    let exe_path = std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+    let exe_path_str = exe_path.to_string_lossy();
+    
+    // 定义支持的文件扩展名
+    let extensions = vec![
+        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", 
+        "bz2", "xz", "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", 
+        "jsonl", "js", "ts", "jsx", "tsx", "html", "css", "scss", "less", "py", 
+        "java", "cpp", "c", "php", "rb", "go", "rs", "xml", "yaml", "yml", 
+        "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md", 
+        "markdown", "mdown", "mkd", "mdx"
+    ];
+    
+    let mut registered_count = 0;
+    
+    for ext in extensions {
+        // 注册文件类型
+        let output = Command::new("reg")
+            .args([
+                "add",
+                &format!("HKCU\\Software\\Classes\\.{}", ext),
+                "/v", "",
+                "/d", "DatasetViewer.File",
+                "/f"
+            ])
+            .output();
+            
+        if output.is_ok() {
+            registered_count += 1;
+        }
+    }
+    
+    // 注册应用程序信息
+     let _ = Command::new("reg")
+         .args([
+             "add",
+             "HKCU\\Software\\Classes\\DatasetViewer.File\\shell\\open\\command",
+             "/v", "",
+             "/d", &format!("\"{}\" \"%1\"", exe_path_str),
+             "/f"
+         ])
+         .output();
+    
+     Ok(format!("Successfully registered {} file associations on Windows", registered_count))
+}
+
+/// macOS 平台文件关联注册
+#[cfg(target_os = "macos")]
+async fn register_macos_file_associations() -> Result<String, String> {
+    // macOS 上文件关联通过 Info.plist 和 Launch Services 处理
+    // 在构建时已经通过 tauri.conf.json 中的 fileAssociations 配置
+    // 这里可以刷新 Launch Services 数据库
+    use std::process::Command;
+    
+    let output = Command::new("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
+        .args(["-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"])
+        .output();
+        
+    match output {
+        Ok(_) => Ok("File associations refreshed successfully on macOS".to_string()),
+        Err(e) => Err(format!("Failed to refresh file associations on macOS: {}", e))
+    }
+}
+
+/// Linux 平台文件关联注册
+#[cfg(target_os = "linux")]
+async fn register_linux_file_associations() -> Result<String, String> {
+    use std::process::Command;
+    use std::fs;
+    use std::path::Path;
+    
+    // 获取当前可执行文件路径
+    let exe_path = std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+    let exe_path_str = exe_path.to_string_lossy();
+    
+    // 创建 .desktop 文件
+    let home_dir = std::env::var("HOME").map_err(|_| "Failed to get HOME directory".to_string())?;
+    let desktop_dir = format!("{}/.local/share/applications", home_dir);
+    let desktop_file_path = format!("{}/dataset-viewer.desktop", desktop_dir);
+    
+    // 确保目录存在
+    if let Some(parent) = Path::new(&desktop_file_path).parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
+    }
+    
+    let desktop_content = format!(
+        "[Desktop Entry]\n\
+        Name=Dataset Viewer\n\
+        Comment=Modern dataset viewer with large file streaming support\n\
+        Exec={} %f\n\
+        Icon=dataset-viewer\n\
+        Terminal=false\n\
+        Type=Application\n\
+        Categories=Office;Development;\n\
+        MimeType=text/csv;application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.oasis.opendocument.spreadsheet;application/octet-stream;application/zip;application/x-tar;application/gzip;application/x-bzip2;application/x-xz;application/x-7z-compressed;application/x-rar-compressed;text/plain;application/json;text/html;text/css;text/javascript;application/javascript;text/x-python;text/x-java-source;text/x-c;text/x-c++;text/x-php;text/x-ruby;text/x-go;text/x-rust;application/xml;text/yaml;application/sql;text/x-shellscript;text/x-log;text/markdown;image/jpeg;image/png;image/gif;image/webp;image/svg+xml;image/bmp;image/x-icon;image/tiff;application/pdf;video/mp4;video/webm;video/ogg;video/x-msvideo;video/quicktime;video/x-ms-wmv;video/x-flv;video/x-matroska;audio/mpeg;audio/ogg;audio/wav;audio/x-flac;audio/aac;audio/x-m4a;application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/rtf;application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.oasis.opendocument.presentation;\n",
+        exe_path_str
+    );
+    
+    fs::write(&desktop_file_path, desktop_content)
+        .map_err(|e| format!("Failed to write desktop file: {}", e))?;
+    
+    // 更新 MIME 数据库
+    let _ = Command::new("update-desktop-database")
+        .arg(desktop_dir)
+        .output();
+        
+    Ok("File associations registered successfully on Linux".to_string())
+}
+
+/// 注册文件关联
+/// 在不同平台上注册应用程序与支持的文件类型的关联
+#[tauri::command]
+async fn register_file_associations() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        // Windows 平台的文件关联注册
+        register_windows_file_associations().await
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // macOS 平台的文件关联注册
+        register_macos_file_associations().await
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // Linux 平台的文件关联注册
+        register_linux_file_associations().await
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+     {
+         Err("File association registration is not supported on this platform".to_string())
+     }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    
+    // Single instance plugin is not supported on Android/mobile platforms
+    #[cfg(not(target_os = "android"))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // 当应用已经运行时，处理新的文件打开请求
+            if args.len() > 1 {
+                let file_path = &args[1];
+                if std::path::Path::new(file_path).exists() {
+                    handle_file_open_request(app, file_path.to_string());
+                }
+            }
+        }));
+    }
+    
+    let builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
@@ -561,9 +758,29 @@ pub fn run() {
             // 新增：通过存储客户端的压缩包处理命令
             analyze_archive_with_client,
             get_archive_preview_with_client,
-            handle_android_back_button
-        ]);
+            handle_android_back_button,
+            // 文件关联注册命令
+            register_file_associations
+        ])
+        .setup(|app| {
+            // 监听前端就绪事件
+            let app_handle = app.handle().clone();
+            app.listen("frontend-ready", move |_event| {
+                handle_frontend_ready(&app_handle);
+            });
+            
+            // 处理命令行参数，支持文件关联
+            let args: Vec<String> = std::env::args().collect();
+            if args.len() > 1 {
+                let file_path = &args[1];
+                if std::path::Path::new(file_path).exists() {
+                    handle_file_open_request(&app.handle(), file_path.to_string());
+                }
+            }
+            Ok(())
+        });
 
+    // Add Android-specific window event handling
     #[cfg(target_os = "android")]
     let builder = builder.on_window_event(|window, event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -577,6 +794,20 @@ pub fn run() {
     });
 
     builder
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error building tauri application")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = event {
+                let files = urls
+                    .into_iter()
+                    .filter_map(|url| url.to_file_path().ok())
+                    .collect::<Vec<_>>();
+                
+                if !files.is_empty() {
+                    let file_path = files[0].to_string_lossy().to_string();
+                    handle_file_open_request(app, file_path);
+                }
+            }
+        });
 }

@@ -60,7 +60,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
           compareValue = a.basename.toLowerCase().localeCompare(b.basename.toLowerCase());
           break;
         case 'size':
-          compareValue = a.size - b.size;
+          compareValue = (a.size || 0) - (b.size || 0);
           break;
         case 'modified':
           compareValue = new Date(a.lastmod).getTime() - new Date(b.lastmod).getTime();
@@ -81,7 +81,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     count: processedFiles.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 60, // 每行高度
-    overscan: 10, // 预渲染的行数
+    overscan: 5, // 减少预渲染的行数以提升性能
   });
 
   // 渲染文件图标
@@ -128,8 +128,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   return (
     <div
       ref={parentRef}
-      style={{ height: height ? `${height}px` : '100%', maxHeight: '100%' }}
-      className="overflow-auto"
+      style={{ height: height ? `${height}px` : '100%' }}
+      className="h-full overflow-auto"
       data-virtualized-container
     >
       <div

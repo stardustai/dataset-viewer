@@ -253,7 +253,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                 onClearSearch={() => setSearchTerm('')}
               />
             ) : (
-              <div className="bg-white dark:bg-gray-800 flex-1 overflow-hidden">
+              <div className="bg-white dark:bg-gray-800 flex-1 min-h-0">
                 <VirtualizedFileList
                   files={filteredAndSortedFiles}
                   onFileClick={handleItemClick}
@@ -261,6 +261,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                   sortField={sortField}
                   sortDirection={sortDirection}
                   searchTerm={searchTerm}
+                  height={undefined} // 让组件自适应高度
                 />
               </div>
             )

@@ -264,10 +264,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   },
   ref
 ) => {
-  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const lineNumberRef = useRef<HTMLDivElement>(null);
   const [modalState, setModalState] = useState({
     isOpen: false,
     lineNumber: 0,
@@ -280,11 +277,28 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     return Math.max(40, maxLineNumber.toString().length * 8 + 16);
   }, [lines.length, startLineNumber]);
 
+  // 创建搜索结果的Map以提高查找性能
+  const searchResultsMap = useMemo(() => {
+    const map = new Map<number, boolean>();
+    searchResults.forEach(result => {
+      map.set(result.line, true);
+    });
+    return map;
+  }, [searchResults]);
+
+  // 缓存搜索正则表达式
+  const searchRegex = useMemo(() => {
+    if (!searchTerm || searchTerm.length < 2) return null;
+    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(${escapedTerm})`, 'gi');
+  }, [searchTerm]);
+
   const virtualizer = useVirtualizer({
     count: lines.length,
-    getScrollElement: () => contentRef.current,
-    estimateSize: () => 24,
-    overscan: 10,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 24, // 每行高度
+    overscan: 3, // 进一步减少overscan以提高性能
+    measureElement: undefined, // 使用固定高度，避免动态测量
   });
 
   const performSearch = useCallback((term: string) => {
@@ -329,23 +343,25 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   }, [searchTerm, performSearch]);
 
   const renderLineWithHighlight = useCallback((line: string, lineIndex: number) => {
-    if (!searchTerm || searchTerm.length < 2) {
+    if (!searchRegex) {
       return line;
     }
 
     const currentLineNumber = startLineNumber + lineIndex;
-    const currentSearchResult = searchResults.find(result => result.line === currentLineNumber);
     
-    if (!currentSearchResult) {
+    // 使用Map快速查找，避免线性搜索
+    if (!searchResultsMap.has(currentLineNumber)) {
       return line;
     }
 
-    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(${escapedTerm})`, 'gi');
-    const parts = line.split(regex);
+    // 重置正则表达式状态并分割文本
+    searchRegex.lastIndex = 0;
+    const parts = line.split(searchRegex);
 
     return parts.map((part, index) => {
-      if (regex.test(part)) {
+      // 重置正则表达式状态进行测试
+      searchRegex.lastIndex = 0;
+      if (searchRegex.test(part)) {
         const isCurrentMatch = currentSearchIndex >= 0 && 
           searchResults[currentSearchIndex] && 
           searchResults[currentSearchIndex].line === currentLineNumber;
@@ -364,7 +380,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
       }
       return part;
     });
-  }, [searchTerm, searchResults, currentSearchIndex, startLineNumber]);
+  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber]);
 
   const handleLineClick = useCallback((lineIndex: number) => {
     const lineContent = lines[lineIndex] || '';
@@ -408,37 +424,47 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     }
   }), [virtualizer, lines, startLineNumber]);
 
+  // 行号区域引用
+  const lineNumberRef = useRef<HTMLDivElement>(null);
+
+  // 滚动同步和滚动到底部检测
   useEffect(() => {
+    const container = containerRef.current;
+    const lineNumberContainer = lineNumberRef.current;
+    if (!container) return;
+
     const handleScroll = () => {
-      if (!contentRef.current || !onScrollToBottom) return;
+      // 同步行号区域滚动
+      if (lineNumberContainer) {
+        lineNumberContainer.scrollTop = container.scrollTop;
+      }
       
-      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-      
+      // 滚动到底部检测
       if (onScrollToBottom) {
+        const { scrollTop, scrollHeight, clientHeight } = container;
         const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        
         if (isNearBottom) {
           onScrollToBottom();
         }
       }
     };
 
-    const element = contentRef.current;
-    if (element) {
-      element.addEventListener('scroll', handleScroll);
-      return () => element.removeEventListener('scroll', handleScroll);
-    }
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
   }, [onScrollToBottom]);
 
   return (
-    <div className={`w-full h-full flex flex-col bg-white dark:bg-gray-900 overflow-auto ${className}`}>
-      <div
-        ref={containerRef}
-        className="flex-1 flex bg-white dark:bg-gray-900"
-      >
-        <div
-          ref={lineNumberRef}
-          className="bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-hidden"
-          style={{ width: `${calculateLineNumberWidth}px` }}
+    <>
+      <div className="w-full h-full relative flex">
+        {/* 固定行号区域 */}
+          <div 
+            ref={lineNumberRef}
+            className="flex-shrink-0 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-hidden relative z-10"
+            style={{ 
+              width: `${calculateLineNumberWidth}px`,
+              pointerEvents: 'none'
+            }}
         >
           <div
             style={{
@@ -453,18 +479,21 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                 searchResults[currentSearchIndex].line === currentLineNumber;
 
               return (
-                <div
-                  key={`line-${virtualItem.key}`}
-                  className={`absolute w-full text-right pr-2 text-[13px] font-mono leading-6 select-none ${
-                    isCurrentSearchLine
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 font-semibold'
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                  style={{
-                    height: `${virtualItem.size}px`,
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                >
+                 <div
+                   key={`line-${virtualItem.key}`}
+                   className={`absolute top-0 left-0 w-full text-right pr-2 text-[13px] font-mono leading-6 select-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                     isCurrentSearchLine
+                       ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 font-semibold'
+                       : 'text-gray-500 dark:text-gray-400'
+                   }`}
+                   style={{
+                     height: `${virtualItem.size}px`,
+                     transform: `translateY(${virtualItem.start}px)`,
+                     pointerEvents: 'auto'
+                   }}
+                   onClick={() => handleLineClick(virtualItem.index)}
+                   title="点击查看完整行内容"
+                 >
                   {isCurrentSearchLine && (
                     <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
                   )}
@@ -474,10 +503,11 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
             })}
           </div>
         </div>
-
+        
+        {/* 内容滚动区域 */}
         <div
-          ref={contentRef}
-          className="flex-1 overflow-auto bg-white dark:bg-gray-900"
+          ref={containerRef}
+          className={`flex-1 bg-white dark:bg-gray-900 overflow-auto ${className}`}
         >
           <div
             style={{
@@ -490,23 +520,25 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
               const isCurrentSearchLine = currentSearchIndex >= 0 &&
                 searchResults[currentSearchIndex] &&
                 searchResults[currentSearchIndex].line === currentLineNumber;
+              const lineContent = lines[virtualItem.index] || '';
 
               return (
                 <div
-                  key={virtualItem.key}
-                  className={`absolute top-0 left-0 w-full cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                  key={`content-${virtualItem.key}`}
+                  className={`absolute top-0 left-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
                     isCurrentSearchLine ? 'bg-blue-50 dark:bg-blue-900/10' : ''
                   }`}
                   style={{
                     height: `${virtualItem.size}px`,
                     transform: `translateY(${virtualItem.start}px)`,
-                    minWidth: 'max-content',
                   }}
                   onClick={() => handleLineClick(virtualItem.index)}
                   title="点击查看完整行内容"
                 >
                   <div className="text-[13px] font-mono leading-6 h-full pl-2 pr-4 text-gray-900 dark:text-gray-100 whitespace-pre">
-                    {renderLineWithHighlight(lines[virtualItem.index] || '', virtualItem.index)}
+                    <div className="min-w-max">
+                      {renderLineWithHighlight(lineContent, virtualItem.index)}
+                    </div>
                   </div>
                 </div>
               );
@@ -531,7 +563,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
           fileName={fileName}
         />
       )}
-    </div>
+    </>
   );
 });
 

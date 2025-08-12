@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { emit } from '@tauri-apps/api/event';
 import { ConnectionPanel } from './components/ConnectionPanel';
 import { FileBrowser } from './components/FileBrowser';
 import { FileViewer } from './components/FileViewer';
@@ -10,6 +11,7 @@ import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
 import { navigationHistoryService } from './services/navigationHistory';
 import { androidBackHandler, AndroidBackHandlerService } from './services/androidBackHandler';
+import { fileAssociationService } from './services/fileAssociationService';
 import { useTheme } from './hooks/useTheme';
 import './i18n';
 import './App.css';
@@ -51,11 +53,45 @@ function App() {
       }
     };
 
+    // 监听文件打开事件
+    const setupFileOpenListener = async () => {
+      try {
+        await fileAssociationService.setupFileOpenListener(
+          (file: StorageFile, fileName: string) => {
+            // 文件打开成功回调
+            const currentStorageClient = StorageServiceManager.getCurrentClient();
+            handleFileSelect(file, fileName, currentStorageClient);
+          },
+          (error: string) => {
+            // 错误回调
+            console.error('File association error:', error);
+            setAppState('connecting');
+          }
+        );
+      } catch (error) {
+        console.error('Failed to setup file open listener:', error);
+      }
+    };
+
     // 尝试自动连接到上次的服务
     const tryAutoConnect = async () => {
       try {
         // 初始化安卓返回按钮处理
         await initializeAndroidBackHandler();
+        
+        // 设置文件打开监听器
+        await setupFileOpenListener();
+
+        // 等待一小段时间，让文件关联事件有机会触发
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // 检查是否已经通过文件关联连接了
+        const isConnected = await fileAssociationService.isConnectedViaFileAssociation();
+        if (isConnected) {
+          // 如果已经连接（通过文件关联），不需要自动连接
+          removeInitialLoader();
+          return;
+        }
 
         // 检查用户是否主动断开了连接
         const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
@@ -74,10 +110,24 @@ function App() {
           setAppState('connecting');
         }
         removeInitialLoader();
+        
+        // 通知后端前端已初始化完成
+        try {
+          await emit('frontend-ready');
+        } catch (error) {
+          console.error('Failed to emit frontend-ready event:', error);
+        }
       } catch (error) {
         console.warn('Auto connect failed:', error);
         setAppState('connecting');
         removeInitialLoader();
+        
+        // 即使出错也要通知后端前端已初始化完成
+        try {
+          await emit('frontend-ready');
+        } catch (emitError) {
+          console.error('Failed to emit frontend-ready event:', emitError);
+        }
       }
     };
 
