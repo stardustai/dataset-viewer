@@ -264,7 +264,6 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   },
   ref
 ) => {
-  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lineNumberRef = useRef<HTMLDivElement>(null);

@@ -25,6 +25,14 @@ export const settings = {
   'cache.cleared.success': '缓存和连接清理成功',
   'cache.clear.failed': '缓存清理失败',
 
+  // 文件关联
+  'settings.file.association': '文件关联',
+  'file.association.description': '注册支持的文件类型关联，让系统知道可以用此应用打开这些文件',
+  'register.file.associations': '注册文件关联',
+  'registering.file.associations': '注册中...',
+  'file.associations.success': '文件关联注册成功',
+  'file.associations.failed': '文件关联注册失败',
+
   // 关于
   'about': '关于',
   'app.description': '现代化的数据集查看工具',

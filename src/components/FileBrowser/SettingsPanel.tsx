@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2 } from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Link } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
 import { navigationHistoryService } from '../../services/navigationHistory';
@@ -20,6 +21,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const [isChecking, setIsChecking] = useState(false);
   const [autoCheck, setAutoCheck] = useState(true);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isRegisteringFileAssociations, setIsRegisteringFileAssociations] = useState(false);
 
   const checkForUpdates = async () => {
     setIsChecking(true);
@@ -72,13 +74,27 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     }
   };
 
+  const handleRegisterFileAssociations = async () => {
+    setIsRegisteringFileAssociations(true);
+    try {
+      const result = await invoke<string>('register_file_associations');
+      console.log('File associations registered successfully:', result);
+      showToast(t('file.associations.success'), 'success');
+    } catch (error) {
+      console.error('Failed to register file associations:', error);
+      showToast(t('file.associations.failed'), 'error');
+    } finally {
+      setIsRegisteringFileAssociations(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
           <div className="flex items-center space-x-2">
             <Settings className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('settings')}</h2>
@@ -92,7 +108,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {/* Theme Settings */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.theme')}</h3>
@@ -213,6 +229,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             </div>
           </div>
 
+          {/* File Associations */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.file.association')}</h3>
+            <div className="space-y-3">
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                {t('file.association.description')}
+              </p>
+              <button
+                onClick={handleRegisterFileAssociations}
+                disabled={isRegisteringFileAssociations}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Link className={`w-4 h-4 ${isRegisteringFileAssociations ? 'animate-pulse' : ''}`} />
+                <span className="text-sm">{isRegisteringFileAssociations ? t('registering.file.associations') : t('register.file.associations')}</span>
+              </button>
+            </div>
+          </div>
+
           {/* About */}
           <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('about')}</h3>
@@ -225,7 +259,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-600">
+        <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm"

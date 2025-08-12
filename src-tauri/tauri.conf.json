@@ -44,6 +44,74 @@
     "longDescription": "A powerful dataset viewer that supports multiple storage types (WebDAV, local files, OSS, HuggingFace) with efficient streaming for large text files and archives.",
     "android": {
       "minSdkVersion": 24
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": ["csv", "xlsx", "xls", "ods"],
+        "name": "Spreadsheet Files",
+        "description": "Spreadsheet and CSV files",
+        "role": "Editor"
+      },
+      {
+        "ext": ["parquet", "pqt"],
+        "name": "Data Files",
+        "description": "Parquet data files",
+        "role": "Editor"
+      },
+      {
+        "ext": ["zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar", "lz4", "zst", "zstd", "br"],
+        "name": "Archive Files",
+        "description": "Compressed archive files",
+        "role": "Editor"
+      },
+      {
+        "ext": ["txt", "json", "jsonl", "js", "ts", "jsx", "tsx", "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml", "yaml", "yml", "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv"],
+        "name": "Text Files",
+        "description": "Text and code files",
+        "role": "Editor"
+      },
+      {
+        "ext": ["md", "markdown", "mdown", "mkd", "mdx"],
+        "name": "Markdown Files",
+        "description": "Markdown documentation files",
+        "role": "Editor"
+      },
+      {
+        "ext": ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "tiff", "tif"],
+        "name": "Image Files",
+        "description": "Image files",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["pdf"],
+        "name": "PDF Files",
+        "description": "PDF documents",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["mp4", "webm", "ogv", "avi", "mov", "wmv", "flv", "mkv", "m4v", "ivf", "av1"],
+        "name": "Video Files",
+        "description": "Video files",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["mp3", "wav", "oga", "aac", "flac", "ogg", "m4a", "wma"],
+        "name": "Audio Files",
+        "description": "Audio files",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["doc", "docx", "rtf"],
+        "name": "Word Documents",
+        "description": "Word document files",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["ppt", "pptx", "odp"],
+        "name": "Presentation Files",
+        "description": "Presentation files",
+        "role": "Viewer"
+      }
+    ]
   }
 }

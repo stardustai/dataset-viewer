@@ -60,7 +60,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
           compareValue = a.basename.toLowerCase().localeCompare(b.basename.toLowerCase());
           break;
         case 'size':
-          compareValue = a.size - b.size;
+          compareValue = (a.size || 0) - (b.size || 0);
           break;
         case 'modified':
           compareValue = new Date(a.lastmod).getTime() - new Date(b.lastmod).getTime();
