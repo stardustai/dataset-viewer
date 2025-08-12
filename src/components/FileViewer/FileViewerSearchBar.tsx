@@ -7,7 +7,8 @@ import {
   ChevronDown,
   X,
   Move,
-  Percent
+  Percent,
+  Eye
 } from 'lucide-react';
 import { SearchResult, FullFileSearchResult } from '../../types';
 
@@ -32,6 +33,8 @@ interface FileViewerSearchBarProps {
   onNextResult: () => void;
   onPercentageJump: () => void;
   onPercentKeyPress: (e: React.KeyboardEvent) => void;
+  isMarkdown?: boolean;
+  onMarkdownPreview?: () => void;
 }
 
 export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
@@ -54,7 +57,9 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
   onPrevResult,
   onNextResult,
   onPercentageJump,
-  onPercentKeyPress
+  onPercentKeyPress,
+  isMarkdown,
+  onMarkdownPreview
 }) => {
   const { t } = useTranslation();
 
@@ -186,6 +191,17 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
                 <Move className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
             </div>
+          )}
+          
+          {/* Markdown preview button */}
+          {isMarkdown && onMarkdownPreview && (
+            <button
+              onClick={onMarkdownPreview}
+              className="px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              title={t('markdown.preview')}
+            >
+              <Eye className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </button>
           )}
         </div>
       </div>

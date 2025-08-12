@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { VirtualizedTextViewer } from './viewers/VirtualizedTextViewer';
-import { MarkdownViewer } from './viewers/MarkdownViewer';
+
 import { WordViewer } from './viewers/WordViewer';
 import { PresentationViewer } from './viewers/PresentationViewer';
 import { MediaViewer } from './viewers/MediaViewer';
@@ -59,6 +59,8 @@ interface FileViewerContentProps {
   containerRef?: any;
   mainContainerRef?: any;
   loadMoreSectionRef?: any;
+  isMarkdownPreviewOpen?: boolean;
+  setIsMarkdownPreviewOpen?: (open: boolean) => void;
 }
 
 export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewerContentProps>((
@@ -75,16 +77,17 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     searchResults,
     fullFileSearchResults,
     fullFileSearchMode,
+    containerHeight,
     calculateStartLineNumber,
     fileInfo,
     isLargeFile,
     loadingMore,
-    loadedChunks,
-    loadedContentSize,
     handleSearchResults,
     handleScrollToBottom,
     setPresentationMetadata,
-    setDataMetadata
+    setDataMetadata,
+    isMarkdownPreviewOpen,
+    setIsMarkdownPreviewOpen
   },
   ref
 ) => {
@@ -114,10 +117,10 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     );
   }
 
-  if (fileInfo.isText) {
+  if (fileInfo.isText || fileInfo.isMarkdown) {
     return (
       <>
-        <div className="flex-1 relative overflow-hidden">
+        <div className="flex-1 relative overflow-hidden" style={{ height: `${containerHeight}px` }}>
           <VirtualizedTextViewer
             ref={ref}
             content={content}
@@ -127,6 +130,11 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
             startLineNumber={calculateStartLineNumber ? calculateStartLineNumber(0) : 1}
             currentSearchIndex={currentSearchIndex}
             searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
+            fileName={file.basename}
+            isMarkdown={fileInfo.isMarkdown}
+            height={containerHeight}
+            isMarkdownPreviewOpen={isMarkdownPreviewOpen}
+            setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
           />
         </div>
 
@@ -140,21 +148,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
           </div>
         )}
       </>
-    );
-  }
-
-  if (fileInfo.isMarkdown) {
-    return (
-      <MarkdownViewer
-        content={content}
-        fileName={file.basename}
-        className="flex-1"
-        onScrollToBottom={isLargeFile ? handleScrollToBottom : undefined}
-        isLargeFile={isLargeFile}
-        loadingMore={loadingMore}
-        loadedChunks={loadedChunks}
-        loadedContentSize={loadedContentSize}
-      />
     );
   }
 

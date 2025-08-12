@@ -1,5 +1,5 @@
 // Viewer components exports
-export { MarkdownViewer } from './MarkdownViewer';
+
 export { WordViewer } from './WordViewer';
 export { MediaViewer } from './MediaViewer';
 export { PresentationViewer } from './PresentationViewer';

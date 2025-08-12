@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Copy, Braces } from 'lucide-react';
+import { Copy, Braces, X } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
+import { micromark } from 'micromark';
+import { gfm, gfmHtml } from 'micromark-extension-gfm';
+import DOMPurify from 'dompurify';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -14,6 +17,10 @@ interface VirtualizedTextViewerProps {
   startLineNumber?: number;
   currentSearchIndex?: number;
   searchResults?: Array<{ line: number; column: number; text: string; match: string }>;
+  fileName?: string;
+  isMarkdown?: boolean;
+  isMarkdownPreviewOpen?: boolean;
+  setIsMarkdownPreviewOpen?: (open: boolean) => void;
 }
 
 interface VirtualizedTextViewerRef {
@@ -22,7 +29,6 @@ interface VirtualizedTextViewerRef {
   jumpToFilePosition: (filePosition: number) => void;
 }
 
-// 行内容弹窗组件
 const LineContentModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -30,82 +36,32 @@ const LineContentModal: React.FC<{
   content: string;
   searchTerm?: string;
 }> = ({ isOpen, onClose, lineNumber, content, searchTerm }) => {
-  const modalRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [isFormatted, setIsFormatted] = useState(false);
 
-  // 格式化配置持久化键
-  const FORMAT_PREFERENCE_KEY = 'text-viewer-format-preference';
-
-  // 格式化状态
-  const [isFormatted, setIsFormatted] = useState(() => {
-    // 从localStorage读取用户的格式化偏好
-    const saved = localStorage.getItem(FORMAT_PREFERENCE_KEY);
-    return saved === 'true';
-  });
-  const [formattedContent, setFormattedContent] = useState('');
-
-  // 检查内容是否可能是JSON
-  const isLikelyJSON = useCallback((text: string) => {
+  const isLikelyJSON = (text: string): boolean => {
     const trimmed = text.trim();
     return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
            (trimmed.startsWith('[') && trimmed.endsWith(']'));
-  }, []);
+  };
 
-  // JSON格式化函数
-  const formatAsJSON = useCallback((showToast = true) => {
+  const formatJSON = (text: string): string => {
     try {
-      // 尝试解析JSON
-      const parsed = JSON.parse(content.trim());
-      // 格式化为缩进的JSON
-      const formatted = JSON.stringify(parsed, null, 2);
-      setFormattedContent(formatted);
-      setIsFormatted(true);
-      // 只在手动触发时显示成功提醒
-      if (showToast) {
-        showCopyToast(t('format.json.success'));
-      }
-    } catch (error) {
-      // 只在手动触发时显示失败提醒
-      if (showToast) {
-        showCopyToast(t('format.json.failed'));
-        // 格式化失败时自动关闭弹窗
-        setTimeout(() => {
-          onClose();
-        }, 1500); // 1.5秒后自动关闭
-      }
+      const parsed = JSON.parse(text);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return text;
     }
-  }, [content, t, onClose]);
+  };
 
-  // 重置格式化状态当内容变化时
-  useEffect(() => {
-    // 如果用户偏好格式化且内容看起来像JSON，自动尝试格式化
-    const shouldAutoFormat = localStorage.getItem(FORMAT_PREFERENCE_KEY) === 'true';
-    if (shouldAutoFormat && isLikelyJSON(content)) {
-      formatAsJSON(false); // 自动格式化时不显示提醒
-    } else {
-      setIsFormatted(false);
-      setFormattedContent('');
-    }
-  }, [content, formatAsJSON, isLikelyJSON, FORMAT_PREFERENCE_KEY]);
+  const currentContent = isFormatted ? formatJSON(content) : content;
+  const currentContentLabel = isFormatted ? t('formatted.json') : t('original.content');
 
-  // 切换显示模式
-  const toggleFormatView = useCallback(() => {
-    if (isFormatted) {
-      setIsFormatted(false);
-      // 保存用户偏好：不格式化
-      localStorage.setItem(FORMAT_PREFERENCE_KEY, 'false');
-    } else {
-      formatAsJSON();
-      // 保存用户偏好：格式化
-      localStorage.setItem(FORMAT_PREFERENCE_KEY, 'true');
-    }
-  }, [isFormatted, formatAsJSON, FORMAT_PREFERENCE_KEY]);
+  const toggleFormatView = () => {
+    setIsFormatted(!isFormatted);
+  };
 
-  // 获取当前显示的内容
-  const currentContent = isFormatted ? formattedContent : content;
-  const currentContentLabel = isFormatted ? t('formatted.content') : t('original.content');
-
-  // 处理点击外部关闭
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
@@ -128,7 +84,6 @@ const LineContentModal: React.FC<{
     };
   }, [isOpen, onClose]);
 
-  // 高亮搜索词
   const renderHighlightedContent = useCallback((text: string) => {
     if (!searchTerm || searchTerm.length < 2) {
       return text;
@@ -158,7 +113,6 @@ const LineContentModal: React.FC<{
         ref={modalRef}
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[72vh] flex flex-col"
       >
-        {/* 标题栏 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -171,7 +125,6 @@ const LineContentModal: React.FC<{
             )}
           </div>
           <div className="flex items-center space-x-2">
-            {/* JSON格式化按钮 */}
             {isLikelyJSON(content) && (
               <button
                 onClick={toggleFormatView}
@@ -191,14 +144,12 @@ const LineContentModal: React.FC<{
           </div>
         </div>
 
-        {/* 内容区域 */}
         <div className="flex-1 overflow-auto p-4">
           <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 font-mono text-sm whitespace-pre-wrap break-words">
             {renderHighlightedContent(currentContent)}
           </div>
         </div>
 
-        {/* 底部操作栏 */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
           <span>{t('characters')}: {currentContent.length}</span>
           <button
@@ -221,313 +172,248 @@ const LineContentModal: React.FC<{
   );
 };
 
+const MarkdownPreviewModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  content: string;
+  fileName: string;
+}> = ({ isOpen, onClose, content, fileName }) => {
+  const { t } = useTranslation();
+  const [parsedContent, setParsedContent] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !content) return;
+
+    setIsLoading(true);
+    
+    const parseMarkdown = async () => {
+      try {
+        const contentWithoutFrontMatter = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+        
+        const parsed = micromark(contentWithoutFrontMatter, {
+          allowDangerousHtml: true,
+          extensions: [gfm()],
+          htmlExtensions: [gfmHtml()]
+        });
+        
+        setParsedContent(parsed);
+      } catch (error) {
+        console.error('Error parsing markdown:', error);
+        setParsedContent(content);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    parseMarkdown();
+  }, [isOpen, content]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-900 shadow-xl w-full h-full flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {t('markdown.preview')} - {fileName}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-auto p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-600 dark:text-gray-400">
+                {t('markdown.parsing')}
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="prose prose-gray dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(parsedContent) }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MAX_SEARCH_RESULTS = 1000;
 
-export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, VirtualizedTextViewerProps>(({
-  content,
-  searchTerm = '',
-  onSearchResults,
-  onScrollToBottom,
-  className = '',
-  startLineNumber = 1,
-  currentSearchIndex = -1,
-  searchResults = [],
-}, ref) => {
-  // 将内容分割为行
-  const lines = useMemo(() => content.split('\n'), [content]);
-
-  // Refs
+export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, VirtualizedTextViewerProps>((
+  {
+    content,
+    searchTerm = '',
+    onSearchResults,
+    onScrollToBottom,
+    className = '',
+    startLineNumber = 1,
+    currentSearchIndex = -1,
+    searchResults = [],
+    fileName = '',
+    isMarkdown = false,
+    isMarkdownPreviewOpen = false,
+    setIsMarkdownPreviewOpen,
+  },
+  ref
+) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lineNumberRef = useRef<HTMLDivElement>(null);
-  const highlightCacheRef = useRef<Map<string, React.ReactNode>>(new Map());
-  const textMeasureRef = useRef<HTMLCanvasElement | null>(null);
-
-  // 弹窗状态
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean;
-    lineNumber: number;
-    content: string;
-  }>({
+  const [modalState, setModalState] = useState({
     isOpen: false,
     lineNumber: 0,
-    content: '',
+    content: ''
   });
 
-  // 处理行点击
-  const handleLineClick = useCallback((lineIndex: number) => {
-    const lineNumber = startLineNumber + lineIndex;
-    const lineContent = lines[lineIndex] || '';
-    setModalState({
-      isOpen: true,
-      lineNumber,
-      content: lineContent,
-    });
-  }, [startLineNumber, lines]);
+  const lines = useMemo(() => content.split('\n'), [content]);
+  const calculateLineNumberWidth = useMemo(() => {
+    const maxLineNumber = startLineNumber + lines.length - 1;
+    return Math.max(40, maxLineNumber.toString().length * 8 + 16);
+  }, [lines.length, startLineNumber]);
 
-  // 关闭弹窗
-  const closeModal = useCallback(() => {
-    setModalState(prev => ({ ...prev, isOpen: false }));
-  }, []);
-
-  // 虚拟化配置 - 使用固定行高简化实现
   const virtualizer = useVirtualizer({
     count: lines.length,
     getScrollElement: () => contentRef.current,
-    estimateSize: () => 24, // 固定行高
+    estimateSize: () => 24,
     overscan: 10,
   });
 
-  // 动态计算行号区域宽度
-  const calculateLineNumberWidth = useMemo(() => {
-    const maxLineNumber = startLineNumber + lines.length - 1;
-    const digits = Math.max(3, String(maxLineNumber).length); // 至少3位数宽度
-    return Math.max(60, digits * 8 + 16); // 每位数8px + 左右padding 16px，最小60px
-  }, [startLineNumber, lines.length]);
-
-  // 使用 Canvas 精确测量文本宽度
-  const measureTextWidth = useCallback((text: string) => {
-    if (!textMeasureRef.current) {
-      textMeasureRef.current = document.createElement('canvas');
-    }
-
-    const canvas = textMeasureRef.current;
-    const context = canvas.getContext('2d');
-    if (!context) return text.length * 8; // 备用方案
-
-    // 设置与实际渲染相同的字体
-    context.font = '13px ui-monospace, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
-    return context.measureText(text).width;
-  }, []);
-
-  // 搜索功能
   const performSearch = useCallback((term: string) => {
-    if (!term.trim() || !onSearchResults) {
+    if (!term || term.length < 2) {
       onSearchResults?.([], false);
-      highlightCacheRef.current.clear();
       return;
     }
 
-    try {
-      const results: Array<{ line: number; column: number; text: string; match: string }> = [];
-      const searchRegex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const results: Array<{ line: number; column: number; text: string; match: string }> = [];
+    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedTerm, 'gi');
+    let isLimited = false;
 
-      let resultCount = 0;
-
-      for (let i = 0; i < lines.length && resultCount < MAX_SEARCH_RESULTS; i++) {
-        const line = lines[i];
-        let match;
-        searchRegex.lastIndex = 0;
-
-        while ((match = searchRegex.exec(line)) !== null && resultCount < MAX_SEARCH_RESULTS) {
-          results.push({
-            line: startLineNumber + i,
-            column: match.index + 1,
-            text: line,
-            match: match[0]
-          });
-          resultCount++;
-
-          if (searchRegex.lastIndex === match.index) {
-            searchRegex.lastIndex++;
-          }
-        }
-      }
-
-      const isLimited = resultCount >= MAX_SEARCH_RESULTS;
-      onSearchResults(results, isLimited);
-      highlightCacheRef.current.clear();
-    } catch (error) {
-      console.warn('Search failed:', error);
-      onSearchResults([], false);
-    }
-  }, [lines, startLineNumber, onSearchResults]);
-
-  // 搜索效果
-  useEffect(() => {
-    performSearch(searchTerm);
-  }, [searchTerm, performSearch]);
-
-  // 当前搜索索引变化时清理缓存
-  useEffect(() => {
-    highlightCacheRef.current.clear();
-  }, [currentSearchIndex]);
-
-  // 高亮渲染函数
-  const renderLineWithHighlight = useCallback((text: string, lineIndex: number) => {
-    if (!searchTerm || searchTerm.length < 2) {
-      return text;
-    }
-
-    const cacheKey = `${searchTerm}-${lineIndex}-${currentSearchIndex}`;
-    if (highlightCacheRef.current.has(cacheKey)) {
-      return highlightCacheRef.current.get(cacheKey);
-    }
-
-    try {
-      const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(${escapedTerm})`, 'gi');
-
-      // 当前行号（基于 startLineNumber）
-      const currentLineNumber = startLineNumber + lineIndex;
-
-      // 获取当前活跃的搜索结果
-      const activeResult = currentSearchIndex >= 0 && searchResults[currentSearchIndex]
-        ? searchResults[currentSearchIndex]
-        : null;
-
-      // 查找所有匹配
-      const matches: Array<{ start: number; end: number; text: string; isActive: boolean }> = [];
+    for (let i = 0; i < lines.length && results.length < MAX_SEARCH_RESULTS; i++) {
+      const line = lines[i];
       let match;
       regex.lastIndex = 0;
-
-      while ((match = regex.exec(text)) !== null) {
-        const isActiveMatch = activeResult &&
-          activeResult.line === currentLineNumber &&
-          activeResult.column === match.index + 1 &&
-          activeResult.match === match[0];
-
-        matches.push({
-          start: match.index,
-          end: match.index + match[0].length,
-          text: match[0],
-          isActive: !!isActiveMatch
+      
+      while ((match = regex.exec(line)) !== null && results.length < MAX_SEARCH_RESULTS) {
+        results.push({
+          line: startLineNumber + i,
+          column: match.index + 1,
+          text: line,
+          match: match[0]
         });
-
-        // 防止无限循环
+        
         if (regex.lastIndex === match.index) {
           regex.lastIndex++;
         }
       }
+    }
 
-      if (matches.length === 0) {
-        highlightCacheRef.current.set(cacheKey, text);
-        return text;
-      }
+    if (results.length >= MAX_SEARCH_RESULTS) {
+      isLimited = true;
+    }
 
-      // 构建高亮结果
-      const result: React.ReactNode[] = [];
-      let lastIndex = 0;
+    onSearchResults?.(results, isLimited);
+  }, [lines, onSearchResults, startLineNumber]);
 
-      matches.forEach((match, index) => {
-        // 添加匹配前的文本
-        if (match.start > lastIndex) {
-          result.push(text.slice(lastIndex, match.start));
-        }
+  useEffect(() => {
+    performSearch(searchTerm);
+  }, [searchTerm, performSearch]);
 
-        // 添加高亮的匹配文本
-        const highlightClass = match.isActive
-          ? "search-highlight-active"
-          : "search-highlight";
+  const renderLineWithHighlight = useCallback((line: string, lineIndex: number) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      return line;
+    }
 
-        result.push(
-          <mark key={`match-${index}`} className={highlightClass}>
-            {match.text}
+    const currentLineNumber = startLineNumber + lineIndex;
+    const currentSearchResult = searchResults.find(result => result.line === currentLineNumber);
+    
+    if (!currentSearchResult) {
+      return line;
+    }
+
+    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedTerm})`, 'gi');
+    const parts = line.split(regex);
+
+    return parts.map((part, index) => {
+      if (regex.test(part)) {
+        const isCurrentMatch = currentSearchIndex >= 0 && 
+          searchResults[currentSearchIndex] && 
+          searchResults[currentSearchIndex].line === currentLineNumber;
+        
+        return (
+          <mark 
+            key={index} 
+            className={isCurrentMatch 
+              ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100' 
+              : 'bg-yellow-200 dark:bg-yellow-800'
+            }
+          >
+            {part}
           </mark>
         );
-
-        lastIndex = match.end;
-      });
-
-      // 添加最后剩余的文本
-      if (lastIndex < text.length) {
-        result.push(text.slice(lastIndex));
       }
+      return part;
+    });
+  }, [searchTerm, searchResults, currentSearchIndex, startLineNumber]);
 
-      highlightCacheRef.current.set(cacheKey, result);
-      return result;
-    } catch (error) {
-      return text;
-    }
-  }, [searchTerm, currentSearchIndex, searchResults, startLineNumber]);
+  const handleLineClick = useCallback((lineIndex: number) => {
+    const lineContent = lines[lineIndex] || '';
+    const lineNumber = startLineNumber + lineIndex;
+    
+    setModalState({
+      isOpen: true,
+      lineNumber,
+      content: lineContent
+    });
+  }, [lines, startLineNumber]);
 
-  // 滚动方法
-  const scrollToLine = useCallback((lineNumber: number, column?: number) => {
-    const index = lineNumber - startLineNumber;
-    if (index >= 0 && index < lines.length) {
-      virtualizer.scrollToIndex(index, { align: 'center' });
+  const closeModal = useCallback(() => {
+    setModalState(prev => ({ ...prev, isOpen: false }));
+  }, []);
 
-      // 如果提供了列号，等待纵向滚动完成后再进行横向滚动
-      if (column !== undefined && contentRef.current) {
-        setTimeout(() => {
-          const container = contentRef.current;
-          if (!container) return;
-
-          const padding = 8; // 左侧padding
-
-          // 获取目标行的实际文本内容，更准确地计算位置
-          const targetLineContent = lines[index] || '';
-          const textBeforeColumn = targetLineContent.substring(0, column - 1);
-
-          // 使用 Canvas 精确测量文本宽度
-          const actualTextWidth = measureTextWidth(textBeforeColumn);
-          const targetX = padding + actualTextWidth;
-
-          // 获取容器的可视区域宽度
-          const containerWidth = container.clientWidth;
-          const scrollLeft = container.scrollLeft;
-          const visibleStart = scrollLeft;
-          const visibleEnd = scrollLeft + containerWidth;
-
-          // 如果目标位置不在可视区域内，则滚动到合适位置
-          if (targetX < visibleStart || targetX > visibleEnd - 100) { // 留一些边距
-            // 将目标位置滚动到可视区域的左侧1/4位置，便于查看上下文
-            const newScrollLeft = Math.max(0, targetX - containerWidth / 4);
-            container.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
-          }
-        }, 150); // 增加到150ms让纵向滚动更充分完成
+  useImperativeHandle(ref, () => ({
+    scrollToLine: (lineNumber: number) => {
+      const targetIndex = lineNumber - startLineNumber;
+      if (targetIndex >= 0 && targetIndex < lines.length) {
+        virtualizer.scrollToIndex(targetIndex, { align: 'center' });
       }
-    }
-  }, [virtualizer, startLineNumber, lines.length, lines, measureTextWidth]);
-
-  const scrollToPercentage = useCallback((percentage: number) => {
-    if (lines.length > 0) {
+    },
+    scrollToPercentage: (percentage: number) => {
       const targetIndex = Math.floor((lines.length - 1) * (percentage / 100));
       virtualizer.scrollToIndex(targetIndex, { align: 'start' });
-    }
-  }, [virtualizer, lines.length]);
-
-  const jumpToFilePosition = useCallback((filePosition: number) => {
-    if (lines.length === 0 || filePosition < 0) return;
-
-    let cumulativeLength = 0;
-    for (let i = 0; i < lines.length; i++) {
-      if (cumulativeLength + lines[i].length >= filePosition) {
-        scrollToLine(startLineNumber + i);
-        return;
+    },
+    jumpToFilePosition: (filePosition: number) => {
+      let currentPosition = 0;
+      let targetLineIndex = 0;
+      
+      for (let i = 0; i < lines.length; i++) {
+        if (currentPosition >= filePosition) {
+          targetLineIndex = i;
+          break;
+        }
+        currentPosition += lines[i].length + 1;
       }
-      cumulativeLength += lines[i].length + 1; // +1 for newline
+      
+      virtualizer.scrollToIndex(targetLineIndex, { align: 'center' });
     }
+  }), [virtualizer, lines, startLineNumber]);
 
-    scrollToLine(startLineNumber + lines.length - 1);
-  }, [lines, scrollToLine, startLineNumber]);
-
-  // 暴露方法
-  useImperativeHandle(ref, () => ({
-    scrollToLine,
-    scrollToPercentage,
-    jumpToFilePosition,
-  }), [scrollToLine, scrollToPercentage, jumpToFilePosition]);
-
-  // 滚动到当前搜索结果
-  useEffect(() => {
-    if (currentSearchIndex >= 0 && searchResults[currentSearchIndex]) {
-      const result = searchResults[currentSearchIndex];
-      scrollToLine(result.line, result.column);
-    }
-  }, [currentSearchIndex, searchResults, scrollToLine]);
-
-  // 滚动到底部检测和行号同步
   useEffect(() => {
     const handleScroll = () => {
-      if (!contentRef.current || !lineNumberRef.current) return;
-
+      if (!contentRef.current || !onScrollToBottom) return;
+      
       const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-
-      // 同步行号区域的垂直滚动
-      lineNumberRef.current.scrollTop = scrollTop;
-
-      // 检查是否接近底部
+      
       if (onScrollToBottom) {
         const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
         if (isNearBottom) {
@@ -544,95 +430,91 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   }, [onScrollToBottom]);
 
   return (
-    <div
-      ref={containerRef}
-      className={`w-full h-full flex bg-white dark:bg-gray-900 ${className}`}
-    >
-      {/* 固定的行号区域 */}
+    <div className={`w-full h-full flex flex-col bg-white dark:bg-gray-900 overflow-auto ${className}`}>
       <div
-        ref={lineNumberRef}
-        className="bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-hidden"
-        style={{ width: `${calculateLineNumberWidth}px` }}
+        ref={containerRef}
+        className="flex-1 flex bg-white dark:bg-gray-900"
       >
         <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            position: 'relative',
-          }}
+          ref={lineNumberRef}
+          className="bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-hidden"
+          style={{ width: `${calculateLineNumberWidth}px` }}
         >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const currentLineNumber = startLineNumber + virtualItem.index;
-            const isCurrentSearchLine = currentSearchIndex >= 0 &&
-              searchResults[currentSearchIndex] &&
-              searchResults[currentSearchIndex].line === currentLineNumber;
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const currentLineNumber = startLineNumber + virtualItem.index;
+              const isCurrentSearchLine = currentSearchIndex >= 0 &&
+                searchResults[currentSearchIndex] &&
+                searchResults[currentSearchIndex].line === currentLineNumber;
 
-            return (
-              <div
-                key={`line-${virtualItem.key}`}
-                className={`absolute w-full text-right pr-2 text-[13px] font-mono leading-6 select-none ${
-                  isCurrentSearchLine
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 font-semibold'
-                    : 'text-gray-500 dark:text-gray-400'
-                }`}
-                style={{
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                {/* 当前搜索行指示器 */}
-                {isCurrentSearchLine && (
-                  <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
-                )}
-                {currentLineNumber}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 可滚动的内容区域 */}
-      <div
-        ref={contentRef}
-        className="flex-1 overflow-auto"
-      >
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: 'max-content',
-            minWidth: '100%',
-            position: 'relative',
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const currentLineNumber = startLineNumber + virtualItem.index;
-            const isCurrentSearchLine = currentSearchIndex >= 0 &&
-              searchResults[currentSearchIndex] &&
-              searchResults[currentSearchIndex].line === currentLineNumber;
-
-            return (
-              <div
-                key={`content-${virtualItem.key}`}
-                className={`absolute top-0 left-0 w-full cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                  isCurrentSearchLine ? 'bg-blue-50 dark:bg-blue-900/10' : ''
-                }`}
-                style={{
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
-                  minWidth: 'max-content',
-                }}
-                onClick={() => handleLineClick(virtualItem.index)}
-                title="点击查看完整行内容"
-              >
-                <div className="text-[13px] font-mono leading-6 h-full pl-2 pr-4 text-gray-900 dark:text-gray-100 whitespace-pre">
-                  {renderLineWithHighlight(lines[virtualItem.index] || '', virtualItem.index)}
+              return (
+                <div
+                  key={`line-${virtualItem.key}`}
+                  className={`absolute w-full text-right pr-2 text-[13px] font-mono leading-6 select-none ${
+                    isCurrentSearchLine
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 font-semibold'
+                      : 'text-gray-500 dark:text-gray-400'
+                  }`}
+                  style={{
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  {isCurrentSearchLine && (
+                    <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                  )}
+                  {currentLineNumber}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+
+        <div
+          ref={contentRef}
+          className="flex-1 overflow-auto bg-white dark:bg-gray-900"
+        >
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const currentLineNumber = startLineNumber + virtualItem.index;
+              const isCurrentSearchLine = currentSearchIndex >= 0 &&
+                searchResults[currentSearchIndex] &&
+                searchResults[currentSearchIndex].line === currentLineNumber;
+
+              return (
+                <div
+                  key={virtualItem.key}
+                  className={`absolute top-0 left-0 w-full cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                    isCurrentSearchLine ? 'bg-blue-50 dark:bg-blue-900/10' : ''
+                  }`}
+                  style={{
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                    minWidth: 'max-content',
+                  }}
+                  onClick={() => handleLineClick(virtualItem.index)}
+                  title="点击查看完整行内容"
+                >
+                  <div className="text-[13px] font-mono leading-6 h-full pl-2 pr-4 text-gray-900 dark:text-gray-100 whitespace-pre">
+                    {renderLineWithHighlight(lines[virtualItem.index] || '', virtualItem.index)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* 行内容弹窗 */}
       <LineContentModal
         isOpen={modalState.isOpen}
         onClose={closeModal}
@@ -640,6 +522,15 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         content={modalState.content}
         searchTerm={searchTerm}
       />
+      
+      {isMarkdown && setIsMarkdownPreviewOpen && (
+        <MarkdownPreviewModal
+          isOpen={isMarkdownPreviewOpen}
+          onClose={() => setIsMarkdownPreviewOpen(false)}
+          content={content}
+          fileName={fileName}
+        />
+      )}
     </div>
   );
 });

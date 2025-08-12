@@ -152,8 +152,8 @@ export const fileViewer = {
   'av1.player.error.init': 'Failed to initialize AV1 decoder',
   'av1.player.error.decode': 'Failed to decode video',
 
-  // Markdown viewer
-  'markdown.viewer': 'Markdown Viewer',
+  // Markdown 查看器
+  'markdown.preview': 'Markdown Preview',
   'markdown.rendered': 'Rendered View',
   'markdown.raw': 'Raw Content',
   'markdown.parsing': 'Parsing Markdown...',

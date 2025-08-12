@@ -25,6 +25,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   
   // 动态计算容器高度
   const [containerHeight, setContainerHeight] = useState<number>(600);
+  
+  // Markdown 预览状态
+  const [isMarkdownPreviewOpen, setIsMarkdownPreviewOpen] = useState(false);
 
   useEffect(() => {
     const updateHeight = () => {
@@ -178,6 +181,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
             onPrevResult={prevResult}
             onPercentageJump={handlePercentageJump}
             onPercentKeyPress={handlePercentKeyPress}
+            isMarkdown={fileInfo.isMarkdown}
+            onMarkdownPreview={() => setIsMarkdownPreviewOpen(true)}
           />
         )}
 
@@ -209,6 +214,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
         containerRef={containerRef}
         mainContainerRef={mainContainerRef}
         loadMoreSectionRef={loadMoreSectionRef}
+        isMarkdownPreviewOpen={isMarkdownPreviewOpen}
+        setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
       />
     </div>
   );

@@ -136,7 +136,7 @@ export const fileViewer = {
   'av1.player.error.decode': '解码视频失败',
 
   // Markdown 查看器
-  'markdown.viewer': 'Markdown 查看器',
+  'markdown.preview': 'Markdown 预览',
   'markdown.rendered': '渲染视图',
   'markdown.raw': '原始内容',
   'markdown.parsing': '正在解析 Markdown...',
