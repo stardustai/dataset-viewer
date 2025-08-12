@@ -122,8 +122,8 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
 
   if (fileInfo.isText || fileInfo.isMarkdown) {
     return (
-      <>
-        <div className="flex-1 relative overflow-hidden" style={{ height: `${containerHeight}px` }}>
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0">
           <VirtualizedTextViewer
             ref={ref}
             content={content}
@@ -143,14 +143,14 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
 
         {/* 底部加载状态指示器 */}
         {isLargeFile && loadingMore && (
-          <div className="flex justify-center py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+          <div className="flex justify-center py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
             <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>{t('loading')}</span>
             </div>
           </div>
         )}
-      </>
+      </div>
     );
   }
 
