@@ -148,7 +148,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       <MarkdownViewer
         content={content}
         fileName={file.basename}
-        className="h-full"
+        className="flex-1"
         onScrollToBottom={isLargeFile ? handleScrollToBottom : undefined}
         isLargeFile={isLargeFile}
         loadingMore={loadingMore}
@@ -164,7 +164,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         filePath={filePath}
         fileName={file.basename}
         fileSize={file.size}
-        className="h-full"
       />
     );
   }
@@ -175,7 +174,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         filePath={filePath}
         fileName={file.basename}
         fileSize={file.size}
-        className="h-full"
         onMetadataLoaded={setPresentationMetadata}
       />
     );

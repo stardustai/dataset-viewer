@@ -188,7 +188,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   }
 
   return (
-    <div className={`h-full flex flex-col bg-white dark:bg-gray-900 ${className}`}>
+    <div className={`flex flex-col bg-white dark:bg-gray-900 overflow-hidden ${className}`}>
       {/* 预览模式切换按钮 */}
       <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 p-3">
         <button
