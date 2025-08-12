@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Presentation, AlertCircle } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
-import { StorageServiceManager } from '../../services/storage';
+import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
+import { StorageServiceManager } from '../../../services/storage';
 import { parse } from 'pptxtojson';
+import DOMPurify from 'dompurify';
 
 interface PresentationMetadata {
   slideCount: number;
@@ -80,7 +81,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
           key={key}
           style={style}
           className="overflow-visible"
-          dangerouslySetInnerHTML={{ __html: element.content || '' }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.content || '') }}
         />
       );
     
@@ -104,7 +105,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
         >
           {element.content && (
             <div
-              dangerouslySetInnerHTML={{ __html: element.content }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.content) }}
               className="text-center"
             />
           )}
@@ -130,7 +131,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
             className="overflow-visible"
           >
             <div
-              dangerouslySetInnerHTML={{ __html: decodedContent }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(decodedContent) }}
               className="w-full [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-700 [&_td]:text-sm [&_th]:text-sm"
             />
           </div>
@@ -176,7 +177,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
                           rowSpan={rowSpan}
                           colSpan={colSpan}
                         >
-                          <div dangerouslySetInnerHTML={{ __html: cellContent }} />
+                          <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(cellContent) }} />
                         </td>
                       );
                     }).filter(Boolean)}
@@ -359,7 +360,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
 
   if (!presentationData || presentationData.slides.length === 0) {
     return (
-      <div className={`flex flex-col h-full bg-white dark:bg-gray-900 ${className}`}>
+      <div className={`flex flex-col flex-1 overflow-hidden bg-white dark:bg-gray-900 ${className}`}>
         <div className="flex items-center justify-center p-8 h-full">
           <div className="text-center max-w-md">
             <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
@@ -392,7 +393,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
   }
 
   return (
-    <div className={`flex flex-col h-full bg-white dark:bg-gray-900 ${className}`}>
+    <div className={`flex flex-col flex-1 overflow-hidden bg-white dark:bg-gray-900 ${className}`}>
       {/* 主要内容区域 - 所有幻灯片平铺显示 */}
       <div className="flex-1 overflow-auto p-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-6xl mx-auto space-y-16">

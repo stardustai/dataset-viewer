@@ -136,7 +136,7 @@ export const fileViewer = {
   'av1.player.error.decode': '解码视频失败',
 
   // Markdown 查看器
-  'markdown.viewer': 'Markdown 查看器',
+  'markdown.preview': 'Markdown 预览',
   'markdown.rendered': '渲染视图',
   'markdown.raw': '原始内容',
   'markdown.parsing': '正在解析 Markdown...',
@@ -175,4 +175,7 @@ export const fileViewer = {
   // 演示文稿查看器 - 额外翻译
   'presentation.table.no.data': '表格 (无数据)',
   'presentation.speaker.notes': '演讲者备注',
+
+  // 不支持格式的文本查看选项
+  'viewer.open.as.text': '以文本格式打开',
 };

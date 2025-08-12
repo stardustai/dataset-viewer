@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 import mammoth from 'mammoth';
-import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
-import { StorageServiceManager } from '../../services/storage';
+import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
+import { StorageServiceManager } from '../../../services/storage';
+import DOMPurify from 'dompurify';
 
 interface WordViewerProps {
   filePath: string;
@@ -142,7 +143,7 @@ export const WordViewer: React.FC<WordViewerProps> = ({
         // 渲染的 HTML 内容（DOCX）
         <div 
           className="prose prose-gray dark:prose-invert max-w-none p-6"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
         />
       ) : (
         // 纯文本内容（RTF 或其他）

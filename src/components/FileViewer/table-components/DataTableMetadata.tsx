@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { DataMetadata } from '../providers';
+import type { DataMetadata } from '../data-providers';
 import { formatFileSize } from '../../../utils/fileUtils';
 
 interface DataTableMetadataProps {

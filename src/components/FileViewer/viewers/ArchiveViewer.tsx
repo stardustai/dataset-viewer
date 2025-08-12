@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Archive, Copy, AlertCircle, Folder, Download } from 'lucide-react';
-import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../types';
-import { CompressionService } from '../../services/compression';
-import { StorageServiceManager } from '../../services/storage/StorageManager';
-import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
-import { getFileType, isTextFile, isMediaFile, isDataFile, isSpreadsheetFile } from '../../utils/fileTypes';
-import { formatFileSize, formatModifiedTime } from '../../utils/fileUtils';
-import { configManager } from '../../config';
+import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
+import { CompressionService } from '../../../services/compression';
+import { StorageServiceManager } from '../../../services/storage/StorageManager';
+import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
+import { getFileType, isTextFile, isMediaFile, isDataFile, isSpreadsheetFile } from '../../../utils/fileTypes';
+import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
+import { configManager } from '../../../config';
 
-import { ArchiveFileBrowser } from '../FileBrowser/ArchiveFileBrowser';
+import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { UniversalDataTableViewer } from './UniversalDataTableViewer';
-import { LoadingDisplay, ErrorDisplay, StatusDisplay, UnsupportedFormatDisplay } from '../common';
-import { ManualLoadButton } from './ManualLoadButton';
+import { LoadingDisplay, ErrorDisplay, StatusDisplay, UnsupportedFormatDisplay } from '../../common';
+import { ManualLoadButton } from '../ManualLoadButton';
 import { useTranslation } from 'react-i18next';
 
 // 错误信息翻译辅助函数

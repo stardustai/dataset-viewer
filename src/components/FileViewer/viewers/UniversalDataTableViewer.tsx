@@ -19,16 +19,16 @@ import {
   ArrowUpDown,
   Loader2
 } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../common';
-import type { DataProvider, DataMetadata } from './providers';
-import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from './providers';
+import { LoadingDisplay, ErrorDisplay } from '../../common';
+import type { DataProvider, DataMetadata } from '../data-providers';
+import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
 import {
   DataTableControls,
   DataTableMetadata,
   DataTableColumnPanel,
   DataTableCell,
   CellDetailModal
-} from './components';
+} from '../table-components';
 
 interface DataColumn {
   id: string;
