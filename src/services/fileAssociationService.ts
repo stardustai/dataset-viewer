@@ -134,7 +134,7 @@ export class FileAssociationService {
         filename: fileName,
         basename: fileName,
         lastmod: new Date().toISOString(),
-        size: undefined,
+        size: 0,
         type: 'file'
       };
     }
@@ -142,10 +142,20 @@ export class FileAssociationService {
 
   /**
    * 检查是否已通过文件关联连接
-   * @returns 是否已连接
+   * @returns 是否已通过文件关联（本地文件）连接
    */
   public async isConnectedViaFileAssociation(): Promise<boolean> {
-    return await StorageServiceManager.isConnected();
+    try {
+      if (!StorageServiceManager.isConnected()) {
+        return false;
+      }
+      
+      const currentConnection = StorageServiceManager.getCurrentConnection();
+      return currentConnection.type === 'local';
+    } catch (error) {
+      // 如果获取当前连接失败，说明没有连接
+      return false;
+    }
   }
 }
 

@@ -2,7 +2,7 @@ export interface StorageFile {
   filename: string;
   basename: string;
   lastmod: string;
-  size: number | undefined;
+  size: number;
   type: 'file' | 'directory';
   mime?: string;
   etag?: string;

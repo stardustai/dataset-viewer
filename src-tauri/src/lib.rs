@@ -705,8 +705,12 @@ async fn register_file_associations() -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+    let mut builder = tauri::Builder::default();
+    
+    // Single instance plugin is not supported on Android/mobile platforms
+    #[cfg(not(target_os = "android"))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             // 当应用已经运行时，处理新的文件打开请求
             if args.len() > 1 {
                 let file_path = &args[1];
@@ -714,7 +718,10 @@ pub fn run() {
                     handle_file_open_request(app, file_path.to_string());
                 }
             }
-        }))
+        }));
+    }
+    
+    let builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
@@ -773,6 +780,7 @@ pub fn run() {
             Ok(())
         });
 
+    // Add Android-specific window event handling
     #[cfg(target_os = "android")]
     let builder = builder.on_window_event(|window, event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {

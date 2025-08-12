@@ -50,31 +50,31 @@
         "ext": ["csv", "xlsx", "xls", "ods"],
         "name": "Spreadsheet Files",
         "description": "Spreadsheet and CSV files",
-        "role": "Editor"
+        "role": "Viewer"
       },
       {
         "ext": ["parquet", "pqt"],
         "name": "Data Files",
         "description": "Parquet data files",
-        "role": "Editor"
+        "role": "Viewer"
       },
       {
         "ext": ["zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar", "lz4", "zst", "zstd", "br"],
         "name": "Archive Files",
         "description": "Compressed archive files",
-        "role": "Editor"
+        "role": "Viewer"
       },
       {
         "ext": ["txt", "json", "jsonl", "js", "ts", "jsx", "tsx", "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml", "yaml", "yml", "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv"],
         "name": "Text Files",
         "description": "Text and code files",
-        "role": "Editor"
+        "role": "Viewer"
       },
       {
         "ext": ["md", "markdown", "mdown", "mkd", "mdx"],
         "name": "Markdown Files",
         "description": "Markdown documentation files",
-        "role": "Editor"
+        "role": "Viewer"
       },
       {
         "ext": ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "tiff", "tif"],
