@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use chrono::Utc;
 use hmac::{Hmac, Mac};
 use sha1;
+use sha2::Sha256;
 use url::Url;
 use urlencoding;
 use quick_xml::Reader;
@@ -17,6 +18,16 @@ use crate::storage::traits::{
     ConnectionConfig, StorageCapabilities, DirectoryResult, StorageFile, ListOptions, ProgressCallback
 };
 
+#[derive(Debug, Clone, PartialEq)]
+enum OSSPlatform {
+    AliyunOSS,
+    AwsS3,
+    TencentCOS,
+    HuaweiOBS,
+    MinIO,
+    Custom,
+}
+
 pub struct OSSClient {
     client: Client,
     config: ConnectionConfig,
@@ -26,6 +37,7 @@ pub struct OSSClient {
     secret_key: String,
     bucket: String,
     region: Option<String>,
+    platform: OSSPlatform,
 }
 
 impl OSSClient {
@@ -43,6 +55,7 @@ impl OSSClient {
             .ok_or_else(|| StorageError::InvalidConfig("OSS bucket is required".to_string()))?;
 
         let region = config.region.clone();
+        let platform = Self::detect_platform(&endpoint);
 
         Ok(Self {
             client: Client::new(),
@@ -53,7 +66,27 @@ impl OSSClient {
             secret_key,
             bucket,
             region,
+            platform,
         })
+    }
+
+    /// 根据端点检测OSS平台类型
+    fn detect_platform(endpoint: &str) -> OSSPlatform {
+        let endpoint_lower = endpoint.to_lowercase();
+        
+        if endpoint_lower.contains("amazonaws.com") {
+            OSSPlatform::AwsS3
+        } else if endpoint_lower.contains("aliyuncs.com") || endpoint_lower.contains("oss-") {
+            OSSPlatform::AliyunOSS
+        } else if endpoint_lower.contains("myqcloud.com") || endpoint_lower.contains("cos.") {
+            OSSPlatform::TencentCOS
+        } else if endpoint_lower.contains("myhuaweicloud.com") || endpoint_lower.contains("obs.") {
+            OSSPlatform::HuaweiOBS
+        } else if endpoint_lower.contains("minio") {
+            OSSPlatform::MinIO
+        } else {
+            OSSPlatform::Custom
+        }
     }
 
     /// 生成 OSS 签名
@@ -129,6 +162,14 @@ impl OSSClient {
 
     /// 构建认证头
     fn build_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>) -> HashMap<String, String> {
+        match self.platform {
+            OSSPlatform::AwsS3 => self.build_aws_auth_headers(method, uri, extra_headers),
+            _ => self.build_oss_auth_headers(method, uri, extra_headers),
+        }
+    }
+
+    /// 构建阿里云OSS等兼容平台的认证头
+    fn build_oss_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>) -> HashMap<String, String> {
         let now = Utc::now();
         let date = now.format("%a, %d %b %Y %H:%M:%S GMT").to_string();
 
@@ -141,6 +182,128 @@ impl OSSClient {
 
         headers.insert("Authorization".to_string(), authorization);
         headers
+    }
+
+    /// 构建AWS S3的认证头
+    fn build_aws_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>) -> HashMap<String, String> {
+        let now = Utc::now();
+        let date_stamp = now.format("%Y%m%d").to_string();
+        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+        let region = self.region.as_ref().unwrap_or(&"us-east-1".to_string()).clone();
+
+        // 计算请求体的SHA256哈希（空请求体）
+        let payload_hash = self.sha256_hex("");
+
+        let mut headers = extra_headers.clone();
+        headers.insert("Host".to_string(), self.get_host());
+        headers.insert("X-Amz-Date".to_string(), amz_date.clone());
+        headers.insert("x-amz-content-sha256".to_string(), payload_hash.clone());
+
+        // 构建规范请求
+        let canonical_request = self.build_canonical_request_with_payload(method, uri, &headers, &payload_hash);
+        
+        // 构建待签名字符串
+        let credential_scope = format!("{}/{}/s3/aws4_request", date_stamp, region);
+        let string_to_sign = format!(
+            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+            amz_date,
+            credential_scope,
+            self.sha256_hex(&canonical_request)
+        );
+
+        // 计算签名
+        let signature = self.calculate_aws_signature(&string_to_sign, &date_stamp, &region);
+        
+        // 构建Authorization头
+        let authorization = format!(
+            "AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}",
+            self.access_key,
+            credential_scope,
+            self.get_signed_headers(&headers),
+            signature
+        );
+
+        headers.insert("Authorization".to_string(), authorization);
+        headers
+    }
+
+    /// AWS S3签名辅助方法
+
+
+    fn build_canonical_request_with_payload(&self, method: &str, uri: &str, headers: &HashMap<String, String>, payload_hash: &str) -> String {
+        // 规范化URI
+        let canonical_uri = if uri.is_empty() || uri == "/" {
+            "/".to_string()
+        } else {
+            uri.to_string()
+        };
+
+        // 规范化查询字符串（暂时为空）
+        let canonical_query_string = "";
+
+        // 规范化头部
+        let mut sorted_headers: Vec<_> = headers.iter().collect();
+        sorted_headers.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+        
+        let canonical_headers: String = sorted_headers
+            .iter()
+            .map(|(k, v)| format!("{}:{}", k.to_lowercase(), v.trim()))
+            .collect::<Vec<_>>()
+            .join("\n") + "\n";
+
+        let signed_headers = self.get_signed_headers(headers);
+
+        format!(
+            "{}\n{}\n{}\n{}\n{}\n{}",
+            method,
+            canonical_uri,
+            canonical_query_string,
+            canonical_headers,
+            signed_headers,
+            payload_hash
+        )
+    }
+
+    fn get_signed_headers(&self, headers: &HashMap<String, String>) -> String {
+        let mut header_names: Vec<_> = headers.keys().map(|k| k.to_lowercase()).collect();
+        header_names.sort();
+        header_names.join(";")
+    }
+
+    fn sha256_hex(&self, data: &str) -> String {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(data.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
+    fn calculate_aws_signature(&self, string_to_sign: &str, date_stamp: &str, region: &str) -> String {
+        
+        // AWS4 签名密钥派生
+        let k_date = self.hmac_sha256(&format!("AWS4{}", self.secret_key), date_stamp);
+        let k_region = self.hmac_sha256_bytes(&k_date, region);
+        let k_service = self.hmac_sha256_bytes(&k_region, "s3");
+        let k_signing = self.hmac_sha256_bytes(&k_service, "aws4_request");
+        
+        // 计算最终签名
+        let signature = self.hmac_sha256_bytes(&k_signing, string_to_sign);
+        hex::encode(signature)
+    }
+
+    fn hmac_sha256(&self, key: &str, data: &str) -> Vec<u8> {
+        type HmacSha256 = Hmac<Sha256>;
+        let mut mac = HmacSha256::new_from_slice(key.as_bytes())
+            .expect("HMAC can take key of any size");
+        mac.update(data.as_bytes());
+        mac.finalize().into_bytes().to_vec()
+    }
+
+    fn hmac_sha256_bytes(&self, key: &[u8], data: &str) -> Vec<u8> {
+        type HmacSha256 = Hmac<Sha256>;
+        let mut mac = HmacSha256::new_from_slice(key)
+            .expect("HMAC can take key of any size");
+        mac.update(data.as_bytes());
+        mac.finalize().into_bytes().to_vec()
     }
 
     /// 获取主机名
@@ -306,6 +469,7 @@ impl StorageClient for OSSClient {
 
         if let Some(endpoint) = &config.url {
             self.endpoint = endpoint.clone();
+            self.platform = Self::detect_platform(&endpoint);
         }
         if let Some(access_key) = &config.access_key {
             self.access_key = access_key.clone();

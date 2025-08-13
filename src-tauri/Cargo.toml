@@ -60,6 +60,7 @@ log = "0.4"
 hmac = "0.12"
 sha1 = "0.10"
 sha2 = "0.10"
+hex = "0.4"
 
 # 优化配置
 [profile.release]

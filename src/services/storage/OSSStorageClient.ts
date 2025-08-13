@@ -486,10 +486,9 @@ export class OSSStorageClient extends BaseStorageClient {
   private normalizeOSSEndpoint(rawEndpoint: string, bucket: string, region: string): string {
     try {
       // 如果是 oss:// 协议，先转换为 https://
-      let endpoint = rawEndpoint;
-      if (rawEndpoint.startsWith('oss://')) {
-        endpoint = rawEndpoint.replace('oss://', 'https://');
-      }
+      const endpoint = rawEndpoint.startsWith('oss://') 
+        ? rawEndpoint.replace('oss://', 'https://') 
+        : rawEndpoint;
 
       const url = new URL(endpoint);
 
@@ -498,15 +497,37 @@ export class OSSStorageClient extends BaseStorageClient {
         return endpoint;
       }
 
-      // 如果是区域端点格式，转换为虚拟主机风格
-      if (url.hostname.startsWith('oss-')) {
-        return `${url.protocol}//${bucket}.${url.hostname}${url.pathname !== '/' ? url.pathname : ''}`;
+      // 检查是否为本地或自定义端点（不需要虚拟主机风格）
+      const isLocalOrCustom = url.hostname.includes('localhost') || 
+                              url.hostname.includes('127.0.0.1') || 
+                              !url.hostname.includes('.');
+      
+      if (isLocalOrCustom) {
+        return endpoint;
       }
 
-      // 如果是其他格式，尝试构建标准的阿里云 OSS 端点
-      return `https://${bucket}.oss-${region}.aliyuncs.com`;
+      // 对于支持虚拟主机风格的云服务商，统一转换
+      const supportedProviders = [
+        'oss-',           // 阿里云OSS
+        'amazonaws.com',  // AWS S3
+        'myqcloud.com',   // 腾讯云COS
+        'myhuaweicloud.com' // 华为云OBS
+      ];
+
+      const needsVirtualHostStyle = supportedProviders.some(provider => 
+        url.hostname.includes(provider) || url.hostname.startsWith(provider)
+      );
+
+      if (needsVirtualHostStyle) {
+        const pathSuffix = url.pathname !== '/' ? url.pathname : '';
+        return `${url.protocol}//${bucket}.${url.hostname}${pathSuffix}`;
+      }
+
+      // 默认情况下，尝试构建虚拟主机风格
+      const pathSuffix = url.pathname !== '/' ? url.pathname : '';
+      return `${url.protocol}//${bucket}.${url.hostname}${pathSuffix}`;
     } catch (error) {
-      // 如果解析失败，构建默认端点
+      // 如果解析失败，构建默认的阿里云OSS端点
       return `https://${bucket}.oss-${region}.aliyuncs.com`;
     }
   }

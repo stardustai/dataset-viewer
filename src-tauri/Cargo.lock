@@ -857,6 +857,7 @@ dependencies = [
  "dirs 5.0.1",
  "flate2",
  "futures-util",
+ "hex",
  "hmac",
  "log",
  "lz4",
