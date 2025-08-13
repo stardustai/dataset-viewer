@@ -143,7 +143,7 @@ export const OSS_PLATFORMS: OSSPlatform[] = [
     description: 'Custom S3-compatible endpoint',
     regions: []
   }
-];
+] as const;
 
 interface OSSPlatformSelectorProps {
   selectedPlatform: string;

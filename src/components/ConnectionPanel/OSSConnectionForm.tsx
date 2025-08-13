@@ -144,13 +144,15 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
         console.error('Failed to parse OSS connection:', error);
         // 如果解析失败，使用自定义模式
         setSelectedPlatform('custom');
-        setCustomEndpoint(selectedConnection.url.replace('oss://', 'https://'));
-        
+        const raw = selectedConnection.url.replace('oss://', '');
+        const [host, maybeBucket] = raw.split('/');
+        const fallbackEndpoint = `https://${host}`;
+        setCustomEndpoint(fallbackEndpoint);
         setConfig({
-          endpoint: selectedConnection.url.replace('oss://', 'https://'),
+          endpoint: fallbackEndpoint,
           accessKey: selectedConnection.username,
           secretKey: selectedConnection.password ? '••••••••' : '',
-          bucket: '',
+          bucket: maybeBucket || '',
           region: '',
         });
       }
@@ -214,9 +216,14 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
     // 确定最终使用的端点
     const finalEndpoint = selectedPlatform === 'custom' ? customEndpoint : config.endpoint;
+    // 解析 host（含端口）
+    let hostWithPort = getHostnameFromUrl(finalEndpoint);
+    try {
+      hostWithPort = new URL(finalEndpoint).host; // e.g., localhost:9000
+    } catch { /* 已通过 validateForm 校验，一般不会触发 */ }
     
     // 生成默认连接名称
-    const hostname = getHostnameFromUrl(finalEndpoint);
+    const hostname = hostWithPort;
     const platformName = OSS_PLATFORMS.find(p => p.id === selectedPlatform)?.name || 'OSS';
     const defaultName = selectedPlatform === 'custom' 
       ? t('connection.name.oss', 'OSS({{host}}-{{bucket}})', { host: hostname, bucket: config.bucket })
@@ -230,7 +237,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     const connectionConfig: ConnectionConfig = {
       type: 'oss',
       name: selectedConnection?.name || defaultName,
-      url: `oss://${getHostnameFromUrl(finalEndpoint)}/${config.bucket}`, // 使用 oss:// 格式保存
+      url: `oss://${hostWithPort}/${config.bucket}`, // 使用 oss:// 格式保存（保留端口避免冲突）
       username: config.accessKey, // 使用 username 字段存储 accessKey
       password: actualSecretKey,  // 使用 password 字段存储 secretKey
       bucket: config.bucket,      // 添加 bucket 字段
