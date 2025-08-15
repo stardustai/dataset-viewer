@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConnectionConfig } from '../../services/storage/types';
 import { StoredConnection } from '../../services/connectionStorage';
-import { getHostnameFromUrl } from '../../utils/urlUtils';
+import { OSSPlatformSelector, OSS_PLATFORMS } from './OSSPlatformSelector';
 
 interface OSSConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;
@@ -22,15 +22,77 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   selectedConnection
 }) => {
   const { t } = useTranslation();
+
+  // 获取默认平台和端点
+  const defaultPlatform = OSS_PLATFORMS.find(p => p.id === 'aliyun');
+  const defaultRegion = 'cn-hangzhou';
+  const defaultEndpoint = defaultPlatform?.regions.find(r => r.id === defaultRegion)?.endpoint || '';
+
   const [config, setConfig] = useState({
-    endpoint: '',
+    endpoint: defaultEndpoint,
     accessKey: '',
     secretKey: '',
     bucket: '',
-    region: '',
+    region: defaultRegion,
   });
 
+  // 平台选择相关状态
+  const [selectedPlatform, setSelectedPlatform] = useState('aliyun');
+  const [selectedRegion, setSelectedRegion] = useState('cn-hangzhou');
+  const [customEndpoint, setCustomEndpoint] = useState('');
+
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // 处理平台变化
+  const handlePlatformChange = (platformId: string) => {
+    setSelectedPlatform(platformId);
+    const platform = OSS_PLATFORMS.find(p => p.id === platformId);
+
+    if (platform) {
+      if (platformId === 'custom') {
+        // 自定义平台，清空端点让用户输入
+        setConfig(prev => ({ ...prev, endpoint: '', region: '' }));
+        setCustomEndpoint('');
+      } else {
+        // 预设平台，设置默认区域
+        const defaultRegion = platform.defaultRegion || (platform.regions[0]?.id || '');
+        setSelectedRegion(defaultRegion);
+
+        // 更新端点和区域
+        const regionData = platform.regions.find(r => r.id === defaultRegion);
+        const endpoint = regionData?.endpoint || platform.endpoint.replace('{region}', defaultRegion);
+
+        setConfig(prev => ({
+          ...prev,
+          endpoint: endpoint,
+          region: defaultRegion
+        }));
+      }
+    }
+  };
+
+  // 处理区域变化
+  const handleRegionChange = (regionId: string) => {
+    setSelectedRegion(regionId);
+    const platform = OSS_PLATFORMS.find(p => p.id === selectedPlatform);
+
+    if (platform && platform.id !== 'custom') {
+      const regionData = platform.regions.find(r => r.id === regionId);
+      const endpoint = regionData?.endpoint || platform.endpoint.replace('{region}', regionId);
+
+      setConfig(prev => ({
+        ...prev,
+        endpoint: endpoint,
+        region: regionId
+      }));
+    }
+  };
+
+  // 处理自定义端点变化
+  const handleCustomEndpointChange = (endpoint: string) => {
+    setCustomEndpoint(endpoint);
+    setConfig(prev => ({ ...prev, endpoint: endpoint }));
+  };
 
   // 当选中连接变化时，更新表单
   useEffect(() => {
@@ -38,41 +100,83 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       try {
         // 解析 OSS URL: oss://hostname/bucket
         const ossUrl = selectedConnection.url.replace('oss://', '');
-        const [hostname, bucket] = ossUrl.split('/');
+        const [hostname, ...bucketParts] = ossUrl.split('/');
+        const bucket = bucketParts.join('/'); // 支持路径包含斜杠的情况
+        const endpoint = selectedConnection.metadata?.endpoint || `https://${hostname}`;
+        const region = selectedConnection.metadata?.region || '';
+        const savedPlatform = selectedConnection.metadata?.platform;
 
-        // 从hostname推断region
-        let region = '';
-        if (hostname.includes('oss-')) {
-          const regionMatch = hostname.match(/oss-([^.]+)/);
-          region = regionMatch ? regionMatch[1] : '';
+        // 优先使用保存的平台信息，如果没有则尝试匹配
+        let matchedPlatform = savedPlatform || 'custom';
+        let matchedRegion = region;
+
+        // 如果没有保存的平台信息，尝试根据endpoint匹配
+        if (!savedPlatform) {
+          for (const platform of OSS_PLATFORMS) {
+            if (platform.id === 'custom') continue;
+
+            const regionMatch = platform.regions.find(r =>
+              r.endpoint === endpoint ||
+              endpoint.includes(r.id) ||
+              (platform.endpoint.includes('{region}') && endpoint.includes(r.id))
+            );
+
+            if (regionMatch) {
+              matchedPlatform = platform.id;
+              matchedRegion = regionMatch.id;
+              break;
+            }
+          }
+        }
+
+        // 更新平台和区域状态
+        setSelectedPlatform(matchedPlatform);
+        setSelectedRegion(matchedRegion);
+
+        if (matchedPlatform === 'custom') {
+          setCustomEndpoint(endpoint);
         }
 
         setConfig({
-          endpoint: `https://${hostname}`,
+          endpoint: endpoint,
           accessKey: selectedConnection.username,
           secretKey: selectedConnection.password ? '••••••••' : '',
           bucket: bucket || '',
-          region: region,
+          region: matchedRegion,
         });
       } catch (error) {
         console.error('Failed to parse OSS connection:', error);
-        // 如果解析失败，至少填充已知的字段
+        // 如果解析失败，使用自定义模式
+        setSelectedPlatform('custom');
+        const raw = selectedConnection.url.replace('oss://', '');
+        const [host, ...bucketParts] = raw.split('/');
+        const bucket = bucketParts.join('/'); // 保持完整路径
+        const fallbackEndpoint = `https://${host}`;
+        setCustomEndpoint(fallbackEndpoint);
         setConfig({
-          endpoint: selectedConnection.url.replace('oss://', 'https://'),
+          endpoint: fallbackEndpoint,
           accessKey: selectedConnection.username,
           secretKey: selectedConnection.password ? '••••••••' : '',
-          bucket: '',
+          bucket: bucket || '',
           region: '',
         });
       }
     } else if (!selectedConnection) {
-      // 清空表单
+      // 清空表单，恢复默认值
+      setSelectedPlatform('aliyun');
+      setSelectedRegion('cn-hangzhou');
+      setCustomEndpoint('');
+
+      // 设置默认端点
+      const defaultPlatform = OSS_PLATFORMS.find(p => p.id === 'aliyun');
+      const defaultEndpoint = defaultPlatform?.regions.find(r => r.id === 'cn-hangzhou')?.endpoint || '';
+
       setConfig({
-        endpoint: '',
+        endpoint: defaultEndpoint,
         accessKey: '',
         secretKey: '',
         bucket: '',
-        region: '',
+        region: 'cn-hangzhou',
       });
     }
   }, [selectedConnection]);
@@ -80,11 +184,13 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!config.endpoint.trim()) {
+    // 验证端点
+    const endpointToValidate = selectedPlatform === 'custom' ? customEndpoint : config.endpoint;
+    if (!endpointToValidate.trim()) {
       newErrors.endpoint = t('error.endpoint.required');
     } else {
       try {
-        new URL(config.endpoint);
+        new URL(endpointToValidate);
       } catch {
         newErrors.endpoint = t('error.endpoint.invalid');
       }
@@ -113,12 +219,33 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       return;
     }
 
+    // 确定最终使用的端点
+    const finalEndpoint = selectedPlatform === 'custom' ? customEndpoint : config.endpoint;
+
+    // 解析 host（含端口），确保从有效的端点中提取
+    let hostWithPort = '';
+    try {
+      const url = new URL(finalEndpoint);
+      hostWithPort = url.host; // e.g., localhost:9000 或 oss-cn-hangzhou.aliyuncs.com
+
+      // 检查主机名格式是否有效
+      if (url.hostname.includes('/') || !url.hostname.includes('.') || url.hostname.split('.').length < 2) {
+        // 主机名格式无效，使用默认的阿里云 OSS 端点
+        const region = config.region || selectedRegion || 'cn-hangzhou';
+        hostWithPort = `oss-${region}.aliyuncs.com`;
+      }
+    } catch {
+      // URL 解析失败，使用默认的阿里云 OSS 端点
+      const region = config.region || selectedRegion || 'cn-hangzhou';
+      hostWithPort = `oss-${region}.aliyuncs.com`;
+    }
+
     // 生成默认连接名称
-    const hostname = getHostnameFromUrl(config.endpoint);
-    const defaultName = t('connection.name.oss', 'OSS({{host}}-{{bucket}})', {
-      host: hostname,
-      bucket: config.bucket
-    });
+    const hostname = hostWithPort;
+    const platformName = OSS_PLATFORMS.find(p => p.id === selectedPlatform)?.name || 'OSS';
+    const defaultName = selectedPlatform === 'custom'
+      ? t('connection.name.oss', 'OSS({{host}}-{{bucket}})', { host: hostname, bucket: config.bucket })
+      : `${platformName}(${config.bucket})`;
 
     // 如果密码是占位符（来自已保存的连接），使用真实密码
     const actualSecretKey = config.secretKey === '••••••••' && selectedConnection?.password
@@ -128,12 +255,13 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     const connectionConfig: ConnectionConfig = {
       type: 'oss',
       name: selectedConnection?.name || defaultName,
-      url: `oss://${getHostnameFromUrl(config.endpoint)}/${config.bucket}`, // 使用 oss:// 格式保存
+      url: `oss://${hostWithPort}/${config.bucket}`, // 使用 oss:// 格式保存（保留端口避免冲突）
       username: config.accessKey, // 使用 username 字段存储 accessKey
       password: actualSecretKey,  // 使用 password 字段存储 secretKey
       bucket: config.bucket,      // 添加 bucket 字段
-      region: config.region || 'cn-hangzhou', // 添加 region 字段，有默认值
-      endpoint: config.endpoint,  // 添加 endpoint 字段
+      region: config.region || selectedRegion, // 使用选中的区域
+      endpoint: finalEndpoint,    // 添加 endpoint 字段
+      platform: selectedPlatform, // 直接保存用户选择的平台信息
     };
 
     try {
@@ -145,7 +273,23 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setConfig(prev => ({ ...prev, [field]: value.trim() }));
+    let processedValue = value.trim();
+
+    // 如果是 bucket 字段，处理协议前缀
+    if (field === 'bucket') {
+      // 移除常见的协议前缀
+      const protocolPrefixes = ['oss://', 's3://', 'cos://', 'obs://'];
+      for (const prefix of protocolPrefixes) {
+        if (processedValue.toLowerCase().startsWith(prefix)) {
+          processedValue = processedValue.substring(prefix.length);
+          break;
+        }
+      }
+      // 移除开头的斜杠
+      processedValue = processedValue.replace(/^\/+/, '');
+    }
+
+    setConfig(prev => ({ ...prev, [field]: processedValue }));
     // 清除对应字段的错误
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -165,28 +309,21 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           </div>
         )}
 
-        <div>
-          <label htmlFor="endpoint" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('oss.endpoint')}
-          </label>
-          <input
-            type="url"
-            id="endpoint"
-            value={config.endpoint}
-            onChange={(e) => handleInputChange('endpoint', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-              errors.endpoint ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
-            }`}
-            placeholder={t('oss.endpoint.placeholder')}
-            disabled={connecting}
-          />
-          {errors.endpoint && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.endpoint}</p>
-          )}
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {t('oss.endpoint.description')}
-          </p>
-        </div>
+        {/* 平台选择器 */}
+        <OSSPlatformSelector
+          selectedPlatform={selectedPlatform}
+          selectedRegion={selectedRegion}
+          customEndpoint={customEndpoint}
+          onPlatformChange={handlePlatformChange}
+          onRegionChange={handleRegionChange}
+          onCustomEndpointChange={handleCustomEndpointChange}
+          disabled={connecting}
+        />
+        {errors.endpoint && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-2">
+            <p className="text-sm text-red-600 dark:text-red-400">{errors.endpoint}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -230,7 +367,46 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Bucket 字段 - 根据平台类型调整布局 */}
+        {selectedPlatform === 'custom' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="bucket" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('oss.bucket')}
+              </label>
+              <input
+                type="text"
+                id="bucket"
+                value={config.bucket}
+                onChange={(e) => handleInputChange('bucket', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  errors.bucket ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
+                }`}
+                placeholder={t('oss.bucket.placeholder')}
+                disabled={connecting}
+              />
+              {errors.bucket && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.bucket}</p>
+              )}
+            </div>
+
+            {/* 区域信息显示 - 仅在自定义平台时允许手动输入 */}
+            <div>
+              <label htmlFor="region" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('oss.region')}
+              </label>
+              <input
+                type="text"
+                id="region"
+                value={config.region}
+                onChange={(e) => handleInputChange('region', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder={t('oss.region.placeholder')}
+                disabled={connecting}
+              />
+            </div>
+          </div>
+        ) : (
           <div>
             <label htmlFor="bucket" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('oss.bucket')}
@@ -250,22 +426,9 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.bucket}</p>
             )}
           </div>
+        )}
 
-          <div>
-            <label htmlFor="region" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('oss.region.optional')}
-            </label>
-            <input
-              type="text"
-              id="region"
-              value={config.region}
-              onChange={(e) => handleInputChange('region', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder={t('oss.region.placeholder')}
-              disabled={connecting}
-            />
-          </div>
-        </div>
+
 
         <button
           type="submit"

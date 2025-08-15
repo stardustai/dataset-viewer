@@ -28,6 +28,73 @@ export class OSSStorageClient extends BaseStorageClient {
   private connection: OSSConnection | null = null;
 
   /**
+   * 统一解析 OSS 配置，支持带路径前缀的 bucket
+   * 统一格式：bucket/path/prefix
+   */
+  private parseOSSConfig(config: ConnectionConfig): {
+    endpoint: string;
+    bucket: string;
+    region: string;
+  } {
+    let endpoint = config.endpoint || '';
+    let bucket = config.bucket || '';
+    let region = config.region || 'cn-hangzhou';
+    const rawUrl = config.url || '';
+
+    // 如果没有直接配置，从 URL 解析
+    if (!bucket || !endpoint) {
+      if (rawUrl.startsWith('oss://')) {
+        const ossUrl = rawUrl.replace('oss://', '');
+        const [hostname, ...bucketParts] = ossUrl.split('/');
+        
+        if (!bucket && bucketParts.length > 0) {
+          bucket = bucketParts.join('/');
+        }
+        
+        if (!endpoint) {
+          endpoint = `https://${hostname}`;
+        }
+        
+        // 从 hostname 推断 region
+        if (!config.region && hostname.includes('oss-')) {
+          const regionMatch = hostname.match(/oss-([^.]+)/);
+          region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
+        }
+      } else if (rawUrl.startsWith('http')) {
+        try {
+          const url = new URL(rawUrl);
+          const hostname = url.hostname;
+          
+          if (!endpoint) {
+            endpoint = `${url.protocol}//${hostname}`;
+          }
+          
+          if (!bucket) {
+            if (hostname.includes('.oss-')) {
+              // 虚拟主机格式：bucket.oss-region.aliyuncs.com
+              bucket = hostname.split('.')[0];
+            } else if (url.pathname && url.pathname.length > 1) {
+              // 路径格式：从路径中提取
+              const pathParts = url.pathname.split('/').filter(part => part.length > 0);
+              bucket = pathParts.join('/');
+            }
+          }
+          
+          // 从 hostname 推断 region
+          if (!config.region && hostname.includes('oss-')) {
+            const regionMatch = hostname.match(/oss-([^.]+)/);
+            region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
+          }
+        } catch {
+          if (!endpoint) endpoint = rawUrl;
+        }
+      }
+    }
+
+    return { endpoint, bucket, region };
+  }
+
+  /**
    * 获取连接的显示名称
    */
   getDisplayName(): string {
@@ -54,57 +121,28 @@ export class OSSStorageClient extends BaseStorageClient {
    */
   generateConnectionName(config: ConnectionConfig): string {
     try {
-      const url = config.url;
-
-      if (!url) {
+      const { endpoint, bucket } = this.parseOSSConfig(config);
+      
+      if (!bucket) {
         return 'OSS';
       }
-
-      // 处理 oss:// 协议
-      if (url.startsWith('oss://')) {
-        const ossUrl = url.replace('oss://', '');
-        const [host, bucket] = ossUrl.split('/');
-
-        if (bucket && host) {
-          // 提取顶级域名 (最后两部分: domain.com)
-          const hostParts = host.split('.');
-          const topLevelDomain = hostParts.slice(-2).join('.');
-          return `OSS(${bucket}-${topLevelDomain})`;
-        } else {
-          return `OSS(${host})`;
+      
+      // 提取域名信息用于显示
+      let domain = 'OSS';
+      try {
+        const url = new URL(endpoint);
+        const hostParts = url.hostname.split('.');
+        if (hostParts.length >= 2) {
+          domain = hostParts.slice(-2).join('.');
         }
+      } catch {
+        // 忽略 URL 解析错误
       }
-
-      // 处理 HTTPS 格式的 OSS 端点
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname;
-
-      // 检测 OSS 服务 (格式如: bucket.oss-region.domain.com 或 bucket.s3.region.amazonaws.com)
-      if (hostname.includes('.oss') || hostname.includes('.s3.')) {
-        // 尝试提取bucket名称和顶级域名
-        const parts = hostname.split('.');
-
-        if (parts.length >= 3) {
-          const bucket = parts[0]; // 第一部分通常是bucket名称
-
-          // 提取顶级域名 (最后两部分: domain.com)
-          const topLevelDomain = parts.slice(-2).join('.');
-
-          // 检查是否为有效的bucket格式 (bucket.service.*)
-          if (parts[1].includes('oss') || parts[1].includes('s3')) {
-            return `OSS(${bucket}-${topLevelDomain})`;
-          }
-        }
-
-        // 如果无法解析bucket，使用简化格式
-        const topLevelDomain = hostname.split('.').slice(-2).join('.');
-        return `OSS(${topLevelDomain})`;
-      }
-
-      // 默认格式
-      return `OSS(${hostname})`;
+      
+      return `${domain} (${bucket})`;
     } catch (error) {
-      return 'OSS';
+      console.warn('Failed to generate OSS connection name:', error);
+      return config.bucket ? `OSS (${config.bucket})` : 'OSS';
     }
   }
 
@@ -118,100 +156,16 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('OSS requires endpoint (url), accessKey (username), and secretKey (password)');
     }
 
-    // 解析配置：url作为endpoint，username作为accessKey，password作为secretKey
-    const rawUrl = config.url;
+    // 使用统一的配置解析方法
+    const { endpoint, bucket, region } = this.parseOSSConfig(config);
     const accessKey = config.username;
     const secretKey = config.password;
-
-    // 优先使用配置中的 bucket、region 和 endpoint
-    let endpoint: string = config.endpoint || '';
-    let bucket: string = config.bucket || '';
-    let region: string = config.region || 'cn-hangzhou';
-
-    // 如果没有直接配置，则从 URL 解析
-    if (!bucket || !endpoint) {
-      if (rawUrl.startsWith('oss://')) {
-        // 解析 oss://hostname/bucket 格式
-        const ossUrl = rawUrl.replace('oss://', '');
-        const [hostname, bucketPath] = ossUrl.split('/');
-
-        if (!bucket) {
-          bucket = bucketPath || '';
-        }
-
-        if (!endpoint) {
-          endpoint = `https://${hostname}`;
-        }
-
-        // 从hostname推断region（如果没有配置）
-        if (!config.region && hostname.includes('oss-')) {
-          const regionMatch = hostname.match(/oss-([^.]+)/);
-          region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
-        }
-      } else {
-        // 如果已经是HTTP(S)格式，需要区分虚拟主机和路径格式
-        if (!endpoint || !bucket) {
-          try {
-            const url = new URL(rawUrl);
-            const hostname = url.hostname;
-            const pathname = url.pathname;
-
-            if (hostname.includes('.oss-')) {
-              // 虚拟主机格式：bucket.oss-region.aliyuncs.com
-              if (!endpoint) {
-                endpoint = `${url.protocol}//${hostname}`;
-              }
-              if (!bucket) {
-                const parts = hostname.split('.');
-                bucket = parts[0];
-              }
-
-              // 从hostname推断region（如果没有配置）
-              if (!config.region) {
-                const regionMatch = hostname.match(/oss-([^.]+)/);
-                region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
-              }
-            } else if (hostname.startsWith('oss-') || hostname.includes('aliyuncs.com')) {
-              // 路径格式：oss-region.aliyuncs.com/bucket/object-key
-              if (!endpoint) {
-                endpoint = `${url.protocol}//${hostname}`;
-              }
-
-              if (!bucket && pathname && pathname.length > 1) {
-                // 从路径中提取bucket名称（第一个路径段）
-                const pathParts = pathname.split('/').filter(part => part.length > 0);
-                if (pathParts.length > 0) {
-                  bucket = pathParts[0];
-                }
-              }
-
-              // 从hostname推断region（如果没有配置）
-              if (!config.region && hostname.includes('oss-')) {
-                const regionMatch = hostname.match(/oss-([^.]+)/);
-                region = regionMatch ? regionMatch[1] : 'cn-hangzhou';
-              }
-            } else {
-              // 其他格式，直接使用原URL作为endpoint
-              if (!endpoint) {
-                endpoint = rawUrl;
-              }
-            }
-          } catch {
-            // 解析失败，使用原URL作为endpoint
-            if (!endpoint) {
-              endpoint = rawUrl;
-            }
-          }
-        }
-      }
-    }
-
-    // 验证必需的 OSS 配置
+    
     if (!bucket) {
       throw new Error('OSS bucket is required');
     }
 
-    // 统一端点格式为虚拟主机风格
+    // 统一使用标准化端点处理
     const normalizedEndpoint = this.normalizeOSSEndpoint(endpoint, bucket, region);
 
     try {
@@ -486,28 +440,65 @@ export class OSSStorageClient extends BaseStorageClient {
   private normalizeOSSEndpoint(rawEndpoint: string, bucket: string, region: string): string {
     try {
       // 如果是 oss:// 协议，先转换为 https://
-      let endpoint = rawEndpoint;
-      if (rawEndpoint.startsWith('oss://')) {
-        endpoint = rawEndpoint.replace('oss://', 'https://');
-      }
+      const endpoint = rawEndpoint.startsWith('oss://') 
+        ? rawEndpoint.replace('oss://', 'https://') 
+        : rawEndpoint;
 
       const url = new URL(endpoint);
+      
+      // 提取实际的 bucket 名称（不包含路径前缀）
+      const actualBucket = bucket.includes('/') ? bucket.split('/')[0] : bucket;
 
-      // 如果已经是虚拟主机风格（包含 bucket），直接返回
-      if (url.hostname.startsWith(`${bucket}.`)) {
+      // 如果已经是虚拟主机风格（包含实际的 bucket 名称），直接返回
+      if (url.hostname.startsWith(`${actualBucket}.`)) {
         return endpoint;
       }
 
-      // 如果是区域端点格式，转换为虚拟主机风格
-      if (url.hostname.startsWith('oss-')) {
-        return `${url.protocol}//${bucket}.${url.hostname}${url.pathname !== '/' ? url.pathname : ''}`;
+      // 检查是否为本地或自定义端点（不需要虚拟主机风格）
+      const isLocalOrCustom = url.hostname.includes('localhost') || 
+                              url.hostname.includes('127.0.0.1') || 
+                              !url.hostname.includes('.');
+      
+      if (isLocalOrCustom) {
+        return endpoint;
       }
 
-      // 如果是其他格式，尝试构建标准的阿里云 OSS 端点
-      return `https://${bucket}.oss-${region}.aliyuncs.com`;
+      // 检查 URL 格式是否正确，如果包含无效字符则重新构建
+      const hasInvalidFormat = url.hostname.includes('/') || 
+                               !url.hostname.includes('.') ||
+                               url.hostname.split('.').length < 2;
+      
+      if (hasInvalidFormat) {
+        // URL 格式错误，根据 region 重新构建标准的 OSS 端点
+        return `https://${actualBucket}.oss-${region}.aliyuncs.com`;
+      }
+
+      // 对于支持虚拟主机风格的云服务商，统一转换
+      const supportedProviders = [
+        'oss-',           // 阿里云OSS
+        'amazonaws.com',  // AWS S3
+        'myqcloud.com',   // 腾讯云COS
+        'myhuaweicloud.com' // 华为云OBS
+      ];
+
+      const needsVirtualHostStyle = supportedProviders.some(provider => 
+        url.hostname.includes(provider) || url.hostname.startsWith(provider)
+      );
+
+      if (needsVirtualHostStyle) {
+        const pathSuffix = url.pathname !== '/' ? url.pathname : '';
+        // 使用实际的 bucket 名称构建虚拟主机风格 URL
+        return `${url.protocol}//${actualBucket}.${url.hostname}${pathSuffix}`;
+      }
+
+      // 默认情况下，尝试构建虚拟主机风格
+      const pathSuffix = url.pathname !== '/' ? url.pathname : '';
+      return `${url.protocol}//${actualBucket}.${url.hostname}${pathSuffix}`;
     } catch (error) {
-      // 如果解析失败，构建默认端点
-      return `https://${bucket}.oss-${region}.aliyuncs.com`;
+      // 如果解析失败，构建默认的阿里云OSS端点
+      // 使用实际的 bucket 名称
+      const actualBucket = bucket.includes('/') ? bucket.split('/')[0] : bucket;
+      return `https://${actualBucket}.oss-${region}.aliyuncs.com`;
     }
   }
 
