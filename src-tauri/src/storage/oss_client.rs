@@ -12,6 +12,12 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use base64::Engine;
 use futures_util::StreamExt;
+use std::time::Duration;
+// AWS SDK imports for presigned URLs
+use aws_config::{BehaviorVersion, Region};
+use aws_credential_types::Credentials;
+use aws_sdk_s3::{Client as S3Client, Config};
+use aws_sdk_s3::presigning::PresigningConfig;
 
 use crate::storage::traits::{
     StorageClient, StorageRequest, StorageResponse, StorageError,
@@ -39,6 +45,8 @@ pub struct OSSClient {
     prefix: String, // 从 bucket 字段解析出的路径前缀
     region: Option<String>,
     platform: OSSPlatform,
+    // AWS S3 client for presigned URLs (只在 AWS S3 平台时使用)
+    aws_s3_client: Option<S3Client>,
 }
 
 impl OSSClient {
@@ -78,6 +86,7 @@ impl OSSClient {
             prefix,
             region,
             platform,
+            aws_s3_client: None, // 将在连接时初始化
         })
     }
 
@@ -330,6 +339,62 @@ impl OSSClient {
             .expect("HMAC can take key of any size");
         mac.update(data.as_bytes());
         mac.finalize().into_bytes().to_vec()
+    }
+
+    /// 初始化 AWS S3 客户端用于预签名 URL
+    async fn init_aws_s3_client(&mut self) -> Result<(), StorageError> {
+        // 从 endpoint 解析出 region
+        let region = if let Some(ref region) = self.region {
+            region.clone()
+        } else {
+            // 尝试从 endpoint 提取 region
+            self.extract_region_from_endpoint()
+                .unwrap_or_else(|| "us-east-1".to_string())
+        };
+
+        // 创建 AWS 凭证
+        let credentials = Credentials::new(
+            self.access_key.clone(),
+            self.secret_key.clone(),
+            None, // session_token
+            None, // expiration
+            "OSSClient", // provider_name
+        );
+
+        // 创建 AWS 配置
+        let mut config_builder = Config::builder()
+            .behavior_version(BehaviorVersion::latest())
+            .region(Region::new(region))
+            .credentials_provider(credentials);
+
+        // 如果不是标准 AWS endpoint，设置自定义 endpoint
+        if !self.endpoint.contains("amazonaws.com") {
+            config_builder = config_builder.endpoint_url(&self.endpoint);
+        }
+
+        let config = config_builder.build();
+        let s3_client = S3Client::from_conf(config);
+
+        self.aws_s3_client = Some(s3_client);
+        Ok(())
+    }
+
+    /// 从 endpoint 提取 region
+    fn extract_region_from_endpoint(&self) -> Option<String> {
+        if let Ok(url) = Url::parse(&self.endpoint) {
+            if let Some(host) = url.host_str() {
+                // 匹配 AWS S3 endpoint 格式: s3.region.amazonaws.com 或 bucket.s3.region.amazonaws.com
+                if host.contains("amazonaws.com") {
+                    let parts: Vec<&str> = host.split('.').collect();
+                    for (i, part) in parts.iter().enumerate() {
+                        if *part == "s3" && i + 1 < parts.len() && parts[i + 1] != "amazonaws" {
+                            return Some(parts[i + 1].to_string());
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// 获取主机名
@@ -596,6 +661,15 @@ impl StorageClient for OSSClient {
         // 404表示对象不存在但认证有效，这正是我们想要的
         if status.is_success() || status == reqwest::StatusCode::NOT_FOUND {
             self.connected.store(true, Ordering::Relaxed);
+
+            // 如果是 AWS S3 平台，初始化 AWS S3 客户端用于预签名 URL
+            if self.platform == OSSPlatform::AwsS3 {
+                if let Err(e) = self.init_aws_s3_client().await {
+                    println!("警告: AWS S3 客户端初始化失败: {}, 将使用兼容模式", e);
+                    // 不阻止连接，因为其他功能仍可正常工作
+                }
+            }
+
             println!("连接测试成功");
             Ok(())
         } else {
@@ -1049,33 +1123,50 @@ impl StorageClient for OSSClient {
         let object_key = self.extract_object_key(path)?;
 
         // 生成 1 小时有效期的预签名下载 URL
-        self.generate_download_url(&object_key, 3600)
+        if self.platform == OSSPlatform::AwsS3 {
+            // 对于 AWS S3，使用 futures::executor::block_on 来同步执行异步操作
+            futures::executor::block_on(async {
+                self.generate_download_url(&object_key, 3600).await
+            })
+        } else {
+            self.generate_download_url_sync(&object_key, 3600)
+        }
     }
 
 
 }
 
 impl OSSClient {
-    /// 生成预签名下载 URL
-    fn generate_download_url(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
+    /// 生成预签名下载 URL (异步版本，用于 AWS S3)
+    async fn generate_download_url(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
         if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
 
         // 对于AWS S3，使用AWS SDK的预签名功能会更可靠
         if self.platform == OSSPlatform::AwsS3 {
-            return self.generate_aws_presigned_url(object_key, expires_in_seconds);
+            return self.generate_aws_presigned_url_v4(object_key, expires_in_seconds).await;
         }
 
         // 对于其他OSS平台，使用传统的签名方法
         self.generate_oss_presigned_url(object_key, expires_in_seconds)
     }
 
-    /// 生成AWS S3预签名URL
-    fn generate_aws_presigned_url(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
-        // 计算过期时间戳
-        let now = Utc::now().timestamp();
-        let expires = now + expires_in_seconds;
+    /// 生成预签名下载 URL (同步版本，用于非 AWS S3 平台)
+    fn generate_download_url_sync(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
+        if !self.connected.load(Ordering::Relaxed) {
+            return Err(StorageError::NotConnected);
+        }
+
+        // 只适用于非 AWS S3 平台
+        self.generate_oss_presigned_url(object_key, expires_in_seconds)
+    }
+
+    /// 使用 AWS SDK 生成 SigV4 预签名 URL
+    async fn generate_aws_presigned_url_v4(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
+        // 检查 AWS S3 客户端是否已初始化
+        let s3_client = self.aws_s3_client.as_ref()
+            .ok_or_else(|| StorageError::InvalidConfig("AWS S3 client not initialized".to_string()))?;
 
         // 获取实际的 bucket 名称（不包含路径前缀）
         let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/') {
@@ -1084,57 +1175,29 @@ impl OSSClient {
             &self.bucket
         };
 
-        // 检查是否为虚拟主机风格
-        let is_virtual_hosted = if let Ok(parsed_url) = Url::parse(&self.endpoint) {
-            if let Some(host) = parsed_url.host_str() {
-                host.starts_with(&format!("{}.s3", actual_bucket))
-            } else {
-                false
-            }
+        // AWS SDK 限制：预签名 URL 最大有效期为 7 天
+        let max_expires = 7 * 24 * 3600; // 7 days in seconds
+        let expires_duration = if expires_in_seconds > max_expires {
+            println!("警告: 请求的过期时间超过 AWS 限制（7天），使用最大值");
+            Duration::from_secs(max_expires as u64)
         } else {
-            false
+            Duration::from_secs(expires_in_seconds as u64)
         };
 
-        // 构建 URL 和签名资源
-        let (object_url, canonicalized_resource) = if is_virtual_hosted {
-            // 虚拟主机风格 - 但根据AWS错误信息，我们需要使用路径风格的签名
-            let object_url = format!("{}/{}", self.endpoint.trim_end_matches('/'), urlencoding::encode(object_key));
-            // AWS期望的格式: /bucket/encoded-object-key
-            let canonicalized_resource = format!("/{}/{}", actual_bucket, urlencoding::encode(object_key));
-            (object_url, canonicalized_resource)
-        } else {
-            // 路径风格 - 需要包含 bucket 名称
-            let object_url = format!("{}/{}/{}", self.endpoint.trim_end_matches('/'), actual_bucket, urlencoding::encode(object_key));
-            let canonicalized_resource = format!("/{}/{}", actual_bucket, object_key);
-            (object_url, canonicalized_resource)
-        };
+        // 创建预签名配置
+        let presigning_config = PresigningConfig::expires_in(expires_duration)
+            .map_err(|e| StorageError::InvalidConfig(format!("Invalid presigning config: {}", e)))?;
 
-        // 构建查询参数 - 使用AWS S3格式
-        let mut query_params = HashMap::new();
-        query_params.insert("AWSAccessKeyId".to_string(), self.access_key.clone());
-        query_params.insert("Expires".to_string(), expires.to_string());
+        // 生成预签名 URL
+        let presigned_request = s3_client
+            .get_object()
+            .bucket(actual_bucket)
+            .key(object_key)
+            .presigned(presigning_config)
+            .await
+            .map_err(|e| StorageError::RequestFailed(format!("Failed to generate presigned URL: {}", e)))?;
 
-        // 构建待签名字符串
-        let method = "GET";
-        let content_md5 = "";
-        let content_type = "";
-
-        // 构建签名字符串
-        let string_to_sign = format!("{}\n{}\n{}\n{}\n{}",
-            method, content_md5, content_type, expires, canonicalized_resource);
-
-        // 生成签名
-        let signature = self.sign_string(&string_to_sign);
-        query_params.insert("Signature".to_string(), signature);
-
-        // 构建最终 URL
-        let query_string: String = query_params.iter()
-            .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
-            .collect::<Vec<_>>()
-            .join("&");
-
-        let final_url = format!("{}?{}", object_url, query_string);
-        Ok(final_url)
+        Ok(presigned_request.uri().to_string())
     }
 
     /// 生成OSS预签名URL（阿里云等）
