@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConnectionConfig } from '../../services/storage/types';
 import { StoredConnection } from '../../services/connectionStorage';
-import { getHostnameFromUrl } from '../../utils/urlUtils';
 import { OSSPlatformSelector, OSS_PLATFORMS } from './OSSPlatformSelector';
 
 interface OSSConnectionFormProps {
@@ -216,11 +215,24 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
     // 确定最终使用的端点
     const finalEndpoint = selectedPlatform === 'custom' ? customEndpoint : config.endpoint;
-    // 解析 host（含端口）
-    let hostWithPort = getHostnameFromUrl(finalEndpoint);
+    
+    // 解析 host（含端口），确保从有效的端点中提取
+    let hostWithPort = '';
     try {
-      hostWithPort = new URL(finalEndpoint).host; // e.g., localhost:9000
-    } catch { /* 已通过 validateForm 校验，一般不会触发 */ }
+      const url = new URL(finalEndpoint);
+      hostWithPort = url.host; // e.g., localhost:9000 或 oss-cn-hangzhou.aliyuncs.com
+      
+      // 检查主机名格式是否有效
+      if (url.hostname.includes('/') || !url.hostname.includes('.') || url.hostname.split('.').length < 2) {
+        // 主机名格式无效，使用默认的阿里云 OSS 端点
+        const region = config.region || selectedRegion || 'cn-hangzhou';
+        hostWithPort = `oss-${region}.aliyuncs.com`;
+      }
+    } catch {
+      // URL 解析失败，使用默认的阿里云 OSS 端点
+      const region = config.region || selectedRegion || 'cn-hangzhou';
+      hostWithPort = `oss-${region}.aliyuncs.com`;
+    }
     
     // 生成默认连接名称
     const hostname = hostWithPort;
@@ -254,7 +266,23 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setConfig(prev => ({ ...prev, [field]: value.trim() }));
+    let processedValue = value.trim();
+    
+    // 如果是 bucket 字段，处理协议前缀
+    if (field === 'bucket') {
+      // 移除常见的协议前缀
+      const protocolPrefixes = ['oss://', 's3://', 'cos://', 'obs://'];
+      for (const prefix of protocolPrefixes) {
+        if (processedValue.toLowerCase().startsWith(prefix)) {
+          processedValue = processedValue.substring(prefix.length);
+          break;
+        }
+      }
+      // 移除开头的斜杠
+      processedValue = processedValue.replace(/^\/+/, '');
+    }
+    
+    setConfig(prev => ({ ...prev, [field]: processedValue }));
     // 清除对应字段的错误
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));

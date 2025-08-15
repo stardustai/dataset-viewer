@@ -36,6 +36,7 @@ pub struct OSSClient {
     access_key: String,
     secret_key: String,
     bucket: String,
+    prefix: String, // 从 bucket 字段解析出的路径前缀
     region: Option<String>,
     platform: OSSPlatform,
 }
@@ -51,8 +52,17 @@ impl OSSClient {
         let secret_key = config.secret_key.clone()
             .ok_or_else(|| StorageError::InvalidConfig("OSS secret key is required".to_string()))?;
 
-        let bucket = config.bucket.clone()
+        let bucket_input = config.bucket.clone()
             .ok_or_else(|| StorageError::InvalidConfig("OSS bucket is required".to_string()))?;
+
+        // 解析 bucket 字段，支持 "bucket/path/prefix" 格式
+        let (bucket, prefix) = if let Some(slash_pos) = bucket_input.find('/') {
+            let bucket = bucket_input[..slash_pos].to_string();
+            let prefix = bucket_input[slash_pos + 1..].to_string();
+            (bucket, if prefix.ends_with('/') { prefix } else { format!("{}/", prefix) })
+        } else {
+            (bucket_input, String::new())
+        };
 
         let region = config.region.clone();
         let platform = Self::detect_platform(&endpoint);
@@ -65,6 +75,7 @@ impl OSSClient {
             access_key,
             secret_key,
             bucket,
+            prefix,
             region,
             platform,
         })
@@ -73,7 +84,7 @@ impl OSSClient {
     /// 根据端点检测OSS平台类型
     fn detect_platform(endpoint: &str) -> OSSPlatform {
         let endpoint_lower = endpoint.to_lowercase();
-        
+
         if endpoint_lower.contains("amazonaws.com") {
             OSSPlatform::AwsS3
         } else if endpoint_lower.contains("aliyuncs.com") || endpoint_lower.contains("oss-") {
@@ -86,6 +97,15 @@ impl OSSClient {
             OSSPlatform::MinIO
         } else {
             OSSPlatform::Custom
+        }
+    }
+
+    /// 构建完整路径（添加前缀）
+    fn build_full_path(&self, path: &str) -> String {
+        if self.prefix.is_empty() {
+            path.to_string()
+        } else {
+            format!("{}{}", self.prefix, path.trim_start_matches('/'))
         }
     }
 
@@ -161,9 +181,9 @@ impl OSSClient {
     }
 
     /// 构建认证头
-    fn build_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>) -> HashMap<String, String> {
+    fn build_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>, query_string: Option<&str>) -> HashMap<String, String> {
         match self.platform {
-            OSSPlatform::AwsS3 => self.build_aws_auth_headers(method, uri, extra_headers),
+            OSSPlatform::AwsS3 => self.build_aws_auth_headers(method, uri, extra_headers, query_string),
             _ => self.build_oss_auth_headers(method, uri, extra_headers),
         }
     }
@@ -185,7 +205,7 @@ impl OSSClient {
     }
 
     /// 构建AWS S3的认证头
-    fn build_aws_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>) -> HashMap<String, String> {
+    fn build_aws_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>, query_string: Option<&str>) -> HashMap<String, String> {
         let now = Utc::now();
         let date_stamp = now.format("%Y%m%d").to_string();
         let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
@@ -200,8 +220,8 @@ impl OSSClient {
         headers.insert("x-amz-content-sha256".to_string(), payload_hash.clone());
 
         // 构建规范请求
-        let canonical_request = self.build_canonical_request_with_payload(method, uri, &headers, &payload_hash);
-        
+        let canonical_request = self.build_canonical_request_with_payload(method, uri, &headers, &payload_hash, query_string.unwrap_or(""));
+
         // 构建待签名字符串
         let credential_scope = format!("{}/{}/s3/aws4_request", date_stamp, region);
         let string_to_sign = format!(
@@ -213,7 +233,7 @@ impl OSSClient {
 
         // 计算签名
         let signature = self.calculate_aws_signature(&string_to_sign, &date_stamp, &region);
-        
+
         // 构建Authorization头
         let authorization = format!(
             "AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}",
@@ -230,7 +250,7 @@ impl OSSClient {
     /// AWS S3签名辅助方法
 
 
-    fn build_canonical_request_with_payload(&self, method: &str, uri: &str, headers: &HashMap<String, String>, payload_hash: &str) -> String {
+    fn build_canonical_request_with_payload(&self, method: &str, uri: &str, headers: &HashMap<String, String>, payload_hash: &str, query_string: &str) -> String {
         // 规范化URI
         let canonical_uri = if uri.is_empty() || uri == "/" {
             "/".to_string()
@@ -238,13 +258,19 @@ impl OSSClient {
             uri.to_string()
         };
 
-        // 规范化查询字符串（暂时为空）
-        let canonical_query_string = "";
+        // 规范化查询字符串 - 按键名排序
+        let canonical_query_string = if query_string.is_empty() {
+            String::new()
+        } else {
+            let mut params: Vec<&str> = query_string.split('&').collect();
+            params.sort();
+            params.join("&")
+        };
 
         // 规范化头部
         let mut sorted_headers: Vec<_> = headers.iter().collect();
         sorted_headers.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
-        
+
         let canonical_headers: String = sorted_headers
             .iter()
             .map(|(k, v)| format!("{}:{}", k.to_lowercase(), v.trim()))
@@ -278,13 +304,13 @@ impl OSSClient {
     }
 
     fn calculate_aws_signature(&self, string_to_sign: &str, date_stamp: &str, region: &str) -> String {
-        
+
         // AWS4 签名密钥派生
         let k_date = self.hmac_sha256(&format!("AWS4{}", self.secret_key), date_stamp);
         let k_region = self.hmac_sha256_bytes(&k_date, region);
         let k_service = self.hmac_sha256_bytes(&k_region, "s3");
         let k_signing = self.hmac_sha256_bytes(&k_service, "aws4_request");
-        
+
         // 计算最终签名
         let signature = self.hmac_sha256_bytes(&k_signing, string_to_sign);
         hex::encode(signature)
@@ -477,31 +503,104 @@ impl StorageClient for OSSClient {
         if let Some(secret_key) = &config.secret_key {
             self.secret_key = secret_key.clone();
         }
-        if let Some(bucket) = &config.bucket {
-            self.bucket = bucket.clone();
+        if let Some(bucket_input) = &config.bucket {
+            // 重新解析 bucket 路径
+            let (bucket, prefix) = if let Some(slash_pos) = bucket_input.find('/') {
+                let bucket = bucket_input[..slash_pos].to_string();
+                let prefix = bucket_input[slash_pos + 1..].to_string();
+                (bucket, if prefix.ends_with('/') { prefix } else { format!("{}/", prefix) })
+            } else {
+                (bucket_input.clone(), String::new())
+            };
+            self.bucket = bucket;
+            self.prefix = prefix;
         }
         self.region = config.region.clone();
 
-        // 测试连接 - 直接使用标准化后的端点
-        let uri = "/";
-        let headers = self.build_auth_headers("GET", &uri, &HashMap::new());
+        // 简化配置：统一使用HTTP方式，避免AWS SDK的复杂性和兼容性问题
+        println!("使用统一的HTTP客户端，支持所有S3兼容服务");
 
-        let url = format!("{}/", self.endpoint.trim_end_matches('/'));
-        let mut req_builder = self.client.get(&url);
+        // 测试连接 - 使用HEAD请求测试一个不存在的对象，避免需要ListBucket权限
+        // 这种方法只需要基本的认证权限，不需要特定的bucket权限
+        // 如果用户指定了路径前缀，在该前缀下进行测试
+        let test_object = if !self.prefix.is_empty() {
+            format!("{}{}", self.prefix, "__connection_test__")
+        } else {
+            "__connection_test__".to_string()
+        };
+
+        println!("开始连接测试:");
+        println!("  test_object: {}", test_object);
+
+        // 获取实际的 bucket 名称（不包含路径前缀）
+        let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/') {
+            &self.config.bucket.as_ref().unwrap()[..slash_pos]
+        } else {
+            &self.bucket
+        };
+
+        println!("  actual_bucket: {}", actual_bucket);
+
+        // 检查是否为虚拟主机风格：端点的主机名应该以 bucket 名称开头
+        let is_virtual_hosted = if let Ok(parsed_url) = Url::parse(&self.endpoint) {
+            if let Some(host) = parsed_url.host_str() {
+                // 对于 AWS S3，如果主机名包含 bucket 名称，则为虚拟主机风格
+                if self.platform == OSSPlatform::AwsS3 {
+                    host.starts_with(&format!("{}.s3", actual_bucket))
+                } else {
+                    host.starts_with(&format!("{}.oss-", actual_bucket)) ||
+                    host.starts_with(&format!("{}.cos.", actual_bucket))
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        println!("  is_virtual_hosted: {}", is_virtual_hosted);
+
+        let (uri, url) = if is_virtual_hosted {
+            // 虚拟主机风格
+            let test_uri = format!("/{}", test_object);
+            let test_url = format!("{}/{}", self.endpoint.trim_end_matches('/'), test_object);
+            (test_uri, test_url)
+        } else {
+            // 路径风格
+            let test_uri = format!("/{}/{}", actual_bucket, test_object);
+            let test_url = format!("{}/{}/{}", self.endpoint.trim_end_matches('/'), actual_bucket, test_object);
+            (test_uri, test_url)
+        };
+
+        println!("  test_uri: {}", uri);
+        println!("  test_url: {}", url);
+
+        let headers = self.build_auth_headers("HEAD", &uri, &HashMap::new(), None);
+        let mut req_builder = self.client.head(&url);
 
         for (key, value) in headers {
             req_builder = req_builder.header(&key, &value);
         }
 
+        println!("发送连接测试请求...");
         let response = req_builder.send().await
-            .map_err(|e| StorageError::NetworkError(format!("OSS connection test failed: {}", e)))?;
+            .map_err(|e| {
+                println!("连接测试失败: {}", e);
+                StorageError::NetworkError(format!("OSS connection test failed: {}", e))
+            })?;
 
-        if response.status().is_success() {
+        let status = response.status();
+        println!("连接测试响应状态: {}", status);
+
+        // 对于连接测试，200/404都表示认证成功
+        // 404表示对象不存在但认证有效，这正是我们想要的
+        if status.is_success() || status == reqwest::StatusCode::NOT_FOUND {
             self.connected.store(true, Ordering::Relaxed);
+            println!("连接测试成功");
             Ok(())
         } else {
-            let status = response.status();
             let body = response.text().await.unwrap_or_default();
+            println!("连接测试失败，响应体: {}", body);
             Err(StorageError::RequestFailed(format!(
                 "OSS connection test failed with status {}: {}",
                 status, body
@@ -526,7 +625,7 @@ impl StorageClient for OSSClient {
 
         // 构建认证头
         let signing_method = if req.method == "LIST" { "GET" } else { &req.method };
-        let auth_headers = self.build_auth_headers(signing_method, &signing_uri, &req.headers);
+        let auth_headers = self.build_auth_headers(signing_method, &signing_uri, &req.headers, None);
 
         // 发送请求
         let mut req_builder = match req.method.as_str() {
@@ -610,7 +709,7 @@ impl StorageClient for OSSClient {
         // 对于签名，使用对象键路径
         let signing_uri = self.normalize_uri_for_signing(&format!("/{}", object_key));
 
-        let auth_headers = self.build_auth_headers(&req.method, &signing_uri, &req.headers);
+        let auth_headers = self.build_auth_headers(&req.method, &signing_uri, &req.headers, None);
 
         let mut req_builder = match req.method.as_str() {
             "GET" => self.client.get(&actual_url),
@@ -690,7 +789,7 @@ impl StorageClient for OSSClient {
 
         println!("Range请求头: {}", range_header);
 
-        let auth_headers = self.build_auth_headers("GET", &signing_uri, &headers);
+        let auth_headers = self.build_auth_headers("GET", &signing_uri, &headers, None);
 
         let mut req_builder = self.client.get(&url);
         for (key, value) in auth_headers {
@@ -735,7 +834,7 @@ impl StorageClient for OSSClient {
 
             let chunk = chunk_result
                 .map_err(|e| StorageError::RequestFailed(format!("Failed to read chunk: {}", e)))?;
-            
+
             result.extend_from_slice(&chunk);
             downloaded += chunk.len() as u64;
 
@@ -783,7 +882,7 @@ impl StorageClient for OSSClient {
         });
 
         // 标准化路径 - 对于非根目录，确保 prefix 以斜杠结尾
-        let prefix = if path == "/" || path.is_empty() {
+        let path_prefix = if path == "/" || path.is_empty() {
             String::new()
         } else {
             let trimmed = path.trim_start_matches('/').trim_end_matches('/');
@@ -794,53 +893,17 @@ impl StorageClient for OSSClient {
             }
         };
 
-        // 构建列表请求
-        let mut list_url = format!("{}/?list-type=2", self.endpoint.trim_end_matches('/'));
+        // 构建完整的前缀（包含 bucket 路径前缀）
+        let full_prefix = self.build_full_path(&path_prefix);
 
-        if !prefix.is_empty() {
-            list_url.push_str(&format!("&prefix={}", urlencoding::encode(&prefix)));
-        }
-        list_url.push_str("&delimiter=/"); // 用于模拟目录结构
-
-        if let Some(page_size) = options.page_size {
-            list_url.push_str(&format!("&max-keys={}", page_size));
-        }
-        if let Some(marker) = &options.marker {
-            list_url.push_str(&format!("&continuation-token={}", urlencoding::encode(marker)));
-        }
-
-        // 对于 list 操作，URI 应该是 /
-        let auth_headers = self.build_auth_headers("GET", "/", &HashMap::new());
-
-        let mut req_builder = self.client.get(&list_url);
-        for (key, value) in auth_headers {
-            req_builder = req_builder.header(&key, &value);
-        }
-
-        let response = req_builder.send().await
-            .map_err(|e| StorageError::NetworkError(format!("List request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Err(StorageError::RequestFailed(format!(
-                "List request failed with status {}: {}",
-                status, body
-            )));
-        }
-
-        let xml_content = response.text().await
-            .map_err(|e| StorageError::RequestFailed(format!("Failed to read response: {}", e)))?;
-
-        self.parse_list_objects_response(&xml_content, &prefix)
+        // 统一使用 HTTP 请求方式（简单可靠）
+        self.list_directory_with_http(&full_prefix, options).await
     }
 
     async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError> {
         if !self.is_connected().await {
             return Err(StorageError::NotConnected);
         }
-
-        println!("OSS读取完整文件: path={}", path);
 
         // 处理 oss:// 协议 URL
         let object_key = self.extract_object_key(path)?;
@@ -869,7 +932,7 @@ impl StorageClient for OSSClient {
             }
         };
 
-        let auth_headers = self.build_auth_headers("GET", &signing_uri, &HashMap::new());
+        let auth_headers = self.build_auth_headers("GET", &signing_uri, &HashMap::new(), None);
 
         let mut req_builder = self.client.get(&url);
         for (key, value) in auth_headers {
@@ -936,7 +999,7 @@ impl StorageClient for OSSClient {
             }
         };
 
-        let auth_headers = self.build_auth_headers("HEAD", &signing_uri, &HashMap::new());
+        let auth_headers = self.build_auth_headers("HEAD", &signing_uri, &HashMap::new(), None);
 
         let mut req_builder = self.client.head(&url);
         for (key, value) in auth_headers {
@@ -999,6 +1062,83 @@ impl OSSClient {
             return Err(StorageError::NotConnected);
         }
 
+        // 对于AWS S3，使用AWS SDK的预签名功能会更可靠
+        if self.platform == OSSPlatform::AwsS3 {
+            return self.generate_aws_presigned_url(object_key, expires_in_seconds);
+        }
+
+        // 对于其他OSS平台，使用传统的签名方法
+        self.generate_oss_presigned_url(object_key, expires_in_seconds)
+    }
+
+    /// 生成AWS S3预签名URL
+    fn generate_aws_presigned_url(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
+        // 计算过期时间戳
+        let now = Utc::now().timestamp();
+        let expires = now + expires_in_seconds;
+
+        // 获取实际的 bucket 名称（不包含路径前缀）
+        let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/') {
+            &self.config.bucket.as_ref().unwrap()[..slash_pos]
+        } else {
+            &self.bucket
+        };
+
+        // 检查是否为虚拟主机风格
+        let is_virtual_hosted = if let Ok(parsed_url) = Url::parse(&self.endpoint) {
+            if let Some(host) = parsed_url.host_str() {
+                host.starts_with(&format!("{}.s3", actual_bucket))
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        // 构建 URL 和签名资源
+        let (object_url, canonicalized_resource) = if is_virtual_hosted {
+            // 虚拟主机风格 - 但根据AWS错误信息，我们需要使用路径风格的签名
+            let object_url = format!("{}/{}", self.endpoint.trim_end_matches('/'), urlencoding::encode(object_key));
+            // AWS期望的格式: /bucket/encoded-object-key
+            let canonicalized_resource = format!("/{}/{}", actual_bucket, urlencoding::encode(object_key));
+            (object_url, canonicalized_resource)
+        } else {
+            // 路径风格 - 需要包含 bucket 名称
+            let object_url = format!("{}/{}/{}", self.endpoint.trim_end_matches('/'), actual_bucket, urlencoding::encode(object_key));
+            let canonicalized_resource = format!("/{}/{}", actual_bucket, object_key);
+            (object_url, canonicalized_resource)
+        };
+
+        // 构建查询参数 - 使用AWS S3格式
+        let mut query_params = HashMap::new();
+        query_params.insert("AWSAccessKeyId".to_string(), self.access_key.clone());
+        query_params.insert("Expires".to_string(), expires.to_string());
+
+        // 构建待签名字符串
+        let method = "GET";
+        let content_md5 = "";
+        let content_type = "";
+
+        // 构建签名字符串
+        let string_to_sign = format!("{}\n{}\n{}\n{}\n{}",
+            method, content_md5, content_type, expires, canonicalized_resource);
+
+        // 生成签名
+        let signature = self.sign_string(&string_to_sign);
+        query_params.insert("Signature".to_string(), signature);
+
+        // 构建最终 URL
+        let query_string: String = query_params.iter()
+            .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
+            .collect::<Vec<_>>()
+            .join("&");
+
+        let final_url = format!("{}?{}", object_url, query_string);
+        Ok(final_url)
+    }
+
+    /// 生成OSS预签名URL（阿里云等）
+    fn generate_oss_presigned_url(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
         // 计算过期时间戳
         let now = Utc::now().timestamp();
         let expires = now + expires_in_seconds;
@@ -1007,7 +1147,7 @@ impl OSSClient {
         let object_url = format!("{}/{}", self.endpoint.trim_end_matches('/'),
             urlencoding::encode(object_key));
 
-        // 构建查询参数
+        // 构建查询参数 - 使用OSS格式
         let mut query_params = HashMap::new();
         query_params.insert("OSSAccessKeyId".to_string(), self.access_key.clone());
         query_params.insert("Expires".to_string(), expires.to_string());
@@ -1086,11 +1226,104 @@ impl OSSClient {
     /// # Returns
     /// * `Result<String, StorageError>` - 对象键
     fn extract_object_key(&self, path: &str) -> Result<String, StorageError> {
-        if path.starts_with("oss://") {
+        let key = if path.starts_with("oss://") {
             let (object_key, _) = self.parse_oss_url(path)?;
-            Ok(object_key)
+            object_key
         } else {
-            Ok(path.trim_start_matches('/').to_string())
+            path.trim_start_matches('/').to_string()
+        };
+
+        // 应用路径前缀
+        Ok(self.build_full_path(&key))
+    }
+
+    /// 使用 HTTP 请求列出目录内容
+    async fn list_directory_with_http(
+        &self,
+        prefix: &str,
+        options: &ListOptions,
+    ) -> Result<DirectoryResult, StorageError> {
+        let mut query_params = vec![
+            ("list-type".to_string(), "2".to_string()),
+            ("delimiter".to_string(), "/".to_string()),
+        ];
+
+        if !prefix.is_empty() {
+            query_params.push(("prefix".to_string(), prefix.to_string()));
         }
+
+        if let Some(page_size) = options.page_size {
+            query_params.push(("max-keys".to_string(), page_size.to_string()));
+        }
+
+        if let Some(marker) = &options.marker {
+            query_params.push(("continuation-token".to_string(), marker.clone()));
+        }
+
+        let query_string = query_params
+            .iter()
+            .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+            .collect::<Vec<_>>()
+            .join("&");
+
+        // 获取实际的 bucket 名称（不包含路径前缀）
+        let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/') {
+            &self.config.bucket.as_ref().unwrap()[..slash_pos]
+        } else {
+            &self.bucket
+        };
+
+        // 检查是否为虚拟主机风格：端点的主机名应该以 bucket 名称开头
+        let is_virtual_hosted = if let Ok(parsed_url) = Url::parse(&self.endpoint) {
+            if let Some(host) = parsed_url.host_str() {
+                host.starts_with(&format!("{}.oss-", actual_bucket)) ||
+                host.starts_with(&format!("{}.s3", actual_bucket)) ||
+                host.starts_with(&format!("{}.cos.", actual_bucket))
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        let (signing_uri, url) = if is_virtual_hosted {
+            // 虚拟主机风格 - AWS S3
+            let signing_uri = "/".to_string();
+            let list_url = format!("{}/?{}", self.endpoint.trim_end_matches('/'), query_string);
+            (signing_uri, list_url)
+        } else {
+            // 路径风格 - 对于 AWS S3，签名 URI 应该包含 bucket 名称
+            let signing_uri = if self.platform == OSSPlatform::AwsS3 {
+                format!("/{}/", actual_bucket)
+            } else {
+                "/".to_string()
+            };
+            let list_url = format!("{}/{}?{}", self.endpoint.trim_end_matches('/'), actual_bucket, query_string);
+            (signing_uri, list_url)
+        };
+
+        let headers = self.build_auth_headers("GET", &signing_uri, &HashMap::new(), Some(&query_string));
+        let mut req_builder = self.client.get(&url);
+
+        for (key, value) in headers {
+            req_builder = req_builder.header(&key, &value);
+        }
+
+        let response = req_builder.send().await
+            .map_err(|e| StorageError::NetworkError(format!("List directory request failed: {}", e)))?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(StorageError::RequestFailed(format!(
+                "List directory failed with status {}: {}",
+                status, body
+            )));
+        }
+
+        let xml_content = response.text().await
+            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+
+        self.parse_list_objects_response(&xml_content, prefix)
     }
 }

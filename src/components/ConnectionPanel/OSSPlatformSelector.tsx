@@ -56,7 +56,7 @@ export const OSS_PLATFORMS: OSSPlatform[] = [
     defaultRegion: 'us-east-1',
     description: 'Amazon Simple Storage Service',
     regions: [
-      { id: 'us-east-1', name: 'US East (N. Virginia)', endpoint: 'https://s3.us-east-1.amazonaws.com' },
+      { id: 'us-east-1', name: '默认区域 - US East (N. Virginia)', endpoint: 'https://s3.amazonaws.com' },
       { id: 'us-east-2', name: 'US East (Ohio)', endpoint: 'https://s3.us-east-2.amazonaws.com' },
       { id: 'us-west-1', name: 'US West (N. California)', endpoint: 'https://s3.us-west-1.amazonaws.com' },
       { id: 'us-west-2', name: 'US West (Oregon)', endpoint: 'https://s3.us-west-2.amazonaws.com' },
