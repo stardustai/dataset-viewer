@@ -38,7 +38,7 @@ fn handle_file_open_request(app: &tauri::AppHandle, file_path: String) {
         let _ = window.set_focus();
         let _ = window.unminimize();
     }
-    
+
     // 检查前端是否就绪
     if let Ok(mut state) = FRONTEND_STATE.lock() {
         if state.is_ready {
@@ -55,7 +55,7 @@ fn handle_file_open_request(app: &tauri::AppHandle, file_path: String) {
 fn handle_frontend_ready(app: &tauri::AppHandle) {
     if let Ok(mut state) = FRONTEND_STATE.lock() {
         state.is_ready = true;
-        
+
         // 处理所有待处理的文件
         for file_path in state.pending_files.drain(..) {
             let _ = app.emit("file-opened", &file_path);
@@ -194,10 +194,10 @@ async fn analyze_archive_with_client(
 
     // 释放读锁后进行分析
     drop(manager);
-    
+
     // 直接使用客户端，无需包装
     let client = client_lock;
-    
+
     // 使用压缩包处理器分析文件
     ARCHIVE_HANDLER.analyze_archive_with_client(
         client,
@@ -224,10 +224,10 @@ async fn get_archive_preview_with_client(
 
     // 释放读锁后进行预览
     drop(manager);
-    
+
     // 直接使用客户端，无需包装
     let client = client_lock;
-    
+
     // 使用压缩包处理器获取文件预览
     ARCHIVE_HANDLER.get_file_preview_with_client(
         client,
@@ -333,7 +333,7 @@ async fn storage_list_directory(
 async fn storage_get_download_url(path: String) -> Result<String, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
-    
+
     manager.get_download_url(&path).await
         .map_err(|e| format!("Failed to get download URL: {}", e))
 }
@@ -413,26 +413,26 @@ async fn show_folder_dialog(_app: tauri::AppHandle) -> Result<Option<String>, St
     {
         return Err("Folder selection is not supported on Android platform".to_string());
     }
-    
+
     #[cfg(target_os = "ios")]
     {
         return Err("Folder selection is not supported on iOS platform".to_string());
     }
-    
+
     #[cfg(desktop)]
     {
         use tauri_plugin_dialog::DialogExt;
         use std::sync::mpsc;
-        
+
         let (tx, rx) = mpsc::channel();
-        
+
         _app.dialog()
             .file()
             .set_title("选择目录")
             .pick_folder(move |folder| {
                 let _ = tx.send(folder);
             });
-        
+
         match rx.recv() {
             Ok(Some(folder)) => {
                 let path_buf = folder.into_path()
@@ -558,7 +558,7 @@ async fn handle_android_back_button(app: tauri::AppHandle) -> Result<bool, Strin
     // 发送自定义事件到前端
     app.emit("android-back-button", ())
         .map_err(|e| format!("Failed to emit android back button event: {}", e))?;
-    
+
     // 返回 true 表示事件已被处理，阻止默认行为
     Ok(true)
 }
@@ -567,23 +567,23 @@ async fn handle_android_back_button(app: tauri::AppHandle) -> Result<bool, Strin
 #[cfg(target_os = "windows")]
 async fn register_windows_file_associations() -> Result<String, String> {
     use std::process::Command;
-    
+
     // 获取当前可执行文件路径
     let exe_path = std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
-    
+
     // 定义支持的文件扩展名
     let extensions = vec![
-        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", 
-        "bz2", "xz", "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", 
-        "jsonl", "js", "ts", "jsx", "tsx", "html", "css", "scss", "less", "py", 
-        "java", "cpp", "c", "php", "rb", "go", "rs", "xml", "yaml", "yml", 
-        "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md", 
+        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz",
+        "bz2", "xz", "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json",
+        "jsonl", "js", "ts", "jsx", "tsx", "html", "css", "scss", "less", "py",
+        "java", "cpp", "c", "php", "rb", "go", "rs", "xml", "yaml", "yml",
+        "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md",
         "markdown", "mdown", "mkd", "mdx"
     ];
-    
+
     let mut registered_count = 0;
-    
+
     for ext in extensions {
         // 注册文件类型
         let output = Command::new("reg")
@@ -595,12 +595,12 @@ async fn register_windows_file_associations() -> Result<String, String> {
                 "/f"
             ])
             .output();
-            
+
         if output.is_ok() {
             registered_count += 1;
         }
     }
-    
+
     // 注册应用程序信息
      let _ = Command::new("reg")
          .args([
@@ -611,7 +611,7 @@ async fn register_windows_file_associations() -> Result<String, String> {
              "/f"
          ])
          .output();
-    
+
      Ok(format!("Successfully registered {} file associations on Windows", registered_count))
 }
 
@@ -622,11 +622,11 @@ async fn register_macos_file_associations() -> Result<String, String> {
     // 在构建时已经通过 tauri.conf.json 中的 fileAssociations 配置
     // 这里可以刷新 Launch Services 数据库
     use std::process::Command;
-    
+
     let output = Command::new("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
         .args(["-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"])
         .output();
-        
+
     match output {
         Ok(_) => Ok("File associations refreshed successfully on macOS".to_string()),
         Err(e) => Err(format!("Failed to refresh file associations on macOS: {}", e))
@@ -639,21 +639,21 @@ async fn register_linux_file_associations() -> Result<String, String> {
     use std::process::Command;
     use std::fs;
     use std::path::Path;
-    
+
     // 获取当前可执行文件路径
     let exe_path = std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
-    
+
     // 创建 .desktop 文件
     let home_dir = std::env::var("HOME").map_err(|_| "Failed to get HOME directory".to_string())?;
     let desktop_dir = format!("{}/.local/share/applications", home_dir);
     let desktop_file_path = format!("{}/dataset-viewer.desktop", desktop_dir);
-    
+
     // 确保目录存在
     if let Some(parent) = Path::new(&desktop_file_path).parent() {
         fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
     }
-    
+
     let desktop_content = format!(
         "[Desktop Entry]\n\
         Name=Dataset Viewer\n\
@@ -666,15 +666,15 @@ async fn register_linux_file_associations() -> Result<String, String> {
         MimeType=text/csv;application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.oasis.opendocument.spreadsheet;application/octet-stream;application/zip;application/x-tar;application/gzip;application/x-bzip2;application/x-xz;application/x-7z-compressed;application/x-rar-compressed;text/plain;application/json;text/html;text/css;text/javascript;application/javascript;text/x-python;text/x-java-source;text/x-c;text/x-c++;text/x-php;text/x-ruby;text/x-go;text/x-rust;application/xml;text/yaml;application/sql;text/x-shellscript;text/x-log;text/markdown;image/jpeg;image/png;image/gif;image/webp;image/svg+xml;image/bmp;image/x-icon;image/tiff;application/pdf;video/mp4;video/webm;video/ogg;video/x-msvideo;video/quicktime;video/x-ms-wmv;video/x-flv;video/x-matroska;audio/mpeg;audio/ogg;audio/wav;audio/x-flac;audio/aac;audio/x-m4a;application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/rtf;application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.oasis.opendocument.presentation;\n",
         exe_path_str
     );
-    
+
     fs::write(&desktop_file_path, desktop_content)
         .map_err(|e| format!("Failed to write desktop file: {}", e))?;
-    
+
     // 更新 MIME 数据库
     let _ = Command::new("update-desktop-database")
         .arg(desktop_dir)
         .output();
-        
+
     Ok("File associations registered successfully on Linux".to_string())
 }
 
@@ -706,7 +706,7 @@ async fn register_file_associations() -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
-    
+
     // Single instance plugin is not supported on Android/mobile platforms
     #[cfg(not(target_os = "android"))]
     {
@@ -720,7 +720,7 @@ pub fn run() {
             }
         }));
     }
-    
+
     let builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -768,7 +768,7 @@ pub fn run() {
             app.listen("frontend-ready", move |_event| {
                 handle_frontend_ready(&app_handle);
             });
-            
+
             // 处理命令行参数，支持文件关联
             let args: Vec<String> = std::env::args().collect();
             if args.len() > 1 {
@@ -803,7 +803,7 @@ pub fn run() {
                     .into_iter()
                     .filter_map(|url| url.to_file_path().ok())
                     .collect::<Vec<_>>();
-                
+
                 if !files.is_empty() {
                     let file_path = files[0].to_string_lossy().to_string();
                     handle_file_open_request(app, file_path);

@@ -25,6 +25,7 @@ export interface ConnectionConfig {
   bucket?: string;  // OSS bucket 名称
   region?: string;  // OSS 区域
   endpoint?: string; // OSS 端点地址（可选，通常从 url 解析）
+  platform?: string; // OSS 平台类型 (aws, aliyun, tencent, huawei, minio, custom)
   // HuggingFace 特定配置
   apiToken?: string; // HF API token for private datasets
   organization?: string; // 组织名称 (可选)

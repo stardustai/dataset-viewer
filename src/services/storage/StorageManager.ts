@@ -50,14 +50,14 @@ export class StorageClientFactory {
    */
   static async connectToStorage(config: ConnectionConfig, key?: string): Promise<BaseStorageClient> {
     const client = this.getInstance(config.type, key);
-    
+
     try {
       const connected = await client.connect(config);
-      
+
       if (!connected) {
         throw new Error(`Failed to connect to ${config.type} storage`);
       }
-      
+
       return client;
     } catch (error) {
       // 重新抛出错误，保持原始错误信息
@@ -186,17 +186,17 @@ export class StorageServiceManager {
       }
 
       case 'oss': {
-        const endpointUrl = new URL(config.url!);
-        const ossUrl = `oss://${endpointUrl.hostname}${config.bucket ? '/' + config.bucket : ''}`;
+        // config.url 已经是 oss:// 格式，直接使用
         connectionData = {
-          url: ossUrl,
+          url: config.url!, // 直接使用传入的 oss:// URL
           username: config.username!,
           password: config.password!,
           connected: true,
           metadata: {
             bucket: config.bucket,
             region: config.region,
-            endpoint: config.endpoint || config.url
+            endpoint: config.endpoint,
+            platform: config.platform || 'custom' // 直接使用传递的平台信息
           }
         };
         await connectionStorage.saveConnection(connectionData, config.name, true);
@@ -491,10 +491,10 @@ export class StorageServiceManager {
     entryFilename: string
   ): Promise<string> {
     const { invoke } = await import('@tauri-apps/api/core');
-    
+
     // 使用超时保护，下载操作使用较长的超时时间
     const timeoutMs = 300000; // 5分钟
-    
+
     return Promise.race([
       invoke('download_archive_file_with_progress', {
         archivePath,
