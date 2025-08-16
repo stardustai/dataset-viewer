@@ -52,17 +52,17 @@ interface FileViewerContentProps {
   loadingMore: boolean;
   loadedChunks: number;
   loadedContentSize: number;
-  handleSearchResults?: (results: SearchResult[], isLimited?: boolean) => void;
-  handleScrollToBottom?: () => void;
-  setPresentationMetadata?: (metadata: { slideCount: number; size: { width: number; height: number } }) => void;
-  setDataMetadata?: (metadata: { numRows: number; numColumns: number }) => void;
-  textViewerRef?: any;
-  containerRef?: any;
-  mainContainerRef?: any;
-  loadMoreSectionRef?: any;
-  isMarkdownPreviewOpen?: boolean;
-  setIsMarkdownPreviewOpen?: (open: boolean) => void;
-  loadFileContent?: (forceLoad?: boolean) => Promise<void>;
+  containerRef: React.RefObject<HTMLDivElement>;
+  mainContainerRef: React.RefObject<HTMLDivElement>;
+  loadMoreSectionRef: React.RefObject<HTMLDivElement>;
+  isMarkdownPreviewOpen: boolean;
+  setIsMarkdownPreviewOpen: (open: boolean) => void;
+  handleSearchResults: (results: SearchResult[], isLimited?: boolean) => void;
+  handleScrollToBottom: () => void;
+  setPresentationMetadata: (metadata: any) => void;
+  setDataMetadata: (metadata: any) => void;
+  loadFileContent: (forceLoad?: boolean) => Promise<void>;
+  enableSyntaxHighlighting?: boolean;
 }
 
 export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewerContentProps>((
@@ -91,7 +91,8 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     setDataMetadata,
     isMarkdownPreviewOpen,
     setIsMarkdownPreviewOpen,
-    loadFileContent
+    loadFileContent,
+    enableSyntaxHighlighting
   },
   ref
 ) => {
@@ -140,6 +141,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
             height={containerHeight}
             isMarkdownPreviewOpen={isMarkdownPreviewOpen}
             setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
+            enableSyntaxHighlighting={enableSyntaxHighlighting}
           />
         </div>
 
@@ -244,6 +246,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
             height={containerHeight}
             isMarkdownPreviewOpen={isMarkdownPreviewOpen}
             setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
+            enableSyntaxHighlighting={enableSyntaxHighlighting}
           />
         </div>
 
@@ -266,7 +269,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       secondaryMessage={t('viewer.download.to.view')}
       onOpenAsText={async () => {
         if (loadFileContent) {
-          await loadFileContent(true);
+          await loadFileContent(true); // 强制加载非文本文件
         }
         setOpenAsText(true);
       }}

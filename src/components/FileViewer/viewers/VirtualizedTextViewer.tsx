@@ -6,6 +6,8 @@ import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
 import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
 import DOMPurify from 'dompurify';
+import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
+import { useTheme } from '../../../hooks/useTheme';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -21,6 +23,7 @@ interface VirtualizedTextViewerProps {
   isMarkdown?: boolean;
   isMarkdownPreviewOpen?: boolean;
   setIsMarkdownPreviewOpen?: (open: boolean) => void;
+  enableSyntaxHighlighting?: boolean;
 }
 
 interface VirtualizedTextViewerRef {
@@ -186,17 +189,17 @@ const MarkdownPreviewModal: React.FC<{
     if (!isOpen || !content) return;
 
     setIsLoading(true);
-    
+
     const parseMarkdown = async () => {
       try {
         const contentWithoutFrontMatter = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
-        
+
         const parsed = micromark(contentWithoutFrontMatter, {
           allowDangerousHtml: true,
           extensions: [gfm()],
           htmlExtensions: [gfmHtml()]
         });
-        
+
         setParsedContent(parsed);
       } catch (error) {
         console.error('Error parsing markdown:', error);
@@ -225,7 +228,7 @@ const MarkdownPreviewModal: React.FC<{
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-auto p-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -234,7 +237,7 @@ const MarkdownPreviewModal: React.FC<{
               </div>
             </div>
           ) : (
-            <div 
+            <div
               className="prose prose-gray dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(parsedContent) }}
             />
@@ -261,9 +264,11 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     isMarkdown = false,
     isMarkdownPreviewOpen = false,
     setIsMarkdownPreviewOpen,
+    enableSyntaxHighlighting = false,
   },
   ref
 ) => {
+  const { isDark } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [modalState, setModalState] = useState({
     isOpen: false,
@@ -271,11 +276,25 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     content: ''
   });
 
+  // 语法高亮相关状态
+  const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
+  const [isHighlighting, setIsHighlighting] = useState(false);
+
   const lines = useMemo(() => content.split('\n'), [content]);
   const calculateLineNumberWidth = useMemo(() => {
     const maxLineNumber = startLineNumber + lines.length - 1;
     return Math.max(40, maxLineNumber.toString().length * 8 + 16);
   }, [lines.length, startLineNumber]);
+
+  // 检测编程语言
+  const detectedLanguage = useMemo(() => {
+    if (!enableSyntaxHighlighting || !fileName) return 'text';
+    return getLanguageFromFileName(fileName);
+  }, [fileName, enableSyntaxHighlighting]);
+
+  const shouldHighlight = useMemo(() => {
+    return enableSyntaxHighlighting && isLanguageSupported(detectedLanguage);
+  }, [enableSyntaxHighlighting, detectedLanguage]);
 
   // 创建搜索结果的Map以提高查找性能
   const searchResultsMap = useMemo(() => {
@@ -293,6 +312,47 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     return new RegExp(`(${escapedTerm})`, 'gi');
   }, [searchTerm]);
 
+  // 高亮行的异步处理和缓存
+  const highlightVisibleLines = useCallback(async (virtualItems: any[]) => {
+    if (!shouldHighlight || isHighlighting) return;
+
+    setIsHighlighting(true);
+    const lineIndexesToHighlight: number[] = [];
+
+    // 找出需要高亮但尚未缓存的行
+    virtualItems.forEach(item => {
+      if (!highlightedLines.has(item.index)) {
+        lineIndexesToHighlight.push(item.index);
+      }
+    });
+
+    if (lineIndexesToHighlight.length === 0) {
+      setIsHighlighting(false);
+      return;
+    }
+
+    try {
+      const linesToHighlight = lineIndexesToHighlight.map(index => lines[index] || '');
+      const results = await Promise.all(
+        linesToHighlight.map(line =>
+          highlightLine(line, detectedLanguage, isDark ? 'dark' : 'light')
+        )
+      );
+
+      setHighlightedLines(prev => {
+        const newMap = new Map(prev);
+        lineIndexesToHighlight.forEach((lineIndex, i) => {
+          newMap.set(lineIndex, results[i]);
+        });
+        return newMap;
+      });
+    } catch (error) {
+      console.error('Error highlighting lines:', error);
+    } finally {
+      setIsHighlighting(false);
+    }
+  }, [shouldHighlight, isHighlighting, highlightedLines, lines, detectedLanguage, isDark]);
+
   const virtualizer = useVirtualizer({
     count: lines.length,
     getScrollElement: () => containerRef.current,
@@ -300,6 +360,19 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     overscan: 3, // 进一步减少overscan以提高性能
     measureElement: undefined, // 使用固定高度，避免动态测量
   });
+
+  // 当虚拟项改变时，触发可见行的语法高亮
+  useEffect(() => {
+    if (shouldHighlight) {
+      const virtualItems = virtualizer.getVirtualItems();
+      highlightVisibleLines(virtualItems);
+    }
+  }, [virtualizer.getVirtualItems(), shouldHighlight, highlightVisibleLines]);
+
+  // 当语言或主题变化时，清空缓存
+  useEffect(() => {
+    setHighlightedLines(new Map());
+  }, [detectedLanguage, isDark]);
 
   const performSearch = useCallback((term: string) => {
     if (!term || term.length < 2) {
@@ -316,7 +389,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
       const line = lines[i];
       let match;
       regex.lastIndex = 0;
-      
+
       while ((match = regex.exec(line)) !== null && results.length < MAX_SEARCH_RESULTS) {
         results.push({
           line: startLineNumber + i,
@@ -324,7 +397,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
           text: line,
           match: match[0]
         });
-        
+
         if (regex.lastIndex === match.index) {
           regex.lastIndex++;
         }
@@ -343,49 +416,104 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   }, [searchTerm, performSearch]);
 
   const renderLineWithHighlight = useCallback((line: string, lineIndex: number) => {
-    if (!searchRegex) {
-      return line;
+    const currentLineNumber = startLineNumber + lineIndex;
+
+    // 获取语法高亮的内容
+    let processedLine = line;
+    if (shouldHighlight && highlightedLines.has(lineIndex)) {
+      const highlighted = highlightedLines.get(lineIndex);
+      if (highlighted && highlighted !== line) {
+        processedLine = highlighted;
+      }
     }
 
-    const currentLineNumber = startLineNumber + lineIndex;
-    
+    // 如果没有搜索词，直接返回
+    if (!searchRegex) {
+      return shouldHighlight && processedLine !== line ?
+        <span dangerouslySetInnerHTML={{ __html: processedLine }} /> :
+        processedLine;
+    }
+
     // 使用Map快速查找，避免线性搜索
     if (!searchResultsMap.has(currentLineNumber)) {
-      return line;
+      return shouldHighlight && processedLine !== line ?
+        <span dangerouslySetInnerHTML={{ __html: processedLine }} /> :
+        processedLine;
     }
 
-    // 重置正则表达式状态并分割文本
-    searchRegex.lastIndex = 0;
-    const parts = line.split(searchRegex);
+    // 处理搜索高亮
+    if (shouldHighlight && processedLine !== line) {
+      // 对于已经语法高亮的代码，创建一个临时元素来提取纯文本
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = processedLine;
+      const textContent = tempDiv.textContent || tempDiv.innerText || '';
 
-    return parts.map((part, index) => {
-      // 重置正则表达式状态进行测试
+      // 在纯文本中查找搜索词并高亮
       searchRegex.lastIndex = 0;
-      if (searchRegex.test(part)) {
-        const isCurrentMatch = currentSearchIndex >= 0 && 
-          searchResults[currentSearchIndex] && 
-          searchResults[currentSearchIndex].line === currentLineNumber;
-        
-        return (
-          <mark 
-            key={index} 
-            className={isCurrentMatch 
-              ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100' 
-              : 'bg-yellow-200 dark:bg-yellow-800'
-            }
-          >
-            {part}
-          </mark>
-        );
+      const parts = textContent.split(searchRegex);
+
+      if (parts.length === 1) {
+        return <span dangerouslySetInnerHTML={{ __html: processedLine }} />;
       }
-      return part;
-    });
-  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber]);
+
+      // 简化处理：当有搜索结果时，显示带搜索高亮的原始文本，而不是语法高亮
+      searchRegex.lastIndex = 0;
+      const textParts = line.split(searchRegex);
+
+      return textParts.map((part, index) => {
+        searchRegex.lastIndex = 0;
+        if (searchRegex.test(part)) {
+          const isCurrentMatch = currentSearchIndex >= 0 &&
+            searchResults[currentSearchIndex] &&
+            searchResults[currentSearchIndex].line === currentLineNumber;
+
+          return (
+            <mark
+              key={index}
+              className={isCurrentMatch
+                ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
+                : 'bg-yellow-200 dark:bg-yellow-800'
+              }
+            >
+              {part}
+            </mark>
+          );
+        }
+        return part;
+      });
+    } else {
+      // 普通文本的搜索高亮处理
+      searchRegex.lastIndex = 0;
+      const parts = processedLine.split(searchRegex);
+
+      return parts.map((part, index) => {
+        searchRegex.lastIndex = 0;
+        if (searchRegex.test(part)) {
+          const isCurrentMatch = currentSearchIndex >= 0 &&
+            searchResults[currentSearchIndex] &&
+            searchResults[currentSearchIndex].line === currentLineNumber;
+
+          return (
+            <mark
+              key={index}
+              className={isCurrentMatch
+                ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
+                : 'bg-yellow-200 dark:bg-yellow-800'
+              }
+            >
+              {part}
+            </mark>
+          );
+        }
+        return part;
+      });
+    }
+  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines]);
 
   const handleLineClick = useCallback((lineIndex: number) => {
     const lineContent = lines[lineIndex] || '';
     const lineNumber = startLineNumber + lineIndex;
-    
+
     setModalState({
       isOpen: true,
       lineNumber,
@@ -411,7 +539,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     jumpToFilePosition: (filePosition: number) => {
       let currentPosition = 0;
       let targetLineIndex = 0;
-      
+
       for (let i = 0; i < lines.length; i++) {
         if (currentPosition >= filePosition) {
           targetLineIndex = i;
@@ -419,7 +547,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         }
         currentPosition += lines[i].length + 1;
       }
-      
+
       virtualizer.scrollToIndex(targetLineIndex, { align: 'center' });
     }
   }), [virtualizer, lines, startLineNumber]);
@@ -438,12 +566,12 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
       if (lineNumberContainer) {
         lineNumberContainer.scrollTop = container.scrollTop;
       }
-      
+
       // 滚动到底部检测
       if (onScrollToBottom) {
         const { scrollTop, scrollHeight, clientHeight } = container;
         const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
-        
+
         if (isNearBottom) {
           onScrollToBottom();
         }
@@ -458,10 +586,10 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     <>
       <div className="w-full h-full relative flex">
         {/* 固定行号区域 */}
-          <div 
+          <div
             ref={lineNumberRef}
             className="flex-shrink-0 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-hidden relative z-10"
-            style={{ 
+            style={{
               width: `${calculateLineNumberWidth}px`,
               pointerEvents: 'none'
             }}
@@ -503,7 +631,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
             })}
           </div>
         </div>
-        
+
         {/* 内容滚动区域 */}
         <div
           ref={containerRef}
@@ -535,7 +663,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                   onClick={() => handleLineClick(virtualItem.index)}
                   title="点击查看完整行内容"
                 >
-                  <div className="text-[13px] font-mono leading-6 h-full pl-2 pr-4 text-gray-900 dark:text-gray-100 whitespace-pre">
+                  <div className={`text-[13px] font-mono leading-6 h-full pl-2 pr-4 whitespace-pre ${
+                    shouldHighlight ? '' : 'text-gray-900 dark:text-gray-100'
+                  }`}>
                     <div className="min-w-max">
                       {renderLineWithHighlight(lineContent, virtualItem.index)}
                     </div>
@@ -554,7 +684,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         content={modalState.content}
         searchTerm={searchTerm}
       />
-      
+
       {isMarkdown && setIsMarkdownPreviewOpen && (
         <MarkdownPreviewModal
           isOpen={isMarkdownPreviewOpen}

@@ -96,6 +96,9 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     manualLoading: false
   });
 
+  // 强制以文本方式查看的状态
+  const [forceTextView, setForceTextView] = useState(false);
+
   useEffect(() => {
     loadArchiveInfo();
   }, [url, filename]);
@@ -173,6 +176,9 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
     // 设置选中状态
     setSelectedEntry(entry);
+
+    // 重置强制文本查看状态
+    setForceTextView(false);
 
     if (entry.is_dir) {
       // 对于文件夹，清除预览内容
@@ -481,6 +487,53 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     }
   }, [url, headers, filename, storageClient, fileLoadState.manualLoading, t]);
 
+  // 强制以文本方式查看文件的函数
+  const loadAsText = useCallback(async (entry: ArchiveEntry) => {
+    if (fileLoadState.manualLoading) return;
+
+    setFileLoadState(prev => ({ ...prev, manualLoading: true }));
+    try {
+      let fullPreview: FilePreview;
+      if (storageClient && storageClient.getArchiveFilePreview) {
+        fullPreview = await storageClient.getArchiveFilePreview(
+          url,
+          filename,
+          entry.path,
+          entry.size || undefined // 加载完整文件
+        );
+      } else {
+        fullPreview = await CompressionService.extractFilePreview(
+          url,
+          headers,
+          filename,
+          entry.path,
+          entry.size || undefined // 加载完整文件
+        );
+      }
+
+      setFilePreview(fullPreview);
+      setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
+
+      // 强制以文本方式解码内容
+      if (fullPreview.content) {
+        try {
+          const textContent = new TextDecoder('utf-8', { fatal: false }).decode(fullPreview.content);
+          setFileContent(textContent);
+          setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
+          setForceTextView(true); // 标记为强制文本查看
+        } catch (decodeError) {
+          console.error('Failed to decode text content:', decodeError);
+          setPreviewError(t('error.decode.text'));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load as text:', err);
+      setPreviewError(t('error.load.full.content'));
+    } finally {
+      setFileLoadState(prev => ({ ...prev, manualLoading: false }));
+    }
+  }, [url, headers, filename, storageClient, fileLoadState.manualLoading, t]);
+
 
   // 复制压缩包内文件路径到剪贴板
   const copyFilePath = async (entry: ArchiveEntry) => {
@@ -544,234 +597,227 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 flex min-h-0">
-        {/* 使用ArchiveFileBrowser组件 */}
-        <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-0">
-          {archiveInfo && (
-            <ArchiveFileBrowser
-              archiveInfo={archiveInfo}
-              onFileSelect={previewFile}
-              onBack={() => window.history.back()}
-              showHidden={showHidden}
-              onShowHiddenChange={setShowHidden}
-            />
-          )}
-        </div>
+		<div className="flex-1 flex min-h-0">
+			{/* 使用ArchiveFileBrowser组件 */}
+			<div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-0">
+				{archiveInfo && (
+					<ArchiveFileBrowser
+						archiveInfo={archiveInfo}
+						onFileSelect={previewFile}
+						onBack={() => window.history.back()}
+						showHidden={showHidden}
+						onShowHiddenChange={setShowHidden}
+					/>
+				)}
+			</div>
 
-        {/* 文件预览 */}
-        <div className="w-1/2 flex flex-col min-h-0">
-          {previewLoading ? (
-            <LoadingDisplay message={t('loading.preview')} />
-          ) : selectedEntry ? (
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="p-4 -my-0.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-medium truncate">{selectedEntry.path}</h3>
-                      <div className="flex items-center space-x-1">
-                        {/* 下载文件按钮 */}
-                        {!selectedEntry.is_dir && (
-                          <button
-                            onClick={() => downloadFile(selectedEntry)}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                            title={t('viewer.download')}
-                          >
-                            <Download className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          </button>
-                        )}
-                        {/* 复制文件路径按钮 */}
-                        <button
-                          onClick={() => copyFilePath(selectedEntry)}
-                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                          title={t('copy.full.path')}
-                        >
-                          <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {t('file.size.label')}: {formatFileSize(selectedEntry.size)}
-                      {(() => {
-                        const formattedTime = formatModifiedTime(selectedEntry.modified_time);
-                        return formattedTime ? (
-                          <span className="ml-4">
-                            {t('file.modified.time')}: {formattedTime}
-                          </span>
-                        ) : null;
-                      })()}
-                    </p>
-                  </div>
-                </div>
-              </div>
+			{/* 文件预览 */}
+			<div className="w-1/2 flex flex-col min-h-0">
+				{previewLoading ? (
+					<LoadingDisplay message={t('loading.preview')} />
+				) : selectedEntry ? (
+					<div className="flex-1 flex flex-col min-h-0">
+						<div className="p-4 -my-0.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
+							<div className="flex items-center justify-between">
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center space-x-2">
+										<h3 className="font-medium truncate">{selectedEntry.path}</h3>
+										<div className="flex items-center space-x-1">
+											{/* 下载文件按钮 */}
+											{!selectedEntry.is_dir && (
+												<button
+													onClick={() => downloadFile(selectedEntry)}
+													className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+													title={t('viewer.download')}
+												>
+													<Download className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+												</button>
+											)}
+											{/* 复制文件路径按钮 */}
+											<button
+												onClick={() => copyFilePath(selectedEntry)}
+												className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+												title={t('copy.full.path')}
+											>
+												<Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+											</button>
+										</div>
+									</div>
+									<p className="text-sm text-gray-600 dark:text-gray-400">
+										{t('file.size.label')}: {formatFileSize(selectedEntry.size)}
+										{(() => {
+											const formattedTime = formatModifiedTime(selectedEntry.modified_time);
+											return formattedTime ? (
+												<span className="ml-4">
+													{t('file.modified.time')}: {formattedTime}
+												</span>
+											) : null;
+										})()}
+									</p>
+								</div>
+							</div>
+						</div>
 
-              <div className="flex-1 overflow-auto min-h-0">
-                {previewError ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="mb-4">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                          <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                          {t('preview.failed')}
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-                          {previewError}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setPreviewError(null);
-                          if (selectedEntry) {
-                            previewFile(selectedEntry);
-                          }
-                        }}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
-                      >
-                        {t('retry.preview')}
-                      </button>
-                    </div>
-                  </div>
-                ) : selectedEntry?.is_dir ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                        <Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        {t('folder.selected')}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-                        {t('folder.info.message')}
-                      </p>
-                    </div>
-                  </div>
-                ) : selectedEntry && filePreview ? (
-                  (() => {
-                    const { isText, isMedia, isData, isSpreadsheet, fileType } = getFileTypeInfo(selectedEntry);
-                    const virtualFilePath = createVirtualFilePath(selectedEntry);
+						<div className="flex-1 overflow-auto min-h-0">
+							{previewError ? (
+								<div className="h-full flex items-center justify-center">
+									<div className="text-center">
+										<div className="mb-4">
+											<div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+												<AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
+											</div>
+											<h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+												{t('preview.failed')}
+											</h3>
+											<p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
+												{previewError}
+											</p>
+										</div>
+										<button
+											onClick={() => {
+												setPreviewError(null);
+												if (selectedEntry) {
+													previewFile(selectedEntry);
+												}
+											}}
+											className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+										>
+											{t('retry.preview')}
+										</button>
+									</div>
+								</div>
+							) : selectedEntry?.is_dir ? (
+								<div className="h-full flex items-center justify-center">
+									<div className="text-center">
+										<div className="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+											<Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
+										</div>
+										<h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+											{t('folder.selected')}
+										</h3>
+										<p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
+											{t('folder.info.message')}
+										</p>
+									</div>
+								</div>
+							) : selectedEntry && filePreview ? (
+								(() => {
+									const { isText, isMedia, isData, isSpreadsheet, fileType } = getFileTypeInfo(selectedEntry);
+									const virtualFilePath = createVirtualFilePath(selectedEntry);
 
-                    if (isText && fileContent) {
-                      return (
-                        <div className="h-full flex flex-col">
-                          <VirtualizedTextViewer
-                            content={fileContent}
-                            searchTerm=""
-                            onSearchResults={() => {}}
-                            className="flex-1"
-                            onScrollToBottom={fileLoadState.isLargeFile ? handleScrollToBottom : undefined}
-                          />
-                          {fileLoadState.isLargeFile && (
-                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
-                              <div className="flex items-center justify-between">
-                                <span>
-                                  {t('file.loaded.chunks', { chunks: fileLoadState.loadedChunks, size: formatFileSize(fileLoadState.loadedContentSize) })}
-                                </span>
-                                {fileLoadState.loadingMore && (
-                                  <div className="flex items-center gap-2">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                                    <span>{t('loading.more.content')}</span>
-                                  </div>
-                                )}
-                                {!fileLoadState.loadingMore && fileLoadState.loadedContentSize < fileLoadState.totalSize && (
-                                  <span className="text-blue-600 dark:text-blue-400">
-                                    {t('scroll.to.load.more')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    } else if (isMedia) {
-                      // 媒体文件：小于10MB自动加载，大于10MB需要手动加载
-                      const fileSize = selectedEntry.size || 0;
-                      const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
+									// 检查是否强制以文本方式查看或本身就是文本文件
+									if ((isText || forceTextView) && fileContent) {
+										return (
+											<div className="h-full flex flex-col">
+												<VirtualizedTextViewer
+													content={fileContent}
+													searchTerm=""
+													onSearchResults={() => {}}
+													className="flex-1"
+													onScrollToBottom={fileLoadState.isLargeFile ? handleScrollToBottom : undefined}
+												/>
+												{fileLoadState.isLargeFile && (
+													<div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
+														<div className="flex items-center justify-between">
+															<span>
+																{t('file.loaded.chunks', { chunks: fileLoadState.loadedChunks, size: formatFileSize(fileLoadState.loadedContentSize) })}
+															</span>
+															{fileLoadState.loadingMore && (
+																<div className="flex items-center gap-2">
+																	<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+																	<span>{t('loading.more.content')}</span>
+																</div>
+															)}
+															{!fileLoadState.loadingMore && fileLoadState.loadedContentSize < fileLoadState.totalSize && (
+																<span className="text-blue-600 dark:text-blue-400">
+																	{t('scroll.to.load.more')}
+																</span>
+															)}
+														</div>
+													</div>
+												)}
+											</div>
+										);
+									} else if (isMedia) {
+										// 媒体文件：小于10MB自动加载，大于10MB需要手动加载
+										const fileSize = selectedEntry.size || 0;
+										const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
 
-                      if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
-                        return (
-                          <ManualLoadButton
-                            entry={selectedEntry}
-                            onLoad={loadFullContent}
-                            isLoading={fileLoadState.manualLoading}
-                            loadType="media"
-                          />
-                        );
-                      }
-                      return (
-                        <MediaViewer
-                          filePath={virtualFilePath}
-                          fileName={selectedEntry.path}
-                          fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
-                          fileSize={selectedEntry.size}
-                          previewContent={filePreview.content}
-                        />
-                      );
-                    } else if (isData || isSpreadsheet) {
-                      // 数据文件：小于10MB自动加载，大于10MB需要手动加载
-                      const fileSize = selectedEntry.size || 0;
-                      const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
+										if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
+											return (
+												<ManualLoadButton
+													entry={selectedEntry}
+													onLoad={loadFullContent}
+													isLoading={fileLoadState.manualLoading}
+													loadType="media"
+												/>
+											);
+										}
+										return (
+											<MediaViewer
+												filePath={virtualFilePath}
+												fileName={selectedEntry.path}
+												fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
+												fileSize={selectedEntry.size}
+												previewContent={filePreview.content}
+											/>
+										);
+									} else if (isData || isSpreadsheet) {
+										// 数据文件：小于10MB自动加载，大于10MB需要手动加载
+										const fileSize = selectedEntry.size || 0;
+										const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
 
-                      if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
-                        return (
-                          <ManualLoadButton
-                            entry={selectedEntry}
-                            onLoad={loadFullContent}
-                            isLoading={fileLoadState.manualLoading}
-                            loadType="data"
-                          />
-                        );
-                      }
-                      return (
-                        <UniversalDataTableViewer
-                          filePath={virtualFilePath}
-                          fileName={selectedEntry.path}
-                          fileSize={selectedEntry.size}
-                          fileType={isSpreadsheet ?
-                            (selectedEntry.path.toLowerCase().endsWith('.xlsx') || selectedEntry.path.toLowerCase().endsWith('.xls') ? 'xlsx' : 'ods') :
-                            (selectedEntry.path.toLowerCase().endsWith('.parquet') || selectedEntry.path.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv')
-                          }
-                          previewContent={filePreview.content}
-                        />
-                      );
-                    } else {
-                      // 不支持的格式：检查是否已手动加载
-                      if (!fileLoadState.manualLoadRequested) {
-                        return (
-                          <ManualLoadButton
-                            entry={selectedEntry}
-                            onLoad={loadFullContent}
-                            isLoading={fileLoadState.manualLoading}
-                            loadType="unsupported"
-                          />
-                        );
-                      }
-                      return (
-                        <UnsupportedFormatDisplay
-                          message={t('viewer.unsupported.format')}
-                          secondaryMessage={t('viewer.download.to.view')}
-                        />
-                      );
-                    }
-                  })()
-                ) : (
-                  <StatusDisplay
-                    type="previewEmpty"
-                    message={t('preparing.preview')}
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
-            <StatusDisplay
-              type="previewEmpty"
-              message={t('select.file.for.preview')}
-            />
-          )}
-        </div>
-      </div>
-    </div>
+										if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
+											return (
+												<ManualLoadButton
+													entry={selectedEntry}
+													onLoad={loadFullContent}
+													isLoading={fileLoadState.manualLoading}
+													loadType="data"
+												/>
+											);
+										}
+										return (
+											<UniversalDataTableViewer
+												filePath={virtualFilePath}
+												fileName={selectedEntry.path}
+												fileSize={selectedEntry.size}
+												fileType={isSpreadsheet ?
+													(selectedEntry.path.toLowerCase().endsWith('.xlsx') || selectedEntry.path.toLowerCase().endsWith('.xls') ? 'xlsx' : 'ods') :
+													(selectedEntry.path.toLowerCase().endsWith('.parquet') || selectedEntry.path.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv')
+												}
+												previewContent={filePreview.content}
+											/>
+										);
+									} else {
+										// 不支持的格式：只提供文本查看选项
+										return (
+											<UnsupportedFormatDisplay
+												message={t('viewer.unsupported.format')}
+												secondaryMessage={t('viewer.unsupported.format.message')}
+												onOpenAsText={() => loadAsText(selectedEntry)}
+												className="h-full"
+											/>
+										);
+									}
+								})()
+							) : (
+								<StatusDisplay
+									type="previewEmpty"
+									message={t('preparing.preview')}
+									className="h-full"
+								/>
+							)}
+						</div>
+					</div>
+				) : (
+					<StatusDisplay
+						type="previewEmpty"
+						message={t('select.file.for.preview')}
+						className="h-full"
+					/>
+				)}
+			</div>
+		</div>
   );
 };

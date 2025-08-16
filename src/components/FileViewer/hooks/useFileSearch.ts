@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { SearchResult, FullFileSearchResult } from '../../../types';
 
 interface VirtualizedTextViewerRef {
@@ -17,6 +17,7 @@ interface UseFileSearchProps {
   isLargeFile: boolean;
   filePath: string;
   totalSize: number;
+  textViewerRef: React.RefObject<VirtualizedTextViewerRef>; // 添加textViewerRef参数
   performFullFileSearch: (term: string) => Promise<FullFileSearchResult[]>;
   setSearchLoading: (loading: boolean) => void;
   setFullFileSearchLoading: (loading: boolean) => void;
@@ -44,6 +45,7 @@ export const useFileSearch = ({
   isLargeFile,
   filePath,
   totalSize,
+  textViewerRef, // 使用传入的ref
   performFullFileSearch,
   setSearchLoading,
   setFullFileSearchLoading,
@@ -60,7 +62,8 @@ export const useFileSearch = ({
   setLoading,
   setError
 }: UseFileSearchProps) => {
-  const textViewerRef = useRef<VirtualizedTextViewerRef>(null);
+  // 移除内部ref定义
+  // const textViewerRef = useRef<VirtualizedTextViewerRef>(null);
 
   const handleSearchResults = useCallback((results: SearchResult[], isLimited?: boolean) => {
     // 确保总是重置loading状态
@@ -240,7 +243,6 @@ export const useFileSearch = ({
   }, [fullFileSearchMode, searchTerm, performSearch, navigatingToResult, currentSearchIndex, fullFileSearchResults, searchResults, setCurrentSearchIndex]);
 
   return {
-    textViewerRef,
     handleSearchResults,
     performSearch,
     navigateToResult,

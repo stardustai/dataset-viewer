@@ -44,6 +44,7 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^15.6.0",
     "semver": "^7.7.2",
+    "shiki": "^3.9.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

@@ -8,9 +8,11 @@ import {
   X,
   Move,
   Percent,
-  Eye
+  Eye,
+  Code
 } from 'lucide-react';
 import { SearchResult, FullFileSearchResult } from '../../types';
+import { getLanguageFromFileName, isLanguageSupported } from '../../utils/syntaxHighlighter';
 
 interface FileViewerSearchBarProps {
   searchTerm: string;
@@ -35,6 +37,9 @@ interface FileViewerSearchBarProps {
   onPercentKeyPress: (e: React.KeyboardEvent) => void;
   isMarkdown?: boolean;
   onMarkdownPreview?: () => void;
+  enableSyntaxHighlighting?: boolean;
+  setEnableSyntaxHighlighting?: (enable: boolean) => void;
+  fileName?: string;
 }
 
 export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
@@ -59,7 +64,10 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
   onPercentageJump,
   onPercentKeyPress,
   isMarkdown,
-  onMarkdownPreview
+  onMarkdownPreview,
+  enableSyntaxHighlighting,
+  setEnableSyntaxHighlighting,
+  fileName
 }) => {
   const { t } = useTranslation();
 
@@ -67,6 +75,10 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
   const isCurrentResultsLimited = fullFileSearchMode ? fullFileSearchLimited : searchResultsLimited;
   const limitText = fullFileSearchMode ? t('search.results.limited.500') : t('search.results.limited.5000');
   const limitDescription = fullFileSearchMode ? t('search.sampling.description') : t('search.too.many.results');
+
+  // 检查是否支持语法高亮
+  const detectedLanguage = getLanguageFromFileName(fileName || '');
+  const canHighlight = isLanguageSupported(detectedLanguage);
 
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0 lg:space-x-4">
@@ -192,7 +204,7 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
               </button>
             </div>
           )}
-          
+
           {/* Markdown preview button */}
           {isMarkdown && onMarkdownPreview && (
             <button
@@ -201,6 +213,24 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
               title={t('markdown.preview')}
             >
               <Eye className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+
+          {/* Syntax highlighting toggle */}
+          {canHighlight && setEnableSyntaxHighlighting && (
+            <button
+              onClick={() => setEnableSyntaxHighlighting(!enableSyntaxHighlighting)}
+              className={`px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border border-gray-300 dark:border-gray-600 ${
+                enableSyntaxHighlighting
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  : 'bg-white dark:bg-gray-800'
+              }`}
+              title={enableSyntaxHighlighting ?
+                t('syntax.highlighting.disable') + ` (${detectedLanguage})` :
+                t('syntax.highlighting.enable') + ` (${detectedLanguage})`
+              }
+            >
+              <Code className="w-4 h-4" />
             </button>
           )}
         </div>

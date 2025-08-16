@@ -47,6 +47,12 @@ export const fileViewer = {
   'viewer.jump': 'Jump',
   'viewer.line.numbers.estimated': 'Line numbers are estimated (starting from approx. line {{startLine}})',
 
+  // Syntax highlighting
+  'syntax.highlighting': 'Syntax Highlighting',
+  'syntax.highlighting.enable': 'Enable syntax highlighting',
+  'syntax.highlighting.disable': 'Disable syntax highlighting',
+  'syntax.highlighting.language': 'Language: {{language}}',
+
   // Media viewer
   'viewer.zoom.in': 'Zoom in',
   'viewer.zoom.out': 'Zoom out',
@@ -133,7 +139,7 @@ export const fileViewer = {
   'data.table.metadata.columns': 'Columns',
   'data.table.metadata.loaded': 'Loaded',
   'data.table.metadata.size': 'File Size',
-  
+
   // 分块加载相关
   'file.loaded.chunks': 'Loaded {{chunks}} chunks ({{size}})',
   'scroll.to.load.more': 'Scroll to load more',
@@ -191,5 +197,6 @@ export const fileViewer = {
 
   // Unsupported format text view option
   'viewer.open.as.text': 'Open as Text',
+  'viewer.unsupported.format.message': 'This file format is not directly supported, but you can try viewing it as text.',
 
 };

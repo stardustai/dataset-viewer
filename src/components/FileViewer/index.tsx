@@ -5,6 +5,18 @@ import { FileViewerSearchBar } from './FileViewerSearchBar';
 import { FileViewerContent } from './FileViewerContent';
 import { useFileLoader } from './hooks/useFileLoader';
 import { useFileSearch } from './hooks/useFileSearch';
+import { getLanguageFromFileName } from '../../utils/syntaxHighlighter';
+import {
+  isLanguageHighlightingEnabled,
+  toggleLanguageHighlighting
+} from '../../utils/syntaxHighlightingStorage';
+
+// 定义 VirtualizedTextViewer 的 ref 接口
+interface VirtualizedTextViewerRef {
+  scrollToLine: (lineNumber: number, column?: number) => void;
+  scrollToPercentage: (percentage: number) => void;
+  jumpToFilePosition: (filePosition: number) => void;
+}
 
 interface FileViewerProps {
   file: StorageFile;
@@ -18,7 +30,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   const fileLoader = useFileLoader(file, filePath);
 
   // 创建需要的refs
-  const textViewerRef = useRef<HTMLDivElement>(null);
+  const textViewerRef = useRef<VirtualizedTextViewerRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreSectionRef = useRef<HTMLDivElement>(null);
@@ -29,6 +41,19 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
 
   // Markdown 预览状态
   const [isMarkdownPreviewOpen, setIsMarkdownPreviewOpen] = useState(false);
+
+  // 语法高亮状态 - 使用持久化存储
+  const [enableSyntaxHighlighting, setEnableSyntaxHighlighting] = useState(() => {
+    const language = getLanguageFromFileName(file.filename);
+    return isLanguageHighlightingEnabled(language);
+  });
+
+  // 处理语法高亮切换
+  const handleSyntaxHighlightingToggle = (enabled: boolean) => {
+    const language = getLanguageFromFileName(file.filename);
+    toggleLanguageHighlighting(language, enabled);
+    setEnableSyntaxHighlighting(enabled);
+  };
 
   useEffect(() => {
     const updateHeight = () => {
@@ -103,6 +128,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     isLargeFile,
     filePath,
     totalSize,
+    textViewerRef, // 传递textViewerRef
     performFullFileSearch,
     setSearchLoading: fileLoader.setSearchLoading,
     setFullFileSearchLoading: fileLoader.setFullFileSearchLoading,
@@ -185,10 +211,14 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
             onPercentKeyPress={handlePercentKeyPress}
             isMarkdown={fileInfo.isMarkdown}
             onMarkdownPreview={() => setIsMarkdownPreviewOpen(true)}
+            enableSyntaxHighlighting={enableSyntaxHighlighting}
+            setEnableSyntaxHighlighting={handleSyntaxHighlightingToggle}
+            fileName={file.filename}
           />
         )}
 
       <FileViewerContent
+        ref={textViewerRef}
         loading={loading}
         error={error}
         file={file}
@@ -213,13 +243,13 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
         loadedContentSize={loadedContentSize}
         setPresentationMetadata={setPresentationMetadata}
         setDataMetadata={setDataMetadata}
-        textViewerRef={textViewerRef}
         containerRef={containerRef}
         mainContainerRef={mainContainerRef}
         loadMoreSectionRef={loadMoreSectionRef}
         isMarkdownPreviewOpen={isMarkdownPreviewOpen}
         setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
         loadFileContent={loadFileContent}
+        enableSyntaxHighlighting={enableSyntaxHighlighting}
       />
     </div>
   );

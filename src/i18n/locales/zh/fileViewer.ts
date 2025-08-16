@@ -44,6 +44,12 @@ export const fileViewer = {
   'viewer.jump': '跳转',
   'viewer.line.numbers.estimated': '显示行号为估算值（从约第 {{startLine}} 行开始）',
 
+  // 语法高亮
+  'syntax.highlighting': '语法高亮',
+  'syntax.highlighting.enable': '开启语法高亮',
+  'syntax.highlighting.disable': '关闭语法高亮',
+  'syntax.highlighting.language': '语言: {{language}}',
+
   // 媒体查看器
   'viewer.zoom.in': '放大',
   'viewer.zoom.out': '缩小',
@@ -115,7 +121,7 @@ export const fileViewer = {
   'data.table.cell.details': '单元格详情',
   'data.table.cell.location': '位置: {{column}} 列, 第 {{row}} 行',
   'data.table.cell.copy': '复制内容',
-  
+
   // 分块加载相关
   'file.loaded.chunks': '已加载 {{chunks}} 个分块 ({{size}})',
   'scroll.to.load.more': '滚动加载更多',
@@ -128,7 +134,7 @@ export const fileViewer = {
 
   // AV1 视频播放器
   'av1.player.loading': '正在加载 AV1 解码器...',
-  
+
   'av1.player.initializing': '正在初始化视频...',
   'av1.player.decoding': '正在解码视频帧...',
   'av1.player.error.load': '加载 AV1 解码器失败',
@@ -178,4 +184,5 @@ export const fileViewer = {
 
   // 不支持格式的文本查看选项
   'viewer.open.as.text': '以文本格式打开',
+  'viewer.unsupported.format.message': '此文件格式不被直接支持，您可以尝试以文本格式查看。',
 };
