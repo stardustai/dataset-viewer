@@ -84,14 +84,12 @@ jobs:
             | macOS (Intel) | [Download DMG](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/Dataset.Viewer_${{ steps.get_version.outputs.VERSION }}_x64.dmg) |
             | Windows x64 | [Download MSI](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/DatasetViewer_${{ steps.get_version.outputs.WINDOWS_VERSION }}_x64_en-US.msi) |
             | Linux (AppImage) | [Download AppImage](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/Dataset.Viewer_${{ steps.get_version.outputs.VERSION }}_amd64.AppImage) |
-            | Android | [Download APK](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/dataset-viewer-${{ steps.get_version.outputs.VERSION }}-arm64-signed.apk) |
 
             ### 🔧 Installation
 
             - **macOS**: Download DMG → Drag to Applications → Run: `sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"`
             - **Windows**: Download MSI → Run installer
             - **Linux (AppImage)**: `chmod +x "Dataset Viewer_"*.AppImage` → Run
-            - **Android**: Download APK → Enable "Install from unknown sources" → Install APK
 
   build-tauri:
     needs: create-release
@@ -112,10 +110,6 @@ jobs:
           - platform: 'windows-latest'
             args: ''
             arch: 'x64'
-          - platform: 'ubuntu-22.04'
-            args: '--target aarch64-linux-android'
-            arch: 'android'
-            mobile: true
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -145,40 +139,10 @@ jobs:
           cache-all-crates: true
 
       - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04' && !matrix.mobile
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: Setup Android environment (Android only)
-        if: matrix.mobile
-        run: |
-          # Install Java 17
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk
-
-          # Download and setup Android SDK
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q commandlinetools-linux-9477386_latest.zip
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-
-          # Set environment variables (清除 ANDROID_SDK_ROOT 避免冲突)
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=" >> $GITHUB_ENV
-          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-
-          # Accept licenses and install required packages
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
-
-          # Set NDK_HOME
-          echo "NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-
-          # Add Android Rust targets
-          rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
       - name: Install frontend dependencies
         run: pnpm install
@@ -208,46 +172,8 @@ jobs:
           $tauriConfig | ConvertTo-Json -Depth 10 | Set-Content "src-tauri/tauri.conf.json"
         shell: pwsh
 
-      - name: Initialize Android project (Android only)
-        if: matrix.mobile
-        run: |
-          pnpm tauri android init --ci
-          # 确保自定义配置文件存在
-          if [ ! -f "src-tauri/gen/android/signing-config.gradle" ]; then
-            echo "警告: signing-config.gradle 不存在，可能需要重新创建"
-          fi
-
-      - name: Setup Android signing (Android only)
-        if: matrix.mobile
-        run: |
-          # 从 GitHub Secrets 恢复 keystore 文件
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > src-tauri/gen/android/release.keystore
-
-          # 动态创建签名配置文件
-          cat >> src-tauri/gen/android/signing-dynamic.gradle << 'EOF'
-          android {
-              signingConfigs {
-                  release {
-                      keyAlias '${{ secrets.ANDROID_KEY_ALIAS }}'
-                      keyPassword '${{ secrets.ANDROID_KEY_PASSWORD }}'
-                      storeFile file('../release.keystore')
-                      storePassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                  }
-              }
-          }
-          EOF
-
-          # 验证文件创建
-          ls -la src-tauri/gen/android/release.keystore
-          echo "✅ Android 签名配置完成"
-
       - uses: tauri-apps/tauri-action@v0
-        if: '!matrix.mobile && github.event_name != ''workflow_dispatch'''
+        if: github.event_name != 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -255,34 +181,6 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Build only (manual trigger)
-        if: '!matrix.mobile && github.event_name == ''workflow_dispatch'''
+        if: github.event_name == 'workflow_dispatch'
         run: |
           pnpm tauri build ${{ matrix.args }}
-
-      - name: Build Android APK
-        if: matrix.mobile
-        run: |
-          # 使用 Tauri 官方构建命令，简单可靠
-          pnpm tauri android build --apk
-
-          # 检查生成的 APK 文件
-          find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f
-
-          # 获取版本号并重命名 APK
-          VERSION=$(echo "${{ needs.create-release.outputs.release_tag }}" | sed 's/^v//')
-
-          # 查找并重命名 APK 文件
-          for apk_file in src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk; do
-            if [ -f "$apk_file" ]; then
-              mv "$apk_file" "src-tauri/gen/android/app/build/outputs/apk/universal/release/dataset-viewer-${VERSION}-arm64-signed.apk"
-              echo "✅ APK 重命名完成: dataset-viewer-${VERSION}-arm64-signed.apk"
-              break
-            fi
-          done
-
-      - name: Upload Android APK
-        if: matrix.mobile && github.event_name != 'workflow_dispatch'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.create-release.outputs.release_tag }}
-          files: src-tauri/gen/android/app/build/outputs/apk/universal/release/dataset-viewer-*-arm64-signed.apk

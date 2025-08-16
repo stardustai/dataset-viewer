@@ -431,12 +431,6 @@ async fn download_archive_file_with_progress(
 /// 显示文件夹选择对话框
 #[tauri::command]
 async fn show_folder_dialog(_app: tauri::AppHandle) -> Result<Option<String>, String> {
-    // Android and iOS don't support folder picker
-    #[cfg(target_os = "android")]
-    {
-        return Err("Folder selection is not supported on Android platform".to_string());
-    }
-
     #[cfg(target_os = "ios")]
     {
         return Err("Folder selection is not supported on iOS platform".to_string());
@@ -590,17 +584,6 @@ async fn get_recommended_chunk_size(filename: String, file_size: u64) -> Result<
     Ok(ARCHIVE_HANDLER.get_recommended_chunk_size(&filename, file_size))
 }
 
-// 安卓返回按钮处理
-#[tauri::command]
-async fn handle_android_back_button(app: tauri::AppHandle) -> Result<bool, String> {
-    // 发送自定义事件到前端
-    app.emit("android-back-button", ())
-        .map_err(|e| format!("Failed to emit android back button event: {}", e))?;
-
-    // 返回 true 表示事件已被处理，阻止默认行为
-    Ok(true)
-}
-
 /// Windows 平台文件关联注册
 #[cfg(target_os = "windows")]
 async fn register_windows_file_associations() -> Result<String, String> {
@@ -743,32 +726,25 @@ async fn register_file_associations() -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default();
+    let builder = tauri::Builder::default();
 
-    // Single instance plugin is not supported on Android/mobile platforms
-    #[cfg(not(target_os = "android"))]
-    {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            // 当应用已经运行时，处理新的文件打开请求
-            if args.len() > 1 {
-                let file_path = &args[1];
-                if std::path::Path::new(file_path).exists() {
-                    handle_file_open_request(app, file_path.to_string());
-                }
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        // 当应用已经运行时，处理新的文件打开请求
+        if args.len() > 1 {
+            let file_path = &args[1];
+            if std::path::Path::new(file_path).exists() {
+                handle_file_open_request(app, file_path.to_string());
             }
-        }));
-    }
+        }
+    }));
 
     let builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_process::init());
-
-    // opener 插件不支持 Android 平台
-    #[cfg(not(target_os = "android"))]
-    let builder = builder.plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_opener::init());
 
     let builder = builder
         .invoke_handler(tauri::generate_handler![
@@ -803,7 +779,6 @@ pub fn run() {
             // 新增：通过存储客户端的压缩包处理命令
             analyze_archive_with_client,
             get_archive_preview_with_client,
-            handle_android_back_button,
             // 文件关联注册命令
             register_file_associations
         ])
@@ -824,19 +799,6 @@ pub fn run() {
             }
             Ok(())
         });
-
-    // Add Android-specific window event handling
-    #[cfg(target_os = "android")]
-    let builder = builder.on_window_event(|window, event| {
-        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-            // 在安卓上拦截关闭事件，转换为返回按钮事件
-            let app_handle = window.app_handle().clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = handle_android_back_button(app_handle).await;
-            });
-            api.prevent_close();
-        }
-    });
 
     builder
         .build(tauri::generate_context!())

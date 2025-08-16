@@ -92,7 +92,6 @@
 | 🍎 **macOS** | [.dmg 安装包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_x64.dmg) |
 | 🪟 **Windows** | [.msi 安装包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_x64_en-US.msi) |
 | 🐧 **Linux** | [.deb 包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_amd64.deb) \| [.AppImage](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_amd64.AppImage) |
-| 🤖 **Android** | [.apk/.aab](https://github.com/stardustai/dataset-viewer/releases/latest) |
 
 > **📱 macOS**：应用未签名，如遇安全警告：`sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"`
 

@@ -42,9 +42,6 @@
     "category": "Productivity",
     "shortDescription": "Modern dataset viewer with large file streaming support",
     "longDescription": "A powerful dataset viewer that supports multiple storage types (WebDAV, local files, OSS, HuggingFace) with efficient streaming for large text files and archives.",
-    "android": {
-      "minSdkVersion": 24
-    },
     "fileAssociations": [
       {
         "ext": ["csv", "xlsx", "xls", "ods"],

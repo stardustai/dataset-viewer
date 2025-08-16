@@ -19,8 +19,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-# Single instance plugin is not supported on Android/mobile platforms
-[target.'cfg(not(target_os = "android"))'.dependencies]
 tauri-plugin-single-instance = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-http = "2"
@@ -38,7 +36,7 @@ async-trait = "0.1"
 thiserror = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 once_cell = "1.19"
-# Use rustls for all platforms to avoid openssl issues on Android
+# Use rustls for better compatibility
 reqwest = { version = "0.11", features = ["json", "stream", "rustls-tls"], default-features = false }
 futures-util = "0.3"
 zip = "0.6"
@@ -83,10 +81,4 @@ panic = "abort"
 debug = false
 # 优化二进制大小
 strip = true
-
-# Android 特定优化
-[profile.release-android]
-inherits = "release"
-# Android 特定的大小优化
-opt-level = "s"
 

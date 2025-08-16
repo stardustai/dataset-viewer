@@ -2,7 +2,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, Folder, Cloud, Bot } from 'lucide-react';
 import { StorageClientType } from '../services/storage/types';
-import { AndroidBackHandlerService } from '../services/androidBackHandler';
 
 interface StorageTypeSelectorProps {
   selectedType: StorageClientType;
@@ -15,10 +14,7 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // 检测是否为安卓平台
-  const isAndroid = AndroidBackHandlerService.isAndroid();
-
-  const allStorageTypes = [
+  const storageTypes = [
     {
       type: 'webdav' as StorageClientType,
       label: t('storage.type.webdav'),
@@ -44,11 +40,6 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
       description: t('storage.type.local.description')
     }
   ];
-
-  // 在安卓平台上过滤掉本地文件类型
-  const storageTypes = isAndroid 
-    ? allStorageTypes.filter(type => type.type !== 'local')
-    : allStorageTypes;
 
   return (
     <div className="space-y-2">

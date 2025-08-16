@@ -141,7 +141,7 @@
                     <span class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium px-4 py-1.5 rounded-full whitespace-nowrap" data-i18n="app.ai_badge">
                         🤖 100% AI 生成
                     </span>
-                    <span class="min-w-0 sm:min-w-36">
+                    <span class="min-w-0 sm:min-w-32">
                         <span id="version-badge" class="bg-white/10 backdrop-blur text-white/80 text-sm font-medium px-4 py-2 rounded-full opacity-0 transition-all duration-500 transform scale-95 whitespace-nowrap cursor-pointer hover:bg-white/20 hover:text-white hover:scale-105" onclick="openReleases()" title="查看变更日志"></span>
                     </span>
                 </div>
@@ -206,7 +206,7 @@
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <!-- macOS -->
                 <div class="download-card rounded-2xl p-8 transition-all duration-300 group">
                     <div class="text-center">
@@ -282,28 +282,6 @@
                                 <span data-i18n="download.appimage">AppImage</span>
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Android -->
-                <div class="download-card rounded-2xl p-8 transition-all duration-300 group">
-                    <div class="text-center">
-                        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <svg t="1754044398801" class="icon fill-white scale-50" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1501" width="160" height="160"><path d="M615.878882 177.494507l42.303478-61.521169c1.811252-2.619664 1.146103-6.252401-1.473561-8.063653l-1.054005-0.726547c-2.619664-1.821485-6.231935-1.146103-8.043187 1.473561l-43.521213 63.291488c-28.427446-12.361539-60.139705-19.268856-93.601818-19.268856-31.753191 0-61.950957 6.221702-89.232301 17.426905l-41.587164-60.477396c-1.801019-2.619664-5.423523-3.284813-8.043187-1.473561l-1.054005 0.726547c-2.619664 1.811252-3.284813 5.443989-1.483794 8.073886l40.215934 58.461483c-63.23009 30.300097-108.664885 88.075964-117.915573 156.299789l438.20018 0C720.552873 265.017886 676.919097 208.296023 615.878882 177.494507zM418.217057 265.621637c-12.054547 0-21.837354-9.813506-21.837354-21.908986 0-12.095479 9.782807-21.898753 21.837354-21.898753 12.06478 0 21.837354 9.803273 21.837354 21.898753C440.054411 255.80813 430.281837 265.621637 418.217057 265.621637zM606.710059 265.621637c-12.054547 0-21.837354-9.813506-21.837354-21.908986 0-12.095479 9.782807-21.898753 21.837354-21.898753 12.06478 0 21.837354 9.803273 21.837354 21.898753C628.547413 255.80813 618.774839 265.621637 606.710059 265.621637z" p-id="1502"></path><path d="M260.904195 419.506423l0 179.446975c0 30.760584-19.596314 55.933917-43.562145 55.933917l-9.680477 0c-23.955598 0-43.562145-25.173332-43.562145-55.933917l0-179.446975c0-30.760584 19.606547-55.923684 43.562145-55.923684l9.680477 0C241.307881 363.582739 260.904195 388.745838 260.904195 419.506423z" p-id="1503"></path><path d="M859.896478 420.570661l0 179.446975c0 30.770817-19.596314 55.933917-43.562145 55.933917l-9.680477 0c-23.955598 0-43.562145-25.163099-43.562145-55.933917l0-179.446975c0-30.760584 19.606547-55.923684 43.562145-55.923684l9.680477 0C840.300164 364.646977 859.896478 389.810077 859.896478 420.570661z" p-id="1504"></path><path d="M732.934878 360.830045l0 354.074178c0 24.579815-20.046568 44.687782-44.554752 44.687782l-36.746926 0 0 102.320387c0 30.760584-19.606547 55.923684-43.562145 55.923684l-9.680477 0c-23.955598 0-43.562145-25.163099-43.562145-55.923684l0-102.320387-81.864496 0 0 101.143585c0 30.760584-19.596314 55.933917-43.562145 55.933917l-9.680477 0c-23.955598 0-43.562145-25.173332-43.562145-55.933917l0-101.143585-40.062438 0c-24.508183 0-44.554752-20.107967-44.554752-44.687782l0-354.074178L732.934878 360.830045z" p-id="1505"></path></svg>
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-2" data-i18n="platform.android">Android</h3>
-                        <p class="text-gray-400 text-sm mb-1" data-i18n="platform.android_desc">APK 安装包</p>
-                        <p class="text-green-400 text-xs mb-6" data-i18n="platform.android_version">✓ Android 7.0+ ARM64</p>
-                        <button
-                            onclick="downloadAndroid()"
-                            class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-1 h-12 whitespace-nowrap text-sm"
-                        >
-                            <svg class="w-5 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                            </svg>
-                            <span data-i18n="download.apk">下载 APK</span>
-                            <span id="android-size" class="text-xs text-white/50 opacity-0 transition-opacity duration-500 ml-1"></span>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -471,14 +449,10 @@
                 'platform.linux': 'Linux',
                 'platform.linux_desc': 'DEB 安装包 (推荐)',
                 'platform.linux_version': '✓ Ubuntu/Debian x64',
-                'platform.android': 'Android',
-                'platform.android_desc': 'APK 安装包',
-                'platform.android_version': '✓ Android 7.0+ ARM64',
                 'download.dmg': '下载 .dmg',
                 'download.msi': '下载 .msi',
                 'download.deb': '下载 .deb',
                 'download.appimage': '便携版 .AppImage',
-                'download.apk': '下载 .apk',
                 'features.title': '✨ 核心特性',
                 'features.subtitle': '强大的功能，极致的体验',
                 'features.multiprotocol.title': '多协议支持',
@@ -530,14 +504,10 @@
                 'platform.linux': 'Linux',
                 'platform.linux_desc': 'DEB Package (Recommended)',
                 'platform.linux_version': '✓ Ubuntu/Debian x64',
-                'platform.android': 'Android',
-                'platform.android_desc': 'APK Package',
-                'platform.android_version': '✓ Android 7.0+ ARM64',
                 'download.dmg': 'Download DMG',
                 'download.msi': 'Download MSI',
                 'download.deb': 'Download DEB',
                 'download.appimage': 'AppImage',
-                'download.apk': 'Download APK',
                 'features.title': '✨ Core Features',
                 'features.subtitle': 'Powerful features, ultimate experience',
                 'features.multiprotocol.title': 'Multi-Protocol',
@@ -705,8 +675,6 @@
                     releases['linux'] = config;
                 } else if (name.endsWith('.appimage')) {
                     releases['linux-appimage'] = config;
-                } else if (name.endsWith('.apk')) {
-                    releases['android'] = config;
                 }
             });
 
@@ -736,7 +704,7 @@
                 versionBadge.textContent = `v${appConfig.version}`;
                 versionBadge.classList.remove('opacity-0', 'scale-95');
                 versionBadge.classList.add('opacity-100', 'scale-100');
-                
+
                 // 更新title属性的多语言支持
                 const titleText = currentLang === 'zh' ? '查看变更日志' : 'View Changelog';
                 versionBadge.setAttribute('title', titleText);
@@ -762,8 +730,7 @@
             const updates = [
                 { id: 'macos-size', platform: 'macos-arm64' },
                 { id: 'windows-size', platform: 'windows' },
-                { id: 'linux-size', platform: 'linux' },
-                { id: 'android-size', platform: 'android' }
+                { id: 'linux-size', platform: 'linux' }
             ];
 
             updates.forEach(({ id, platform }) => {
@@ -839,24 +806,6 @@
             const config = appConfig?.releases?.['linux-appimage'];
             if (config && config.size) {
                 downloadFile(config.downloadUrl, config.filename);
-            } else {
-                // 文件不存在或无法获取大小，跳转到 GitHub releases
-                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
-            }
-        }
-
-        function downloadAndroid() {
-            if (!appConfig) {
-                // 配置加载失败，直接跳转到 GitHub releases
-                window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
-                return;
-            }
-
-            const config = appConfig?.releases?.android;
-            if (config && config.size) {
-                downloadFile(config.downloadUrl, config.filename);
-                // 显示 Android 安装提示
-                showAndroidInstallationTip();
             } else {
                 // 文件不存在或无法获取大小，跳转到 GitHub releases
                 window.open('https://github.com/stardustai/dataset-viewer/releases', '_blank');
@@ -1000,95 +949,6 @@
                 setTimeout(() => {
                     document.body.removeChild(window.currentMacTipOverlay);
                     window.currentMacTipOverlay = null;
-                }, 300);
-            }
-        }
-
-        function showAndroidInstallationTip() {
-            // 检查当前语言
-            const currentLang = localStorage.getItem('dataset-viewer-lang') || getDefaultLanguage();
-
-            // 创建模态框背景
-            const overlay = document.createElement('div');
-            overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
-
-            // 创建模态框内容
-            const modal = document.createElement('div');
-            modal.className = 'bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300';
-
-            const content = currentLang === 'en' ? {
-                title: '🤖 Android Installation Guide',
-                subtitle: 'APK Installation Steps',
-                steps: [
-                    'Enable "Unknown sources" in Settings → Security',
-                    'Open the downloaded APK file',
-                    'Tap "Install" to install the app',
-                    'Launch "Dataset Viewer" from your app drawer'
-                ],
-                warning: 'Important:',
-                warningText: 'This APK is signed but not distributed through Google Play Store. The app is completely safe - verify the source code on GitHub.',
-                note: 'Requirements: Android 7.0+ (API level 24) with ARM64 processor.',
-                button: 'Got it!'
-            } : {
-                title: '🤖 Android 安装指南',
-                subtitle: 'APK 安装步骤',
-                steps: [
-                    '在设置 → 安全性中启用"未知来源"',
-                    '打开下载的 APK 文件',
-                    '点击"安装"来安装应用',
-                    '从应用抽屉启动 "Dataset Viewer"'
-                ],
-                warning: '重要提示：',
-                warningText: '此 APK 已签名但未通过 Google Play 商店分发。应用完全安全 - 可在 GitHub 上验证源代码。',
-                note: '系统要求：Android 7.0+（API 级别 24）且为 ARM64 处理器。',
-                button: '知道了！'
-            };
-
-            modal.innerHTML = `
-                <div class="text-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">${content.title}</h3>
-                    <p class="text-sm text-green-600 font-medium">${content.subtitle}</p>
-                </div>
-                <div class="space-y-3 mb-4">
-                    ${content.steps.map((step, index) => `
-                        <div class="flex items-start space-x-3">
-                            <span class="flex-shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">${index + 1}</span>
-                            <div class="text-gray-700 text-sm">${step}</div>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
-                    <p class="text-sm font-medium text-orange-800 mb-1">${content.warning}</p>
-                    <p class="text-xs text-orange-700">${content.warningText}</p>
-                </div>
-                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-                    <p class="text-xs text-gray-600">${content.note}</p>
-                </div>
-                <button onclick="closeAndroidTip()" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200">
-                    ${content.button}
-                </button>
-            `;
-
-            overlay.appendChild(modal);
-            document.body.appendChild(overlay);
-
-            // 显示动画
-            setTimeout(() => {
-                modal.classList.remove('scale-95');
-                modal.classList.add('scale-100');
-            }, 100);
-
-            // 设置全局变量以便关闭
-            window.currentAndroidTipOverlay = overlay;
-        }
-
-        function closeAndroidTip() {
-            if (window.currentAndroidTipOverlay) {
-                const modal = window.currentAndroidTipOverlay.querySelector('div');
-                modal.classList.add('scale-95');
-                setTimeout(() => {
-                    document.body.removeChild(window.currentAndroidTipOverlay);
-                    window.currentAndroidTipOverlay = null;
                 }, 300);
             }
         }
