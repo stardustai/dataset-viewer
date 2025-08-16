@@ -73,7 +73,7 @@
 
 **📄 文本代码**：纯文本、JSON、YAML、XML、JavaScript、Python、Java、C/C++、Rust、Go、PHP 等
 
-**📝 文档格式**：**Markdown**（渲染预览）、**Word 文档**（.docx/.rtf，文本提取预览）、**PowerPoint 演示文稿**（.pptx，幻灯片预览）
+**📝 文档格式**：**Markdown**（渲染预览）、**Word 文档**（.docx/.rtf，文本提取）、**PowerPoint 演示文稿**（.pptx，幻灯片预览）、**PDF**（查看器，支持文本搜索）
 
 **📦 压缩包**：ZIP、TAR（流式预览，无需解压）
 
@@ -81,19 +81,17 @@
 
 **📱 媒体文件**：图片、视频、音频（预览支持）
 
-**📋 文档**：PDF 查看器，支持文本搜索
-
 ## 🚀 快速开始
 
 ### 📦 下载安装（推荐）
 
-**最新版本**：[GitHub Releases](https://github.com/stardust2810/dataset-viewer/releases)
+**最新版本**：[GitHub Releases](https://github.com/stardustai/dataset-viewer/releases)
 
 | 平台 | 下载链接 |
 |------|----------|
-| 🍎 **macOS** | [.dmg 安装包](https://github.com/stardust2810/dataset-viewer/releases/latest/download/dataset-viewer_x64.dmg) |
-| 🪟 **Windows** | [.msi 安装包](https://github.com/stardust2810/dataset-viewer/releases/latest/download/dataset-viewer_x64_en-US.msi) |
-| 🐧 **Linux** | [.deb 包](https://github.com/stardust2810/dataset-viewer/releases/latest/download/dataset-viewer_amd64.deb) \| [.AppImage](https://github.com/stardust2810/dataset-viewer/releases/latest/download/dataset-viewer_amd64.AppImage) |
+| 🍎 **macOS** | [.dmg 安装包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_x64.dmg) |
+| 🪟 **Windows** | [.msi 安装包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_x64_en-US.msi) |
+| 🐧 **Linux** | [.deb 包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_amd64.deb) \| [.AppImage](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_amd64.AppImage) |
 | 🤖 **Android** | [.apk/.aab](https://github.com/stardustai/dataset-viewer/releases/latest) |
 
 > **📱 macOS**：应用未签名，如遇安全警告：`sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"`
@@ -103,7 +101,7 @@
 **环境要求**：Node.js 18+、Rust 1.70+、pnpm
 
 ```bash
-git clone https://github.com/stardust2810/dataset-viewer.git
+git clone https://github.com/stardustai/dataset-viewer.git
 cd dataset-viewer
 pnpm install
 pnpm tauri dev  # 开发模式

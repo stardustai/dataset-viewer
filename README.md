@@ -73,15 +73,13 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 
 **📄 Text & Code**: Plain text, JSON, YAML, XML, JavaScript, Python, Java, C/C++, Rust, Go, PHP, and more
 
-**📝 Documents**: **Markdown** (rendered preview), **Word Documents** (.docx/.rtf, text extraction preview), **PowerPoint Presentations** (.pptx, slide preview)
+**📝 Documents**: **Markdown** (rendered preview), **Word Documents** (.docx/.rtf, text extraction), **PowerPoint** (.pptx, slide preview), **PDF** (viewer with text search)
 
 **📦 Archives**: ZIP, TAR (streaming preview without extraction)
 
-**📊 Data**: **Parquet** (optimized), Excel, CSV, ODS with virtual scrolling for millions of rows
+**📊 Data Files**: **Parquet** (optimized), Excel, CSV, ODS with virtual scrolling for millions of rows
 
 **📱 Media**: Images, Videos, Audio (preview support)
-
-**📋 Documents**: PDF viewer with text search
 
 ## 🚀 Quick Start
 
