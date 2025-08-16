@@ -763,9 +763,14 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_process::init());
+
+    // opener 插件不支持 Android 平台
+    #[cfg(not(target_os = "android"))]
+    let builder = builder.plugin(tauri_plugin_opener::init());
+
+    let builder = builder
         .invoke_handler(tauri::generate_handler![
             // 统一存储接口命令
             storage_request,
