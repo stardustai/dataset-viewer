@@ -64,15 +64,20 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 100vh;
         background-color: inherit;
+				position: fixed;
+				top: 0;
+				right: 0;
+				bottom: 0;
+				left: 0;
       }
 
       .loading-spinner {
-        width: 32px;
-        height: 32px;
-        border: 3px solid #e5e7eb;
-        border-top: 3px solid #4f46e5;
+        width: 42px;
+        height: 42px;
+				box-sizing: border-box;
+        border: 4px solid #e5e7eb;
+        border-top: 4px solid #4f46e5;
         border-radius: 50%;
         animation: spin 1s linear infinite;
       }
@@ -90,12 +95,11 @@
   </head>
 
   <body>
+    <div id="root"></div>
     <!-- 初始加载指示器 -->
-    <div id="root">
-      <div class="app-loading">
-        <div class="loading-spinner"></div>
-      </div>
-    </div>
+		<div class="app-loading">
+			<div class="loading-spinner"></div>
+		</div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -301,9 +301,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     if (!connection || files.length === 0) return;
 
     try {
-      // 检查下载服务是否被停止
+      // 如果下载服务被停止，直接返回（用户需要等待当前下载完成）
       if (FolderDownloadService.isDownloadServiceStopped()) {
-        alert(t('download.service.stopped'));
+        console.log('Download service is stopped, cannot start new downloads');
         return;
       }
 
@@ -315,15 +315,28 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         return;
       }
 
-      // 生成文件夹名称
-      const folderName = currentPath || 'root';
+      // 生成文件夹名称和保存路径
+      let fullSavePath: string;
+      let folderName: string;
+
+      if (currentPath) {
+        // 下载子目录：在用户选择的目录下创建子目录
+        folderName = currentPath.split('/').pop() || currentPath;
+        fullSavePath = selectedDirectory.endsWith('/')
+          ? `${selectedDirectory}${folderName}`
+          : `${selectedDirectory}/${folderName}`;
+      } else {
+        // 下载根目录：直接在用户选择的目录中下载
+        folderName = 'root';
+        fullSavePath = selectedDirectory;
+      }
 
       // 开始下载（默认递归下载）
       const downloadId = await FolderDownloadService.downloadFolder(
         currentPath,
         folderName,
         files,
-        selectedDirectory,
+        fullSavePath,
         {
           onStart: (state) => {
             console.log(`Started downloading folder: ${state.folderName}`);
@@ -720,7 +733,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             {/* 下载文件夹按钮 */}
             <button
               onClick={downloadCurrentFolder}
-              disabled={loading || files.length === 0 || FolderDownloadService.isDownloadServiceStopped()}
+              disabled={loading || files.length === 0}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               title={t('download.folder.all')}
             >

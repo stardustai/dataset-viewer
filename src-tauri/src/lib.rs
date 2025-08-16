@@ -460,7 +460,22 @@ async fn show_folder_dialog(_app: tauri::AppHandle) -> Result<Option<String>, St
             Ok(Some(folder)) => {
                 let path_buf = folder.into_path()
                     .map_err(|e| format!("Failed to get path: {}", e))?;
-                Ok(Some(path_buf.to_string_lossy().to_string()))
+
+                // 确保返回正确的绝对路径
+                let path_str = if cfg!(target_os = "windows") {
+                    path_buf.to_string_lossy().to_string()
+                } else {
+                    // 对于 Unix 系统，确保路径以 / 开头
+                    let path_str = path_buf.to_string_lossy().to_string();
+                    if path_str.starts_with('/') {
+                        path_str
+                    } else {
+                        format!("/{}", path_str)
+                    }
+                };
+
+                println!("Selected folder path: {}", path_str);
+                Ok(Some(path_str))
             },
             Ok(None) => Ok(None),
             Err(e) => Err(format!("Failed to receive folder selection: {}", e)),

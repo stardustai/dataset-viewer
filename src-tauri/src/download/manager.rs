@@ -65,7 +65,7 @@ impl DownloadManager {
                 if let Err(e) = std::fs::create_dir_all(parent) {
                     return Err(format!("Failed to create directory: {}", e));
                 }
-                println!("Ensured parent directory exists: {:?}", parent);
+                println!("Ensured parent directory exists: {}", parent.display());
             }
 
             path

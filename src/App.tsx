@@ -3,9 +3,8 @@ import { emit } from '@tauri-apps/api/event';
 import { ConnectionPanel } from './components/ConnectionPanel';
 import { FileBrowser } from './components/FileBrowser';
 import { FileViewer } from './components/FileViewer';
-import { DownloadProgress } from './components/DownloadProgress';
+import DownloadProgress from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
-import { SplashScreen } from './components/SplashScreen';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
@@ -32,15 +31,16 @@ function App() {
   const [currentDirectory, setCurrentDirectory] = useState<string>('');
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
 
+  // 监听状态变化，立即移除loading以避免空白闪烁
   useEffect(() => {
-    // 移除初始加载指示器
-    const removeInitialLoader = () => {
-      const initialLoader = document.querySelector('.app-loading');
-      if (initialLoader) {
-        initialLoader.remove();
-      }
-    };
+    if (appState === 'initializing') return
+		const initialLoader = document.querySelector('.app-loading') as HTMLElement;
+		if (initialLoader && initialLoader.parentNode) {
+			initialLoader.parentNode.removeChild(initialLoader);
+		}
+  }, [appState]);
 
+  useEffect(() => {
     // 初始化安卓返回按钮处理
     const initializeAndroidBackHandler = async () => {
       try {
@@ -78,7 +78,7 @@ function App() {
       try {
         // 初始化安卓返回按钮处理
         await initializeAndroidBackHandler();
-        
+
         // 设置文件打开监听器
         await setupFileOpenListener();
 
@@ -89,7 +89,6 @@ function App() {
         const isConnected = await fileAssociationService.isConnectedViaFileAssociation();
         if (isConnected) {
           // 如果已经连接（通过文件关联），不需要自动连接
-          removeInitialLoader();
           return;
         }
 
@@ -97,9 +96,8 @@ function App() {
         const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
 
         if (wasDisconnected) {
-          // 如果用户主动断开过连接，直接显示连接页面
+          // 如果用户主动断开过连接，显示连接页面
           setAppState('connecting');
-          removeInitialLoader();
           return;
         }
 
@@ -109,8 +107,7 @@ function App() {
         } else {
           setAppState('connecting');
         }
-        removeInitialLoader();
-        
+
         // 通知后端前端已初始化完成
         try {
           await emit('frontend-ready');
@@ -119,9 +116,9 @@ function App() {
         }
       } catch (error) {
         console.warn('Auto connect failed:', error);
+        // 自动连接失败，显示连接页面
         setAppState('connecting');
-        removeInitialLoader();
-        
+
         // 即使出错也要通知后端前端已初始化完成
         try {
           await emit('frontend-ready');
@@ -143,7 +140,7 @@ function App() {
           // 从文件查看器返回到文件浏览器
           handleBackToBrowser();
           return true; // 表示已处理
-        
+
         case 'browsing':
           // 在文件浏览器中，如果不在根目录，则返回上级目录
           if (currentDirectory && currentDirectory !== '') {
@@ -156,11 +153,12 @@ function App() {
           }
           // 如果在根目录，返回 false 让系统处理（退出应用）
           return false;
-        
+
         case 'connecting':
-          // 在连接页面，返回 false 让系统处理（退出应用）
+        case 'initializing':
+          // 在连接页面或初始化阶段，返回 false 让系统处理（退出应用）
           return false;
-        
+
         default:
           return false;
       }
@@ -219,8 +217,9 @@ function App() {
   };
 
   const renderContent = () => {
+    // 在初始化阶段，不渲染任何内容，保持HTML的loading显示
     if (appState === 'initializing') {
-      return <SplashScreen />;
+      return null;
     }
 
     if (appState === 'connecting') {
@@ -276,9 +275,6 @@ function App() {
         // 记录错误到控制台，便于调试
         console.error('Application Error:', error);
         console.error('Error Info:', errorInfo);
-        
-        // 可以在这里添加错误上报逻辑
-        // 例如发送到错误监控服务
       }}
     >
       {renderContent()}

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
-import { X, Download, Check, AlertCircle, StopCircle, FolderOpen, Square, Play } from 'lucide-react';
+import { X, Download, Check, AlertCircle, StopCircle, FolderOpen, Square, Pause } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../utils/fileUtils';
 import { FolderDownloadService } from '../services/folderDownloadService';
@@ -17,7 +17,7 @@ interface DownloadState {
   progress: number;
   downloaded: number;
   totalSize: number;
-  status: 'preparing' | 'downloading' | 'completed' | 'error';
+  status: 'preparing' | 'downloading' | 'completed' | 'error' | 'stopped';
   filePath?: string;
   error?: string;
   // 文件夹下载特有属性
@@ -38,9 +38,9 @@ const translateDownloadError = (error: string, t: (key: string) => string): stri
   return error;
 };
 
-export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, onClose }) => {
+export default function DownloadProgress({ isVisible, onClose }: DownloadProgressProps) {
   const { t } = useTranslation();
-  const [downloads, setDownloads] = useState<Map<string, DownloadState>>(new Map());
+  const [downloads, setDownloads] = useState(new Map<string, DownloadState>());
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
@@ -124,8 +124,6 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
     };
   }, [isVisible]);
 
-
-
   const cancelDownload = async (filename: string) => {
     try {
       const timeoutMs = 5000; // 5秒
@@ -189,13 +187,10 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
       await FolderDownloadService.stopAllDownloads();
       // 也取消后端的所有下载
       await invoke('cancel_all_downloads');
+      console.log('All downloads stopped');
     } catch (error) {
       console.error('Failed to stop all downloads:', error);
     }
-  };
-
-  const resumeDownloadService = () => {
-    FolderDownloadService.resumeDownloadService();
   };
 
   // 当用户点击关闭时，如果有活跃下载，则最小化，否则完全关闭
@@ -226,7 +221,6 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
   const downloadList = Array.from(downloads.values());
   const hasCompleted = downloadList.some(d => d.status === 'completed');
   const hasActiveDownloads = downloadList.some(d => d.status === 'downloading' || d.status === 'preparing');
-  const isServiceStopped = FolderDownloadService.isDownloadServiceStopped();
   const activeDownloadCount = downloadList.filter(d => d.status === 'downloading' || d.status === 'preparing').length;
   const totalProgress = downloadList.length > 0
     ? Math.round(downloadList.reduce((sum, d) => sum + d.progress, 0) / downloadList.length)
@@ -285,16 +279,6 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
               <span>{t('download.stop.all')}</span>
             </button>
           )}
-          {isServiceStopped && (
-            <button
-              onClick={resumeDownloadService}
-              className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center space-x-1"
-              title={t('download.resume.service')}
-            >
-              <Play className="w-3 h-3" />
-              <span>{t('download.resume.service')}</span>
-            </button>
-          )}
           {hasCompleted && (
             <button
               onClick={clearCompleted}
@@ -328,6 +312,9 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
                   )}
                   {download.status === 'error' && (
                     <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
+                  )}
+                  {download.status === 'stopped' && (
+                    <Pause className="w-4 h-4 text-orange-500 dark:text-orange-400" />
                   )}
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                     {download.filename}
@@ -383,6 +370,12 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
                     {t('download.error')}: {translateDownloadError(download.error || '', t)}
                   </p>
                 )}
+
+                {download.status === 'stopped' && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                    {download.currentFile || '下载已停止'}
+                  </p>
+                )}
               </div>
 
               {(download.status === 'downloading' || download.status === 'preparing') && (
@@ -395,10 +388,11 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
                 </button>
               )}
 
-              {(download.status === 'completed' || download.status === 'error') && (
+              {(download.status === 'completed' || download.status === 'error' || download.status === 'stopped') && (
                 <button
                   onClick={() => removeDownload(download.filename)}
                   className="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title={download.status === 'stopped' ? '移除停止的下载' : undefined}
                 >
                   <X className="w-3 h-3" />
                 </button>

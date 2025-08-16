@@ -21,11 +21,6 @@ body {
   @apply bg-white dark:bg-gray-800;
 }
 
-/* 移除初始加载指示器（当 React 接管后） */
-.app-loading {
-  display: none !important;
-}
-
 /* 页面过渡动画 */
 .page-transition {
   animation: fadeIn 0.3s ease-in-out;
