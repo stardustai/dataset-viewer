@@ -9,7 +9,7 @@ import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { FileIcon } from '../../utils/fileIcons';
-import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
+import { copyToClipboard, showCopyToast, showToast } from '../../utils/clipboard';
 import { formatFileSize } from '../../utils/fileUtils';
 
 interface FileViewerHeaderProps {
@@ -87,8 +87,12 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
     try {
       console.log('Starting download for file:', file.basename, 'Path:', filePath);
 
-      // 统一使用带进度的下载方式
-      const result = await StorageServiceManager.downloadFileWithProgress(filePath, file.basename);
+      // 获取默认下载路径
+      const defaultPath = await StorageServiceManager.getDefaultDownloadPath(file.basename);
+      console.log('Default download path:', defaultPath);
+
+      // 使用默认路径进行下载
+      const result = await StorageServiceManager.downloadFileWithProgress(filePath, file.basename, defaultPath);
       console.log('Download initiated:', result);
 
       // 下载进度将通过事件系统处理，这里不需要显示 alert
@@ -99,7 +103,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
       // 如果是用户取消操作，不显示错误弹窗
       const errorMessage = err instanceof Error ? err.message : (typeof err === 'string' ? err : t('error.unknown'));
       if (errorMessage !== 'download.cancelled') {
-        alert(`${t('download.failed')}: ${errorMessage}`);
+				showToast(`${t('download.failed')}: ${errorMessage}`, 'error');
       }
     }
   };

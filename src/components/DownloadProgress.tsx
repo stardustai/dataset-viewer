@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
-import { X, Download, Check, AlertCircle, StopCircle, FolderOpen } from 'lucide-react';
+import { X, Download, Check, AlertCircle, StopCircle, FolderOpen, Square, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../utils/fileUtils';
+import { FolderDownloadService } from '../services/folderDownloadService';
 
 interface DownloadProgressProps {
   isVisible: boolean;
@@ -16,9 +17,14 @@ interface DownloadState {
   progress: number;
   downloaded: number;
   totalSize: number;
-  status: 'downloading' | 'completed' | 'error';
+  status: 'preparing' | 'downloading' | 'completed' | 'error';
   filePath?: string;
   error?: string;
+  // 文件夹下载特有属性
+  isFolder?: boolean;
+  currentFile?: string;
+  completedFiles?: number;
+  totalFiles?: number;
 }
 
 // 错误信息翻译辅助函数
@@ -27,7 +33,7 @@ const translateDownloadError = (error: string, t: (key: string) => string): stri
   if (error.match(/^[a-zA-Z][a-zA-Z0-9.]+$/)) {
     return t(error);
   }
-  
+
   // 否则返回原始错误信息
   return error;
 };
@@ -35,6 +41,7 @@ const translateDownloadError = (error: string, t: (key: string) => string): stri
 export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, onClose }) => {
   const { t } = useTranslation();
   const [downloads, setDownloads] = useState<Map<string, DownloadState>>(new Map());
+  const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -92,9 +99,9 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
 
     const unlistenError = listen('download-error', (event) => {
       const { filename, error } = event.payload as { filename: string; error: string };
-      
+
       // 所有错误都正常显示，包括取消状态
-      
+
       setDownloads(prev => {
         const newMap = new Map(prev);
         const existing = newMap.get(filename);
@@ -122,7 +129,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
   const cancelDownload = async (filename: string) => {
     try {
       const timeoutMs = 5000; // 5秒
-      
+
       await Promise.race([
         invoke('cancel_download', { filename }),
         new Promise<never>((_, reject) => {
@@ -177,11 +184,87 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
     });
   };
 
+  const stopAllDownloads = async () => {
+    try {
+      await FolderDownloadService.stopAllDownloads();
+      // 也取消后端的所有下载
+      await invoke('cancel_all_downloads');
+    } catch (error) {
+      console.error('Failed to stop all downloads:', error);
+    }
+  };
+
+  const resumeDownloadService = () => {
+    FolderDownloadService.resumeDownloadService();
+  };
+
+  // 当用户点击关闭时，如果有活跃下载，则最小化，否则完全关闭
+  const handleClose = () => {
+    const downloadList = Array.from(downloads.values());
+    const hasActiveDownloads = downloadList.some(d => d.status === 'downloading');
+
+    if (hasActiveDownloads) {
+      setIsMinimized(true);
+    } else {
+      onClose();
+    }
+  };
+
+  // 完全关闭（不管是否有活跃下载）
+  const forceClose = () => {
+    onClose();
+  };
+
+  // 展开最小化窗口
+  const expandWindow = () => {
+    setIsMinimized(false);
+  };
+
+  // 如果没有下载或者组件不可见，什么都不显示
   if (!isVisible || downloads.size === 0) return null;
 
   const downloadList = Array.from(downloads.values());
   const hasCompleted = downloadList.some(d => d.status === 'completed');
+  const hasActiveDownloads = downloadList.some(d => d.status === 'downloading' || d.status === 'preparing');
+  const isServiceStopped = FolderDownloadService.isDownloadServiceStopped();
+  const activeDownloadCount = downloadList.filter(d => d.status === 'downloading' || d.status === 'preparing').length;
+  const totalProgress = downloadList.length > 0
+    ? Math.round(downloadList.reduce((sum, d) => sum + d.progress, 0) / downloadList.length)
+    : 0;
 
+  // 最小化模式：显示小的悬浮窗
+  if (isMinimized) {
+    return (
+      <div
+        className="fixed bottom-4 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 cursor-pointer hover:shadow-2xl transition-shadow"
+        onClick={expandWindow}
+      >
+        <div className="flex items-center px-3 py-2 space-x-2">
+          <div className="w-3 h-3 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-gray-900 dark:text-gray-100">
+            {activeDownloadCount} {t('download.active')}
+          </span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {totalProgress}%
+          </span>
+          {!hasActiveDownloads && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                forceClose();
+              }}
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-1"
+              title={t('download.close')}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 完整模式：显示详细的下载列表
   return (
     <div className="fixed bottom-4 right-4 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50">
       {/* Header */}
@@ -192,6 +275,26 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
           <span className="text-xs text-gray-500 dark:text-gray-400">({downloads.size})</span>
         </div>
         <div className="flex items-center space-x-2">
+          {hasActiveDownloads && (
+            <button
+              onClick={stopAllDownloads}
+              className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-1"
+              title={t('download.stop.all')}
+            >
+              <Square className="w-3 h-3" />
+              <span>{t('download.stop.all')}</span>
+            </button>
+          )}
+          {isServiceStopped && (
+            <button
+              onClick={resumeDownloadService}
+              className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center space-x-1"
+              title={t('download.resume.service')}
+            >
+              <Play className="w-3 h-3" />
+              <span>{t('download.resume.service')}</span>
+            </button>
+          )}
           {hasCompleted && (
             <button
               onClick={clearCompleted}
@@ -201,8 +304,9 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
             </button>
           )}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            title={hasActiveDownloads ? t('download.minimize') : t('download.close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -216,7 +320,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
-                  {download.status === 'downloading' && (
+                  {(download.status === 'downloading' || download.status === 'preparing') && (
                     <div className="w-4 h-4 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
                   )}
                   {download.status === 'completed' && (
@@ -230,27 +334,35 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
                   </span>
                 </div>
 
-                {download.status === 'downloading' && (
+                {(download.status === 'downloading' || download.status === 'preparing') && (
                   <div className="mt-2">
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                      <span>{download.progress}%</span>
-                      <span>
-                        {formatFileSize(download.downloaded)}
-                        {download.totalSize > 0 && ` / ${formatFileSize(download.totalSize)}`}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${download.progress}%` }}
-                      />
-                    </div>
+                    {download.status === 'preparing' ? (
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        {download.currentFile || '准备下载...'}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          <span>{download.progress}%</span>
+                          <span>
+                            {formatFileSize(download.downloaded)}
+                            {download.totalSize > 0 && ` / ${formatFileSize(download.totalSize)}`}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${download.progress}%` }}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
                 {download.status === 'completed' && download.filePath && (
                   <div className="mt-1">
-                    <div 
+                    <div
                       className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition-colors"
                       onClick={() => openFileLocation(download.filePath!)}
                       title={t('download.open.location.tooltip')}
@@ -273,7 +385,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({ isVisible, o
                 )}
               </div>
 
-              {download.status === 'downloading' && (
+              {(download.status === 'downloading' || download.status === 'preparing') && (
                 <button
                   onClick={() => cancelDownload(download.filename)}
                   className="ml-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"

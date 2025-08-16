@@ -955,20 +955,32 @@ impl StorageClient for OSSClient {
             sort_order: None,
         });
 
-        // 标准化路径 - 对于非根目录，确保 prefix 以斜杠结尾
-        let path_prefix = if path == "/" || path.is_empty() {
-            String::new()
+        // 处理路径：如果是协议URL，直接解析；如果是相对路径，则添加前缀
+        let full_prefix = if path.starts_with("oss://") {
+            // 协议URL包含完整路径，直接解析对象键
+            let object_key = self.extract_object_key(path)?;
+            // 对于目录列举，确保路径以斜杠结尾（除非是根目录）
+            if object_key.is_empty() {
+                String::new()
+            } else if object_key.ends_with('/') {
+                object_key
+            } else {
+                format!("{}/", object_key)
+            }
         } else {
-            let trimmed = path.trim_start_matches('/').trim_end_matches('/');
-            if trimmed.is_empty() {
+            // 相对路径，需要标准化并添加前缀
+            let path_prefix = if path == "/" || path.is_empty() {
                 String::new()
             } else {
-                format!("{}/", trimmed)
-            }
+                let trimmed = path.trim_start_matches('/').trim_end_matches('/');
+                if trimmed.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/", trimmed)
+                }
+            };
+            self.build_full_path(&path_prefix)
         };
-
-        // 构建完整的前缀（包含 bucket 路径前缀）
-        let full_prefix = self.build_full_path(&path_prefix);
 
         // 统一使用 HTTP 请求方式（简单可靠）
         self.list_directory_with_http(&full_prefix, options).await
@@ -1289,15 +1301,16 @@ impl OSSClient {
     /// # Returns
     /// * `Result<String, StorageError>` - 对象键
     fn extract_object_key(&self, path: &str) -> Result<String, StorageError> {
-        let key = if path.starts_with("oss://") {
+        if path.starts_with("oss://") {
+            // 如果是 OSS 协议 URL，直接解析出对象键，不添加前缀
+            // 因为协议 URL 已经包含了完整的路径
             let (object_key, _) = self.parse_oss_url(path)?;
-            object_key
+            Ok(object_key)
         } else {
-            path.trim_start_matches('/').to_string()
-        };
-
-        // 应用路径前缀
-        Ok(self.build_full_path(&key))
+            // 如果是相对路径，则添加前缀
+            let key = path.trim_start_matches('/').to_string();
+            Ok(self.build_full_path(&key))
+        }
     }
 
     /// 使用 HTTP 请求列出目录内容

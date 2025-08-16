@@ -3,7 +3,7 @@ import { Archive, Copy, AlertCircle, Folder, Download } from 'lucide-react';
 import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { CompressionService } from '../../../services/compression';
 import { StorageServiceManager } from '../../../services/storage/StorageManager';
-import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
+import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
 import { getFileType, isTextFile, isMediaFile, isDataFile, isSpreadsheetFile } from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
 import { configManager } from '../../../config';
@@ -82,7 +82,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       // 忽略localStorage错误
     }
   }, [showHidden]);
-  
+
   // 文件加载状态管理
   const [fileLoadState, setFileLoadState] = useState({
     isLargeFile: false,
@@ -188,7 +188,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setFilePreview(null);
       setFileContent('');
       setPreviewError(null);
-      
+
       // 重置文件加载状态
       setFileLoadState({
         isLargeFile: false,
@@ -204,24 +204,24 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
       const config = configManager.getConfig();
       const fileSize = entry.size || 0;
-      
+
       // 判断是否为大文件（仅对文本文件启用分块加载）
       const isTextFileType = isTextFile(entry.path);
       const shouldUseChunking = isTextFileType && fileSize > config.streaming.maxInitialLoad;
-      
+
       setFileLoadState(prev => ({
         ...prev,
         totalSize: fileSize,
         isLargeFile: shouldUseChunking
       }));
-      
+
       // 对于非文本文件，检查是否需要自动加载
       if (!isTextFileType) {
         const isMediaFileType = isMediaFile(entry.path);
         const isDataFileType = isDataFile(entry.path) || isSpreadsheetFile(entry.path);
         const shouldAutoLoadMedia = isMediaFileType && fileSize < 10 * 1024 * 1024; // 10MB
         const shouldAutoLoadData = isDataFileType && fileSize < 10 * 1024 * 1024; // 10MB
-        
+
         // 小于10MB的媒体文件和数据文件自动加载，其他非文本文件不加载
         if (!shouldAutoLoadMedia && !shouldAutoLoadData) {
           // 创建一个空的预览对象，只包含文件信息
@@ -234,7 +234,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           setFilePreview(emptyPreview);
           return;
         }
-        
+
         // 小媒体文件和数据文件自动加载完整内容
         const loadSize = fileSize;
         let preview: FilePreview;
@@ -260,7 +260,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         setFileLoadState(prev => ({ ...prev, manualLoadRequested: true })); // 标记为已加载
         return;
       }
-      
+
       // 文本文件的加载逻辑
       const initialLoadSize = shouldUseChunking ? config.streaming.maxInitialLoad : Math.min(fileSize, 128 * 1024);
 
@@ -284,7 +284,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       }
 
       setFilePreview(preview);
-      
+
       // 解码文本内容用于文本查看器
       if (preview.content) {
         try {
@@ -462,7 +462,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
       setFilePreview(fullPreview);
       setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
-      
+
       // 如果是文本文件，也更新文本内容
       if (isTextFile(entry.path) && fullPreview.content) {
         try {
@@ -501,18 +501,24 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   // 下载压缩包内的单个文件
   const downloadFile = async (entry: ArchiveEntry) => {
     try {
+      // 获取默认下载路径
+      const entryFilename = entry.path.split('/').pop() || entry.path;
+      const defaultPath = await StorageServiceManager.getDefaultDownloadPath(entryFilename);
+      console.log('Default download path for archive entry:', defaultPath);
+
       await StorageServiceManager.downloadArchiveFileWithProgress(
         url,
         filename,
         entry.path,
-        entry.path.split('/').pop() || entry.path
+        entryFilename,
+        defaultPath
       );
     } catch (err) {
       console.error('Failed to download file:', err);
       // 如果是用户取消操作，不显示错误弹窗
       const errorMessage = extractErrorMessage(err, 'error.unknown', t);
       if (errorMessage !== 'download.cancelled') {
-        alert(`${t('download.failed')}: ${errorMessage}`);
+				showToast(`${t('download.failed')}: ${errorMessage}`, 'error');
       }
     }
   };
@@ -646,7 +652,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                   (() => {
                     const { isText, isMedia, isData, isSpreadsheet, fileType } = getFileTypeInfo(selectedEntry);
                     const virtualFilePath = createVirtualFilePath(selectedEntry);
-                    
+
                     if (isText && fileContent) {
                       return (
                         <div className="h-full flex flex-col">
@@ -683,7 +689,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                       // 媒体文件：小于10MB自动加载，大于10MB需要手动加载
                       const fileSize = selectedEntry.size || 0;
                       const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
-                      
+
                       if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
                         return (
                           <ManualLoadButton
@@ -707,7 +713,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                       // 数据文件：小于10MB自动加载，大于10MB需要手动加载
                       const fileSize = selectedEntry.size || 0;
                       const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
-                      
+
                       if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
                         return (
                           <ManualLoadButton
@@ -723,7 +729,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
                           filePath={virtualFilePath}
                           fileName={selectedEntry.path}
                           fileSize={selectedEntry.size}
-                          fileType={isSpreadsheet ? 
+                          fileType={isSpreadsheet ?
                             (selectedEntry.path.toLowerCase().endsWith('.xlsx') || selectedEntry.path.toLowerCase().endsWith('.xls') ? 'xlsx' : 'ods') :
                             (selectedEntry.path.toLowerCase().endsWith('.parquet') || selectedEntry.path.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv')
                           }

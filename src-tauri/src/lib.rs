@@ -345,8 +345,9 @@ async fn download_file_with_progress(
     app: tauri::AppHandle,
     method: String,
     url: String,
-    headers: std::collections::HashMap<String, String>,
     filename: String,
+    headers: std::collections::HashMap<String, String>,
+    save_path: Option<String>,
 ) -> Result<String, String> {
     // 获取存储管理器并处理下载URL（避免死锁）
     let download_url = {
@@ -357,11 +358,9 @@ async fn download_file_with_progress(
         // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
         match manager.get_download_url(&url).await {
             Ok(processed_url) => {
-                println!("Generated download URL: {} -> {}", url, processed_url);
                 processed_url
             },
-            Err(e) => {
-                println!("Failed to generate download URL for {}: {}, using original URL", url, e);
+            Err(_e) => {
                 url
             }
         }
@@ -375,12 +374,34 @@ async fn download_file_with_progress(
         filename,
     };
 
-    DOWNLOAD_MANAGER.download_with_progress(app, request).await
+    DOWNLOAD_MANAGER.download_with_progress(app, request, save_path).await
+}
+
+#[tauri::command]
+async fn get_default_download_path(filename: String) -> Result<String, String> {
+    // 获取系统默认下载目录
+    if let Some(download_dir) = dirs::download_dir() {
+        let save_path = download_dir.join(&filename);
+        Ok(save_path.to_string_lossy().to_string())
+    } else {
+        // 如果无法获取下载目录，使用用户主目录
+        if let Some(home_dir) = dirs::home_dir() {
+            let save_path = home_dir.join("Downloads").join(&filename);
+            Ok(save_path.to_string_lossy().to_string())
+        } else {
+            Err("无法确定下载路径".to_string())
+        }
+    }
 }
 
 #[tauri::command]
 async fn cancel_download(filename: String) -> Result<String, String> {
     DOWNLOAD_MANAGER.cancel_download(&filename)
+}
+
+#[tauri::command]
+async fn cancel_all_downloads() -> Result<String, String> {
+    DOWNLOAD_MANAGER.cancel_all_downloads()
 }
 
 #[tauri::command]
@@ -390,6 +411,7 @@ async fn download_archive_file_with_progress(
     archive_filename: String,
     entry_path: String,
     entry_filename: String,
+    save_path: Option<String>,
 ) -> Result<String, String> {
     // 使用统一的下载管理器来处理压缩包文件下载，支持取消功能
     DOWNLOAD_MANAGER
@@ -399,6 +421,7 @@ async fn download_archive_file_with_progress(
             archive_filename,
             entry_path,
             entry_filename,
+            save_path,
         )
         .await
 }
@@ -742,7 +765,9 @@ pub fn run() {
             // 下载进度命令
             download_file_with_progress,
             cancel_download,
+            cancel_all_downloads,
             download_archive_file_with_progress,
+            get_default_download_path,
             // 系统对话框命令
             show_folder_dialog,
             // 压缩包处理命令

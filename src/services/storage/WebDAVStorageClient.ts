@@ -61,7 +61,7 @@ export class WebDAVStorageClient extends BaseStorageClient {
     if (config.type !== 'webdav') {
       throw new Error(`WebDAV client cannot handle ${config.type} connections`);
     }
-    
+
     if (!config.url || !config.username || !config.password) {
       throw new Error('WebDAV connection requires URL, username, and password');
     }
@@ -260,13 +260,14 @@ export class WebDAVStorageClient extends BaseStorageClient {
     return new Blob([uint8Array], { type: 'application/octet-stream' });
   }
 
-  async downloadFileWithProgress(path: string, filename: string): Promise<string> {
+  async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {
     if (!this.connection) throw new Error('Not connected');
 
     return await this.downloadWithProgress(
       'GET',
       this.toProtocolUrl(path),
       filename,
+      savePath,
       {
         'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
       }

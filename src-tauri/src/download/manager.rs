@@ -53,11 +53,29 @@ impl DownloadManager {
         app: &tauri::AppHandle,
         filename: &str,
         total_size: Option<u64>,
+        custom_save_path: Option<String>,
     ) -> Result<(std::path::PathBuf, broadcast::Sender<()>, broadcast::Receiver<()>, ProgressTracker), String> {
-        // 显示保存文件对话框
-        let save_path = match Self::show_save_file_dialog(app, filename)? {
-            Some(path) => path,
-            None => return Err("download.cancelled".to_string()), // 特殊错误标识用户取消
+        // 获取保存路径
+        let save_path = if let Some(custom_path) = custom_save_path {
+            // 使用提供的自定义路径（已经是完整的文件路径）
+            let path = std::path::PathBuf::from(custom_path);
+
+            // 确保父目录存在
+            if let Some(parent) = path.parent() {
+                if let Err(e) = std::fs::create_dir_all(parent) {
+                    return Err(format!("Failed to create directory: {}", e));
+                }
+                println!("Ensured parent directory exists: {:?}", parent);
+            }
+
+            path
+        } else {
+            // 显示保存文件对话框
+            println!("No custom save path provided, showing file dialog");
+            match Self::show_save_file_dialog(app, filename)? {
+                Some(path) => path,
+                None => return Err("download.cancelled".to_string()), // 特殊错误标识用户取消
+            }
         };
 
         // 创建取消信号
@@ -122,15 +140,16 @@ impl DownloadManager {
         &self,
         app: tauri::AppHandle,
         request: DownloadRequest,
+        save_path: Option<String>,
     ) -> DownloadResult {
         // 检测URL协议，如果是本地文件则使用专门的处理方法
         if request.url.starts_with("file:///") {
-            return self.handle_local_file_download(app, request).await;
+            return self.handle_local_file_download(app, request, save_path).await;
         }
 
         // 设置下载（文件对话框、取消信号、进度跟踪器）
         let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
-            self.setup_download(&app, &request.filename, None)?;
+            self.setup_download(&app, &request.filename, None, save_path)?;
 
         // 创建HTTP客户端和请求
         let client = reqwest::Client::new();
@@ -195,11 +214,29 @@ impl DownloadManager {
         }
     }
 
+    /// 取消所有活跃的下载
+    pub fn cancel_all_downloads(&self) -> Result<String, String> {
+        let mut downloads = self.active_downloads.lock().unwrap();
+        let count = downloads.len();
+
+        if count == 0 {
+            return Ok("No active downloads to cancel".to_string());
+        }
+
+        // 发送取消信号给所有下载
+        for (_, cancel_sender) in downloads.drain() {
+            let _ = cancel_sender.send(());
+        }
+
+        Ok(format!("Cancellation signal sent to {} downloads", count))
+    }
+
     /// 处理本地文件下载
     async fn handle_local_file_download(
         &self,
         app: tauri::AppHandle,
         request: DownloadRequest,
+        save_path: Option<String>,
     ) -> DownloadResult {
         // 从URL中提取路径部分
         let path_str = if request.url.starts_with("file:///") {
@@ -245,7 +282,7 @@ impl DownloadManager {
 
          // 设置下载（文件对话框、取消信号、进度跟踪器）
          let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
-             self.setup_download(&app, &request.filename, Some(file_size))?;
+             self.setup_download(&app, &request.filename, Some(file_size), save_path)?;
 
          // 更新开始下载事件
          progress_tracker.emit_started(crate::download::types::DownloadStarted {
@@ -281,10 +318,11 @@ impl DownloadManager {
         archive_filename: String,
         entry_path: String,
         entry_filename: String,
+        save_path: Option<String>,
     ) -> DownloadResult {
         // 设置下载（文件对话框、取消信号、进度跟踪器）
         let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =
-            self.setup_download(&app, &entry_filename, None)?;
+            self.setup_download(&app, &entry_filename, None, save_path)?;
 
         // 执行压缩包文件下载
         let result = self
@@ -468,7 +506,7 @@ impl DownloadManager {
         let client_lock = manager.get_current_client()
             .ok_or_else(|| "No storage client available".to_string())?;
         drop(manager);
-        
+
         let client = client_lock;
 
         // 创建压缩包处理器

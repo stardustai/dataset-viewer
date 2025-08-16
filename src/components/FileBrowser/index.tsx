@@ -9,7 +9,8 @@ import {
   Search,
   X,
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  Download
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
@@ -23,6 +24,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, NoLocalResultsDisplay, NoRemoteResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
+import { FolderDownloadService } from '../../services/folderDownloadService';
 
 interface FileBrowserProps {
   onFileSelect: (file: StorageFile, path: string, storageClient?: BaseStorageClient) => void;
@@ -102,10 +104,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setError('');
         setCurrentView('remote-search');
         setRemoteSearchQuery(query);
-        
+
         const searchPath = `/search/${encodeURIComponent(query)}`;
         const result = await StorageServiceManager.listDirectory(searchPath);
-        
+
         setFiles(result);
         setLoading(false);
       }
@@ -294,6 +296,61 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     loadDirectory(currentPath, true, true); // 标记为手动刷新和强制重新加载
   };
 
+  // 下载当前文件夹的所有文件
+  const downloadCurrentFolder = async () => {
+    if (!connection || files.length === 0) return;
+
+    try {
+      // 检查下载服务是否被停止
+      if (FolderDownloadService.isDownloadServiceStopped()) {
+        alert(t('download.service.stopped'));
+        return;
+      }
+
+      // 让用户选择一次保存目录
+      const { invoke } = await import('@tauri-apps/api/core');
+      const selectedDirectory = await invoke<string | null>('show_folder_dialog');
+
+      if (!selectedDirectory) {
+        return;
+      }
+
+      // 生成文件夹名称
+      const folderName = currentPath || 'root';
+
+      // 开始下载（默认递归下载）
+      const downloadId = await FolderDownloadService.downloadFolder(
+        currentPath,
+        folderName,
+        files,
+        selectedDirectory,
+        {
+          onStart: (state) => {
+            console.log(`Started downloading folder: ${state.folderName}`);
+          },
+          onProgress: (state) => {
+            console.log(`Download progress: ${state.progress}%`);
+          },
+          onFileComplete: (_state, filename) => {
+            console.log(`Completed file: ${filename}`);
+          },
+          onComplete: (state) => {
+            console.log(`Folder download completed: ${state.folderName}`);
+          },
+          onError: (_state, error) => {
+            console.error(`Folder download error:`, error);
+          }
+        },
+        true // 默认启用递归下载
+      );
+
+      console.log(`Folder download initiated with ID: ${downloadId}`);
+
+    } catch (error) {
+      console.error('Failed to start folder download:', error);
+    }
+  };
+
   // 初始加载 - 修复避免重复加载的逻辑
   useEffect(() => {
     // 如果是首次加载（currentPath 为空）或者 initialPath 与当前路径不同时才加载
@@ -343,19 +400,19 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         returnToDirectory();
         return true; // 表示已处理
       }
-      
+
       // 如果有搜索词，清除搜索
       if (searchTerm.trim()) {
         handleClearSearch();
         return true; // 表示已处理
       }
-      
+
       // 如果不在根目录，返回上级目录
       if (currentPath && currentPath !== '') {
         navigateUp();
         return true; // 表示已处理
       }
-      
+
       // 如果在根目录，返回 false 让上级组件处理
       return false;
     };
@@ -624,7 +681,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                       // 检查本地是否有搜索结果
                       const localResults = getFilteredFiles();
                       const client = StorageServiceManager.getCurrentClient();
-                      
+
                       // 如果本地没有结果且支持远程搜索，则触发远程搜索
                       if (localResults.length === 0 && client.supportsSearch?.()) {
                         handleGlobalSearch(searchTerm);
@@ -658,6 +715,17 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             >
             <RefreshCw className={`w-4 h-4 text-gray-600 dark:text-gray-300 ${loading && isManualRefresh ? 'animate-spin' : ''}`} />
           </button>
+
+            {/* 文件夹下载按钮 */}
+            {/* 下载文件夹按钮 */}
+            <button
+              onClick={downloadCurrentFolder}
+              disabled={loading || files.length === 0 || FolderDownloadService.isDownloadServiceStopped()}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              title={t('download.folder.all')}
+            >
+              <Download className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </button>
         </div>
         </div>
       </nav>
