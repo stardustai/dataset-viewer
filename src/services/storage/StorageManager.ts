@@ -463,19 +463,16 @@ export class StorageServiceManager {
    */
   static async downloadFile(path: string): Promise<Blob> {
     const client = this.getCurrentClient();
-    console.log('[StorageManager] downloadFile called with path:', path);
-    console.log('[StorageManager] current client type:', client.constructor.name);
-    console.log('[StorageManager] current connection:', this.currentConnection?.type);
     return await client.downloadFile(path);
   }
 
   /**
    * 带进度下载文件
    */
-  static async downloadFileWithProgress(path: string, filename: string): Promise<string> {
+  static async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {
     const client = this.getCurrentClient();
     if (client.downloadFileWithProgress) {
-      return await client.downloadFileWithProgress(path, filename);
+      return await client.downloadFileWithProgress(path, filename, savePath);
     } else {
       throw new Error('Download with progress not supported');
     }
@@ -488,7 +485,8 @@ export class StorageServiceManager {
     archivePath: string,
     archiveFilename: string,
     entryPath: string,
-    entryFilename: string
+    entryFilename: string,
+    savePath?: string
   ): Promise<string> {
     const { invoke } = await import('@tauri-apps/api/core');
 
@@ -501,6 +499,7 @@ export class StorageServiceManager {
         archiveFilename,
         entryPath,
         entryFilename,
+        save_path: savePath,
       }) as Promise<string>,
       new Promise<never>((_, reject) => {
         setTimeout(() => {
@@ -508,6 +507,14 @@ export class StorageServiceManager {
         }, timeoutMs);
       })
     ]);
+  }
+
+  /**
+   * 获取默认下载路径
+   */
+  static async getDefaultDownloadPath(filename: string): Promise<string> {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return await invoke<string>('get_default_download_path', { filename });
   }
 
   /**

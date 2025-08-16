@@ -8,7 +8,7 @@ export interface StorageClient {
   getFileContent(path: string, options?: ReadOptions): Promise<FileContent>;
   getFileSize(path: string): Promise<number>;
   downloadFile(path: string): Promise<Blob>;
-  downloadFileWithProgress?(path: string, filename: string): Promise<string>;
+  downloadFileWithProgress?(path: string, filename: string, savePath?: string): Promise<string>;
 }
 
 // 统一的连接配置基类

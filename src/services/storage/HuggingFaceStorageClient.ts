@@ -325,7 +325,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     }
   }
 
-  async downloadFileWithProgress(path: string, filename: string): Promise<string> {
+  async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {
     const pathInfo = this.parseHuggingFacePath(path);
     if (!pathInfo || !pathInfo.filePath) {
       throw new Error('Invalid file path for HuggingFace download with progress');
@@ -334,7 +334,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     try {
       // 构建下载 URL 并使用 downloadWithProgress 方法
       const downloadUrl = this.buildDownloadUrl(path);
-      return await this.downloadWithProgress('GET', downloadUrl, filename, this.getAuthHeaders());
+      return await this.downloadWithProgress('GET', downloadUrl, filename, savePath, this.getAuthHeaders());
     } catch (error) {
       console.error(`Failed to download file with progress ${path}:`, error);
       throw error;

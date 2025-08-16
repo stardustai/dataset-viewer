@@ -29,7 +29,7 @@ export class OSSStorageClient extends BaseStorageClient {
 
   /**
    * 统一解析 OSS 配置，支持带路径前缀的 bucket
-   * 统一格式：bucket/path/prefix
+   * 格式：bucket 或 bucket/path/prefix
    */
   private parseOSSConfig(config: ConnectionConfig): {
     endpoint: string;
@@ -46,15 +46,15 @@ export class OSSStorageClient extends BaseStorageClient {
       if (rawUrl.startsWith('oss://')) {
         const ossUrl = rawUrl.replace('oss://', '');
         const [hostname, ...bucketParts] = ossUrl.split('/');
-        
+
         if (!bucket && bucketParts.length > 0) {
           bucket = bucketParts.join('/');
         }
-        
+
         if (!endpoint) {
           endpoint = `https://${hostname}`;
         }
-        
+
         // 从 hostname 推断 region
         if (!config.region && hostname.includes('oss-')) {
           const regionMatch = hostname.match(/oss-([^.]+)/);
@@ -64,22 +64,38 @@ export class OSSStorageClient extends BaseStorageClient {
         try {
           const url = new URL(rawUrl);
           const hostname = url.hostname;
-          
+
           if (!endpoint) {
             endpoint = `${url.protocol}//${hostname}`;
           }
-          
+
           if (!bucket) {
             if (hostname.includes('.oss-')) {
               // 虚拟主机格式：bucket.oss-region.aliyuncs.com
-              bucket = hostname.split('.')[0];
+              const bucketPart = hostname.split('.')[0];
+              // 如果URL路径不为空，添加路径前缀
+              if (url.pathname && url.pathname.length > 1) {
+                const pathParts = url.pathname.split('/').filter(Boolean);
+                const hasExplicitPrefix = url.pathname.endsWith('/');
+                bucket = hasExplicitPrefix && pathParts.length > 0
+                  ? `${bucketPart}/${pathParts.join('/')}`
+                  : bucketPart;
+              } else {
+                bucket = bucketPart;
+              }
             } else if (url.pathname && url.pathname.length > 1) {
-              // 路径格式：从路径中提取
-              const pathParts = url.pathname.split('/').filter(part => part.length > 0);
-              bucket = pathParts.join('/');
+              // 路径格式：oss-region.aliyuncs.com/bucket[/optional/prefix[/...]]
+              const pathParts = url.pathname.split('/').filter(Boolean);
+              if (pathParts.length > 0) {
+                const baseBucket = pathParts[0];
+                const hasExplicitPrefix = url.pathname.endsWith('/');
+                bucket = hasExplicitPrefix && pathParts.length > 1
+                  ? `${baseBucket}/${pathParts.slice(1).join('/')}`
+                  : baseBucket;
+              }
             }
           }
-          
+
           // 从 hostname 推断 region
           if (!config.region && hostname.includes('oss-')) {
             const regionMatch = hostname.match(/oss-([^.]+)/);
@@ -122,11 +138,11 @@ export class OSSStorageClient extends BaseStorageClient {
   generateConnectionName(config: ConnectionConfig): string {
     try {
       const { endpoint, bucket } = this.parseOSSConfig(config);
-      
+
       if (!bucket) {
         return 'OSS';
       }
-      
+
       // 提取域名信息用于显示
       let domain = 'OSS';
       try {
@@ -138,7 +154,7 @@ export class OSSStorageClient extends BaseStorageClient {
       } catch {
         // 忽略 URL 解析错误
       }
-      
+
       return `${domain} (${bucket})`;
     } catch (error) {
       console.warn('Failed to generate OSS connection name:', error);
@@ -160,7 +176,7 @@ export class OSSStorageClient extends BaseStorageClient {
     const { endpoint, bucket, region } = this.parseOSSConfig(config);
     const accessKey = config.username;
     const secretKey = config.password;
-    
+
     if (!bucket) {
       throw new Error('OSS bucket is required');
     }
@@ -213,18 +229,18 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    // 使用统一的路径转换方法
-    const objectKeyPrefix = this.getObjectKey(path);
+    // 获取对象键前缀，对于根目录，返回空字符串
+    const objectKeyPrefix = this.normalizePath(path);
 
     try {
       // 直接调用后端的 list_directory 方法，而不是通用的 request 方法
       const result = await invoke('storage_list_directory', {
-        path: objectKeyPrefix,
+        path: objectKeyPrefix, // 传递处理后的对象键，而不是协议URL
         options: {
           page_size: options.pageSize || 1000,
           marker: options.marker,
           // 只有用户明确指定prefix时才使用，否则让后端根据path自动处理
-          prefix: options.prefix,
+          prefix: objectKeyPrefix || options.prefix,
           recursive: options.recursive || false,
           sort_by: options.sortBy || 'name',
           sort_order: options.sortOrder || 'asc',
@@ -324,7 +340,7 @@ export class OSSStorageClient extends BaseStorageClient {
   /**
    * 带进度的下载方法
    */
-  async downloadFileWithProgress(path: string, filename: string): Promise<string> {
+  async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {
     if (!this.connection) {
       throw new Error('Not connected to OSS');
     }
@@ -334,6 +350,7 @@ export class OSSStorageClient extends BaseStorageClient {
         'GET',
         this.toProtocolUrl(path),
         filename,
+        savePath,
         this.getAuthHeaders()
       );
     } catch (error) {
@@ -351,21 +368,17 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    const objectKey = this.getObjectKey(path);
+    const objectKey = this.normalizePath(path);
 
     // 构建标准的 OSS URL 格式：oss://bucket/path/to/file
-    if (objectKey) {
-      return `oss://${this.connection.bucket}/${objectKey}`;
-    } else {
-      return `oss://${this.connection.bucket}`;
-    }
-  }
+    // 移除 bucket 末尾的斜杠（如果有），避免双斜杠
+    const cleanBucket = this.connection.bucket.replace(/\/+$/, '');
 
-  /**
-   * 提取对象键（移除开头斜杠，清理重复斜杠）
-   */
-  private getObjectKey(path: string): string {
-    return path.replace(/^\/+/, '').replace(/\/+/g, '/');
+    if (objectKey) {
+      return `oss://${cleanBucket}/${objectKey}`;
+    } else {
+      return `oss://${cleanBucket}`;
+    }
   }
 
   /**
@@ -440,12 +453,12 @@ export class OSSStorageClient extends BaseStorageClient {
   private normalizeOSSEndpoint(rawEndpoint: string, bucket: string, region: string): string {
     try {
       // 如果是 oss:// 协议，先转换为 https://
-      const endpoint = rawEndpoint.startsWith('oss://') 
-        ? rawEndpoint.replace('oss://', 'https://') 
+      const endpoint = rawEndpoint.startsWith('oss://')
+        ? rawEndpoint.replace('oss://', 'https://')
         : rawEndpoint;
 
       const url = new URL(endpoint);
-      
+
       // 提取实际的 bucket 名称（不包含路径前缀）
       const actualBucket = bucket.includes('/') ? bucket.split('/')[0] : bucket;
 
@@ -455,19 +468,19 @@ export class OSSStorageClient extends BaseStorageClient {
       }
 
       // 检查是否为本地或自定义端点（不需要虚拟主机风格）
-      const isLocalOrCustom = url.hostname.includes('localhost') || 
-                              url.hostname.includes('127.0.0.1') || 
+      const isLocalOrCustom = url.hostname.includes('localhost') ||
+                              url.hostname.includes('127.0.0.1') ||
                               !url.hostname.includes('.');
-      
+
       if (isLocalOrCustom) {
         return endpoint;
       }
 
       // 检查 URL 格式是否正确，如果包含无效字符则重新构建
-      const hasInvalidFormat = url.hostname.includes('/') || 
+      const hasInvalidFormat = url.hostname.includes('/') ||
                                !url.hostname.includes('.') ||
                                url.hostname.split('.').length < 2;
-      
+
       if (hasInvalidFormat) {
         // URL 格式错误，根据 region 重新构建标准的 OSS 端点
         return `https://${actualBucket}.oss-${region}.aliyuncs.com`;
@@ -481,7 +494,7 @@ export class OSSStorageClient extends BaseStorageClient {
         'myhuaweicloud.com' // 华为云OBS
       ];
 
-      const needsVirtualHostStyle = supportedProviders.some(provider => 
+      const needsVirtualHostStyle = supportedProviders.some(provider =>
         url.hostname.includes(provider) || url.hostname.startsWith(provider)
       );
 
@@ -491,9 +504,8 @@ export class OSSStorageClient extends BaseStorageClient {
         return `${url.protocol}//${actualBucket}.${url.hostname}${pathSuffix}`;
       }
 
-      // 默认情况下，尝试构建虚拟主机风格
-      const pathSuffix = url.pathname !== '/' ? url.pathname : '';
-      return `${url.protocol}//${actualBucket}.${url.hostname}${pathSuffix}`;
+      // 对于未知的提供商或自定义端点，返回原始端点不做修改
+      return endpoint;
     } catch (error) {
       // 如果解析失败，构建默认的阿里云OSS端点
       // 使用实际的 bucket 名称

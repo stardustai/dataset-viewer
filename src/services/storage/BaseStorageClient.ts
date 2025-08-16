@@ -117,16 +117,22 @@ export abstract class BaseStorageClient implements StorageClient {
     method: string,
     url: string,
     filename: string,
+    savePath?: string,
     headers: Record<string, string> = {}
   ): Promise<string> {
+    // 确保 savePath 不是 undefined，如果是则设为 null
+    const normalizedSavePath = savePath === undefined ? null : savePath;
+
+    const params = {
+      method,
+      url,
+      headers,
+      filename,
+      savePath: normalizedSavePath,
+    };
     return await this.invokeWithTimeout(
       'download_file_with_progress',
-      {
-        method,
-        url,
-        headers,
-        filename,
-      },
+      params,
       DEFAULT_TIMEOUTS.download
     );
   }
@@ -299,5 +305,5 @@ export abstract class BaseStorageClient implements StorageClient {
   }
 
   // 可选的带进度下载方法，由子类实现
-  downloadFileWithProgress?(_path: string, _filename: string): Promise<string>;
+  downloadFileWithProgress?(_path: string, _filename: string, _savePath?: string): Promise<string>;
 }

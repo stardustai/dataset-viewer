@@ -221,13 +221,13 @@ export class LocalStorageClient extends BaseStorageClient {
     return new Blob([uint8Array]);
   }
 
-  async downloadFileWithProgress(path: string, filename: string): Promise<string> {
+  async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {
     if (!this.connected) {
       throw new Error('Local storage not connected');
     }
 
     // 对于本地文件，使用正常的GET方法获取数据
-    return await this.downloadWithProgress('GET', this.toProtocolUrl(path), filename);
+    return await this.downloadWithProgress('GET', this.toProtocolUrl(path), filename, savePath);
   }
 
   /**
