@@ -34,10 +34,32 @@ export class FolderDownloadService {
   private static globalStopFlag = false;
 
   /**
-   * 拼接路径并规整斜杠
+   * 拼接路径并规整斜杠，保留协议前缀
    */
   private static joinPath(...parts: (string | undefined)[]): string {
-    return parts.filter(Boolean).join('/').replace(/\/+/g, '/');
+    const filteredParts = parts.filter(Boolean) as string[];
+    if (filteredParts.length === 0) return '';
+
+    // 检测并提取协议前缀
+    const firstPart = filteredParts[0];
+    const protocolMatch = firstPart.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/)/);
+    let protocolPrefix = '';
+    let normalizedParts = filteredParts;
+
+    if (protocolMatch) {
+      protocolPrefix = protocolMatch[1];
+      // 移除第一部分的协议前缀
+      normalizedParts = [firstPart.substring(protocolPrefix.length), ...filteredParts.slice(1)];
+    }
+
+    // 处理每个部分：去除前后斜杠，过滤空值
+    const cleanParts = normalizedParts
+      .map(part => part.trim().replace(/^\/+|\/+$/g, ''))
+      .filter(part => part.length > 0);
+
+    // 拼接路径并重新附加协议前缀
+    const joinedPath = cleanParts.join('/');
+    return protocolPrefix + joinedPath;
   }
 
   /**

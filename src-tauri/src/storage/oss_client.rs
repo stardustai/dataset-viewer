@@ -957,11 +957,8 @@ impl StorageClient for OSSClient {
 
         // 处理路径：如果是协议URL，直接解析；如果是相对路径，则添加前缀
         let full_prefix = if path.starts_with("oss://") {
-            // 协议URL包含完整路径，直接解析对象键；若无对象路径则视为根目录
-            let object_key = match self.extract_object_key(path) {
-                Ok(k) => k,
-                Err(_) => String::new(),
-            };
+            // 协议URL包含完整路径，直接解析对象键
+            let object_key = self.extract_object_key(path)?;
             // 对于目录列举，确保路径以斜杠结尾（除非是根目录）
             if object_key.is_empty() {
                 String::new()

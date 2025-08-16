@@ -368,16 +368,15 @@ export class OSSStorageClient extends BaseStorageClient {
       throw new Error('Not connected to OSS');
     }
 
-    const objectKey = this.getObjectKey(path);
+    const objectKey = this.normalizePath(path);
 
     // 构建标准的 OSS URL 格式：oss://bucket/path/to/file
-    // 确保路径拼接时不会产生双斜杠
+    // 移除 bucket 末尾的斜杠（如果有），避免双斜杠
+    const cleanBucket = this.connection.bucket.replace(/\/+$/, '');
+
     if (objectKey) {
-      // 移除 bucket 末尾的斜杠（如果有），避免双斜杠
-      const cleanBucket = this.connection.bucket.replace(/\/+$/, '');
       return `oss://${cleanBucket}/${objectKey}`;
     } else {
-      const cleanBucket = this.connection.bucket.replace(/\/+$/, '');
       return `oss://${cleanBucket}`;
     }
   }
