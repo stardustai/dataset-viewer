@@ -34,6 +34,13 @@ export class FolderDownloadService {
   private static globalStopFlag = false;
 
   /**
+   * 拼接路径并规整斜杠
+   */
+  private static joinPath(...parts: (string | undefined)[]): string {
+    return parts.filter(Boolean).join('/').replace(/\/+/g, '/');
+  }
+
+  /**
    * 开始下载文件夹
    */
   static async downloadFolder(
@@ -284,14 +291,13 @@ export class FolderDownloadService {
       events.onProgress(state);
 
       try {
-        // 构建文件路径
-        const filePath = currentPath ? `${currentPath}/${file.filename}` : file.filename;
+        // 构建文件路径（若 filename 可能已包含 currentPath，使用更稳健的拼接）
+        const filePath = currentPath
+          ? (file.filename.startsWith(`${currentPath}/`) ? file.filename : this.joinPath(currentPath, file.filename))
+          : file.filename;
 
-        // 构建保存路径
-        const fileSavePath = `${baseSavePath}/${file.basename}`;
-
-        // 下载单个文件
-        await StorageServiceManager.downloadFileWithProgress(filePath, file.basename, fileSavePath);
+        // 下载单个文件（savePath 传目录，文件名由 filename 指定）
+        await StorageServiceManager.downloadFileWithProgress(filePath, file.basename, baseSavePath);
 
         // 更新进度
         state.completedFiles++;
@@ -318,9 +324,9 @@ export class FolderDownloadService {
         }
 
         try {
-          // 构建子目录路径
-          const dirPath = currentPath ? `${currentPath}/${dir.filename}` : dir.filename;
-          const dirSavePath = `${baseSavePath}/${dir.filename}`;
+          // 构建子目录路径（使用 basename 避免路径重复）
+          const dirPath = this.joinPath(currentPath, dir.basename);
+          const dirSavePath = this.joinPath(baseSavePath, dir.basename);
 
           // 获取子目录文件列表
           const subFiles = await StorageServiceManager.listDirectory(dirPath);
@@ -336,7 +342,7 @@ export class FolderDownloadService {
           );
 
         } catch (error) {
-          console.error(`Failed to process directory ${dir.filename}:`, error);
+          console.error(`Failed to process directory ${dir.basename}:`, error);
           // 单个目录失败不影响整体下载，继续处理其他目录
         }
       }

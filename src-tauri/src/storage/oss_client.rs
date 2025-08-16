@@ -957,8 +957,11 @@ impl StorageClient for OSSClient {
 
         // 处理路径：如果是协议URL，直接解析；如果是相对路径，则添加前缀
         let full_prefix = if path.starts_with("oss://") {
-            // 协议URL包含完整路径，直接解析对象键
-            let object_key = self.extract_object_key(path)?;
+            // 协议URL包含完整路径，直接解析对象键；若无对象路径则视为根目录
+            let object_key = match self.extract_object_key(path) {
+                Ok(k) => k,
+                Err(_) => String::new(),
+            };
             // 对于目录列举，确保路径以斜杠结尾（除非是根目录）
             if object_key.is_empty() {
                 String::new()
@@ -1279,15 +1282,24 @@ impl OSSClient {
         let oss_url = url.strip_prefix("oss://").unwrap_or(url);
         let parts: Vec<&str> = oss_url.splitn(2, '/').collect();
 
-        if parts.len() >= 2 {
-            let _bucket = parts[0];
-            let object_key = parts[1];
+        if !parts.is_empty() {
+            let url_bucket = parts[0];
+            let object_key = if parts.len() >= 2 { parts[1] } else { "" };
+
+            // 校验 URL 中的 bucket 与配置的 bucket 一致
+            if let Some(cfg_bucket) = self.config.bucket.as_ref() {
+                let configured_bucket = cfg_bucket.split('/').next().unwrap_or(cfg_bucket);
+                if !configured_bucket.eq(url_bucket) {
+                    return Err(StorageError::RequestFailed(format!(
+                        "Bucket mismatch: url='{}' != configured='{}'", url_bucket, configured_bucket
+                    )));
+                }
+            }
 
             // 构建实际的 OSS HTTP URL
             let actual_url = self.build_object_url(object_key);
             Ok((object_key.to_string(), actual_url))
         } else {
-            // 只有 bucket，没有对象路径
             Err(StorageError::RequestFailed("Invalid OSS URL format".to_string()))
         }
     }

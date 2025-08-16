@@ -75,15 +75,24 @@ export class OSSStorageClient extends BaseStorageClient {
               const bucketPart = hostname.split('.')[0];
               // 如果URL路径不为空，添加路径前缀
               if (url.pathname && url.pathname.length > 1) {
-                const pathParts = url.pathname.split('/').filter(part => part.length > 0);
-                bucket = pathParts.length > 0 ? `${bucketPart}/${pathParts.join('/')}` : bucketPart;
+                const pathParts = url.pathname.split('/').filter(Boolean);
+                const hasExplicitPrefix = url.pathname.endsWith('/');
+                bucket = hasExplicitPrefix && pathParts.length > 0
+                  ? `${bucketPart}/${pathParts.join('/')}`
+                  : bucketPart;
               } else {
                 bucket = bucketPart;
               }
             } else if (url.pathname && url.pathname.length > 1) {
-              // 路径格式：从路径中提取
-              const pathParts = url.pathname.split('/').filter(part => part.length > 0);
-              bucket = pathParts.join('/');
+              // 路径格式：oss-region.aliyuncs.com/bucket[/optional/prefix[/...]]
+              const pathParts = url.pathname.split('/').filter(Boolean);
+              if (pathParts.length > 0) {
+                const baseBucket = pathParts[0];
+                const hasExplicitPrefix = url.pathname.endsWith('/');
+                bucket = hasExplicitPrefix && pathParts.length > 1
+                  ? `${baseBucket}/${pathParts.slice(1).join('/')}`
+                  : baseBucket;
+              }
             }
           }
 
