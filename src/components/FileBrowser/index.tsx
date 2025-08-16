@@ -27,7 +27,7 @@ import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { FolderDownloadService } from '../../services/folderDownloadService';
 
 interface FileBrowserProps {
-  onFileSelect: (file: StorageFile, path: string, storageClient?: BaseStorageClient) => void;
+  onFileSelect: (file: StorageFile, path: string, storageClient?: BaseStorageClient, files?: StorageFile[]) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
@@ -535,7 +535,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 处理所有类型的文件，不仅仅是文本文件
       const currentStorageClient = StorageServiceManager.getCurrentClient();
       const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
-      onFileSelect(file, fullPath, currentStorageClient);
+      onFileSelect(file, fullPath, currentStorageClient, files);
     }
   };
 

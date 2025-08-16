@@ -29,6 +29,7 @@ function App() {
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
   const [selectedStorageClient, setSelectedStorageClient] = useState<any>(null);
   const [currentDirectory, setCurrentDirectory] = useState<string>('');
+  const [hasAssociatedFiles, setHasAssociatedFiles] = useState(false);
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
 
   // 监听状态变化，立即移除loading以避免空白闪烁
@@ -198,10 +199,22 @@ function App() {
     setCurrentDirectory('');
   };
 
-  const handleFileSelect = (file: StorageFile, path: string, storageClient?: any) => {
+  const handleFileSelect = (file: StorageFile, path: string, storageClient?: any, files?: StorageFile[]) => {
     setSelectedFile(file);
     setSelectedFilePath(path);
     setSelectedStorageClient(storageClient); // 保存存储客户端引用
+
+    // 检查是否存在关联文件（如YOLO标注的txt文件）
+    if (files && file.basename) {
+      const baseName = file.basename.replace(/\.[^.]+$/, ''); // 移除扩展名
+      const correspondingTxtExists = files.some(f =>
+        f.basename === `${baseName}.txt` && f.type === 'file'
+      );
+      setHasAssociatedFiles(correspondingTxtExists);
+    } else {
+      setHasAssociatedFiles(false);
+    }
+
     setAppState('viewing');
   };
 
@@ -250,6 +263,7 @@ function App() {
               file={selectedFile}
               filePath={selectedFilePath}
               storageClient={selectedStorageClient}
+              hasAssociatedFiles={hasAssociatedFiles}
               onBack={handleBackToBrowser}
             />
           </div>

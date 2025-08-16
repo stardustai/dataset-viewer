@@ -22,10 +22,10 @@ const AV1VideoPlayerWrapper: React.FC<{
   // 加载视频数据
   const loadVideoData = useCallback(async () => {
     if (videoData || isLoading) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const arrayBuffer = await getFileArrayBuffer(filePath);
       const data = new Uint8Array(arrayBuffer);
@@ -77,12 +77,12 @@ const AV1VideoPlayerWrapper: React.FC<{
 // 检测是否为 AV1 视频文件
 const detectAV1Video = (fileName: string, data?: Uint8Array): boolean => {
   const ext = fileName.toLowerCase();
-  
+
   // 检查文件扩展名
   if (ext.endsWith('.ivf') || ext.endsWith('.av1')) {
     return true;
   }
-  
+
   // 检查文件数据
   if (data && data.length >= 32) {
     // IVF 文件头: "DKIF" (0x46494B44)
@@ -90,17 +90,17 @@ const detectAV1Video = (fileName: string, data?: Uint8Array): boolean => {
     if (header === 'DKIF') {
       return true;
     }
-    
+
     // 检查 MP4 文件中的 AV1 编码
     if (header === 'ftyp' || (data[4] === 0x66 && data[5] === 0x74 && data[6] === 0x79 && data[7] === 0x70)) {
       const searchLength = Math.min(data.length, 1024);
       const searchData = new TextDecoder('latin1').decode(data.slice(0, searchLength));
-      
+
       // 检查是否包含 AV1 相关的编解码器标识
       return searchData.includes('av01') || searchData.includes('AV01');
     }
   }
-  
+
   return false;
 };
 
@@ -109,6 +109,7 @@ interface MediaViewerProps {
   fileName: string;
   fileType: 'image' | 'pdf' | 'video' | 'audio';
   fileSize: number;
+  hasAssociatedFiles?: boolean;
   previewContent?: Uint8Array; // 可选的预览内容，避免重复请求
 }
 
@@ -117,6 +118,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   fileName,
   fileType,
   fileSize,
+  hasAssociatedFiles,
   previewContent
 }) => {
   const { t } = useTranslation();
@@ -155,20 +157,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
     try {
       let mediaUrl: string;
-      
+
       // 如果有预览内容，使用二进制数据创建 blob URL
       if (previewContent) {
         clearTimeout(showProgressTimer);
         setLoadingProgress(100);
-        
+
         // 检测是否为 AV1 视频
         const isAV1 = detectAV1Video(fileName, previewContent);
         setIsAV1Video(isAV1);
-        
+
         if (isAV1) {
           const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
           setUseWasmDecoder(needsWasmDecoder);
-          
+
           if (!needsWasmDecoder) {
             const blob = new Blob([previewContent], { type: 'video/mp4' });
             mediaUrl = URL.createObjectURL(blob);
@@ -182,20 +184,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       } else {
         // 重置视频播放失败状态
         setVideoPlaybackFailed(false);
-        
+
         // 对于视频文件，预先检测是否为 AV1 格式
          if (fileType === 'video') {
            try {
              // 只获取文件头部数据进行高效 AV1 检测（2KB）
              const headerData = await getFileHeader(filePath, 2048);
-             
+
              const isAV1 = detectAV1Video(fileName, headerData);
              setIsAV1Video(isAV1);
-             
+
              if (isAV1) {
                const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
                setUseWasmDecoder(needsWasmDecoder);
-               
+
                if (needsWasmDecoder) {
                   // 对于需要 WASM 解码器的 AV1 视频，不需要 mediaUrl
                   mediaUrl = '';
@@ -221,11 +223,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           setUseWasmDecoder(false);
           mediaUrl = await getFileUrl(filePath);
         }
-        
+
         cleanup();
         setLoadingProgress(100);
       }
-      
+
       setMediaUrl(mediaUrl);
     } catch (err) {
       console.error('Failed to load media:', err);
@@ -242,16 +244,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const handleVideoPlaybackError = useCallback(async () => {
     if (fileType === 'video' && !videoPlaybackFailed) {
       setVideoPlaybackFailed(true);
-      
+
       try {
         // 获取视频数据用于检测 AV1 编码
         const arrayBuffer = await getFileArrayBuffer(filePath);
         const videoData = new Uint8Array(arrayBuffer);
-        
+
         // 检测是否为 AV1 视频
         const isAV1 = detectAV1Video(fileName, videoData);
         setIsAV1Video(isAV1);
-        
+
         if (isAV1) {
           const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
           setUseWasmDecoder(needsWasmDecoder);
@@ -371,7 +373,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             />
           );
         }
-        
+
         // 普通视频或原生支持的 AV1 视频
         return (
           <div className="flex justify-center items-center h-full p-4 bg-black">
@@ -461,6 +463,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           mediaUrl={mediaUrl}
           fileName={fileName}
           filePath={filePath}
+          hasAssociatedFiles={hasAssociatedFiles}
         />
       );
     }

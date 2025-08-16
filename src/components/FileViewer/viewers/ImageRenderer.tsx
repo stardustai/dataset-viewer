@@ -7,6 +7,7 @@ interface ImageRendererProps {
   mediaUrl: string;
   fileName: string;
   filePath: string;
+  hasAssociatedFiles?: boolean;
 }
 
 interface YoloAnnotation {
@@ -20,7 +21,8 @@ interface YoloAnnotation {
 export const ImageRenderer: React.FC<ImageRendererProps> = ({
   mediaUrl,
   fileName,
-  filePath
+  filePath,
+  hasAssociatedFiles
 }) => {
   const { t } = useTranslation();
   const [zoom, setZoom] = useState(100);
@@ -63,15 +65,21 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
       return;
     }
 
+        // 如果已知没有关联文件（比如对应的txt标注文件），就不发送请求
+    if (hasAssociatedFiles === false) {
+      setYoloAnnotations([]);
+      return;
+    }
+
     try {
       // 获取同名txt文件路径
       const txtPath = filePath.replace(/\.[^.]+$/, '.txt');
       const arrayBuffer = await getFileArrayBuffer(txtPath);
       const text = new TextDecoder().decode(arrayBuffer);
-      
+
       const annotations: YoloAnnotation[] = [];
       const lines = text.split('\n').filter(line => line.trim());
-      
+
       for (const line of lines) {
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 5) {
@@ -84,13 +92,13 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
           });
         }
       }
-      
+
       setYoloAnnotations(annotations);
     } catch (error) {
       console.warn('Failed to load YOLO annotations:', error);
       setYoloAnnotations([]);
     }
-  }, [filePath, showYolo]);
+  }, [filePath, showYolo, hasAssociatedFiles]);
 
   const handleImageLoad = useCallback(() => {
     if (imageRef.current) {
@@ -185,7 +193,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
             className="max-w-[calc(100vw-64px)] max-h-[calc(100vh-200px)] object-contain block"
             onLoad={handleImageLoad}
           />
-            
+
           {/* YOLO Annotations */}
           {showYolo && yoloAnnotations.length > 0 && imageSize.width > 0 && (
             <div className="absolute inset-0 pointer-events-none">
@@ -193,18 +201,18 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
                 // Convert YOLO format (center x, center y, width, height) to pixel coordinates
                 const imgElement = imageRef.current;
                 if (!imgElement) return null;
-                
+
                 const displayWidth = imgElement.offsetWidth;
                 const displayHeight = imgElement.offsetHeight;
-                
+
                 const centerX = annotation.x * displayWidth;
                 const centerY = annotation.y * displayHeight;
                 const boxWidth = annotation.width * displayWidth;
                 const boxHeight = annotation.height * displayHeight;
-                
+
                 const left = centerX - boxWidth / 2;
                 const top = centerY - boxHeight / 2;
-                
+
                 return (
                   <div
                     key={index}

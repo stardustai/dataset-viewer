@@ -10,22 +10,23 @@ interface FileViewerProps {
   file: StorageFile;
   filePath: string;
   storageClient?: any;
+  hasAssociatedFiles?: boolean;
   onBack: () => void;
 }
 
-export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageClient, onBack }) => {
+export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageClient, hasAssociatedFiles, onBack }) => {
   const fileLoader = useFileLoader(file, filePath);
-  
+
   // 创建需要的refs
   const textViewerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreSectionRef = useRef<HTMLDivElement>(null);
   const mainDivRef = useRef<HTMLDivElement>(null);
-  
+
   // 动态计算容器高度
   const [containerHeight, setContainerHeight] = useState<number>(600);
-  
+
   // Markdown 预览状态
   const [isMarkdownPreviewOpen, setIsMarkdownPreviewOpen] = useState(false);
 
@@ -41,7 +42,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     };
 
     updateHeight();
-    
+
     const resizeObserver = new ResizeObserver(updateHeight);
     if (mainDivRef.current) {
       resizeObserver.observe(mainDivRef.current);
@@ -118,7 +119,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     setLoading: fileLoader.setLoading,
     setError: fileLoader.setError
   });
-  
+
   const {
     handleSearchResults,
     nextResult,
@@ -193,6 +194,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
         file={file}
         filePath={filePath}
         storageClient={storageClient}
+        hasAssociatedFiles={hasAssociatedFiles}
         fileInfo={fileInfo}
         fileType={fileType}
         content={content}

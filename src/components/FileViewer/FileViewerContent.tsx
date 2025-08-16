@@ -25,6 +25,7 @@ interface FileViewerContentProps {
   filePath: string;
   fileType: string;
   storageClient?: any;
+  hasAssociatedFiles?: boolean;
   content: string;
   searchTerm: string;
   currentSearchIndex: number;
@@ -72,6 +73,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     filePath,
     fileType,
     storageClient,
+    hasAssociatedFiles,
     content,
     searchTerm,
     currentSearchIndex,
@@ -182,6 +184,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         fileName={file.basename}
         fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
         fileSize={file.size}
+        hasAssociatedFiles={hasAssociatedFiles}
       />
     );
   }
