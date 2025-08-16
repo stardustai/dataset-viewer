@@ -230,7 +230,7 @@ export class OSSStorageClient extends BaseStorageClient {
     }
 
     // 获取对象键前缀，对于根目录，返回空字符串
-    const objectKeyPrefix = this.getObjectKey(path);
+    const objectKeyPrefix = this.normalizePath(path);
 
     try {
       // 直接调用后端的 list_directory 方法，而不是通用的 request 方法
@@ -240,7 +240,7 @@ export class OSSStorageClient extends BaseStorageClient {
           page_size: options.pageSize || 1000,
           marker: options.marker,
           // 只有用户明确指定prefix时才使用，否则让后端根据path自动处理
-          prefix: options.prefix,
+          prefix: objectKeyPrefix || options.prefix,
           recursive: options.recursive || false,
           sort_by: options.sortBy || 'name',
           sort_order: options.sortOrder || 'asc',
@@ -382,20 +382,6 @@ export class OSSStorageClient extends BaseStorageClient {
   }
 
   /**
-   * 提取对象键（移除开头斜杠，清理重复斜杠）
-   * 处理根目录访问时避免生成双斜杠
-   */
-  private getObjectKey(path: string): string {
-    // 如果是根路径或空路径，返回空字符串
-    if (!path || path === '/' || path === '') {
-      return '';
-    }
-
-    // 移除开头的斜杠，清理重复斜杠
-    return path.replace(/^\/+/, '').replace(/\/+/g, '/');
-  }
-
-  /**
    * 获取认证头
    */
   protected getAuthHeaders(): Record<string, string> {
@@ -518,9 +504,8 @@ export class OSSStorageClient extends BaseStorageClient {
         return `${url.protocol}//${actualBucket}.${url.hostname}${pathSuffix}`;
       }
 
-      // 默认情况下，尝试构建虚拟主机风格
-      const pathSuffix = url.pathname !== '/' ? url.pathname : '';
-      return `${url.protocol}//${actualBucket}.${url.hostname}${pathSuffix}`;
+      // 对于未知的提供商或自定义端点，返回原始端点不做修改
+      return endpoint;
     } catch (error) {
       // 如果解析失败，构建默认的阿里云OSS端点
       // 使用实际的 bucket 名称
