@@ -50,10 +50,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       navigationHistoryService.clearHistory();
       navigationHistoryService.clearScrollPositions();
       navigationHistoryService.clearDirectoryCache();
-      
+
       // 清理保存的连接
       connectionStorage.clearAllConnections();
-      
+
       // 清理其他本地存储缓存
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -63,7 +63,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      
+
       console.log('Cache cleared successfully');
       showToast(t('cache.cleared.success'), 'success');
     } catch (error) {
@@ -121,7 +121,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 <button
                   key={value}
                   onClick={() => setTheme(value as any)}
-                  className={`flex flex-col items-center justify-center space-y-2 px-3 py-3 rounded-lg transition-colors ${
+                  className={`flex flex-col items-center justify-center space-y-1.5 px-3 py-2 rounded-lg transition-colors ${
                     theme === value
                       ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
                       : 'bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
