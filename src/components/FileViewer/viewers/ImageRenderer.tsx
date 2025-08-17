@@ -36,62 +36,50 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const handleZoomIn = useCallback(() => {
-    setZoom(prev => Math.min(500, prev + 25));
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    setZoom(prev => Math.max(25, prev - 25));
-  }, []);
-
-  const handleRotate = useCallback(() => {
-    setRotation(prev => (prev + 90) % 360);
-  }, []);
-
-  const resetView = useCallback(() => {
+  // Zoom controls
+  const handleZoomIn = () => setZoom(prev => Math.min(500, prev + 25));
+  const handleZoomOut = () => setZoom(prev => Math.max(25, prev - 25));
+  const handleRotate = () => setRotation(prev => (prev + 90) % 360);
+  const resetView = () => {
     setZoom(100);
     setRotation(0);
-  }, []);
+  };
 
-  const toggleYolo = useCallback(() => {
+  const toggleYolo = () => {
     const newShowYolo = !showYolo;
     setShowYolo(newShowYolo);
     localStorage.setItem('imageRenderer.showYolo', JSON.stringify(newShowYolo));
-  }, [showYolo]);
+  };
 
   const loadYoloAnnotations = useCallback(async () => {
-    if (!showYolo) {
-      setYoloAnnotations([]);
-      return;
-    }
-
-        // 如果已知没有关联文件（比如对应的txt标注文件），就不发送请求
-    if (hasAssociatedFiles === false) {
+    // Early returns for cases where we don't need to load annotations
+    if (!showYolo || hasAssociatedFiles === false) {
       setYoloAnnotations([]);
       return;
     }
 
     try {
-      // 获取同名txt文件路径
       const txtPath = filePath.replace(/\.[^.]+$/, '.txt');
       const arrayBuffer = await getFileArrayBuffer(txtPath);
       const text = new TextDecoder().decode(arrayBuffer);
 
-      const annotations: YoloAnnotation[] = [];
-      const lines = text.split('\n').filter(line => line.trim());
-
-      for (const line of lines) {
-        const parts = line.trim().split(/\s+/);
-        if (parts.length >= 5) {
-          annotations.push({
-            classId: parseInt(parts[0]),
-            x: parseFloat(parts[1]),
-            y: parseFloat(parts[2]),
-            width: parseFloat(parts[3]),
-            height: parseFloat(parts[4])
-          });
-        }
-      }
+      const annotations = text
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 5) {
+            return {
+              classId: parseInt(parts[0]),
+              x: parseFloat(parts[1]),
+              y: parseFloat(parts[2]),
+              width: parseFloat(parts[3]),
+              height: parseFloat(parts[4])
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) as YoloAnnotation[];
 
       setYoloAnnotations(annotations);
     } catch (error) {
@@ -100,16 +88,66 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
     }
   }, [filePath, showYolo, hasAssociatedFiles]);
 
-  const handleImageLoad = useCallback(() => {
+  // Get color for different YOLO class IDs
+  const getClassColor = (classId: number) => {
+    const colors = [
+      { border: 'border-red-500', bg: 'bg-red-500', label: 'bg-red-500', center: 'bg-red-600' },
+      { border: 'border-blue-500', bg: 'bg-blue-500', label: 'bg-blue-500', center: 'bg-blue-600' },
+      { border: 'border-green-500', bg: 'bg-green-500', label: 'bg-green-500', center: 'bg-green-600' },
+      { border: 'border-yellow-500', bg: 'bg-yellow-500', label: 'bg-yellow-500', center: 'bg-yellow-600' },
+      { border: 'border-purple-500', bg: 'bg-purple-500', label: 'bg-purple-500', center: 'bg-purple-600' },
+      { border: 'border-pink-500', bg: 'bg-pink-500', label: 'bg-pink-500', center: 'bg-pink-600' },
+      { border: 'border-indigo-500', bg: 'bg-indigo-500', label: 'bg-indigo-500', center: 'bg-indigo-600' },
+      { border: 'border-orange-500', bg: 'bg-orange-500', label: 'bg-orange-500', center: 'bg-orange-600' },
+      { border: 'border-teal-500', bg: 'bg-teal-500', label: 'bg-teal-500', center: 'bg-teal-600' },
+      { border: 'border-cyan-500', bg: 'bg-cyan-500', label: 'bg-cyan-500', center: 'bg-cyan-600' }
+    ];
+    return colors[classId % colors.length];
+  };
+
+  const handleImageLoad = () => {
     if (imageRef.current) {
       setImageSize({
         width: imageRef.current.naturalWidth,
         height: imageRef.current.naturalHeight
       });
     }
-  }, []);
+  };
 
-  useEffect(() => {
+  // Calculate actual image display size and position when using object-contain
+  const getImageDisplaySize = () => {
+    if (!containerRef.current || !imageSize.width || !imageSize.height) {
+      return { width: 0, height: 0, left: 0, top: 0 };
+    }
+
+    const container = containerRef.current;
+    const containerWidth = container.offsetWidth;
+    const containerHeight = container.offsetHeight;
+    const imageAspectRatio = imageSize.width / imageSize.height;
+    const containerAspectRatio = containerWidth / containerHeight;
+
+    if (imageAspectRatio > containerAspectRatio) {
+      // Image is wider than container, fit by width
+      const displayWidth = containerWidth;
+      const displayHeight = containerWidth / imageAspectRatio;
+      return {
+        width: displayWidth,
+        height: displayHeight,
+        left: 0,
+        top: (containerHeight - displayHeight) / 2
+      };
+    } else {
+      // Image is taller than container, fit by height
+      const displayWidth = containerHeight * imageAspectRatio;
+      const displayHeight = containerHeight;
+      return {
+        width: displayWidth,
+        height: displayHeight,
+        left: (containerWidth - displayWidth) / 2,
+        top: 0
+      };
+    }
+  };  useEffect(() => {
     loadYoloAnnotations();
   }, [loadYoloAnnotations]);
 
@@ -195,43 +233,68 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
 					/>
 
           {/* YOLO Annotations */}
-          {showYolo && yoloAnnotations.length > 0 && imageSize.width > 0 && (
-            <div className="absolute inset-0 pointer-events-none">
-              {yoloAnnotations.map((annotation, index) => {
-                // Convert YOLO format (center x, center y, width, height) to pixel coordinates
-                const imgElement = imageRef.current;
-                if (!imgElement) return null;
+          {showYolo && yoloAnnotations.length > 0 && imageSize.width > 0 && (() => {
+            const imageDisplaySize = getImageDisplaySize();
+            if (imageDisplaySize.width === 0) return null;
 
-                const displayWidth = imgElement.offsetWidth;
-                const displayHeight = imgElement.offsetHeight;
+            return (
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  left: `${imageDisplaySize.left}px`,
+                  top: `${imageDisplaySize.top}px`,
+                  width: `${imageDisplaySize.width}px`,
+                  height: `${imageDisplaySize.height}px`
+                }}
+              >
+                {yoloAnnotations.map((annotation, index) => {
+                  // YOLO format: x,y are center coordinates, width,height are relative to image size
+                  // All values are normalized (0-1), convert to percentage for CSS
+                  const centerXPercent = annotation.x * 100;
+                  const centerYPercent = annotation.y * 100;
+                  const widthPercent = annotation.width * 100;
+                  const heightPercent = annotation.height * 100;
 
-                const centerX = annotation.x * displayWidth;
-                const centerY = annotation.y * displayHeight;
-                const boxWidth = annotation.width * displayWidth;
-                const boxHeight = annotation.height * displayHeight;
+                  // Calculate top-left corner position from center coordinates
+                  const leftPercent = centerXPercent - (widthPercent / 2);
+                  const topPercent = centerYPercent - (heightPercent / 2);
 
-                const left = centerX - boxWidth / 2;
-                const top = centerY - boxHeight / 2;
+                  // Get color scheme for this class
+                  const colorScheme = getClassColor(annotation.classId);
 
-                return (
-                  <div
-                    key={index}
-                    className="absolute border-2 border-red-500 bg-red-500/10"
-                    style={{
-                      left: `${left}px`,
-                      top: `${top}px`,
-                      width: `${boxWidth}px`,
-                      height: `${boxHeight}px`
-                    }}
-                  >
-                    <div className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-1 py-0.5 rounded">
-                      {annotation.classId}
+                  return (
+                    <div
+                      key={index}
+                      className={`absolute border-2 ${colorScheme.border} ${colorScheme.bg}/20 hover:${colorScheme.bg}/30 transition-colors`}
+                      style={{
+                        left: `${leftPercent}%`,
+                        top: `${topPercent}%`,
+                        width: `${widthPercent}%`,
+                        height: `${heightPercent}%`,
+                        minWidth: '2px',
+                        minHeight: '2px'
+                      }}
+                    >
+                      {/* Class label */}
+                      <div className={`absolute -top-7 left-0 ${colorScheme.label} text-white text-xs px-2 py-1 rounded-sm shadow-md whitespace-nowrap z-10`}>
+                        Class {annotation.classId}
+                      </div>
+
+                      {/* Center point indicator */}
+                      <div
+                        className={`absolute w-1 h-1 ${colorScheme.center} rounded-full`}
+                        style={{
+                          left: '50%',
+                          top: '50%',
+                          transform: 'translate(-50%, -50%)'
+                        }}
+                      />
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </>
