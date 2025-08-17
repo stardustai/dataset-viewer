@@ -66,35 +66,6 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 </table>
 </div>
 
-## 🚀 Quick Start
-
-### 📦 Download (Recommended)
-
-**Latest Release**: [GitHub Releases](https://github.com/stardustai/dataset-viewer/releases)
-
-| Platform | Download |
-|----------|----------|
-| 🍎 **macOS** | [.dmg installer](https://github.com/stardustai/dataset-viewer/releases/latest) |
-| 🪟 **Windows** | [.msi installer](https://github.com/stardustai/dataset-viewer/releases/latest) |
-| 🐧 **Linux** | [.AppImage/.deb/.rpm](https://github.com/stardustai/dataset-viewer/releases/latest) |
-
-### 🛠️ Build from Source
-
-**Requirements**: Node.js 18+, Rust, pnpm
-
-```bash
-git clone https://github.com/stardustai/dataset-viewer.git
-cd dataset-viewer
-pnpm install
-pnpm tauri dev  # Development
-pnpm package    # Build
-```
-
-
-> **📱 macOS Note**: The app is unsigned. If you get security warnings, run: `sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"` or right-click → "Open" → "Open".
-
-
-
 ## ✨ Technical Highlights
 
 - 🤖 **100% AI-Generated**: Entire codebase created through AI assistance
@@ -120,17 +91,16 @@ We welcome contributions! Here's how you can help:
 - 📖 **Documentation**: Help improve our docs and examples
 - ⭐ **Star the project**: Show your support by starring the repository
 
-
-## 📄 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 Acknowledgments
 
 - **🤖 AI Development**: This project showcases the power of AI-assisted development
 - **🛠 Tauri Team**: For creating an amazing framework
 - **⚛️ React Community**: For the excellent ecosystem
 - **🦀 Rust Community**: For the robust language and tools
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 

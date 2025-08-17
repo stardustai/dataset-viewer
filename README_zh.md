@@ -66,33 +66,6 @@
 </table>
 </div>
 
-## 🚀 快速开始
-
-### 📦 下载安装（推荐）
-
-**最新版本**：[GitHub Releases](https://github.com/stardustai/dataset-viewer/releases)
-
-| 平台 | 下载链接 |
-|------|----------|
-| 🍎 **macOS** | [.dmg 安装包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_x64.dmg) |
-| 🪟 **Windows** | [.msi 安装包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_x64_en-US.msi) |
-| 🐧 **Linux** | [.deb 包](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_amd64.deb) \| [.AppImage](https://github.com/stardustai/dataset-viewer/releases/latest/download/dataset-viewer_amd64.AppImage) |
-
-> **📱 macOS**：应用未签名，如遇安全警告：`sudo xattr -d com.apple.quarantine "/Applications/Dataset Viewer.app"`
-
-### 🛠️ 源码构建
-
-**环境要求**：Node.js 18+、Rust 1.70+、pnpm
-
-```bash
-git clone https://github.com/stardustai/dataset-viewer.git
-cd dataset-viewer
-pnpm install
-pnpm tauri dev  # 开发模式
-pnpm package    # 构建打包
-```
-
-
 ## ✨ 技术亮点
 
 - 🤖 **100% AI 生成**：完全通过 AI 辅助开发的项目
@@ -120,16 +93,16 @@ pnpm package    # 构建打包
 
 
 
-## 📄 许可证
-
-本项目根据 **MIT 许可证** 授权 - 详见 [LICENSE](LICENSE) 文件。
-
 ## 🙏 致谢
 
 - **🤖 AI 开发**：本项目展示了 AI 辅助开发的强大力量
 - **🛠 Tauri 团队**：创造了令人惊叹的框架
 - **⚛️ React 社区**：优秀的生态系统
 - **🦀 Rust 社区**：强大的语言和工具
+
+## 📄 许可证
+
+本项目根据 **MIT 许可证** 授权 - 详见 [LICENSE](LICENSE) 文件。
 
 ---
 
