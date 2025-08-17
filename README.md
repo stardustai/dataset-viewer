@@ -23,20 +23,17 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 - 🌐 **Multi-Source Data Access**: WebDAV servers, local files, cloud storage (OSS), HuggingFace datasets
 - 🎨 **Modern Interface**: Dark/light themes, responsive design, multi-language support
 
-## ✨ Technical Highlights
+## 📚 Supported File Types
 
-- 🤖 **100% AI-Generated**: Entire codebase created through AI assistance
-- 🚀 **Native Performance**: Tauri (Rust) backend + React frontend, cross-platform support
-- 🧠 **Smart Memory Management**: Chunked loading, virtual scrolling, handles millions of rows effortlessly
-- 📊 **Streaming Processing**: Large file chunked transmission, compressed files without full extraction
+- **📄 Text & Code**: Plain text, JSON, YAML, XML, JavaScript, Python, Java, C/C++, Rust, Go, PHP, and more
 
-## 🎯 Perfect For
+- **📝 Documents**: **Markdown** (rendered preview), **Word Documents** (.docx/.rtf, text extraction), **PowerPoint** (.pptx, slide preview), **PDF** (viewer with text search)
 
-- **📊 Data Scientists**: Quickly explore large datasets, Parquet files, and CSV data
-- **🔍 Log Analysis**: Search through massive log files without loading everything into memory
-- **📦 Archive Management**: Browse ZIP/TAR contents without extraction
-- **☁️ Remote Data**: Access files from WebDAV servers, cloud storage, and HuggingFace
-- **🚀 Performance Critical**: When you need instant file access and lightning-fast search
+- **📦 Archives**: ZIP, TAR (streaming preview without extraction)
+
+- **📊 Data Files**: **Parquet** (optimized), Excel, CSV, ODS with virtual scrolling for millions of rows
+
+- **📱 Media**: Images, Videos, Audio (preview support)
 
 ## 📸 Screenshots
 
@@ -69,18 +66,6 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 </table>
 </div>
 
-## 📚 Supported File Types
-
-**📄 Text & Code**: Plain text, JSON, YAML, XML, JavaScript, Python, Java, C/C++, Rust, Go, PHP, and more
-
-**📝 Documents**: **Markdown** (rendered preview), **Word Documents** (.docx/.rtf, text extraction), **PowerPoint** (.pptx, slide preview), **PDF** (viewer with text search)
-
-**📦 Archives**: ZIP, TAR (streaming preview without extraction)
-
-**📊 Data Files**: **Parquet** (optimized), Excel, CSV, ODS with virtual scrolling for millions of rows
-
-**📱 Media**: Images, Videos, Audio (preview support)
-
 ## 🚀 Quick Start
 
 ### 📦 Download (Recommended)
@@ -110,6 +95,21 @@ pnpm package    # Build
 
 
 
+## ✨ Technical Highlights
+
+- 🤖 **100% AI-Generated**: Entire codebase created through AI assistance
+- 🚀 **Native Performance**: Tauri (Rust) backend + React frontend, cross-platform support
+- 🧠 **Smart Memory Management**: Chunked loading, virtual scrolling, handles millions of rows effortlessly
+- 📊 **Streaming Processing**: Large file chunked transmission, compressed files without full extraction
+
+## 🎯 Perfect For
+
+- **📊 Data Scientists**: Quickly explore large datasets, Parquet files, and CSV data
+- **🔍 Log Analysis**: Search through massive log files without loading everything into memory
+- **📦 Archive Management**: Browse ZIP/TAR contents without extraction
+- **☁️ Remote Data**: Access files from WebDAV servers, cloud storage, and HuggingFace
+- **🚀 Performance Critical**: When you need instant file access and lightning-fast search
+
 ## 🤝 Contributing
 
 We welcome contributions! Here's how you can help:
@@ -119,7 +119,6 @@ We welcome contributions! Here's how you can help:
 - 🔧 **Code Contributions**: Fork → Create feature branch → Make changes → Submit PR
 - 📖 **Documentation**: Help improve our docs and examples
 - ⭐ **Star the project**: Show your support by starring the repository
-
 
 
 ## 📄 License
