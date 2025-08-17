@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, X, RefreshCw, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../services/updateService';
+import { settingsStorage } from '../services/settingsStorage';
 import type { UpdateCheckResult } from '../types';
 
 interface UpdateNotificationProps {
@@ -118,8 +119,14 @@ export const useUpdateNotification = () => {
   const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
-    // 启动时检查更新
+    // 启动时检查更新，但只有在用户启用了自动检查时才进行
     const checkOnStartup = async () => {
+      const autoCheckEnabled = settingsStorage.getSetting('autoCheckUpdates');
+      if (!autoCheckEnabled) {
+        console.log('Auto check updates is disabled, skipping startup check');
+        return;
+      }
+
       try {
         const result = await updateService.checkForUpdates();
         if (result.hasUpdate) {

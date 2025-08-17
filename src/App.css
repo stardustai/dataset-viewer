@@ -1,3 +1,5 @@
+@import url("./styles/pure-black.css");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

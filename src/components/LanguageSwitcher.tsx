@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
+import { settingsStorage } from '../services/settingsStorage';
 
 export const LanguageSwitcher: React.FC = () => {
   const { i18n, t } = useTranslation();
@@ -8,6 +9,8 @@ export const LanguageSwitcher: React.FC = () => {
   const toggleLanguage = () => {
     const newLang = i18n.language === 'zh' ? 'en' : 'zh';
     i18n.changeLanguage(newLang);
+    // 保存语言设置到持久化存储
+    settingsStorage.updateSetting('language', newLang);
   };
 
   return (

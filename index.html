@@ -9,11 +9,18 @@
     <!-- 防闪烁脚本 - 在页面加载前应用主题 -->
     <script>
       (function() {
-        // 从 localStorage 读取主题设置
-        const theme = localStorage.getItem('theme') || 'system';
+        // 读取设置
+        let theme = 'system';
+        let pureBlack = false;
+        let shouldBeDark = false;
         const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-        let shouldBeDark = false;
+        try {
+          const appSettings = JSON.parse(localStorage.getItem('app-settings') || '{}');
+          if (appSettings.theme) theme = appSettings.theme;
+          if (appSettings.usePureBlackBg) pureBlack = !!appSettings.usePureBlackBg;
+        } catch (e) {}
+
         if (theme === 'dark') {
           shouldBeDark = true;
         } else if (theme === 'light') {
@@ -22,11 +29,14 @@
           shouldBeDark = systemPrefersDark;
         }
 
-        // 立即应用主题到 html 元素
+        // 应用主题
         if (shouldBeDark) {
           document.documentElement.classList.add('dark');
+          if (pureBlack) document.documentElement.classList.add('pure-black-bg');
+          else document.documentElement.classList.remove('pure-black-bg');
         } else {
           document.documentElement.classList.remove('dark');
+          document.documentElement.classList.remove('pure-black-bg');
         }
       })();
     </script>
@@ -53,6 +63,10 @@
         color: #f9fafb;
       }
 
+      .pure-black-bg body {
+        background-color: #222;
+      }
+
       /* 根容器样式 */
       #root {
         min-height: 100vh;
@@ -65,17 +79,17 @@
         align-items: center;
         justify-content: center;
         background-color: inherit;
-				position: fixed;
-				top: 0;
-				right: 0;
-				bottom: 0;
-				left: 0;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
       }
 
       .loading-spinner {
         width: 42px;
         height: 42px;
-				box-sizing: border-box;
+        box-sizing: border-box;
         border: 4px solid #e5e7eb;
         border-top: 4px solid #4f46e5;
         border-radius: 50%;
@@ -97,9 +111,9 @@
   <body>
     <div id="root"></div>
     <!-- 初始加载指示器 -->
-		<div class="app-loading">
-			<div class="loading-spinner"></div>
-		</div>
+    <div class="app-loading">
+      <div class="loading-spinner"></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

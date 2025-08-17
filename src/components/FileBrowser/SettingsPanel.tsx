@@ -6,6 +6,7 @@ import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
 import { navigationHistoryService } from '../../services/navigationHistory';
 import { connectionStorage } from '../../services/connectionStorage';
+import { settingsStorage } from '../../services/settingsStorage';
 import { showToast } from '../../utils/clipboard';
 import type { UpdateCheckResult } from '../../types';
 
@@ -19,9 +20,32 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const { theme, setTheme } = useTheme();
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [autoCheck, setAutoCheck] = useState(true);
+  const [autoCheck, setAutoCheck] = useState(() => settingsStorage.getSetting('autoCheckUpdates'));
+  const [usePureBlackBg, setUsePureBlackBg] = useState(() => settingsStorage.getSetting('usePureBlackBg'));
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [isRegisteringFileAssociations, setIsRegisteringFileAssociations] = useState(false);
+  // 切换纯黑色背景
+  const handlePureBlackBgToggle = () => {
+    const newValue = !usePureBlackBg;
+    setUsePureBlackBg(newValue);
+    settingsStorage.updateSetting('usePureBlackBg', newValue);
+
+    // 立即应用主题变化
+    const root = window.document.documentElement;
+    if (newValue && root.classList.contains('dark')) {
+      root.classList.add('pure-black-bg');
+    } else {
+      root.classList.remove('pure-black-bg');
+    }
+  };
+
+  // 当自动检查设置变化时，保存到持久化存储
+  const handleAutoCheckToggle = () => {
+    const newValue = !autoCheck;
+    setAutoCheck(newValue);
+    settingsStorage.updateSetting('autoCheckUpdates', newValue);
+    console.log('Auto check updates setting updated:', newValue);
+  };
 
   const checkForUpdates = async () => {
     setIsChecking(true);
@@ -54,15 +78,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       // 清理保存的连接
       connectionStorage.clearAllConnections();
 
-      // 清理其他本地存储缓存
+      // 清理其他本地存储缓存（不清理用户设置）
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.includes('cache') || key.includes('temp'))) {
+        if (key && (key.includes('cache') || key.includes('temp') || key.includes('history'))) {
           keysToRemove.push(key);
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // 不重置用户设置，保持当前状态
 
       console.log('Cache cleared successfully');
       showToast(t('cache.cleared.success'), 'success');
@@ -112,7 +138,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           {/* Theme Settings */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.theme')}</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 mb-2">
               {[
                 { value: 'light', labelKey: 'theme.light', icon: Sun },
                 { value: 'dark', labelKey: 'theme.dark', icon: Moon },
@@ -132,6 +158,22 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 </button>
               ))}
             </div>
+            {/* 纯黑色背景开关 */}
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-sm text-gray-600 dark:text-gray-300">纯黑色背景</span>
+              <button
+                onClick={handlePureBlackBgToggle}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  usePureBlackBg ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    usePureBlackBg ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           {/* Update Settings */}
@@ -142,7 +184,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm text-gray-600 dark:text-gray-300">{t('auto.check.updates')}</span>
               <button
-                onClick={() => setAutoCheck(!autoCheck)}
+                onClick={handleAutoCheckToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   autoCheck ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
                 }`}

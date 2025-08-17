@@ -1,0 +1,29 @@
+html.pure-black-bg .dark\:border-gray-600 {
+  border-color: #525252;
+}
+html.pure-black-bg .dark\:bg-gray-600 {
+  background-color: #525252;
+}
+
+html.pure-black-bg .dark\:border-gray-700 {
+  border-color: #393939;
+}
+html.pure-black-bg .dark\:bg-gray-700 {
+  background-color: #393939;
+}
+
+
+html.pure-black-bg .dark\:border-gray-800 {
+  border-color: #222;
+}
+html.pure-black-bg .dark\:bg-gray-800 {
+  background-color: #222;
+}
+
+
+html.pure-black-bg .dark\:border-gray-900 {
+  border-color: #111;
+}
+html.pure-black-bg .dark\:bg-gray-900 {
+  background-color: #111;
+}

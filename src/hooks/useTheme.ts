@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
+import { settingsStorage } from '../services/settingsStorage';
 
 type Theme = 'light' | 'dark' | 'system';
 
 // 获取初始主题状态（避免闪烁）
 const getInitialTheme = (): Theme => {
   if (typeof window === 'undefined') return 'system';
-  const stored = localStorage.getItem('theme') as Theme;
-  return stored || 'system';
+  return settingsStorage.getSetting('theme');
 };
 
 // 获取初始暗色状态
@@ -47,8 +47,15 @@ export const useTheme = () => {
 
       if (shouldBeDark) {
         root.classList.add('dark');
+        // 添加纯黑色背景类名
+        if (settingsStorage.getSetting('usePureBlackBg')) {
+          root.classList.add('pure-black-bg');
+        } else {
+          root.classList.remove('pure-black-bg');
+        }
       } else {
         root.classList.remove('dark');
+        root.classList.remove('pure-black-bg');
       }
 
       // 清除过渡效果以避免影响其他动画
@@ -74,7 +81,7 @@ export const useTheme = () => {
 
   const setAndStoreTheme = (newTheme: Theme) => {
     setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+    settingsStorage.updateSetting('theme', newTheme);
   };
 
   return {
