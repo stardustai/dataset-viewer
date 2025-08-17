@@ -28,7 +28,6 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
   const [searchResultsLimited, setSearchResultsLimited] = useState<boolean>(false);
   const [fullFileSearchLimited, setFullFileSearchLimited] = useState<boolean>(false);
   const [fullFileSearchMode, setFullFileSearchMode] = useState<boolean>(false);
-  const [navigatingToResult, setNavigatingToResult] = useState<boolean>(false);
 
   // 百分比跳转相关状态
   const [showPercentInput, setShowPercentInput] = useState<boolean>(false);
@@ -37,7 +36,7 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
   const config = configManager.getConfig();
   const fileType = getFileType(file.basename);
   const isTextBased = ['text', 'markdown'].includes(fileType);
-  
+
   // 创建文件信息对象，包含所有文件类型判断逻辑
   const fileInfo = {
     fileType: fileType,
@@ -270,12 +269,12 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     baselineStartLineNumber,
     dataMetadata,
     presentationMetadata,
-    
+
     // 文件信息（包含类型和所有判断逻辑）
     fileInfo,
     // 为了向后兼容，保留 fileType
     fileType,
-    
+
     // 搜索状态
     searchTerm,
     searchResults,
@@ -286,12 +285,11 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     searchResultsLimited,
     fullFileSearchLimited,
     fullFileSearchMode,
-    navigatingToResult,
-    
+
     // 百分比跳转状态
     showPercentInput,
     percentValue,
-    
+
     // 状态设置函数
     setContent,
     setLoading,
@@ -311,11 +309,10 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     setSearchResultsLimited,
     setFullFileSearchLimited,
     setFullFileSearchMode,
-    setNavigatingToResult,
     setShowPercentInput,
     setPercentValue,
     setBaselineStartLineNumber,
-    
+
     // 功能函数
     loadFileContent,
     handleScrollToBottom,

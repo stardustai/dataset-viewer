@@ -112,7 +112,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     fullFileSearchLoading,
     searchResultsLimited,
     fullFileSearchLimited,
-    navigatingToResult,
     loadFileContent
   } = fileLoader;
 
@@ -124,7 +123,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     searchResults,
     fullFileSearchResults,
     currentSearchIndex,
-    navigatingToResult,
     isLargeFile,
     filePath,
     totalSize,
@@ -137,7 +135,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     setCurrentSearchIndex: fileLoader.setCurrentSearchIndex,
     setSearchResultsLimited: fileLoader.setSearchResultsLimited,
     setFullFileSearchLimited: fileLoader.setFullFileSearchLimited,
-    setNavigatingToResult: fileLoader.setNavigatingToResult,
     setBaselineStartLineNumber: fileLoader.setBaselineStartLineNumber,
     setContent: fileLoader.setContent,
     setCurrentFilePosition: fileLoader.setCurrentFilePosition,
