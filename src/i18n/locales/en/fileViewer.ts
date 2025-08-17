@@ -26,6 +26,10 @@ export const fileViewer = {
   'search.sampling': '(Sampling)',
   'line.number': 'Line {{line}}',
   'line.content': 'Line {{line}} content',
+  'image': 'Image',
+  'truncated.image': 'Truncated Image',
+  'image.truncated.title': 'Image Data Truncated',
+  'image.truncated.description': 'This line contains image data, but it has been truncated for display. Please expand the full line content to view the image.',
 
   // Loading control
   'load.more': 'Load More Content',
@@ -70,6 +74,7 @@ export const fileViewer = {
   'format.json.success': 'JSON formatted successfully',
   'format.json.failed': 'JSON format failed: content is not valid JSON',
   'formatted.content': 'Formatted Content',
+	'formatted.json': 'Formatted',
   'original.content': 'Original Content',
 
   // Loading status
@@ -198,5 +203,16 @@ export const fileViewer = {
   // Unsupported format text view option
   'viewer.open.as.text': 'Open as Text',
   'viewer.unsupported.format.message': 'This file format is not directly supported, but you can try viewing it as text.',
+
+  // Long line optimization
+  'expand.long.line': 'Expand',
+  'collapse.long.line': 'Collapse',
+  'characters': 'Characters',
+  'lines': 'Lines',
+
+  // View modes
+  'virtual.viewer': 'Virtual Viewer',
+  'virtual.view': 'Virtual View',
+  'simple.view': 'Simple View',
 
 };

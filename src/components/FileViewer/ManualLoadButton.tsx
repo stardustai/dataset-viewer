@@ -1,7 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileText, Image, Database, AlertTriangle, Loader2 } from 'lucide-react';
 import { ArchiveEntry } from '../../types';
 import { formatFileSize } from '../../utils/fileUtils';
+import { StatusDisplay } from '../common';
 
 interface ManualLoadButtonProps {
   entry: ArchiveEntry;
@@ -31,33 +33,40 @@ export const ManualLoadButton: React.FC<ManualLoadButtonProps> = ({
     }
   };
 
+  const getIcon = () => {
+    if (isLoading) return Loader2;
+
+    switch (loadType) {
+      case 'media':
+        return Image;
+      case 'data':
+        return Database;
+      case 'unsupported':
+        return AlertTriangle;
+      default:
+        return FileText;
+    }
+  };
+
+  const getMessage = () => {
+    if (isLoading) {
+      return t('loading');
+    }
+    return `${t('file.not.loaded')} (${formatFileSize(entry.size || 0)})`;
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-64 m-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-      <div className="text-center mb-4">
-        <div className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {t('file.not.loaded')}
-        </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-          {t('file.size')}: {formatFileSize(entry.size || 0)}
-        </div>
-        <div className="text-xs text-gray-400 dark:text-gray-500">
-          {getLoadTypeMessage()}
-        </div>
-      </div>
-      <button
-        onClick={() => onLoad(entry)}
-        disabled={isLoading}
-        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center gap-2"
-      >
-        {isLoading ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            {t('loading')}
-          </>
-        ) : (
-          t('load.full.content')
-        )}
-      </button>
-    </div>
+    <StatusDisplay
+      type={isLoading ? "loading" : "unsupported"}
+      message={getMessage()}
+      secondaryMessage={isLoading ? undefined : getLoadTypeMessage()}
+      icon={getIcon()}
+      action={isLoading ? undefined : {
+        label: t('load.full.content'),
+        onClick: () => onLoad(entry),
+        variant: 'primary'
+      }}
+      className="h-full"
+    />
   );
 };

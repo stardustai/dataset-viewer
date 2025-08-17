@@ -114,7 +114,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
   }, [loadYoloAnnotations]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">
+    <>
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
         <div className="flex items-center justify-between">
@@ -180,19 +180,19 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
       <div className="flex-1 flex justify-center items-center p-8 overflow-auto bg-white dark:bg-gray-900">
         <div
           ref={containerRef}
-          className="relative transition-transform duration-200"
+          className="relative w-full h-full transition-transform duration-200"
           style={{
             transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
             transformOrigin: 'center'
           }}
         >
-          <img
-            ref={imageRef}
-            src={mediaUrl}
-            alt={fileName}
-            className="max-w-[calc(100vw-64px)] max-h-[calc(100vh-200px)] object-contain block"
-            onLoad={handleImageLoad}
-          />
+					<img
+						ref={imageRef}
+						src={mediaUrl}
+						alt={fileName}
+						className="w-full h-full object-contain"
+						onLoad={handleImageLoad}
+					/>
 
           {/* YOLO Annotations */}
           {showYolo && yoloAnnotations.length > 0 && imageSize.width > 0 && (
@@ -234,6 +234,6 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 };

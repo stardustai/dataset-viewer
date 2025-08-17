@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Archive, Copy, AlertCircle, Folder, Download } from 'lucide-react';
+import { Archive, Copy, Folder, Download } from 'lucide-react';
 import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { CompressionService } from '../../../services/compression';
 import { StorageServiceManager } from '../../../services/storage/StorageManager';
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
-import { getFileType, isTextFile, isMediaFile, isDataFile, isSpreadsheetFile } from '../../../utils/fileTypes';
+import { getFileType, isMediaFile, isDataFile, isSpreadsheetFile, isTextLikeFile } from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
 import { configManager } from '../../../config';
 
@@ -212,7 +212,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       const fileSize = entry.size || 0;
 
       // 判断是否为大文件（仅对文本文件启用分块加载）
-      const isTextFileType = isTextFile(entry.path);
+      const isTextFileType = isTextLikeFile(entry.path);
       const shouldUseChunking = isTextFileType && fileSize > config.streaming.maxInitialLoad;
 
       setFileLoadState(prev => ({
@@ -321,7 +321,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     const fileType = getFileType(entry.path);
     return {
       fileType,
-      isText: isTextFile(entry.path),
+      isText: isTextLikeFile(entry.path),
       isMedia: isMediaFile(entry.path),
       isData: isDataFile(entry.path),
       isSpreadsheet: isSpreadsheetFile(entry.path)
@@ -335,7 +335,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
   // 加载更多内容的函数
   const loadMoreContent = useCallback(async (entry: ArchiveEntry) => {
-    if (!fileLoadState.isLargeFile || fileLoadState.loadingMore || !isTextFile(entry.path)) return;
+    if (!fileLoadState.isLargeFile || fileLoadState.loadingMore || !isTextLikeFile(entry.path)) return;
 
     setFileLoadState(prev => ({ ...prev, loadingMore: true }));
     try {
@@ -470,7 +470,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
 
       // 如果是文本文件，也更新文本内容
-      if (isTextFile(entry.path) && fullPreview.content) {
+      if (isTextLikeFile(entry.path) && fullPreview.content) {
         try {
           const textContent = new TextDecoder('utf-8', { fatal: false }).decode(fullPreview.content);
           setFileContent(textContent);
@@ -658,48 +658,26 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 							</div>
 						</div>
 
-						<div className="flex-1 overflow-auto min-h-0">
+						<div className="flex-1 flex flex-col overflow-auto min-h-0">
 							{previewError ? (
-								<div className="h-full flex items-center justify-center">
-									<div className="text-center">
-										<div className="mb-4">
-											<div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-												<AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
-											</div>
-											<h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-												{t('preview.failed')}
-											</h3>
-											<p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-												{previewError}
-											</p>
-										</div>
-										<button
-											onClick={() => {
-												setPreviewError(null);
-												if (selectedEntry) {
-													previewFile(selectedEntry);
-												}
-											}}
-											className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
-										>
-											{t('retry.preview')}
-										</button>
-									</div>
-								</div>
+								<ErrorDisplay
+									message={previewError}
+									onRetry={() => {
+										setPreviewError(null);
+										if (selectedEntry) {
+											previewFile(selectedEntry);
+										}
+									}}
+									className="h-full"
+								/>
 							) : selectedEntry?.is_dir ? (
-								<div className="h-full flex items-center justify-center">
-									<div className="text-center">
-										<div className="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-											<Folder className="w-8 h-8 text-blue-500 dark:text-blue-400" />
-										</div>
-										<h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-											{t('folder.selected')}
-										</h3>
-										<p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-											{t('folder.info.message')}
-										</p>
-									</div>
-								</div>
+								<StatusDisplay
+									type="directoryEmpty"
+									message={t('folder.selected')}
+									secondaryMessage={t('folder.info.message')}
+									icon={Folder}
+									className="h-full"
+								/>
 							) : selectedEntry && filePreview ? (
 								(() => {
 									const { isText, isMedia, isData, isSpreadsheet, fileType } = getFileTypeInfo(selectedEntry);

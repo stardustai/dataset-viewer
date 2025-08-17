@@ -25,6 +25,10 @@ export const fileViewer = {
   'search.sampling': '（采样）',
   'line.number': '行 {{line}}',
   'line.content': '第 {{line}} 行内容',
+  'image': '图片',
+  'truncated.image': '截断的图片',
+  'image.truncated.title': '图片数据被截断',
+  'image.truncated.description': '此行包含图片数据，但由于长度限制被截断显示。请展开完整行内容查看图片。',
 
   // 加载控制
   'load.more': '加载更多内容',
@@ -67,6 +71,7 @@ export const fileViewer = {
   'format.json.success': 'JSON格式化成功',
   'format.json.failed': 'JSON格式化失败：内容不是有效的JSON',
   'formatted.content': '格式化内容',
+	'formatted.json': '已格式化',
   'original.content': '原始内容',
 
   // 加载状态
@@ -185,4 +190,15 @@ export const fileViewer = {
   // 不支持格式的文本查看选项
   'viewer.open.as.text': '以文本格式打开',
   'viewer.unsupported.format.message': '此文件格式不被直接支持，您可以尝试以文本格式查看。',
+
+  // 长行优化
+  'expand.long.line': '展开',
+  'collapse.long.line': '收起',
+  'characters': '字符数',
+  'lines': '行数',
+
+  // 查看模式
+  'virtual.viewer': '虚拟查看器',
+  'virtual.view': '虚拟查看',
+  'simple.view': '简单查看',
 };

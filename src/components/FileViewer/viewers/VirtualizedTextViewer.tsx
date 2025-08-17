@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Copy, Braces, X } from 'lucide-react';
-import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
+import { X } from 'lucide-react';
 import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
 import DOMPurify from 'dompurify';
 import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
 import { useTheme } from '../../../hooks/useTheme';
+import { LineContentModal } from './LineContentModal';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -31,149 +31,6 @@ interface VirtualizedTextViewerRef {
   scrollToPercentage: (percentage: number) => void;
   jumpToFilePosition: (filePosition: number) => void;
 }
-
-const LineContentModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  lineNumber: number;
-  content: string;
-  searchTerm?: string;
-}> = ({ isOpen, onClose, lineNumber, content, searchTerm }) => {
-  const { t } = useTranslation();
-  const modalRef = useRef<HTMLDivElement>(null);
-  const [isFormatted, setIsFormatted] = useState(false);
-
-  const isLikelyJSON = (text: string): boolean => {
-    const trimmed = text.trim();
-    return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-           (trimmed.startsWith('[') && trimmed.endsWith(']'));
-  };
-
-  const formatJSON = (text: string): string => {
-    try {
-      const parsed = JSON.parse(text);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      return text;
-    }
-  };
-
-  const currentContent = isFormatted ? formatJSON(content) : content;
-  const currentContentLabel = isFormatted ? t('formatted.json') : t('original.content');
-
-  const toggleFormatView = () => {
-    setIsFormatted(!isFormatted);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') onClose();
-      });
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', (e) => {
-        if (e.key === 'Escape') onClose();
-      });
-    };
-  }, [isOpen, onClose]);
-
-  const renderHighlightedContent = useCallback((text: string) => {
-    if (!searchTerm || searchTerm.length < 2) {
-      return text;
-    }
-
-    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(${escapedTerm})`, 'gi');
-    const parts = text.split(regex);
-
-    return parts.map((part, index) => {
-      if (regex.test(part)) {
-        return (
-          <mark key={index} className="bg-yellow-200 dark:bg-yellow-800">
-            {part}
-          </mark>
-        );
-      }
-      return part;
-    });
-  }, [searchTerm]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div
-        ref={modalRef}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[72vh] flex flex-col"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {t('line.content', { line: lineNumber })}
-            </h3>
-            {isFormatted && (
-              <span className="text-sm px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                {currentContentLabel}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            {isLikelyJSON(content) && (
-              <button
-                onClick={toggleFormatView}
-                className="flex items-center space-x-2 px-3 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-                title={isFormatted ? t('original.content') : t('format.json')}
-              >
-                <Braces className="w-4 h-4" />
-                <span>{isFormatted ? t('original.content') : t('format.json')}</span>
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-auto p-4">
-          <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 font-mono text-sm whitespace-pre-wrap break-words">
-            {renderHighlightedContent(currentContent)}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
-          <span>{t('characters')}: {currentContent.length}</span>
-          <button
-            onClick={async () => {
-              const success = await copyToClipboard(currentContent);
-              if (success) {
-                showCopyToast(t('copied.to.clipboard'));
-              } else {
-                showCopyToast(t('copy.failed'));
-              }
-            }}
-            className="flex items-center space-x-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            <Copy className="w-4 h-4" />
-            <span>{t('copy.line.content')}</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const MarkdownPreviewModal: React.FC<{
   isOpen: boolean;
@@ -249,6 +106,9 @@ const MarkdownPreviewModal: React.FC<{
 };
 
 const MAX_SEARCH_RESULTS = 1000;
+const MAX_LINE_LENGTH = 10000; // 超过此长度的行将被截断显示
+const LONG_LINE_THRESHOLD = 500; // 超过此长度认为是长行
+const TRUNCATE_LENGTH = 200; // 截断显示的字符数
 
 export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, VirtualizedTextViewerProps>((
   {
@@ -268,6 +128,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   },
   ref
 ) => {
+  const { t } = useTranslation();
   const { isDark } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [modalState, setModalState] = useState({
@@ -280,7 +141,37 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
   const [isHighlighting, setIsHighlighting] = useState(false);
 
+  // 展开的长行状态
+  const [expandedLongLines, setExpandedLongLines] = useState<Set<number>>(new Set());
+
   const lines = useMemo(() => content.split('\n'), [content]);
+
+  // 自动加载逻辑：当行数少于30行时，自动触发加载更多
+  useEffect(() => {
+    if (lines.length < 30 && onScrollToBottom) {
+      const timer = setTimeout(() => {
+        onScrollToBottom();
+      }, 100); // 延迟100ms避免频繁触发
+
+      return () => clearTimeout(timer);
+    }
+  }, [lines.length, onScrollToBottom]);
+
+  // 计算每行是否为长行
+  const lineMetrics = useMemo(() => {
+    return lines.map((line, index) => {
+      const length = line.length;
+      const isLong = length > LONG_LINE_THRESHOLD;
+      const isExpanded = expandedLongLines.has(index);
+
+      return {
+        isLong,
+        length,
+        isExpanded
+      };
+    });
+  }, [lines, expandedLongLines]);
+
   const calculateLineNumberWidth = useMemo(() => {
     const maxLineNumber = startLineNumber + lines.length - 1;
     return Math.max(40, maxLineNumber.toString().length * 8 + 16);
@@ -319,9 +210,10 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     setIsHighlighting(true);
     const lineIndexesToHighlight: number[] = [];
 
-    // 找出需要高亮但尚未缓存的行
+    // 找出需要高亮但尚未缓存的行，并跳过超长行
     virtualItems.forEach(item => {
-      if (!highlightedLines.has(item.index)) {
+      const lineLength = lines[item.index]?.length || 0;
+      if (!highlightedLines.has(item.index) && lineLength < MAX_LINE_LENGTH) {
         lineIndexesToHighlight.push(item.index);
       }
     });
@@ -356,9 +248,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   const virtualizer = useVirtualizer({
     count: lines.length,
     getScrollElement: () => containerRef.current,
-    estimateSize: () => 24, // 每行高度
-    overscan: 3, // 进一步减少overscan以提高性能
-    measureElement: undefined, // 使用固定高度，避免动态测量
+    estimateSize: () => 24, // 固定行高
+    overscan: 3,
+    measureElement: undefined,
   });
 
   // 当虚拟项改变时，触发可见行的语法高亮
@@ -387,14 +279,20 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
     for (let i = 0; i < lines.length && results.length < MAX_SEARCH_RESULTS; i++) {
       const line = lines[i];
+
+      // 对于超长行，限制搜索范围以提高性能
+      const searchLine = line.length > MAX_LINE_LENGTH ?
+        line.substring(0, MAX_LINE_LENGTH) :
+        line;
+
       let match;
       regex.lastIndex = 0;
 
-      while ((match = regex.exec(line)) !== null && results.length < MAX_SEARCH_RESULTS) {
+      while ((match = regex.exec(searchLine)) !== null && results.length < MAX_SEARCH_RESULTS) {
         results.push({
           line: startLineNumber + i,
           column: match.index + 1,
-          text: line,
+          text: line.length > 200 ? line.substring(0, 200) + '...' : line, // 截断显示的文本
           match: match[0]
         });
 
@@ -417,10 +315,22 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
   const renderLineWithHighlight = useCallback((line: string, lineIndex: number) => {
     const currentLineNumber = startLineNumber + lineIndex;
+    const lineMetric = lineMetrics[lineIndex];
+    const isLongLine = lineMetric?.isLong || false;
+    const isExpanded = lineMetric?.isExpanded || false;
 
-    // 获取语法高亮的内容
-    let processedLine = line;
-    if (shouldHighlight && highlightedLines.has(lineIndex)) {
+    // 对于超长行，如果未展开则截断显示
+    let displayLine = line;
+    let showExpandButton = false;
+
+    if (isLongLine && !isExpanded && line.length > TRUNCATE_LENGTH) {
+      displayLine = line.substring(0, TRUNCATE_LENGTH) + '...';
+      showExpandButton = true;
+    }
+
+    // 获取语法高亮的内容（仅对较短的行或已展开的行进行语法高亮）
+    let processedLine = displayLine;
+    if (shouldHighlight && highlightedLines.has(lineIndex) && (line.length < MAX_LINE_LENGTH || isExpanded)) {
       const highlighted = highlightedLines.get(lineIndex);
       if (highlighted && highlighted !== line) {
         processedLine = highlighted;
@@ -429,20 +339,74 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
     // 如果没有搜索词，直接返回
     if (!searchRegex) {
-      return shouldHighlight && processedLine !== line ?
-        <span dangerouslySetInnerHTML={{ __html: processedLine }} /> :
-        processedLine;
+      return (
+        <div className="flex items-center">
+          <span className={shouldHighlight && processedLine !== displayLine ? 'contents' : ''}>
+            {shouldHighlight && processedLine !== displayLine ?
+              <span dangerouslySetInnerHTML={{ __html: processedLine }} /> :
+              processedLine
+            }
+          </span>
+          {showExpandButton && (
+            <button
+              className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedLongLines(prev => {
+                  const newSet = new Set(prev);
+                  if (isExpanded) {
+                    newSet.delete(lineIndex);
+                  } else {
+                    newSet.add(lineIndex);
+                  }
+                  return newSet;
+                });
+              }}
+            >
+              {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
+            </button>
+          )}
+        </div>
+      );
     }
 
     // 使用Map快速查找，避免线性搜索
     if (!searchResultsMap.has(currentLineNumber)) {
-      return shouldHighlight && processedLine !== line ?
-        <span dangerouslySetInnerHTML={{ __html: processedLine }} /> :
-        processedLine;
+      return (
+        <div className="flex items-center">
+          <span className={shouldHighlight && processedLine !== displayLine ? 'contents' : ''}>
+            {shouldHighlight && processedLine !== displayLine ?
+              <span dangerouslySetInnerHTML={{ __html: processedLine }} /> :
+              processedLine
+            }
+          </span>
+          {showExpandButton && (
+            <button
+              className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedLongLines(prev => {
+                  const newSet = new Set(prev);
+                  if (isExpanded) {
+                    newSet.delete(lineIndex);
+                  } else {
+                    newSet.add(lineIndex);
+                  }
+                  return newSet;
+                });
+              }}
+            >
+              {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
+            </button>
+          )}
+        </div>
+      );
     }
 
-    // 处理搜索高亮
-    if (shouldHighlight && processedLine !== line) {
+    // 处理搜索高亮（对于长行，优化搜索性能）
+    const searchDisplayLine = isLongLine && !isExpanded ? displayLine : line;
+
+    if (shouldHighlight && processedLine !== displayLine && searchDisplayLine.length < MAX_LINE_LENGTH) {
       // 对于已经语法高亮的代码，创建一个临时元素来提取纯文本
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = processedLine;
@@ -453,62 +417,135 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
       const parts = textContent.split(searchRegex);
 
       if (parts.length === 1) {
-        return <span dangerouslySetInnerHTML={{ __html: processedLine }} />;
+        return (
+          <div className="flex items-center">
+            <span dangerouslySetInnerHTML={{ __html: processedLine }} />
+            {showExpandButton && (
+              <button
+                className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedLongLines(prev => {
+                    const newSet = new Set(prev);
+                    if (isExpanded) {
+                      newSet.delete(lineIndex);
+                    } else {
+                      newSet.add(lineIndex);
+                    }
+                    return newSet;
+                  });
+                }}
+              >
+                {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
+              </button>
+            )}
+          </div>
+        );
       }
 
       // 简化处理：当有搜索结果时，显示带搜索高亮的原始文本，而不是语法高亮
       searchRegex.lastIndex = 0;
-      const textParts = line.split(searchRegex);
+      const textParts = searchDisplayLine.split(searchRegex);
 
-      return textParts.map((part, index) => {
-        searchRegex.lastIndex = 0;
-        if (searchRegex.test(part)) {
-          const isCurrentMatch = currentSearchIndex >= 0 &&
-            searchResults[currentSearchIndex] &&
-            searchResults[currentSearchIndex].line === currentLineNumber;
+      return (
+        <div className="flex items-center">
+          <span>
+            {textParts.map((part, index) => {
+              searchRegex.lastIndex = 0;
+              if (searchRegex.test(part)) {
+                const isCurrentMatch = currentSearchIndex >= 0 &&
+                  searchResults[currentSearchIndex] &&
+                  searchResults[currentSearchIndex].line === currentLineNumber;
 
-          return (
-            <mark
-              key={index}
-              className={isCurrentMatch
-                ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
-                : 'bg-yellow-200 dark:bg-yellow-800'
+                return (
+                  <mark
+                    key={index}
+                    className={isCurrentMatch
+                      ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
+                      : 'bg-yellow-200 dark:bg-yellow-800'
+                    }
+                  >
+                    {part}
+                  </mark>
+                );
               }
+              return part;
+            })}
+          </span>
+          {showExpandButton && (
+            <button
+              className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedLongLines(prev => {
+                  const newSet = new Set(prev);
+                  if (isExpanded) {
+                    newSet.delete(lineIndex);
+                  } else {
+                    newSet.add(lineIndex);
+                  }
+                  return newSet;
+                });
+              }}
             >
-              {part}
-            </mark>
-          );
-        }
-        return part;
-      });
+              {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
+            </button>
+          )}
+        </div>
+      );
     } else {
       // 普通文本的搜索高亮处理
       searchRegex.lastIndex = 0;
-      const parts = processedLine.split(searchRegex);
+      const parts = searchDisplayLine.split(searchRegex);
 
-      return parts.map((part, index) => {
-        searchRegex.lastIndex = 0;
-        if (searchRegex.test(part)) {
-          const isCurrentMatch = currentSearchIndex >= 0 &&
-            searchResults[currentSearchIndex] &&
-            searchResults[currentSearchIndex].line === currentLineNumber;
+      return (
+        <div className="flex items-center">
+          <span>
+            {parts.map((part, index) => {
+              searchRegex.lastIndex = 0;
+              if (searchRegex.test(part)) {
+                const isCurrentMatch = currentSearchIndex >= 0 &&
+                  searchResults[currentSearchIndex] &&
+                  searchResults[currentSearchIndex].line === currentLineNumber;
 
-          return (
-            <mark
-              key={index}
-              className={isCurrentMatch
-                ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
-                : 'bg-yellow-200 dark:bg-yellow-800'
+                return (
+                  <mark
+                    key={index}
+                    className={isCurrentMatch
+                      ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
+                      : 'bg-yellow-200 dark:bg-yellow-800'
+                    }
+                  >
+                    {part}
+                  </mark>
+                );
               }
+              return part;
+            })}
+          </span>
+          {showExpandButton && (
+            <button
+              className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedLongLines(prev => {
+                  const newSet = new Set(prev);
+                  if (isExpanded) {
+                    newSet.delete(lineIndex);
+                  } else {
+                    newSet.add(lineIndex);
+                  }
+                  return newSet;
+                });
+              }}
             >
-              {part}
-            </mark>
-          );
-        }
-        return part;
-      });
+              {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
+            </button>
+          )}
+        </div>
+      );
     }
-  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines]);
+  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines, lineMetrics, expandedLongLines, setExpandedLongLines]);
 
   const handleLineClick = useCallback((lineIndex: number) => {
     const lineContent = lines[lineIndex] || '';

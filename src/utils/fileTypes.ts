@@ -111,3 +111,7 @@ export const isWordFile = (filename: string): boolean => {
 export const isPresentationFile = (filename: string): boolean => {
   return getFileType(filename) === 'presentation';
 };
+
+export const isTextLikeFile = (filename: string): boolean => {
+  return isTextFile(filename) || isMarkdownFile(filename);
+};
