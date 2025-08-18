@@ -1,29 +1,8 @@
-html.pure-black-bg .dark\:border-gray-600 {
-  border-color: #525252;
-}
-html.pure-black-bg .dark\:bg-gray-600 {
-  background-color: #525252;
-}
-
-html.pure-black-bg .dark\:border-gray-700 {
-  border-color: #393939;
-}
-html.pure-black-bg .dark\:bg-gray-700 {
-  background-color: #393939;
-}
-
-
-html.pure-black-bg .dark\:border-gray-800 {
-  border-color: #222;
-}
-html.pure-black-bg .dark\:bg-gray-800 {
-  background-color: #222;
-}
-
-
-html.pure-black-bg .dark\:border-gray-900 {
-  border-color: #111;
-}
-html.pure-black-bg .dark\:bg-gray-900 {
-  background-color: #111;
+/* Pure Black Theme - Override Tailwind CSS Variables */
+html.pure-black-bg {
+  /* Override Tailwind's gray color scale for pure black theme */
+  --gray-600: 82 82 82;    /* rgb(82, 82, 82) - #525252 */
+  --gray-700: 57 57 57;    /* rgb(57, 57, 57) - #393939 */
+  --gray-800: 34 34 34;    /* rgb(34, 34, 34) - #222222 */
+  --gray-900: 17 17 17;    /* rgb(17, 17, 17) - #111111 */
 }
