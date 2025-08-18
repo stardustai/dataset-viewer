@@ -69,4 +69,10 @@ export const common = {
 
   // 状态相关
   'status.retry': '重试',
+
+  // 面包屑导航
+  'breadcrumb.path.placeholder': '输入路径或粘贴完整URL...',
+  'breadcrumb.confirm': '确认',
+  'breadcrumb.cancel': '取消',
+  'breadcrumb.edit.path': '编辑路径',
 };

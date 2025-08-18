@@ -9,6 +9,7 @@ import {
 import { StorageFile, ArchiveInfo } from '../../types';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
+import { cleanPath } from '../../utils/pathUtils';
 import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
 
 interface ArchiveFileBrowserProps {
@@ -54,7 +55,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
 
     // 隐藏文件过滤
     if (!showHidden) {
-      filtered = filtered.filter(file => 
+      filtered = filtered.filter(file =>
         file.basename && !file.basename.startsWith('.')
       );
     }
@@ -112,6 +113,12 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
     setCurrentPath('');
   };
 
+  const navigateToPath = (path: string) => {
+    // 使用通用路径清理工具
+    const cleanedPath = cleanPath(path);
+    setCurrentPath(cleanedPath);
+  };
+
   const navigateBack = () => {
     const segments = currentPath === '' ? [] : currentPath.split('/').filter(Boolean);
     if (segments.length > 0) {
@@ -160,6 +167,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
             onNavigateHome={navigateToHome}
             onNavigateBack={navigateBack}
             onNavigateToSegment={navigateToSegment}
+            onNavigateToPath={navigateToPath}
             homeLabel={t('archive.root')}
           />
 

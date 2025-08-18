@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
+import { cleanPath } from '../../utils/pathUtils';
 import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../../services/navigationHistory';
 import { LanguageSwitcher } from '../LanguageSwitcher';
@@ -517,6 +518,21 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     loadDirectory(newPath);
   };
 
+  const navigateToPath = (path: string) => {
+    // 如果当前有错误，先清除错误状态
+    if (error) {
+      setError('');
+    }
+
+    // 重置到目录浏览模式
+    setCurrentView('directory');
+    setRemoteSearchQuery('');
+
+    // 使用通用路径清理工具
+    const cleanedPath = cleanPath(path);
+    loadDirectory(cleanedPath);
+  };
+
   const handleSort = (field: 'name' | 'size' | 'modified') => {
     if (sortField === field) {
       // 如果点击的是当前排序字段，则切换排序方向
@@ -619,6 +635,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             onNavigateHome={navigateToHome}
             onNavigateBack={navigateUp}
             onNavigateToSegment={navigateToSegment}
+            onNavigateToPath={navigateToPath}
             onCopyPath={copyFullPath}
             homeLabel={t('home')}
             showHomeIcon={true}

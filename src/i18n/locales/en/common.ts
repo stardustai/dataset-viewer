@@ -69,4 +69,10 @@ export const common = {
 
   // Status related
   'status.retry': 'Retry',
+
+  // Breadcrumb navigation
+  'breadcrumb.path.placeholder': 'Enter path or paste full URL...',
+  'breadcrumb.confirm': 'Confirm',
+  'breadcrumb.cancel': 'Cancel',
+  'breadcrumb.edit.path': 'Edit path',
 };
