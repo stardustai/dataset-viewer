@@ -174,7 +174,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
   const calculateLineNumberWidth = useMemo(() => {
     const maxLineNumber = startLineNumber + lines.length - 1;
-    return Math.max(40, maxLineNumber.toString().length * 8 + 16);
+    return Math.max(40, maxLineNumber.toString().length * 8 + 24);
   }, [lines.length, startLineNumber]);
 
   // 检测编程语言
@@ -558,6 +558,17 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     });
   }, [lines, startLineNumber]);
 
+  const handleContentClick = useCallback((lineIndex: number) => {
+    // 检查是否有选中的文字，如果有就不弹窗
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) {
+      return;
+    }
+
+    // 执行点击事件
+    handleLineClick(lineIndex);
+  }, [handleLineClick]);
+
   const closeModal = useCallback(() => {
     setModalState(prev => ({ ...prev, isOpen: false }));
   }, []);
@@ -697,7 +708,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                     height: `${virtualItem.size}px`,
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
-                  onClick={() => handleLineClick(virtualItem.index)}
+                  onClick={() => handleContentClick(virtualItem.index)}
                   title="点击查看完整行内容"
                 >
                   <div className={`text-[13px] font-mono leading-6 h-full pl-2 pr-4 whitespace-pre ${
