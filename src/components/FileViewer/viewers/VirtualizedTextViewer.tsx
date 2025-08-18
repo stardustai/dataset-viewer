@@ -7,6 +7,7 @@ import { gfm, gfmHtml } from 'micromark-extension-gfm';
 import DOMPurify from 'dompurify';
 import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
 import { useTheme } from '../../../hooks/useTheme';
+import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { LineContentModal } from './LineContentModal';
 
 interface VirtualizedTextViewerProps {
@@ -23,7 +24,6 @@ interface VirtualizedTextViewerProps {
   isMarkdown?: boolean;
   isMarkdownPreviewOpen?: boolean;
   setIsMarkdownPreviewOpen?: (open: boolean) => void;
-  enableSyntaxHighlighting?: boolean;
 }
 
 interface VirtualizedTextViewerRef {
@@ -124,12 +124,12 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     isMarkdown = false,
     isMarkdownPreviewOpen = false,
     setIsMarkdownPreviewOpen,
-    enableSyntaxHighlighting = false,
   },
   ref
 ) => {
   const { t } = useTranslation();
   const { isDark } = useTheme();
+  const { enabled: syntaxHighlightingEnabled } = useSyntaxHighlighting();
   const containerRef = useRef<HTMLDivElement>(null);
   const [modalState, setModalState] = useState({
     isOpen: false,
@@ -179,13 +179,13 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
   // 检测编程语言
   const detectedLanguage = useMemo(() => {
-    if (!enableSyntaxHighlighting || !fileName) return 'text';
+    if (!syntaxHighlightingEnabled || !fileName) return 'text';
     return getLanguageFromFileName(fileName);
-  }, [fileName, enableSyntaxHighlighting]);
+  }, [syntaxHighlightingEnabled, fileName]);
 
   const shouldHighlight = useMemo(() => {
-    return enableSyntaxHighlighting && isLanguageSupported(detectedLanguage);
-  }, [enableSyntaxHighlighting, detectedLanguage]);
+    return syntaxHighlightingEnabled && isLanguageSupported(detectedLanguage);
+  }, [syntaxHighlightingEnabled, detectedLanguage]);
 
   // 创建搜索结果的Map以提高查找性能
   const searchResultsMap = useMemo(() => {

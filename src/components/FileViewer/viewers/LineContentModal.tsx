@@ -163,7 +163,7 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
               content={displayContent}
               searchTerm={searchTerm}
               fileName="formatted.json"
-              enableSyntaxHighlighting={true}
+
               className="h-full"
               key={`modal-viewer-formatted`}
             />

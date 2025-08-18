@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { SearchResult, FullFileSearchResult } from '../../types';
 import { getLanguageFromFileName, isLanguageSupported } from '../../utils/syntaxHighlighter';
+import { useSyntaxHighlighting } from '../../hooks/useSyntaxHighlighting';
 
 interface FileViewerSearchBarProps {
   searchTerm: string;
@@ -37,8 +38,6 @@ interface FileViewerSearchBarProps {
   onPercentKeyPress: (e: React.KeyboardEvent) => void;
   isMarkdown?: boolean;
   onMarkdownPreview?: () => void;
-  enableSyntaxHighlighting?: boolean;
-  setEnableSyntaxHighlighting?: (enable: boolean) => void;
   fileName?: string;
 }
 
@@ -65,11 +64,10 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
   onPercentKeyPress,
   isMarkdown,
   onMarkdownPreview,
-  enableSyntaxHighlighting,
-  setEnableSyntaxHighlighting,
   fileName
 }) => {
   const { t } = useTranslation();
+  const { enabled: syntaxHighlightingEnabled, toggleSyntaxHighlighting } = useSyntaxHighlighting();
 
   const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
   const isCurrentResultsLimited = fullFileSearchMode ? fullFileSearchLimited : searchResultsLimited;
@@ -217,15 +215,15 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
           )}
 
           {/* Syntax highlighting toggle */}
-          {canHighlight && setEnableSyntaxHighlighting && (
+          {canHighlight && (
             <button
-              onClick={() => setEnableSyntaxHighlighting(!enableSyntaxHighlighting)}
+              onClick={() => toggleSyntaxHighlighting(!syntaxHighlightingEnabled)}
               className={`px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border border-gray-300 dark:border-gray-600 ${
-                enableSyntaxHighlighting
+                syntaxHighlightingEnabled
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                   : 'bg-white dark:bg-gray-800'
               }`}
-              title={enableSyntaxHighlighting ?
+              title={syntaxHighlightingEnabled ?
                 t('syntax.highlighting.disable') + ` (${detectedLanguage})` :
                 t('syntax.highlighting.enable') + ` (${detectedLanguage})`
               }

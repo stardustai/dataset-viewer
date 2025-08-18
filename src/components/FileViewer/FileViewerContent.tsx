@@ -62,7 +62,6 @@ interface FileViewerContentProps {
   setPresentationMetadata: (metadata: any) => void;
   setDataMetadata: (metadata: any) => void;
   loadFileContent: (forceLoad?: boolean) => Promise<void>;
-  enableSyntaxHighlighting?: boolean;
 }
 
 export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewerContentProps>((
@@ -91,8 +90,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     setDataMetadata,
     isMarkdownPreviewOpen,
     setIsMarkdownPreviewOpen,
-    loadFileContent,
-    enableSyntaxHighlighting
+    loadFileContent
   },
   ref
 ) => {
@@ -141,7 +139,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
             height={containerHeight}
             isMarkdownPreviewOpen={isMarkdownPreviewOpen}
             setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
-            enableSyntaxHighlighting={enableSyntaxHighlighting}
           />
         </div>
 
@@ -246,7 +243,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
             height={containerHeight}
             isMarkdownPreviewOpen={isMarkdownPreviewOpen}
             setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
-            enableSyntaxHighlighting={enableSyntaxHighlighting}
           />
         </div>
 

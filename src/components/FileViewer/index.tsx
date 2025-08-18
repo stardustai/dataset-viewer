@@ -5,11 +5,7 @@ import { FileViewerSearchBar } from './FileViewerSearchBar';
 import { FileViewerContent } from './FileViewerContent';
 import { useFileLoader } from './hooks/useFileLoader';
 import { useFileSearch } from './hooks/useFileSearch';
-import { getLanguageFromFileName } from '../../utils/syntaxHighlighter';
-import {
-  isLanguageHighlightingEnabled,
-  toggleLanguageHighlighting
-} from '../../utils/syntaxHighlightingStorage';
+
 
 // 定义 VirtualizedTextViewer 的 ref 接口
 interface VirtualizedTextViewerRef {
@@ -42,18 +38,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
   // Markdown 预览状态
   const [isMarkdownPreviewOpen, setIsMarkdownPreviewOpen] = useState(false);
 
-  // 语法高亮状态 - 使用持久化存储
-  const [enableSyntaxHighlighting, setEnableSyntaxHighlighting] = useState(() => {
-    const language = getLanguageFromFileName(file.filename);
-    return isLanguageHighlightingEnabled(language);
-  });
 
-  // 处理语法高亮切换
-  const handleSyntaxHighlightingToggle = (enabled: boolean) => {
-    const language = getLanguageFromFileName(file.filename);
-    toggleLanguageHighlighting(language, enabled);
-    setEnableSyntaxHighlighting(enabled);
-  };
 
   useEffect(() => {
     const updateHeight = () => {
@@ -208,8 +193,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
             onPercentKeyPress={handlePercentKeyPress}
             isMarkdown={fileInfo.isMarkdown}
             onMarkdownPreview={() => setIsMarkdownPreviewOpen(true)}
-            enableSyntaxHighlighting={enableSyntaxHighlighting}
-            setEnableSyntaxHighlighting={handleSyntaxHighlightingToggle}
             fileName={file.filename}
           />
         )}
@@ -246,7 +229,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
         isMarkdownPreviewOpen={isMarkdownPreviewOpen}
         setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
         loadFileContent={loadFileContent}
-        enableSyntaxHighlighting={enableSyntaxHighlighting}
       />
     </div>
   );
