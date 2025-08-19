@@ -252,13 +252,19 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       ? selectedConnection.password
       : config.secretKey;
 
+    // 处理bucket路径：移除尾部无意义的斜杠
+    const cleanBucket = config.bucket.trim();
+    const bucketWithPath = cleanBucket.replace(/\/+$/, ''); // 移除所有尾部斜杠
+
     const connectionConfig: ConnectionConfig = {
       type: 'oss',
       name: selectedConnection?.name || defaultName,
-      url: `oss://${hostWithPort}/${config.bucket}`, // 使用 oss:// 格式保存（保留端口避免冲突）
+      url: bucketWithPath
+        ? `oss://${hostWithPort}/${bucketWithPath}`
+        : `oss://${hostWithPort}`, // 没有路径时不加斜杠
       username: config.accessKey, // 使用 username 字段存储 accessKey
       password: actualSecretKey,  // 使用 password 字段存储 secretKey
-      bucket: config.bucket,      // 添加 bucket 字段
+      bucket: bucketWithPath,     // 添加 bucket 字段（清理后的）
       region: config.region || selectedRegion, // 使用选中的区域
       endpoint: finalEndpoint,    // 添加 endpoint 字段
       platform: selectedPlatform, // 直接保存用户选择的平台信息

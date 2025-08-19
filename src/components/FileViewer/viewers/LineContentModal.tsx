@@ -39,6 +39,46 @@ const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; form
 	return { isImage: false };
 };
 
+// XML格式化函数
+const formatXML = (xml: string): string => {
+  const PADDING = '  ';
+  let formatted = '';
+  let pad = 0;
+
+  // 先处理标签间的换行
+  xml = xml.replace(/(>)(<)(\/*)/g, '$1\n$2$3');
+
+  // 分割成行并处理每一行
+  const nodes = xml.split('\n');
+
+  nodes.forEach((node) => {
+    let indent = 0;
+    const trimmedNode = node.trim();
+
+    if (trimmedNode === '') return; // 跳过空行
+
+    // 处理结束标签
+    if (trimmedNode.match(/^<\/\w/)) {
+      pad = Math.max(0, pad - 1);
+    }
+    // 处理自闭合标签或者单行完整标签
+    else if (trimmedNode.match(/^<\w[^>]*\/>\s*$/) ||
+             trimmedNode.match(/^<\w[^>]*>.*<\/\w[^>]*>\s*$/)) {
+      indent = 0;
+    }
+    // 处理开始标签
+    else if (trimmedNode.match(/^<\w/) && !trimmedNode.match(/\/>\s*$/)) {
+      indent = 1;
+    }
+
+    // 添加缩进和内容
+    formatted += PADDING.repeat(pad) + trimmedNode + '\n';
+    pad += indent;
+  });
+
+  return formatted.trim();
+};
+
 interface LineContentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -56,15 +96,19 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
-  const [isFormatted, setIsFormatted] = useState(false);
 
-  // 检测逻辑 - 优先级：图片 > JSON格式化 > 原始文本
+  // 检测逻辑 - 优先级：图片 > 结构化数据格式化 > 原始文本
   const imageInfo = isBase64Image(content);
   const isJSONContent = !imageInfo.isImage && content.trim().match(/^[\[\{].*[\]\}]$/s);
+  const isXMLContent = !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
+
+  // JSON和XML默认开启格式化
+  const [isFormatted, setIsFormatted] = useState<boolean>(Boolean(isJSONContent || isXMLContent));
 
   // 确定显示内容
   const displayContent = (() => {
     if (imageInfo.isImage) return content; // 图片直接返回原始内容
+
     if (isJSONContent && isFormatted) {
       try {
         const parsed = JSON.parse(content);
@@ -73,6 +117,17 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
         return content;
       }
     }
+
+    if (isXMLContent && isFormatted) {
+      try {
+        return formatXML(content.trim());
+      } catch (error) {
+        // 如果格式化失败，返回原始内容
+        console.warn('XML formatting failed:', error);
+        return content;
+      }
+    }
+
     return content;
   })();
 
@@ -120,6 +175,11 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
                 {t('formatted.json')}
               </span>
             )}
+            {isFormatted && isXMLContent && (
+              <span className="text-sm px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                {t('formatted.xml')}
+              </span>
+            )}
             {imageInfo.isImage && (
               <span className="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
                 {imageInfo.format} {t('image')}
@@ -127,15 +187,15 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
             )}
           </div>
           <div className="flex items-center space-x-2">
-            {/* JSON格式化按钮 */}
-            {isJSONContent && (
+            {/* JSON/XML格式化按钮 */}
+            {(isJSONContent || isXMLContent) && (
               <button
                 onClick={toggleFormatView}
                 className="flex items-center space-x-2 px-3 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-                title={isFormatted ? t('original.content') : t('format.json')}
+                title={isFormatted ? t('original.content') : (isJSONContent ? t('format.json') : t('format.xml'))}
               >
                 <Braces className="w-4 h-4" />
-                <span>{isFormatted ? t('original.content') : t('format.json')}</span>
+                <span>{isFormatted ? t('original.content') : (isJSONContent ? t('format.json') : t('format.xml'))}</span>
               </button>
             )}
 
@@ -157,13 +217,12 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
               filePath={`data://line-${lineNumber}`}
               hasAssociatedFiles={false}
             />
-          ) : isJSONContent && isFormatted ? (
-            // 格式化的JSON使用虚拟文本查看器，支持语法高亮
+          ) : (isJSONContent || isXMLContent) && isFormatted ? (
+            // 格式化的JSON/XML使用虚拟文本查看器，支持语法高亮
             <VirtualizedTextViewer
               content={displayContent}
               searchTerm={searchTerm}
-              fileName="formatted.json"
-
+              fileName={isJSONContent ? "formatted.json" : "formatted.xml"}
               className="h-full"
               key={`modal-viewer-formatted`}
             />

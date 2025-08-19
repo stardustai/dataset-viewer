@@ -70,8 +70,12 @@ export const fileViewer = {
   'format.json': '格式化JSON',
   'format.json.success': 'JSON格式化成功',
   'format.json.failed': 'JSON格式化失败：内容不是有效的JSON',
+  'format.xml': '格式化XML',
+  'format.xml.success': 'XML格式化成功',
+  'format.xml.failed': 'XML格式化失败：内容不是有效的XML',
   'formatted.content': '格式化内容',
 	'formatted.json': '已格式化',
+	'formatted.xml': '已格式化',
   'original.content': '原始内容',
 
   // 加载状态

@@ -73,8 +73,12 @@ export const fileViewer = {
   'format.json': 'Format JSON',
   'format.json.success': 'JSON formatted successfully',
   'format.json.failed': 'JSON format failed: content is not valid JSON',
+  'format.xml': 'Format XML',
+  'format.xml.success': 'XML formatted successfully',
+  'format.xml.failed': 'XML format failed: content is not valid XML',
   'formatted.content': 'Formatted Content',
 	'formatted.json': 'Formatted',
+	'formatted.xml': 'Formatted',
   'original.content': 'Original Content',
 
   // Loading status
