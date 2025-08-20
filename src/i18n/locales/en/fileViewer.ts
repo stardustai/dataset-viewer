@@ -44,6 +44,12 @@ export const fileViewer = {
   'load.more.chunk': 'Load More (512KB)',
   'load.complete.content': 'Load Complete Content',
 
+  // Directory browser load more
+  'directory.load.more': 'Load More Files',
+  'directory.loading.more': 'Loading more files...',
+  'directory.loaded.files': '{{count}} files loaded',
+  'directory.has.more': 'More files available',
+
   // Viewer functionality
   'viewer.toggle.wrap': 'Toggle word wrap',
   'viewer.jump.percent': 'Jump to percentage',

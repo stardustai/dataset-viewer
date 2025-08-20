@@ -19,6 +19,7 @@ import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../../services/navigationHistory';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
+import { LoadMoreButton } from './LoadMoreButton';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
@@ -73,6 +74,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [showSettings, setShowSettings] = useState(false); // 设置面板显示状态
   const [currentView, setCurrentView] = useState<'directory' | 'remote-search'>('directory'); // 当前显示的内容类型
   const [remoteSearchQuery, setRemoteSearchQuery] = useState(''); // 远程搜索查询词
+  // OSS 分页状态
+  const [hasMore, setHasMore] = useState(false); // 是否有更多文件可加载
+  const [nextMarker, setNextMarker] = useState<string | undefined>(); // 下一页标记
+  const [loadingMore, setLoadingMore] = useState(false); // 是否正在加载更多
   const containerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLDivElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
@@ -108,7 +113,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         const searchPath = `/search/${encodeURIComponent(query)}`;
         const result = await StorageServiceManager.listDirectory(searchPath);
 
-        setFiles(result);
+        setFiles(result.files);
+        setHasMore(false); // Remote search typically doesn't have pagination
+        setNextMarker(undefined);
         setLoading(false);
       }
     } catch (error) {
@@ -164,6 +171,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setFiles(cachedFiles);
         setCurrentPath(path);
         setLoading(false);
+        
+        // 重置分页状态，因为缓存数据不包含分页信息
+        setHasMore(false);
+        setNextMarker(undefined);
 
         // 记录访问历史
         navigationHistoryService.addToHistory(path);
@@ -223,11 +234,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     try {
       console.log('Loading directory from server:', path);
       const fileList = await StorageServiceManager.listDirectory(path);
-      setFiles(fileList);
+      setFiles(fileList.files);
       setCurrentPath(path);
+      
+      // 设置分页状态
+      setHasMore(fileList.hasMore || false);
+      setNextMarker(fileList.nextMarker);
 
       // 缓存目录数据
-      navigationHistoryService.cacheDirectory(path, fileList);
+      navigationHistoryService.cacheDirectory(path, fileList.files);
 
       // 记录访问历史
       navigationHistoryService.addToHistory(path);
@@ -267,6 +282,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setFailedPath(path); // 记录失败的路径
       // 清除文件列表以避免显示过期数据
       setFiles([]);
+      // 重置分页状态
+      setHasMore(false);
+      setNextMarker(undefined);
       // 发生错误时，尝试恢复到上一个有效路径或根目录
       if (path !== '') {
         // 如果不是根目录出错，尝试恢复到父目录或根目录
@@ -288,6 +306,35 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setLoading(false);
       setLoadingRequest(null);
       setIsManualRefresh(false);
+    }
+  };
+
+  // 加载更多文件的函数
+  const loadMoreFiles = async () => {
+    if (!hasMore || loadingMore || !nextMarker) return;
+
+    try {
+      setLoadingMore(true);
+      console.log('Loading more files with marker:', nextMarker);
+      
+      const result = await StorageServiceManager.listDirectory(currentPath, {
+        marker: nextMarker,
+        pageSize: 1000
+      });
+      
+      // 将新文件追加到现有文件列表
+      setFiles(prev => [...prev, ...result.files]);
+      
+      // 更新分页状态
+      setHasMore(result.hasMore || false);
+      setNextMarker(result.nextMarker);
+      
+      console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}`);
+    } catch (err) {
+      console.error('Failed to load more files:', err);
+      setError('Failed to load more files');
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -825,13 +872,21 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               ) : (
                 <div ref={fileListRef} className="bg-white dark:bg-gray-800">
                   <VirtualizedFileList
-                    files={files}
+                    files={getFilteredFiles()}
                     onFileClick={handleItemClick}
                     showHidden={showHidden}
                     sortField={sortField}
                     sortDirection={sortDirection}
                     height={containerHeight - tableHeaderHeight} // 动态计算高度
                     searchTerm={searchTerm}
+                  />
+                  {/* 加载更多按钮 */}
+                  <LoadMoreButton
+                    onLoadMore={loadMoreFiles}
+                    isLoading={loadingMore}
+                    filesCount={files.length}
+                    hasMore={hasMore}
+                    className="border-t border-gray-200 dark:border-gray-700"
                   />
                 </div>
               )

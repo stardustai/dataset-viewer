@@ -393,7 +393,8 @@ export class FolderDownloadService {
         const dirSavePath = this.joinLocalPath(baseSavePath, dir.basename);
 
         // 获取子目录文件列表
-        const subFiles = await StorageServiceManager.listDirectory(dirPath);
+        const subDirectoryResult = await StorageServiceManager.listDirectory(dirPath);
+        const subFiles = subDirectoryResult.files;
 
         // 动态更新总文件数和大小
         const subCurrentFiles = subFiles.filter(file => file.type === 'file');

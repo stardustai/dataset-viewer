@@ -425,20 +425,10 @@ export class StorageServiceManager {
   /**
    * 列出目录
    */
-  static async listDirectory(path: string = '') {
+  static async listDirectory(path: string = '', options?: any) {
     const client = this.getCurrentClient();
-    const result = await client.listDirectory(path);
-
-    // 转换为原有的格式
-    return result.files.map(file => ({
-      filename: file.filename,
-      basename: file.basename,
-      lastmod: file.lastmod,
-      size: file.size,
-      type: file.type,
-      mime: file.mime || '',
-      etag: file.etag || ''
-    }));
+    const result = await client.listDirectory(path, options);
+    return result;
   }
 
   /**
