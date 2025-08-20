@@ -86,13 +86,64 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     overscan: 5, // 减少预渲染的行数以提升性能
   });
 
+  // 添加滚动到底部检测逻辑
+  useEffect(() => {
+    const container = parentRef.current;
+    if (!container || !onScrollToBottom) return;
+
+    let timeoutId: number | null = null;
+
+    const handleScroll = () => {
+      // 清除之前的延时器
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      // 使用短延时来避免过于频繁的调用
+      timeoutId = setTimeout(() => {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        
+        // 检查容器是否可滚动
+        if (scrollHeight <= clientHeight) {
+          // 如果内容高度小于等于容器高度，直接触发加载
+          onScrollToBottom();
+          return;
+        }
+        
+        // 使用更小的阈值，并确保数值计算正确
+        const threshold = 50; // 50px from bottom
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold;
+        
+        if (isNearBottom) {
+          onScrollToBottom();
+        }
+      }, 150) as unknown as number;
+    };
+
+    // 初始检查，如果内容不够高度，立即触发
+    const checkInitialHeight = () => {
+      const { scrollHeight, clientHeight } = container;
+      if (scrollHeight <= clientHeight) {
+        setTimeout(() => onScrollToBottom(), 100);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    checkInitialHeight();
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [onScrollToBottom]);
+
   // 渲染文件图标
   const renderFileIcon = (file: StorageFile) => {
     const fileType = file.type === 'directory' ? 'directory' : getFileType(file.filename);
     return <FileIcon fileType={fileType} size="md" className="mr-3" />;
   };
-
-
 
   // 格式化日期 - 移动端显示简洁格式
   const formatDate = (dateString: string): string => {
@@ -126,24 +177,6 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     // 桌面端使用完整格式
     return date.toLocaleString();
   };
-
-  // 添加滚动到底部检测逻辑
-  useEffect(() => {
-    const container = parentRef.current;
-    if (!container || !onScrollToBottom) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
-
-      if (isNearBottom) {
-        onScrollToBottom();
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [onScrollToBottom]);
 
   return (
     <div

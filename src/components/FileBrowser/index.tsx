@@ -309,6 +309,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
   };
 
+  // 滚动到底部的处理函数
+  const handleScrollToBottom = () => {
+    if (hasMore && !loadingMore && nextMarker) {
+      loadMoreFiles();
+    }
+  };
+
   // 加载更多文件的函数（带节流）
   const loadMoreFiles = async () => {
     if (!hasMore || loadingMore || !nextMarker) return;
@@ -887,7 +894,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     sortDirection={sortDirection}
                     height={containerHeight - tableHeaderHeight} // 动态计算高度
                     searchTerm={searchTerm}
-                    onScrollToBottom={hasMore && !loadingMore ? loadMoreFiles : undefined}
+                    onScrollToBottom={handleScrollToBottom}
                   />
                   {/* Loading more indicator */}
                   {loadingMore && (
