@@ -19,7 +19,6 @@ import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../../services/navigationHistory';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
-import { LoadMoreButton } from './LoadMoreButton';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
@@ -82,6 +81,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const tableHeaderRef = useRef<HTMLDivElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
   const scrollSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadMoreThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
   // 计算过滤后的文件数量
   const getFilteredFiles = () => {
@@ -309,33 +309,41 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
   };
 
-  // 加载更多文件的函数
+  // 加载更多文件的函数（带节流）
   const loadMoreFiles = async () => {
     if (!hasMore || loadingMore || !nextMarker) return;
 
-    try {
-      setLoadingMore(true);
-      console.log('Loading more files with marker:', nextMarker);
-      
-      const result = await StorageServiceManager.listDirectory(currentPath, {
-        marker: nextMarker,
-        pageSize: 1000
-      });
-      
-      // 将新文件追加到现有文件列表
-      setFiles(prev => [...prev, ...result.files]);
-      
-      // 更新分页状态
-      setHasMore(result.hasMore || false);
-      setNextMarker(result.nextMarker);
-      
-      console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}`);
-    } catch (err) {
-      console.error('Failed to load more files:', err);
-      setError('Failed to load more files');
-    } finally {
-      setLoadingMore(false);
+    // 清除之前的节流器
+    if (loadMoreThrottleRef.current) {
+      clearTimeout(loadMoreThrottleRef.current);
     }
+
+    // 设置节流，避免频繁触发
+    loadMoreThrottleRef.current = setTimeout(async () => {
+      try {
+        setLoadingMore(true);
+        console.log('Loading more files with marker:', nextMarker);
+        
+        const result = await StorageServiceManager.listDirectory(currentPath, {
+          marker: nextMarker,
+          pageSize: 1000
+        });
+        
+        // 将新文件追加到现有文件列表
+        setFiles(prev => [...prev, ...result.files]);
+        
+        // 更新分页状态
+        setHasMore(result.hasMore || false);
+        setNextMarker(result.nextMarker);
+        
+        console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}`);
+      } catch (err) {
+        console.error('Failed to load more files:', err);
+        setError('Failed to load more files');
+      } finally {
+        setLoadingMore(false);
+      }
+    }, 300); // 300ms 节流
   };
 
   // 添加刷新当前目录的函数
@@ -879,15 +887,17 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     sortDirection={sortDirection}
                     height={containerHeight - tableHeaderHeight} // 动态计算高度
                     searchTerm={searchTerm}
+                    onScrollToBottom={hasMore && !loadingMore ? loadMoreFiles : undefined}
                   />
-                  {/* 加载更多按钮 */}
-                  <LoadMoreButton
-                    onLoadMore={loadMoreFiles}
-                    isLoading={loadingMore}
-                    filesCount={files.length}
-                    hasMore={hasMore}
-                    className="border-t border-gray-200 dark:border-gray-700"
-                  />
+                  {/* Loading more indicator */}
+                  {loadingMore && (
+                    <div className="flex justify-center items-center py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                      <div className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                        {t('directory.loading.more')}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             ) : (

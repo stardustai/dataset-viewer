@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { StorageFile } from '../../types';
 import { getFileType } from '../../utils/fileTypes';
@@ -14,6 +14,7 @@ interface VirtualizedFileListProps {
   sortDirection: 'asc' | 'desc';
   height?: number;
   searchTerm?: string;
+  onScrollToBottom?: () => void;
 }
 
 export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
@@ -23,7 +24,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   sortField,
   sortDirection,
   height,
-  searchTerm = ''
+  searchTerm = '',
+  onScrollToBottom
 }) => {
   // Use custom hook for responsive behavior
   const isMobile = useIsMobile();
@@ -124,6 +126,24 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     // 桌面端使用完整格式
     return date.toLocaleString();
   };
+
+  // 添加滚动到底部检测逻辑
+  useEffect(() => {
+    const container = parentRef.current;
+    if (!container || !onScrollToBottom) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+
+      if (isNearBottom) {
+        onScrollToBottom();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [onScrollToBottom]);
 
   return (
     <div
