@@ -517,6 +517,10 @@ impl OSSClient {
                         "NextMarker" => {
                             next_marker = Some(current_text.clone());
                         }
+                        "NextContinuationToken" => {
+                            // List Objects v2 uses NextContinuationToken instead of NextMarker
+                            next_marker = Some(current_text.clone());
+                        }
                         _ => {}
                     }
                 }

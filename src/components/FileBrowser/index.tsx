@@ -311,14 +311,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 滚动到底部的处理函数
   const handleScrollToBottom = () => {
-    if (hasMore && !loadingMore && nextMarker) {
+    // Allow loading when hasMore is true, even if nextMarker is null
+    // Some OSS implementations might not provide markers but still support pagination
+    if (hasMore && !loadingMore) {
       loadMoreFiles();
     }
   };
 
   // 加载更多文件的函数（带节流）
   const loadMoreFiles = async () => {
-    if (!hasMore || loadingMore || !nextMarker) return;
+    if (!hasMore || loadingMore) return;
 
     // 清除之前的节流器
     if (loadMoreThrottleRef.current) {
@@ -332,7 +334,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         console.log('Loading more files with marker:', nextMarker);
         
         const result = await StorageServiceManager.listDirectory(currentPath, {
-          marker: nextMarker,
+          marker: nextMarker, // nextMarker can be null/undefined, which is fine
           pageSize: 1000
         });
         
@@ -343,7 +345,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setHasMore(result.hasMore || false);
         setNextMarker(result.nextMarker);
         
-        console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}`);
+        console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}, nextMarker: ${result.nextMarker}`);
       } catch (err) {
         console.error('Failed to load more files:', err);
         setError('Failed to load more files');
