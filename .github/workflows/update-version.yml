@@ -31,8 +31,8 @@ jobs:
 
       - name: Commit version update
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
           git commit -m "Bump version to ${{ github.event.inputs.version }}"
           git push
