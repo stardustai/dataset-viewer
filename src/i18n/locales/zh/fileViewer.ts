@@ -41,6 +41,12 @@ export const fileViewer = {
   'file.remaining': '剩余',
   'load.more.chunk': '加载更多 (512KB)',
 
+  // 目录浏览器加载更多
+  'directory.load.more': '加载更多文件',
+  'directory.loading.more': '正在加载更多文件...',
+  'directory.loaded.files': '已加载 {{count}} 个文件',
+  'directory.has.more': '还有更多文件',
+
   // 查看器功能
   'viewer.toggle.wrap': '切换自动换行',
   'viewer.jump.percent': '跳转到百分比位置',

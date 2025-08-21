@@ -218,11 +218,11 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
           </div>
         ) : (
           /* 正常面包屑显示 */
-          <div className="flex items-center space-x-1 min-w-0 overflow-hidden flex-1">
+          <div className="flex items-center space-x-1 min-w-0 overflow-x-auto flex-1 scrollbar-none">
             {/* 根目录按钮 */}
             <span
               onClick={onNavigateHome}
-              className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2 py-1 rounded transition-all duration-200 flex-shrink-0 font-medium"
+              className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-3 py-1 rounded transition-all duration-200 flex-shrink-0 font-medium whitespace-nowrap min-w-12"
             >
               {defaultHomeLabel}
             </span>
@@ -233,7 +233,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
                 <ChevronRight className="w-3 h-3 lg:w-4 lg:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                 <span
                   onClick={() => onNavigateToSegment(index)}
-                  className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2 py-1 rounded transition-all duration-200 truncate max-w-20 sm:max-w-28 lg:max-w-36 font-medium"
+                  className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 p-1 text-center rounded transition-all duration-200 font-medium min-w-16 max-w-40 truncate"
                   title={segment}
                 >
                   {segment}

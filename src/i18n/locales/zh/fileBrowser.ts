@@ -43,4 +43,7 @@ export const fileBrowser = {
   'loading.directory': '正在加载 {{path}} 目录...',
   'loading.directory.root': '正在加载根目录...',
   'loading.status': '正在加载...',
+  'loading.more': '正在加载更多文件...',
+  'loading.more.description': '请稍候，正在获取更多内容',
+  'loading.more.failed': '加载更多文件失败',
 };

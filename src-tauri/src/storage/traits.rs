@@ -21,6 +21,7 @@ pub struct StorageFile {
 
 /// 统一的目录列表结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DirectoryResult {
     pub files: Vec<StorageFile>,
     pub has_more: bool,
@@ -31,6 +32,7 @@ pub struct DirectoryResult {
 
 /// 统一的列表选项
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListOptions {
     pub page_size: Option<u32>,
     pub marker: Option<String>,

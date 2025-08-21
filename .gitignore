@@ -26,3 +26,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Tauri specific
+/src-tauri/target
+
+# Package lock files (keep pnpm-lock.yaml if using pnpm)
+package-lock.json

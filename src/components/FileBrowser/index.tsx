@@ -23,7 +23,7 @@ import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, NoLocalResultsDisplay, NoRemoteResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
-import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
+import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
 import { FolderDownloadService } from '../../services/folderDownloadService';
 
 interface FileBrowserProps {
@@ -65,7 +65,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [sortField, setSortField] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [loadingRequest, setLoadingRequest] = useState<string | null>(null); // 跟踪当前正在加载的路径
-  const [isManualRefresh, setIsManualRefresh] = useState(false); // 追踪是否为手动刷新
+  const [isRefreshing, setIsRefreshing] = useState(false); // 专门跟踪刷新按钮状态
   const [failedPath, setFailedPath] = useState<string>(''); // 记录失败的路径
   const [containerHeight, setContainerHeight] = useState(600); // 容器高度
   const [tableHeaderHeight, setTableHeaderHeight] = useState(40); // 表头高度
@@ -73,10 +73,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [showSettings, setShowSettings] = useState(false); // 设置面板显示状态
   const [currentView, setCurrentView] = useState<'directory' | 'remote-search'>('directory'); // 当前显示的内容类型
   const [remoteSearchQuery, setRemoteSearchQuery] = useState(''); // 远程搜索查询词
+  // OSS 分页状态
+  const [hasMore, setHasMore] = useState(false); // 是否有更多文件可加载
+  const [nextMarker, setNextMarker] = useState<string | undefined>(); // 下一页标记
+  const [loadingMore, setLoadingMore] = useState(false); // 是否正在加载更多
   const containerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLDivElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
   const scrollSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadMoreThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
   // 计算过滤后的文件数量
   const getFilteredFiles = () => {
@@ -108,7 +113,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         const searchPath = `/search/${encodeURIComponent(query)}`;
         const result = await StorageServiceManager.listDirectory(searchPath);
 
-        setFiles(result);
+        setFiles(result.files);
+        setHasMore(false); // Remote search typically doesn't have pagination
+        setNextMarker(undefined);
         setLoading(false);
       }
     } catch (error) {
@@ -165,6 +172,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setCurrentPath(path);
         setLoading(false);
 
+        // 重置分页状态，因为缓存数据不包含分页信息
+        setHasMore(false);
+        setNextMarker(undefined);
+
         // 记录访问历史
         navigationHistoryService.addToHistory(path);
 
@@ -215,19 +226,31 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
 
     setLoadingRequest(path);
-    setLoading(true);
+
+    // 如果当前已有文件内容且是手动刷新，则不显示全屏loading，只显示刷新按钮动画
+    const shouldShowFullLoading = !(isManual && files.length > 0);
+    setLoading(shouldShowFullLoading);
+
+    // 设置刷新按钮状态
+    if (isManual) {
+      setIsRefreshing(true);
+    }
+
     setError('');
     setFailedPath(''); // 清除之前的失败路径
-    setIsManualRefresh(isManual);
 
     try {
       console.log('Loading directory from server:', path);
       const fileList = await StorageServiceManager.listDirectory(path);
-      setFiles(fileList);
+      setFiles(fileList.files);
       setCurrentPath(path);
 
+      // 设置分页状态
+      setHasMore(fileList.hasMore || false);
+      setNextMarker(fileList.nextMarker);
+
       // 缓存目录数据
-      navigationHistoryService.cacheDirectory(path, fileList);
+      navigationHistoryService.cacheDirectory(path, fileList.files);
 
       // 记录访问历史
       navigationHistoryService.addToHistory(path);
@@ -267,6 +290,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setFailedPath(path); // 记录失败的路径
       // 清除文件列表以避免显示过期数据
       setFiles([]);
+      // 重置分页状态
+      setHasMore(false);
+      setNextMarker(undefined);
       // 发生错误时，尝试恢复到上一个有效路径或根目录
       if (path !== '') {
         // 如果不是根目录出错，尝试恢复到父目录或根目录
@@ -287,8 +313,65 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     } finally {
       setLoading(false);
       setLoadingRequest(null);
-      setIsManualRefresh(false);
+      setIsRefreshing(false); // 重置刷新按钮状态
     }
+  };
+
+  // 滚动到底部的处理函数
+  const handleScrollToBottom = () => {
+    // Allow loading when hasMore is true, even if nextMarker is null
+    // Some OSS implementations might not provide markers but still support pagination
+    if (hasMore && !loadingMore) {
+      loadMoreFiles();
+    }
+  };
+
+  // 加载更多文件的函数（带节流）
+  const loadMoreFiles = async () => {
+    if (!hasMore || loadingMore) return;
+
+    // 清除之前的节流器
+    if (loadMoreThrottleRef.current) {
+      clearTimeout(loadMoreThrottleRef.current);
+    }
+
+    // 设置节流，避免频繁触发
+    loadMoreThrottleRef.current = setTimeout(async () => {
+      try {
+        setLoadingMore(true);
+        console.log('Loading more files with marker:', nextMarker);
+
+        const result = await StorageServiceManager.listDirectory(currentPath, {
+          marker: nextMarker, // nextMarker can be null/undefined, which is fine
+          pageSize: 1000
+        });
+
+        // 将新文件追加到现有文件列表
+        setFiles(prev => [...prev, ...result.files]);
+
+        // 更新分页状态
+        setHasMore(result.hasMore || false);
+        setNextMarker(result.nextMarker);
+
+        console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}, nextMarker: ${result.nextMarker}`);
+      } catch (err) {
+        console.error('Failed to load more files:', err);
+        // 显示分页失败的友好提示，但不设置全局错误状态
+        // 这样用户仍然可以看到已加载的文件
+        const errorMessage = err instanceof Error ? err.message : String(err);
+
+        // 显示友好的错误提示
+        showErrorToast(t('loading.more.failed'));
+
+        console.warn('Pagination failed, but keeping existing files visible:', errorMessage);
+
+        // 重置分页状态，防止无限重试
+        setHasMore(false);
+        setNextMarker(undefined);
+      } finally {
+        setLoadingMore(false);
+      }
+    }, 300); // 300ms 节流
   };
 
   // 添加刷新当前目录的函数
@@ -298,7 +381,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 下载当前文件夹的所有文件
   const downloadCurrentFolder = async () => {
-    if (!connection || files.length === 0) return;
+    if (!connection) return;
 
     try {
       // 如果下载服务被停止，直接返回（用户需要等待当前下载完成）
@@ -331,11 +414,39 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         fullSavePath = selectedDirectory;
       }
 
+      // 获取完整的文件列表（处理分页）
+      setIsRefreshing(true); // 使用刷新状态而不是全屏loading
+      let allFiles: StorageFile[] = [];
+      let hasMorePages = true;
+      let marker: string | undefined;
+
+      console.log('Fetching complete file list for folder download...');
+
+      while (hasMorePages) {
+        const result = await StorageServiceManager.listDirectory(currentPath, {
+          marker,
+          pageSize: 1000 // 使用大页面大小提高效率
+        });
+
+        allFiles.push(...result.files);
+        hasMorePages = result.hasMore || false;
+        marker = result.nextMarker;
+
+        // 安全检查：防止无限循环
+        if (hasMorePages && !marker) {
+          console.warn(`Directory ${currentPath} reported hasMore=true but no nextMarker provided, stopping pagination`);
+          break;
+        }
+      }
+
+      console.log(`Fetched complete file list: ${allFiles.length} items`);
+      setIsRefreshing(false); // 重置刷新状态
+
       // 开始下载（默认递归下载）
       const downloadId = await FolderDownloadService.downloadFolder(
         currentPath,
         folderName,
-        files,
+        allFiles, // 使用完整文件列表而不是 UI 中显示的部分列表
         fullSavePath,
         {
           onStart: (state) => {
@@ -361,6 +472,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
     } catch (error) {
       console.error('Failed to start folder download:', error);
+      showErrorToast(t('download.folder.failed'));
+    } finally {
+      setIsRefreshing(false); // 确保状态被重置
     }
   };
 
@@ -704,18 +818,18 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             {/* 刷新按钮 */}
             <button
               onClick={refreshCurrentDirectory}
-              disabled={loading}
+              disabled={isRefreshing}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               title="刷新当前目录"
             >
-            <RefreshCw className={`w-4 h-4 text-gray-600 dark:text-gray-300 ${loading && isManualRefresh ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-gray-600 dark:text-gray-300 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
 
             {/* 文件夹下载按钮 */}
             {/* 下载文件夹按钮 */}
             <button
               onClick={downloadCurrentFolder}
-              disabled={loading || files.length === 0}
+              disabled={loading || isRefreshing || files.length === 0}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               title={t('download.folder.all')}
             >
@@ -823,16 +937,26 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                    />
                 )
               ) : (
-                <div ref={fileListRef} className="bg-white dark:bg-gray-800">
+                <div ref={fileListRef} className="bg-white dark:bg-gray-800 relative">
                   <VirtualizedFileList
-                    files={files}
+                    files={getFilteredFiles()}
                     onFileClick={handleItemClick}
                     showHidden={showHidden}
                     sortField={sortField}
                     sortDirection={sortDirection}
-                    height={containerHeight - tableHeaderHeight} // 动态计算高度
+                    height={containerHeight - tableHeaderHeight} // 恢复原来的高度
                     searchTerm={searchTerm}
+                    onScrollToBottom={handleScrollToBottom}
                   />
+                  {/* Loading more indicator - 绝对定位覆盖层 */}
+                  {loadingMore && (
+                    <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-50/95 dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 backdrop-blur-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                        <span>{t('loading.more')}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             ) : (
