@@ -721,8 +721,12 @@ impl StorageClient for OSSClient {
                     serde_json::Value::Null
                 };
 
-                // 构建 LIST 请求 URL - 直接使用标准化的端点
-                let mut list_url = format!("{}/?list-type=2", self.endpoint.trim_end_matches('/'));
+                // 构建 LIST 请求 URL - 根据平台使用不同的参数
+                let mut list_url = if self.platform == OSSPlatform::AwsS3 {
+                    format!("{}/?list-type=2", self.endpoint.trim_end_matches('/'))
+                } else {
+                    format!("{}/?", self.endpoint.trim_end_matches('/'))
+                };
 
                 if let Some(prefix) = query_params.get("prefix").and_then(|v| v.as_str()) {
                     if !prefix.is_empty() {
@@ -736,7 +740,12 @@ impl StorageClient for OSSClient {
                     list_url.push_str(&format!("&max-keys={}", max_keys));
                 }
                 if let Some(marker) = query_params.get("marker").and_then(|v| v.as_str()) {
-                    list_url.push_str(&format!("&continuation-token={}", urlencoding::encode(marker)));
+                    let param_name = if self.platform == OSSPlatform::AwsS3 {
+                        "continuation-token"
+                    } else {
+                        "marker"
+                    };
+                    list_url.push_str(&format!("&{}={}", param_name, urlencoding::encode(marker)));
                 }
 
                 self.client.get(&list_url)
@@ -1333,9 +1342,13 @@ impl OSSClient {
         options: &ListOptions,
     ) -> Result<DirectoryResult, StorageError> {
         let mut query_params = vec![
-            ("list-type".to_string(), "2".to_string()),
             ("delimiter".to_string(), "/".to_string()),
         ];
+
+        // 只对 AWS S3 使用 list-type=2
+        if self.platform == OSSPlatform::AwsS3 {
+            query_params.push(("list-type".to_string(), "2".to_string()));
+        }
 
         if !prefix.is_empty() {
             query_params.push(("prefix".to_string(), prefix.to_string()));
@@ -1346,7 +1359,12 @@ impl OSSClient {
         }
 
         if let Some(marker) = &options.marker {
-            query_params.push(("continuation-token".to_string(), marker.clone()));
+            let param_name = if self.platform == OSSPlatform::AwsS3 {
+                "continuation-token"
+            } else {
+                "marker"
+            };
+            query_params.push((param_name.to_string(), marker.clone()));
         }
 
         let query_string = query_params

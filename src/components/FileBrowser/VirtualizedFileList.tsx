@@ -92,6 +92,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     if (!container || !onScrollToBottom) return;
 
     let timeoutId: number | null = null;
+    let lastScrollTop = 0;
+    let lastScrollTime = Date.now();
 
     const handleScroll = () => {
       // 清除之前的延时器
@@ -102,22 +104,36 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
       // 使用短延时来避免过于频繁的调用
       timeoutId = setTimeout(() => {
         const { scrollTop, scrollHeight, clientHeight } = container;
-        
+
         // 检查容器是否可滚动
         if (scrollHeight <= clientHeight) {
           // 如果内容高度小于等于容器高度，直接触发加载
           onScrollToBottom();
           return;
         }
-        
-        // 使用更小的阈值，并确保数值计算正确
-        const threshold = 50; // 50px from bottom
+
+        // 计算滚动速度
+        const now = Date.now();
+        const scrollDistance = scrollTop - lastScrollTop;
+        const timeElapsed = now - lastScrollTime;
+        const scrollSpeed = Math.abs(scrollDistance) / Math.max(timeElapsed, 1); // px/ms
+
+        // 根据滚动速度动态调整阈值
+        // 滚动越快，越早开始预加载
+        const baseThreshold = 300; // 基础阈值 300px
+        const speedMultiplier = Math.min(scrollSpeed * 50, 200); // 最多增加 200px
+        const threshold = baseThreshold + speedMultiplier;
+
         const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold;
-        
+
         if (isNearBottom) {
           onScrollToBottom();
         }
-      }, 150) as unknown as number;
+
+        // 更新滚动状态
+        lastScrollTop = scrollTop;
+        lastScrollTime = now;
+      }, 100) as unknown as number; // 减少延时以更快响应
     };
 
     // 初始检查，如果内容不够高度，立即触发
@@ -130,7 +146,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     checkInitialHeight();
-    
+
     return () => {
       container.removeEventListener('scroll', handleScroll);
       if (timeoutId) {
@@ -153,7 +169,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     }
 
     const date = new Date(dateString);
-    
+
     // 如果日期无效，返回横杠
     if (isNaN(date.getTime())) {
       return '—';

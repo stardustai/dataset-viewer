@@ -70,6 +70,16 @@ body {
   background-color: rgb(156 163 175);
 }
 
+/* 隐藏滚动条 - 兼容所有浏览器 */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* 暗色模式滚动条 */
 .dark .scrollbar-thin {
   scrollbar-color: rgb(75 85 99) transparent;

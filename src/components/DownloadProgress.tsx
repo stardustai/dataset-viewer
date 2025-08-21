@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { X, Download, Check, AlertCircle, StopCircle, FolderOpen, Square, Pause } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { formatFileSize } from '../utils/fileUtils';
 import { FolderDownloadService } from '../services/folderDownloadService';
 
@@ -38,10 +39,126 @@ const translateDownloadError = (error: string, t: (key: string) => string): stri
   return error;
 };
 
+// 下载项组件
+const DownloadItem = ({
+  download,
+  onCancel,
+  onRemove,
+  onOpenLocation,
+  t
+}: {
+  download: DownloadState;
+  onCancel: (filename: string) => void;
+  onRemove: (filename: string) => void;
+  onOpenLocation: (filePath: string) => void;
+  t: (key: string) => string;
+}) => (
+  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+    <div className="flex items-start justify-between">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center space-x-2">
+          {(download.status === 'downloading' || download.status === 'preparing') && (
+            <div className="w-4 h-4 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+          )}
+          {download.status === 'completed' && (
+            <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
+          )}
+          {download.status === 'error' && (
+            <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
+          )}
+          {download.status === 'stopped' && (
+            <Pause className="w-4 h-4 text-orange-500 dark:text-orange-400" />
+          )}
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+            {download.filename}
+          </span>
+        </div>
+
+        {(download.status === 'downloading' || download.status === 'preparing') && (
+          <div className="mt-2">
+            {download.status === 'preparing' ? (
+              <div className="text-xs text-blue-600 dark:text-blue-400">
+                {download.currentFile || '准备下载...'}
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <span>{download.progress}%</span>
+                  <span>
+                    {formatFileSize(download.downloaded)}
+                    {download.totalSize > 0 && ` / ${formatFileSize(download.totalSize)}`}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${download.progress}%` }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {download.status === 'completed' && download.filePath && (
+          <div className="mt-1">
+            <div
+              className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition-colors"
+              onClick={() => onOpenLocation(download.filePath!)}
+              title={t('download.open.location.tooltip')}
+            >
+              <FolderOpen className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+              <p className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">
+                {t('download.saved.to')}: {download.filePath}
+              </p>
+            </div>
+            <p className="text-xs text-green-600 dark:text-green-400 ml-4">
+              {formatFileSize(download.downloaded)} {t('download.completed')}
+            </p>
+          </div>
+        )}
+
+        {download.status === 'error' && (
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+            {t('download.error')}: {translateDownloadError(download.error || '', t)}
+          </p>
+        )}
+
+        {download.status === 'stopped' && (
+          <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+            {download.currentFile || '下载已停止'}
+          </p>
+        )}
+      </div>
+
+      {(download.status === 'downloading' || download.status === 'preparing') && (
+        <button
+          onClick={() => onCancel(download.filename)}
+          className="ml-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+          title={t('download.cancel.tooltip')}
+        >
+          <StopCircle className="w-4 h-4" />
+        </button>
+      )}
+
+      {(download.status === 'completed' || download.status === 'error' || download.status === 'stopped') && (
+        <button
+          onClick={() => onRemove(download.filename)}
+          className="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+          title={download.status === 'stopped' ? '移除停止的下载' : undefined}
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 export default function DownloadProgress({ isVisible, onClose }: DownloadProgressProps) {
   const { t } = useTranslation();
   const [downloads, setDownloads] = useState(new Map<string, DownloadState>());
   const [isMinimized, setIsMinimized] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -195,7 +312,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
 
   // 当用户点击关闭时，如果有活跃下载，则最小化，否则完全关闭
   const handleClose = () => {
-    const downloadList = Array.from(downloads.values());
+    const downloadList = Array.from(downloads.values()).reverse(); // 简单倒序，最新的在前面
     const hasActiveDownloads = downloadList.some(d => d.status === 'downloading');
 
     if (hasActiveDownloads) {
@@ -215,10 +332,21 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
     setIsMinimized(false);
   };
 
+  // 准备数据和虚拟化配置（必须在任何条件返回之前）
+  const downloadList = Array.from(downloads.values()).reverse(); // 倒序显示，最新的在前面
+  const shouldUseVirtualization = downloadList.length > 10;
+
+  // 虚拟化配置 - 始终初始化，避免 hooks 规则违反
+  const virtualizer = useVirtualizer({
+    count: downloadList.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 80, // 每个下载项的估计高度
+    overscan: 5,
+  });
+
   // 如果没有下载或者组件不可见，什么都不显示
   if (!isVisible || downloads.size === 0) return null;
 
-  const downloadList = Array.from(downloads.values());
   const hasCompleted = downloadList.some(d => d.status === 'completed');
   const hasActiveDownloads = downloadList.some(d => d.status === 'downloading' || d.status === 'preparing');
   const activeDownloadCount = downloadList.filter(d => d.status === 'downloading' || d.status === 'preparing').length;
@@ -298,108 +426,52 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
       </div>
 
       {/* Downloads List */}
-      <div className="max-h-80 overflow-y-auto">
-        {downloadList.map((download) => (
-          <div key={download.filename} className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  {(download.status === 'downloading' || download.status === 'preparing') && (
-                    <div className="w-4 h-4 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  )}
-                  {download.status === 'completed' && (
-                    <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
-                  )}
-                  {download.status === 'error' && (
-                    <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
-                  )}
-                  {download.status === 'stopped' && (
-                    <Pause className="w-4 h-4 text-orange-500 dark:text-orange-400" />
-                  )}
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                    {download.filename}
-                  </span>
-                </div>
-
-                {(download.status === 'downloading' || download.status === 'preparing') && (
-                  <div className="mt-2">
-                    {download.status === 'preparing' ? (
-                      <div className="text-xs text-blue-600 dark:text-blue-400">
-                        {download.currentFile || '准备下载...'}
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          <span>{download.progress}%</span>
-                          <span>
-                            {formatFileSize(download.downloaded)}
-                            {download.totalSize > 0 && ` / ${formatFileSize(download.totalSize)}`}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${download.progress}%` }}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {download.status === 'completed' && download.filePath && (
-                  <div className="mt-1">
-                    <div
-                      className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition-colors"
-                      onClick={() => openFileLocation(download.filePath!)}
-                      title={t('download.open.location.tooltip')}
-                    >
-                      <FolderOpen className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                      <p className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">
-                        {t('download.saved.to')}: {download.filePath}
-                      </p>
-                    </div>
-                    <p className="text-xs text-green-600 dark:text-green-400 ml-4">
-                      {formatFileSize(download.downloaded)} {t('download.completed')}
-                    </p>
-                  </div>
-                )}
-
-                {download.status === 'error' && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    {t('download.error')}: {translateDownloadError(download.error || '', t)}
-                  </p>
-                )}
-
-                {download.status === 'stopped' && (
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                    {download.currentFile || '下载已停止'}
-                  </p>
-                )}
+      <div
+        ref={listRef}
+        className="max-h-80 overflow-y-auto"
+        style={{ height: '20rem' }} // 固定高度用于虚拟化
+      >
+        {shouldUseVirtualization ? (
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => (
+              <div
+                key={virtualItem.key}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualItem.size}px`,
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                <DownloadItem
+                  download={downloadList[virtualItem.index]}
+                  onCancel={cancelDownload}
+                  onRemove={removeDownload}
+                  onOpenLocation={openFileLocation}
+                  t={t}
+                />
               </div>
-
-              {(download.status === 'downloading' || download.status === 'preparing') && (
-                <button
-                  onClick={() => cancelDownload(download.filename)}
-                  className="ml-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                  title={t('download.cancel.tooltip')}
-                >
-                  <StopCircle className="w-4 h-4" />
-                </button>
-              )}
-
-              {(download.status === 'completed' || download.status === 'error' || download.status === 'stopped') && (
-                <button
-                  onClick={() => removeDownload(download.filename)}
-                  className="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                  title={download.status === 'stopped' ? '移除停止的下载' : undefined}
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          downloadList.map((download) => (
+            <DownloadItem
+              key={download.filename}
+              download={download}
+              onCancel={cancelDownload}
+              onRemove={removeDownload}
+              onOpenLocation={openFileLocation}
+              t={t}
+            />
+          ))
+        )}
       </div>
     </div>
   );

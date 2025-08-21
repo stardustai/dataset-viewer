@@ -43,4 +43,7 @@ export const fileBrowser = {
   'loading.directory': 'Loading{{path}} directory...',
   'loading.directory.root': 'Loading root directory...',
   'loading.status': 'Loading...',
+  'loading.more': 'Loading more files...',
+  'loading.more.description': 'Please wait while we fetch additional content',
+  'loading.more.failed': 'Failed to load more files',
 };

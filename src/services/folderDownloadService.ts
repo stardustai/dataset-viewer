@@ -39,7 +39,7 @@ export class FolderDownloadService {
   private static globalStopFlag = false;
 
   // 并行下载配置
-  private static readonly CONCURRENT_DOWNLOADS = 3;
+  private static readonly CONCURRENT_DOWNLOADS = 5;
 
   /**
    * 拼接路径并规整斜杠，保留协议前缀
@@ -220,7 +220,8 @@ export class FolderDownloadService {
    * 获取所有活跃的下载
    */
   static getActiveDownloads(): FolderDownloadState[] {
-    return Array.from(this.activeDownloads.values());
+    // 倒序排列，最新的下载显示在前面
+    return Array.from(this.activeDownloads.values()).reverse();
   }
 
   /**
@@ -392,14 +393,45 @@ export class FolderDownloadService {
         const dirPath = this.joinPath(currentPath, dir.basename);
         const dirSavePath = this.joinLocalPath(baseSavePath, dir.basename);
 
-        // 获取子目录文件列表
-        const subDirectoryResult = await StorageServiceManager.listDirectory(dirPath);
-        const subFiles = subDirectoryResult.files;
+        // 获取子目录完整文件列表（处理分页）
+        let subFiles: StorageFile[] = [];
+        let hasMore = true;
+        let nextMarker: string | undefined;
+
+        state.currentFile = `扫描目录: ${dir.basename}...`;
+        this.updateState(state.folderId, state);
+        events.onProgress(state);
+
+        while (hasMore) {
+          const subDirectoryResult = await StorageServiceManager.listDirectory(dirPath, {
+            marker: nextMarker,
+            pageSize: 1000 // 使用大页面大小提高效率
+          });
+
+          subFiles.push(...subDirectoryResult.files);
+          hasMore = subDirectoryResult.hasMore || false;
+          nextMarker = subDirectoryResult.nextMarker;
+
+          // 更新扫描进度
+          const currentFileCount = subFiles.filter(file => file.type === 'file').length;
+          state.currentFile = `扫描目录: ${dir.basename} (已发现 ${currentFileCount} 个文件)`;
+          this.updateState(state.folderId, state);
+          events.onProgress(state);
+
+          // 安全检查：防止无限循环
+          if (hasMore && !nextMarker) {
+            console.warn(`Directory ${dirPath} reported hasMore=true but no nextMarker provided, stopping pagination`);
+            break;
+          }
+        }
 
         // 动态更新总文件数和大小
         const subCurrentFiles = subFiles.filter(file => file.type === 'file');
         const additionalFiles = subCurrentFiles.length;
         const additionalSize = subCurrentFiles.reduce((sum: number, file: StorageFile) => sum + file.size, 0);
+
+        // 添加调试日志用于验证分页
+        console.log(`Directory ${dir.basename}: found ${additionalFiles} files and ${subFiles.filter(file => file.type === 'directory').length} subdirectories through pagination`);
 
         // 更新扫描状态
         state.currentFile = `扫描目录: ${dir.basename} (发现 ${additionalFiles} 个文件)`;

@@ -237,13 +237,13 @@ export class OSSStorageClient extends BaseStorageClient {
       const result = await invoke('storage_list_directory', {
         path: objectKeyPrefix, // 传递处理后的对象键，而不是协议URL
         options: {
-          page_size: options.pageSize || 1000,
+          pageSize: options.pageSize || 1000,
           marker: options.marker,
           // 只有用户明确指定prefix时才使用，否则让后端根据path自动处理
           prefix: objectKeyPrefix || options.prefix,
           recursive: options.recursive || false,
-          sort_by: options.sortBy || 'name',
-          sort_order: options.sortOrder || 'asc',
+          sortBy: options.sortBy || 'name',
+          sortOrder: options.sortOrder || 'asc',
         }
       });
 
