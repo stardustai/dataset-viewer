@@ -4,6 +4,17 @@ import { StorageServiceManager } from './storage';
 import { navigationHistoryService } from './navigationHistory';
 
 /**
+ * Result type for file opening operations
+ */
+export interface OpenFileResult {
+  success: boolean;
+  file?: StorageFile;
+  fileName: string;
+  fileDirectory?: string;
+  error?: string;
+}
+
+/**
  * 文件关联服务
  * 处理通过文件关联打开应用时的逻辑
  */
@@ -63,18 +74,9 @@ export class FileAssociationService {
    * @param filePath 文件路径
    * @returns 处理结果
    */
-  private async handleFileOpen(filePath: string): Promise<{
-    success: boolean;
-    file?: StorageFile;
-    fileName: string;
-    fileDirectory?: string;
-    error?: string;
-  }> {
+  private async handleFileOpen(filePath: string): Promise<OpenFileResult> {
     try {
-      // 获取文件所在目录作为本地存储根路径
-      const separator = filePath.includes('/') ? '/' : '\\';
-      const lastSeparatorIndex = filePath.lastIndexOf(separator);
-      const fileDir = lastSeparatorIndex > 0 ? filePath.substring(0, lastSeparatorIndex) : '.';
+      const fileDir = filePath.replace(/[/\\][^/\\]+$/, '') || '.';
 
       // 清除用户断开连接标记，允许文件关联打开
       localStorage.removeItem('userDisconnected');
@@ -152,12 +154,7 @@ export class FileAssociationService {
    * @param filePath 文件路径
    * @returns 处理结果
    */
-  public async openFile(filePath: string): Promise<{
-    success: boolean;
-    file?: StorageFile;
-    fileName: string;
-    error?: string;
-  }> {
+  public async openFile(filePath: string): Promise<OpenFileResult> {
     return await this.handleFileOpen(filePath);
   }
 

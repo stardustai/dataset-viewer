@@ -151,7 +151,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
     console.log(`loadDirectory called: path="${path}", isManual=${isManual}, forceReload=${forceReload}, currentPath="${currentPath}", loading=${loading}`);
-    
+
     // 防止重复请求
     if (loadingRequest === path && !forceReload) {
       console.log('Skipping duplicate request for path:', path);
@@ -496,7 +496,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   // 初始加载和重试逻辑
   useEffect(() => {
     let retryTimer: NodeJS.Timeout;
-    
+
     // 如果存储已连接，直接加载
     if (StorageServiceManager.isConnected()) {
       // 如果是首次加载或路径不同时才加载
@@ -514,7 +514,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         }
       }, 1000);
     }
-    
+
     return () => {
       if (retryTimer) {
         clearTimeout(retryTimer);
