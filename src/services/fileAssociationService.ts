@@ -26,7 +26,7 @@ export class FileAssociationService {
    * @param onError 错误回调函数
    */
   public async setupFileOpenListener(
-    onFileOpen: (file: StorageFile, fileName: string, fileDirectory?: string) => void,
+    onFileOpen: (file: StorageFile, fileName: string) => void,
     onError: (error: string) => void
   ): Promise<void> {
     if (this.isListenerSetup) {
@@ -41,7 +41,7 @@ export class FileAssociationService {
         try {
           const result = await this.handleFileOpen(filePath);
           if (result.success && result.file) {
-            onFileOpen(result.file, result.fileName, result.fileDirectory);
+            onFileOpen(result.file, result.fileName);
           } else {
             onError(result.error || 'Unknown error occurred');
           }

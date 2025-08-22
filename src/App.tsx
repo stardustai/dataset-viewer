@@ -45,7 +45,7 @@ function App() {
     const setupFileOpenListener = async () => {
       try {
         await fileAssociationService.setupFileOpenListener(
-          (file: StorageFile, fileName: string, fileDirectory?: string) => {
+          (file: StorageFile, fileName: string) => {
             // 文件打开成功回调
             const currentStorageClient = StorageServiceManager.getCurrentClient();
             
