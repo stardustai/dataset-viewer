@@ -45,9 +45,18 @@ function App() {
     const setupFileOpenListener = async () => {
       try {
         await fileAssociationService.setupFileOpenListener(
-          (file: StorageFile, fileName: string) => {
+          (file: StorageFile, fileName: string, fileDirectory?: string) => {
             // 文件打开成功回调
             const currentStorageClient = StorageServiceManager.getCurrentClient();
+            
+            // 文件关联连接后，根目录就是文件所在的目录
+            // 所以我们需要将FileBrowser的初始路径设置为根目录（空字符串）
+            setCurrentDirectory('');
+            
+            // 确保应用状态首先设置为浏览状态
+            setAppState('browsing');
+            
+            // 然后再处理文件选择（这会将状态改为viewing）
             handleFileSelect(file, fileName, currentStorageClient);
           },
           (error: string) => {
@@ -73,7 +82,8 @@ function App() {
         // 检查是否已经通过文件关联连接了
         const isConnected = await fileAssociationService.isConnectedViaFileAssociation();
         if (isConnected) {
-          // 如果已经连接（通过文件关联），不需要自动连接
+          // 如果已经连接（通过文件关联），设置为browsing状态
+          setAppState('browsing');
           return;
         }
 

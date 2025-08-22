@@ -153,6 +153,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       return;
     }
 
+    // 检查存储是否已连接，如果未连接则等待或返回错误
+    if (!StorageServiceManager.isConnected()) {
+      console.warn('Storage not connected, cannot load directory:', path);
+      setError('Storage connection not ready');
+      setLoading(false);
+      return;
+    }
+
     // 如果不是强制重新加载且路径相同，则直接返回
     if (!forceReload && !isManual && currentPath === path && files.length > 0) {
       return;
@@ -480,11 +488,38 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 初始加载 - 修复避免重复加载的逻辑
   useEffect(() => {
+    // 如果存储未连接，不尝试加载目录
+    if (!StorageServiceManager.isConnected()) {
+      console.warn('Storage not connected during initial load, skipping directory load');
+      return;
+    }
+    
     // 如果是首次加载（currentPath 为空）或者 initialPath 与当前路径不同时才加载
     if (!currentPath || initialPath !== currentPath) {
       loadDirectory(initialPath);
     }
   }, [initialPath]);
+
+  // 监听存储连接状态变化，当存储连接就绪时重试加载
+  useEffect(() => {
+    let retryTimer: NodeJS.Timeout;
+    
+    // 如果存储未连接且当前有错误，设置定时重试
+    if (!StorageServiceManager.isConnected() && error) {
+      retryTimer = setTimeout(() => {
+        if (StorageServiceManager.isConnected()) {
+          console.log('Storage connection ready, retrying directory load');
+          loadDirectory(initialPath || currentPath, false, true);
+        }
+      }, 1000); // 1秒后重试
+    }
+    
+    return () => {
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+    };
+  }, [error, initialPath, currentPath]);
 
   // 监听滚动事件，实时保存滚动位置
   useEffect(() => {
