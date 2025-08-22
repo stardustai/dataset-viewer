@@ -1,13 +1,13 @@
 mod storage;
-mod archive;  // 压缩包处理功能 - 前端需要使用
+mod archive;  // 压缩包处理功能
 mod download; // 下载管理功能
 mod utils;    // 通用工具模块
 
 use archive::{handlers::ArchiveHandler, types::*};
 use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
 use download::{DownloadManager, DownloadRequest};
-use std::sync::{Arc, LazyLock, Mutex};
-use tauri::{Emitter, Manager, Listener};
+use std::sync::{Arc, LazyLock};
+use tauri::{Emitter, Listener};
 
 // 全局下载管理器
 static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
@@ -17,13 +17,13 @@ static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
 static ARCHIVE_HANDLER: LazyLock<Arc<ArchiveHandler>> =
     LazyLock::new(|| Arc::new(ArchiveHandler::new()));
 
-// 前端就绪状态和待处理文件队列
-static FRONTEND_STATE: LazyLock<Mutex<FrontendState>> = LazyLock::new(|| {
-    Mutex::new(FrontendState {
+// 前端状态管理 - 用于文件关联处理
+static FRONTEND_STATE: std::sync::Mutex<FrontendState> = std::sync::Mutex::new(
+    FrontendState {
         is_ready: false,
         pending_files: Vec::new(),
-    })
-});
+    }
+);
 
 #[derive(Debug)]
 struct FrontendState {
@@ -31,21 +31,55 @@ struct FrontendState {
     pending_files: Vec<String>,
 }
 
+// 创建文件查看窗口
+#[tauri::command]
+async fn create_file_viewer_window(app: tauri::AppHandle, file_path: String) -> Result<String, String> {
+    use tauri::{WebviewWindowBuilder, WebviewUrl};
+
+    // 为每个文件创建唯一的窗口标签
+    let window_label = format!("file-viewer-{}", std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis());
+
+    // 获取文件名作为窗口标题
+    let file_name = std::path::Path::new(&file_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("File Viewer");
+
+    // 创建新窗口，URL 参数传递文件路径
+    let encoded_path = urlencoding::encode(&file_path);
+    let window_url = format!("/?mode=file-viewer&file={}", encoded_path);
+
+    match WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::App(window_url.into()))
+        .title(file_name)  // 只显示文件名
+        .inner_size(1200.0, 800.0)  // 与主窗口保持一致
+        .min_inner_size(400.0, 600.0)  // 与主窗口保持一致
+        .build()
+    {
+        Ok(_window) => {
+            // 窗口创建成功，文件路径已通过 URL 传递
+            Ok(window_label)
+        },
+        Err(e) => Err(format!("Failed to create window: {}", e))
+    }
+}
+
 // 处理文件打开请求的辅助函数
 fn handle_file_open_request(app: &tauri::AppHandle, file_path: String) {
-    // 将窗口置于前台
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.set_focus();
-        let _ = window.unminimize();
-    }
-
     // 检查前端是否就绪
     if let Ok(mut state) = FRONTEND_STATE.lock() {
         if state.is_ready {
-            // 前端已就绪，立即发送事件
-            let _ = app.emit("file-opened", &file_path);
+            // 前端已就绪，创建独立的文件查看窗口
+            let app_handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = create_file_viewer_window(app_handle, file_path).await {
+                    eprintln!("Failed to create file viewer window: {}", e);
+                }
+            });
         } else {
-            // 前端未就绪，加入待处理队列
+            // 前端未就绪，加入待处理队列（冷启动情况）
             state.pending_files.push(file_path);
         }
     }
@@ -56,9 +90,17 @@ fn handle_frontend_ready(app: &tauri::AppHandle) {
     if let Ok(mut state) = FRONTEND_STATE.lock() {
         state.is_ready = true;
 
-        // 处理所有待处理的文件
-        for file_path in state.pending_files.drain(..) {
-            let _ = app.emit("file-opened", &file_path);
+        // 如果有待处理的文件，发送文件打开事件到前端
+        if !state.pending_files.is_empty() {
+            let files_to_process: Vec<String> = state.pending_files.drain(..).collect();
+
+            // 对于冷启动，只处理第一个文件，发送到主窗口
+            if let Some(file_path) = files_to_process.first() {
+                // 发送文件打开事件到前端
+                if let Err(e) = app.emit("file-opened", file_path) {
+                    eprintln!("Failed to emit file-opened event: {}", e);
+                }
+            }
         }
     }
 }
@@ -728,16 +770,6 @@ async fn register_file_associations() -> Result<String, String> {
 pub fn run() {
     let builder = tauri::Builder::default();
 
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-        // 当应用已经运行时，处理新的文件打开请求
-        if args.len() > 1 {
-            let file_path = &args[1];
-            if std::path::Path::new(file_path).exists() {
-                handle_file_open_request(app, file_path.to_string());
-            }
-        }
-    }));
-
     let builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -780,7 +812,9 @@ pub fn run() {
             analyze_archive_with_client,
             get_archive_preview_with_client,
             // 文件关联注册命令
-            register_file_associations
+            register_file_associations,
+            // 多窗口支持命令
+            create_file_viewer_window
         ])
         .setup(|app| {
             // 监听前端就绪事件

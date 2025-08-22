@@ -20,9 +20,10 @@ interface FileViewerProps {
   storageClient?: any;
   hasAssociatedFiles?: boolean;
   onBack: () => void;
+  hideBackButton?: boolean; // 新增属性，用于隐藏返回按钮
 }
 
-export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageClient, hasAssociatedFiles, onBack }) => {
+export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageClient, hasAssociatedFiles, onBack, hideBackButton }) => {
   const fileLoader = useFileLoader(file, filePath);
 
   // 创建需要的refs
@@ -160,6 +161,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
           filePath={filePath}
           fileType={fileType}
           onBack={onBack}
+          hideBackButton={hideBackButton}
           fileInfo={fileInfo}
           isLargeFile={isLargeFile}
           dataMetadata={dataMetadata}

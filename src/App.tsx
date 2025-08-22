@@ -17,6 +17,10 @@ import './App.css';
 type AppState = 'initializing' | 'connecting' | 'browsing' | 'viewing';
 
 function App() {
+  // 检测是否为文件查看模式
+  const urlParams = new URLSearchParams(window.location.search);
+  const isFileViewerMode = urlParams.get('mode') === 'file-viewer';
+
   // 初始化主题系统
   useTheme();
 
@@ -30,6 +34,7 @@ function App() {
   const [currentDirectory, setCurrentDirectory] = useState<string>('');
   const [hasAssociatedFiles, setHasAssociatedFiles] = useState(false);
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
+  const [isReturningFromViewer, setIsReturningFromViewer] = useState(false);
 
   // 监听状态变化，立即移除loading以避免空白闪烁
   useEffect(() => {
@@ -41,6 +46,33 @@ function App() {
   }, [appState]);
 
   useEffect(() => {
+    // 如果是文件查看模式且URL中有文件参数，直接处理
+    if (isFileViewerMode) {
+      const filePathFromUrl = urlParams.get('file');
+      if (filePathFromUrl) {
+        const initFileViewer = async () => {
+          try {
+            // 直接处理文件路径
+            const decodedFilePath = decodeURIComponent(filePathFromUrl);
+            const result = await fileAssociationService.openFile(decodedFilePath);
+
+            if (result.success && result.file) {
+              const currentStorageClient = StorageServiceManager.getCurrentClient();
+              handleFileSelect(result.file, result.fileName, currentStorageClient);
+            } else {
+              setAppState('connecting');
+            }
+          } catch (error) {
+            console.error('File association error:', error);
+            setAppState('connecting');
+          }
+        };
+
+        initFileViewer();
+        return; // 文件查看模式下不执行后续的自动连接逻辑
+      }
+    }
+
     // 监听文件打开事件
     const setupFileOpenListener = async () => {
       try {
@@ -48,14 +80,11 @@ function App() {
           (file: StorageFile, fileName: string) => {
             // 文件打开成功回调
             const currentStorageClient = StorageServiceManager.getCurrentClient();
-            
             // 文件关联连接后，根目录就是文件所在的目录
             // 所以我们需要将FileBrowser的初始路径设置为根目录（空字符串）
             setCurrentDirectory('');
-            
             // 确保应用状态首先设置为浏览状态
             setAppState('browsing');
-            
             // 然后再处理文件选择（这会将状态改为viewing）
             handleFileSelect(file, fileName, currentStorageClient);
           },
@@ -175,6 +204,9 @@ function App() {
     setSelectedFile(null);
     setSelectedFilePath('');
     setSelectedStorageClient(null);
+    setIsReturningFromViewer(true);
+    // 重置标志，给 FileBrowser 机会响应
+    setTimeout(() => setIsReturningFromViewer(false), 100);
   };
 
   const handleDirectoryChange = (path: string) => {
@@ -205,6 +237,7 @@ function App() {
             onDisconnect={handleDisconnect}
             initialPath={currentDirectory}
             onDirectoryChange={handleDirectoryChange}
+            shouldRefresh={isReturningFromViewer}
           />
         </div>
 
@@ -217,6 +250,7 @@ function App() {
               storageClient={selectedStorageClient}
               hasAssociatedFiles={hasAssociatedFiles}
               onBack={handleBackToBrowser}
+              hideBackButton={isFileViewerMode} // 如果是文件查看模式则隐藏返回按钮
             />
           </div>
         )}

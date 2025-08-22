@@ -31,13 +31,15 @@ interface FileBrowserProps {
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
+  shouldRefresh?: boolean; // 新增：用于通知组件需要重新检查连接状态
 }
 
 export const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileSelect,
   onDisconnect,
   initialPath = '',
-  onDirectoryChange
+  onDirectoryChange,
+  shouldRefresh = false
 }) => {
   const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState(initialPath);
@@ -519,6 +521,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       }
     };
   }, [initialPath, error]); // 移除currentPath依赖避免过度触发
+
+  // 响应从文件查看器返回的刷新请求
+  useEffect(() => {
+    if (shouldRefresh && StorageServiceManager.isConnected()) {
+      console.log('Refreshing FileBrowser after returning from viewer');
+      setError(''); // 清除可能存在的错误状态
+      loadDirectory(initialPath || currentPath, false, true);
+    }
+  }, [shouldRefresh]);
 
   // 监听滚动事件，实时保存滚动位置
   useEffect(() => {
