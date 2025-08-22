@@ -167,7 +167,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
           dataMetadata={dataMetadata}
           presentationMetadata={presentationMetadata}
           currentFilePosition={currentFilePosition}
-          loadedContentSize={loadedContentSize}
           totalSize={totalSize}
         />
 

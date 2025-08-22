@@ -11,8 +11,8 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [isLargeFile, setIsLargeFile] = useState<boolean>(false);
   const [totalSize, setTotalSize] = useState<number>(0);
-  const [currentFilePosition, setCurrentFilePosition] = useState<number>(0);
-  const [loadedContentSize, setLoadedContentSize] = useState<number>(0);
+  const [currentFilePosition, setCurrentFilePosition] = useState<number>(0); // 文件中当前读取到的绝对位置
+  const [loadedContentSize, setLoadedContentSize] = useState<number>(0);     // 内存中已加载内容的总大小
   const [loadedChunks, setLoadedChunks] = useState<number>(0);
   const [baselineStartLineNumber, setBaselineStartLineNumber] = useState<number>(1);
   const [dataMetadata, setDataMetadata] = useState<{ numRows: number; numColumns: number } | null>(null);
@@ -86,16 +86,16 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
         const result = await StorageServiceManager.getFileContent(filePath, 0, chunkSize);
         const byteLength = new TextEncoder().encode(result.content).length;
         setContent(result.content);
-        setCurrentFilePosition(byteLength);
-        setLoadedContentSize(byteLength);
+        setCurrentFilePosition(byteLength);  // 文件位置：从0读取到byteLength
+        setLoadedContentSize(byteLength);    // 内存中的内容大小
         setLoadedChunks(1);
       } else {
         // 小文件：一次性加载
         const result = await StorageServiceManager.getFileContent(filePath);
         const byteLength = new TextEncoder().encode(result.content).length;
         setContent(result.content);
-        setCurrentFilePosition(byteLength);
-        setLoadedContentSize(byteLength);
+        setCurrentFilePosition(byteLength);  // 文件位置：整个文件都读取了
+        setLoadedContentSize(byteLength);    // 内存中的内容大小
         setLoadedChunks(1);
       }
     } catch (err) {
@@ -120,8 +120,8 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
       const byteLength = new TextEncoder().encode(result.content).length;
 
       setContent(prev => prev + result.content);
-      setCurrentFilePosition(prev => prev + byteLength);
-      setLoadedContentSize(prev => prev + byteLength);
+      setCurrentFilePosition(endPosition);                    // 文件位置：更新到读取结束位置
+      setLoadedContentSize(prev => prev + byteLength);        // 内存内容：累加新读取的内容
       setLoadedChunks(prev => prev + 1);
     } catch (err) {
       console.error('Failed to load more content:', err);
@@ -143,8 +143,8 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
       const result = await StorageServiceManager.getFileContent(filePath, targetPosition, endPosition - targetPosition);
       const byteLength = new TextEncoder().encode(result.content).length;
       setContent(result.content);
-      setCurrentFilePosition(targetPosition + byteLength);
-      setLoadedContentSize(byteLength);
+      setCurrentFilePosition(endPosition);              // 文件位置：跳转后的结束位置
+      setLoadedContentSize(byteLength);                 // 内存内容：重置为当前块的大小
       setLoadedChunks(1);
 
       // 估算起始行号

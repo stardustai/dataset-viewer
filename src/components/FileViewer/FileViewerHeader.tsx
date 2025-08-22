@@ -36,7 +36,6 @@ interface FileViewerHeaderProps {
   dataMetadata?: { numRows: number; numColumns: number } | null;
   presentationMetadata?: { slideCount: number; size: { width: number; height: number } } | null;
   currentFilePosition?: number;
-  loadedContentSize?: number;
   totalSize?: number;
 }
 
@@ -51,7 +50,6 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
   dataMetadata,
   presentationMetadata,
   currentFilePosition = 0,
-  loadedContentSize = 0,
   totalSize = 0
 }) => {
   const { t } = useTranslation();
@@ -176,9 +174,9 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
                   <span className="hidden sm:inline">
                     {' • '}
                     {t('viewer.position.info', {
-                      current: formatFileSize(currentFilePosition + loadedContentSize),
+                      current: formatFileSize(currentFilePosition),
                       total: formatFileSize(totalSize),
-                      percent: ((currentFilePosition + loadedContentSize) / totalSize * 100).toFixed(1)
+                      percent: ((currentFilePosition / totalSize) * 100).toFixed(1)
                     })}
                   </span>
                 )}
