@@ -1,6 +1,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { StorageFile } from '../types';
 import { StorageServiceManager } from './storage';
+import { navigationHistoryService } from './navigationHistory';
 
 /**
  * 文件关联服务
@@ -77,8 +78,11 @@ export class FileAssociationService {
       // 清除用户断开连接标记，允许文件关联打开
       localStorage.removeItem('userDisconnected');
       
-      // 连接到本地存储
-      const success = await StorageServiceManager.connectToLocal(fileDir, 'File Association');
+      // 清除目录缓存，防止显示其他目录的缓存数据
+      navigationHistoryService.clearDirectoryCache();
+      
+      // 连接到本地存储（使用临时连接，不保存到已保存连接）
+      const success = await StorageServiceManager.connectToLocal(fileDir, 'File Association', true);
       
       if (!success) {
         return {
