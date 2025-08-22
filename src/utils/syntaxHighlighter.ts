@@ -231,6 +231,62 @@ export async function highlightLines(
   }
 }
 
+// 高亮完整代码块（用于 markdown 代码块）
+export async function highlightCodeBlock(
+  code: string,
+  language: string,
+  theme: 'light' | 'dark' = 'light'
+): Promise<string> {
+  if (!code.trim() || !isLanguageSupported(language)) {
+    // 返回带基本样式的代码块
+    return `<pre class="bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto"><code class="text-sm font-mono">${escapeHtml(code)}</code></pre>`;
+  }
+
+  try {
+    const highlighter = await initializeHighlighter();
+    if (!highlighter) {
+      return `<pre class="bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto"><code class="text-sm font-mono">${escapeHtml(code)}</code></pre>`;
+    }
+
+    const html = await highlighter.codeToHtml(code, {
+      lang: language,
+      theme: theme === 'dark' ? 'github-dark' : 'github-light',
+    });
+
+    // 为 shiki 生成的代码块添加额外的 Tailwind 样式类
+    const styledHtml = html.replace(
+      /<pre[^>]*>/,
+      (match: string) => {
+        // 保留原有的样式，并添加我们需要的 Tailwind 类
+        const hasClass = match.includes('class="');
+        if (hasClass) {
+          return match.replace(
+            /class="([^"]*)"/,
+            'class="$1 p-4 !bg-gray-100 !dark:bg-gray-800 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700"'
+          );
+        } else {
+          return match.replace(
+            '<pre',
+            '<pre class="p-4 !bg-gray-100 !dark:bg-gray-800 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700"'
+          );
+        }
+      }
+    );
+
+    return styledHtml;
+  } catch (error) {
+    console.error('Error highlighting code block:', error);
+    return `<pre class="bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto"><code class="text-sm font-mono">${escapeHtml(code)}</code></pre>`;
+  }
+}
+
+// HTML 转义函数
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // 清理高亮器资源
 export function disposeHighlighter() {
   highlighterInstance = null;

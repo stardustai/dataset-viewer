@@ -6,6 +6,7 @@ import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
 import DOMPurify from 'dompurify';
 import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
+import { highlightMarkdownCode } from '../../../utils/markdownCodeHighlighter';
 import { useTheme } from '../../../hooks/useTheme';
 import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { LineContentModal } from './LineContentModal';
@@ -39,6 +40,7 @@ const MarkdownPreviewModal: React.FC<{
   fileName: string;
 }> = ({ isOpen, onClose, content, fileName }) => {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const [parsedContent, setParsedContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -51,13 +53,17 @@ const MarkdownPreviewModal: React.FC<{
       try {
         const contentWithoutFrontMatter = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
 
+        // 使用 micromark 解析 markdown
         const parsed = micromark(contentWithoutFrontMatter, {
           allowDangerousHtml: true,
           extensions: [gfm()],
           htmlExtensions: [gfmHtml()]
         });
 
-        setParsedContent(parsed);
+        // 为代码块添加语法高亮
+        const highlightedContent = await highlightMarkdownCode(parsed, isDark ? 'dark' : 'light');
+
+        setParsedContent(highlightedContent);
       } catch (error) {
         console.error('Error parsing markdown:', error);
         setParsedContent(content);
@@ -67,7 +73,7 @@ const MarkdownPreviewModal: React.FC<{
     };
 
     parseMarkdown();
-  }, [isOpen, content]);
+  }, [isOpen, content, isDark]);
 
   if (!isOpen) return null;
 
@@ -95,7 +101,7 @@ const MarkdownPreviewModal: React.FC<{
             </div>
           ) : (
             <div
-              className="prose prose-gray dark:prose-invert max-w-none"
+              className="prose prose-gray dark:prose-invert max-w-none prose-pre:bg-transparent prose-code:bg-gray-100 prose-code:dark:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm"
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(parsedContent) }}
             />
           )}
