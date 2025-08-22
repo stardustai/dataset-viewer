@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Braces } from 'lucide-react';
+import { Copy, Braces, X } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { ImageRenderer } from './ImageRenderer';
@@ -207,9 +207,10 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
 
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+              title={t('close')}
             >
-              ×
+              <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
           </div>
         </div>
