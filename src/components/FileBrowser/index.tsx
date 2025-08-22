@@ -86,6 +86,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const loadMoreThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
   // 计算过滤后的文件数量
+
   const getFilteredFiles = () => {
     let filteredFiles = showHidden
       ? files
@@ -98,6 +99,44 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
 
     return filteredFiles;
+  };
+
+  // 获取要显示的文件列表（包含过滤和排序）
+  const getDisplayFiles = () => {
+    let filteredFiles;
+
+    // 在远程搜索模式下，直接使用服务器端过滤的结果
+    if (currentView === 'remote-search') {
+      filteredFiles = showHidden
+        ? files
+        : files.filter(file => file.basename && !file.basename.startsWith('.'));
+    } else {
+      // 在目录浏览模式下，使用本地过滤逻辑
+      filteredFiles = getFilteredFiles();
+    }
+
+    // 对过滤后的文件进行排序
+    return [...filteredFiles].sort((a, b) => {
+      // 目录总是排在文件前面
+      if (a.type === 'directory' && b.type !== 'directory') return -1;
+      if (a.type !== 'directory' && b.type === 'directory') return 1;
+
+      let compareValue = 0;
+
+      switch (sortField) {
+        case 'name':
+          compareValue = a.basename.toLowerCase().localeCompare(b.basename.toLowerCase());
+          break;
+        case 'size':
+          compareValue = (a.size || 0) - (b.size || 0);
+          break;
+        case 'modified':
+          compareValue = new Date(a.lastmod).getTime() - new Date(b.lastmod).getTime();
+          break;
+      }
+
+      return sortDirection === 'asc' ? compareValue : -compareValue;
+    });
   };
 
   // 处理全局搜索（如HuggingFace数据集搜索）
@@ -796,7 +835,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
             {searchTerm && (
               <div className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                {t('search.results.count', { count: getFilteredFiles().length })}
+                {t('search.results.count', { count: getDisplayFiles().length })}
               </div>
             )}
 
@@ -825,7 +864,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                   if (e.key === 'Enter') {
                     if (currentView === 'directory' && searchTerm.trim()) {
                       // 检查本地是否有搜索结果
-                      const localResults = getFilteredFiles();
+                      const localResults = getDisplayFiles();
                       const client = StorageServiceManager.getCurrentClient();
 
                       // 如果本地没有结果且支持远程搜索，则触发远程搜索
@@ -956,7 +995,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             {files.length > 0 ? (
               !showHidden && files.every(file => file.basename && file.basename.startsWith('.')) ? (
                 <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
-              ) : getFilteredFiles().length === 0 ? (
+              ) : getDisplayFiles().length === 0 ? (
                 supportsGlobalSearch() ? (
                   <NoLocalResultsDisplay
                     searchTerm={searchTerm}
@@ -976,13 +1015,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               ) : (
                 <div ref={fileListRef} className="bg-white dark:bg-gray-800 relative">
                   <VirtualizedFileList
-                    files={getFilteredFiles()}
+                    files={getDisplayFiles()}
                     onFileClick={handleItemClick}
-                    showHidden={showHidden}
-                    sortField={sortField}
-                    sortDirection={sortDirection}
                     height={containerHeight - tableHeaderHeight} // 恢复原来的高度
-                    searchTerm={searchTerm}
                     onScrollToBottom={handleScrollToBottom}
                   />
                   {/* Loading more indicator - 绝对定位覆盖层 */}

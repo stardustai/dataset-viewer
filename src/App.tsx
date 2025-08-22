@@ -35,6 +35,7 @@ function App() {
   const [hasAssociatedFiles, setHasAssociatedFiles] = useState(false);
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
   const [isReturningFromViewer, setIsReturningFromViewer] = useState(false);
+  const [isFileAssociationMode, setIsFileAssociationMode] = useState(false);
 
   // 监听状态变化，立即移除loading以避免空白闪烁
   useEffect(() => {
@@ -58,6 +59,8 @@ function App() {
 
             if (result.success && result.file) {
               const currentStorageClient = StorageServiceManager.getCurrentClient();
+              // 标记当前是文件关联模式
+              setIsFileAssociationMode(true);
               handleFileSelect(result.file, result.fileName, currentStorageClient);
             } else {
               setAppState('connecting');
@@ -83,6 +86,8 @@ function App() {
             // 文件关联连接后，根目录就是文件所在的目录
             // 所以我们需要将FileBrowser的初始路径设置为根目录（空字符串）
             setCurrentDirectory('');
+            // 标记当前是文件关联模式
+            setIsFileAssociationMode(true);
             // 确保应用状态首先设置为浏览状态
             setAppState('browsing');
             // 然后再处理文件选择（这会将状态改为viewing）
@@ -178,6 +183,7 @@ function App() {
     setSelectedFile(null);
     setSelectedFilePath('');
     setCurrentDirectory('');
+    setIsFileAssociationMode(false);
   };
 
   const handleFileSelect = (file: StorageFile, path: string, storageClient?: any, files?: StorageFile[]) => {
@@ -199,14 +205,20 @@ function App() {
     setAppState('viewing');
   };
 
-  const handleBackToBrowser = () => {
+  const handleBackToBrowser = async () => {
     setAppState('browsing');
     setSelectedFile(null);
     setSelectedFilePath('');
     setSelectedStorageClient(null);
-    setIsReturningFromViewer(true);
-    // 重置标志，给 FileBrowser 机会响应
-    setTimeout(() => setIsReturningFromViewer(false), 100);
+
+    // 只有当是文件关联模式时，才需要刷新列表
+    if (isFileAssociationMode) {
+      setIsReturningFromViewer(true);
+      // 重置标志，给 FileBrowser 机会响应
+      setTimeout(() => setIsReturningFromViewer(false), 100);
+      // 返回后清除文件关联模式标记
+      setIsFileAssociationMode(false);
+    }
   };
 
   const handleDirectoryChange = (path: string) => {

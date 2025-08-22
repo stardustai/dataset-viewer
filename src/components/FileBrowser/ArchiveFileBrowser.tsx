@@ -265,10 +265,6 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                 <VirtualizedFileList
                   files={filteredAndSortedFiles}
                   onFileClick={handleItemClick}
-                  showHidden={showHidden}
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  searchTerm={searchTerm}
                   height={undefined} // 让组件自适应高度
                 />
               </div>

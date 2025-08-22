@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { StorageFile } from '../../types';
 import { getFileType } from '../../utils/fileTypes';
@@ -9,71 +9,21 @@ import { formatFileSize } from '../../utils/fileUtils';
 interface VirtualizedFileListProps {
   files: StorageFile[];
   onFileClick: (file: StorageFile) => void;
-  showHidden: boolean;
-  sortField: 'name' | 'size' | 'modified';
-  sortDirection: 'asc' | 'desc';
   height?: number;
-  searchTerm?: string;
   onScrollToBottom?: () => void;
 }
 
 export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   files,
   onFileClick,
-  showHidden,
-  sortField,
-  sortDirection,
   height,
-  searchTerm = '',
   onScrollToBottom
 }) => {
   // Use custom hook for responsive behavior
   const isMobile = useIsMobile();
 
-  // 过滤和排序文件
-  const processedFiles = useMemo(() => {
-    // 首先过滤掉空文件名和无效条目
-    let filteredFiles = files.filter(file =>
-      file.basename && file.basename.trim() !== ''
-    );
-
-    // 过滤隐藏文件
-    filteredFiles = showHidden
-      ? filteredFiles
-      : filteredFiles.filter(file => !file.basename.startsWith('.'));
-
-    // 根据搜索词过滤文件名
-    if (searchTerm.trim()) {
-      filteredFiles = filteredFiles.filter(file =>
-        file.basename.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // 排序
-    const sortedFiles = [...filteredFiles].sort((a, b) => {
-      // 目录总是排在文件前面
-      if (a.type === 'directory' && b.type !== 'directory') return -1;
-      if (a.type !== 'directory' && b.type === 'directory') return 1;
-
-      let compareValue = 0;
-
-      switch (sortField) {
-        case 'name':
-          compareValue = a.basename.toLowerCase().localeCompare(b.basename.toLowerCase());
-          break;
-        case 'size':
-          compareValue = (a.size || 0) - (b.size || 0);
-          break;
-        case 'modified':
-          compareValue = new Date(a.lastmod).getTime() - new Date(b.lastmod).getTime();
-          break;
-      }
-
-      return sortDirection === 'asc' ? compareValue : -compareValue;
-    });
-
-    return sortedFiles;
-  }, [files, showHidden, sortField, sortDirection, searchTerm]);
+  // 直接使用传入的文件列表，不进行过滤和排序（由调用方处理）
+  const processedFiles = files;
 
   // 创建虚拟化容器引用
   const parentRef = React.useRef<HTMLDivElement>(null);
