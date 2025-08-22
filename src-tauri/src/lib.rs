@@ -7,7 +7,7 @@ use archive::{handlers::ArchiveHandler, types::*};
 use storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions};
 use download::{DownloadManager, DownloadRequest};
 use std::sync::{Arc, LazyLock};
-use tauri::{Emitter, Listener};
+use tauri::{Emitter, Listener, Manager};
 
 // 全局下载管理器
 static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
