@@ -256,6 +256,7 @@ async fn get_archive_preview_with_client(
     filename: String,
     entry_path: String,
     max_preview_size: Option<usize>,
+    offset: Option<u64>,
 ) -> Result<FilePreview, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
@@ -277,6 +278,7 @@ async fn get_archive_preview_with_client(
         filename,
         entry_path,
         max_preview_size,
+        offset,
         None::<fn(u64, u64)>, // 不使用进度回调
         None, // 不使用取消信号
     ).await
@@ -556,7 +558,8 @@ async fn get_file_preview(
     _headers: std::collections::HashMap<String, String>,
     filename: String,
     entry_path: String,
-    max_preview_size: Option<usize>
+    max_preview_size: Option<usize>,
+    offset: Option<u64>
 ) -> Result<FilePreview, String> {
     // 统一使用StorageClient接口进行流式预览
     let manager_arc = get_storage_manager().await;
@@ -573,6 +576,7 @@ async fn get_file_preview(
             filename,
             entry_path,
             max_preview_size,
+            offset, // 使用传入的 offset 参数
             None::<fn(u64, u64)>, // 不使用进度回调
             None, // 不使用取消信号
         ).await
@@ -766,6 +770,36 @@ async fn register_file_associations() -> Result<String, String> {
      }
 }
 
+/// 设置应用窗口主题
+/// 同步前端主题设置到系统窗口外观
+/// 参数 theme: "dark" | "light" | "system"
+#[tauri::command]
+async fn set_window_theme(app: tauri::AppHandle, theme: String) -> Result<String, String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let tauri_theme = match theme.as_str() {
+            "dark" => Some(tauri::Theme::Dark),
+            "light" => Some(tauri::Theme::Light),
+            "system" => None, // None 表示使用系统默认主题
+            _ => return Err(format!("Unknown theme: {}", theme)),
+        };
+
+        match window.set_theme(tauri_theme) {
+            Ok(_) => {
+                let theme_description = match theme.as_str() {
+                    "dark" => "Dark",
+                    "light" => "Light",
+                    "system" => "System default",
+                    _ => "Unknown"
+                };
+                Ok(format!("Window theme set to {}", theme_description))
+            },
+            Err(e) => Err(format!("Failed to set window theme: {}", e)),
+        }
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -814,7 +848,9 @@ pub fn run() {
             // 文件关联注册命令
             register_file_associations,
             // 多窗口支持命令
-            create_file_viewer_window
+            create_file_viewer_window,
+            // 窗口主题设置命令
+            set_window_theme
         ])
         .setup(|app| {
             // 监听前端就绪事件

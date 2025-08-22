@@ -49,6 +49,7 @@ impl CompressionHandlerDispatcher for SevenZipHandler {
         _file_path: &str,
         _entry_path: &str,
         _max_size: usize,
+        _offset: Option<u64>,
         _progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         _cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
@@ -203,7 +204,7 @@ impl SevenZipHandler {
                     .content(content)
                     .with_truncated(preview_size < total_size as usize)
                     .total_size(total_size)
-    
+
                     .build());
             }
         }

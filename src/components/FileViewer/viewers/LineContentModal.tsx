@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Braces } from 'lucide-react';
+import { Copy, Braces, X } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { ImageRenderer } from './ImageRenderer';
@@ -102,8 +102,14 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
   const isJSONContent = !imageInfo.isImage && content.trim().match(/^[\[\{].*[\]\}]$/s);
   const isXMLContent = !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
 
-  // JSON和XML默认开启格式化
-  const [isFormatted, setIsFormatted] = useState<boolean>(Boolean(isJSONContent || isXMLContent));
+  const shouldDefaultFormat = Boolean(isJSONContent || isXMLContent);
+  const [manualFormatState, setManualFormatState] = useState<boolean | null>(null);
+  const isFormatted = manualFormatState !== null ? manualFormatState : shouldDefaultFormat;
+
+  // 当内容改变时，重置手动格式化状态，让新内容使用默认格式化
+  useEffect(() => {
+    setManualFormatState(null);
+  }, [content]);
 
   // 确定显示内容
   const displayContent = (() => {
@@ -132,7 +138,7 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
   })();
 
   const toggleFormatView = () => {
-    setIsFormatted(!isFormatted);
+    setManualFormatState(!isFormatted);
   };
 
   useEffect(() => {
@@ -201,9 +207,10 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
 
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+              title={t('close')}
             >
-              ×
+              <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
           </div>
         </div>

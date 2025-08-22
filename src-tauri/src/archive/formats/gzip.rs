@@ -28,10 +28,11 @@ impl CompressionHandlerDispatcher for GzipHandler {
         file_path: &str,
         _entry_path: &str,
         max_size: usize,
+        offset: Option<u64>,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_gzip_preview_streaming(client, file_path, max_size, progress_callback, cancel_rx).await
+        Self::extract_gzip_preview_streaming(client, file_path, max_size, offset, progress_callback, cancel_rx).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -130,6 +131,7 @@ impl GzipHandler {
         client: Arc<dyn StorageClient>,
         file_path: &str,
         max_size: usize,
+        _offset: Option<u64>, // GZIP 格式不支持偏移量
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
@@ -149,7 +151,7 @@ impl GzipHandler {
                 cb(current, total);
             }) as ProgressCallback
         });
-        
+
         let compressed_data = client.read_file_range_with_progress(file_path, 0, read_size, progress_cb, cancel_rx).await
             .map_err(|e| format!("Failed to read GZIP data: {}", e))?;
 
@@ -159,17 +161,17 @@ impl GzipHandler {
 
         // 流式解压缩预览数据
         let preview_data = Self::decompress_sample(&compressed_data, max_size)?;
-        
+
         // 基于样本数据估算总文件大小
         let compression_ratio = if preview_data.len() > 0 {
             compressed_data.len() as f64 / preview_data.len() as f64
         } else {
             3.0 // 默认压缩比
         };
-        
+
         // 估算完整解压后的文件大小
         let estimated_total_size = (file_size as f64 / compression_ratio) as u64;
-        
+
         // 判断是否被截断
         let is_truncated = preview_data.len() >= max_size || estimated_total_size > preview_data.len() as u64;
 

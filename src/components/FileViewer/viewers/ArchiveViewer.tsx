@@ -85,7 +85,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
   // 文件加载状态管理
   const [fileLoadState, setFileLoadState] = useState({
-    isLargeFile: false,
     totalSize: 0,
     loadedContentSize: 0,
     loadedChunks: 0,
@@ -197,7 +196,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
       // 重置文件加载状态
       setFileLoadState({
-        isLargeFile: false,
         totalSize: 0,
         loadedContentSize: 0,
         loadedChunks: 0,
@@ -208,17 +206,14 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         manualLoading: false
       });
 
-      const config = configManager.getConfig();
       const fileSize = entry.size || 0;
 
-      // 判断是否为大文件（仅对文本文件启用分块加载）
+      // 判断是否为文本文件
       const isTextFileType = isTextLikeFile(entry.path);
-      const shouldUseChunking = isTextFileType && fileSize > config.streaming.maxInitialLoad;
 
       setFileLoadState(prev => ({
         ...prev,
-        totalSize: fileSize,
-        isLargeFile: shouldUseChunking
+        totalSize: fileSize
       }));
 
       // 对于非文本文件，检查是否需要自动加载
@@ -268,7 +263,10 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       }
 
       // 文本文件的加载逻辑
-      const initialLoadSize = shouldUseChunking ? config.streaming.maxInitialLoad : Math.min(fileSize, 128 * 1024);
+      // 对于较小的文本文件（<10MB），直接加载完整内容
+      // 对于较大的文本文件，采用初始加载策略
+      const shouldLoadCompleteText = fileSize < 10 * 1024 * 1024; // 10MB阈值
+      const initialLoadSize = shouldLoadCompleteText ? fileSize : Math.min(fileSize, 128 * 1024);
 
       let preview: FilePreview;
 
@@ -335,7 +333,8 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
   // 加载更多内容的函数
   const loadMoreContent = useCallback(async (entry: ArchiveEntry) => {
-    if (!fileLoadState.isLargeFile || fileLoadState.loadingMore || !isTextLikeFile(entry.path)) return;
+    if (fileLoadState.loadingMore || !isTextLikeFile(entry.path)) return;
+    if (!filePreview?.is_truncated) return; // 如果文件已完整加载，不需要加载更多
 
     setFileLoadState(prev => ({ ...prev, loadingMore: true }));
     try {
@@ -373,6 +372,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
             const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
             const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(remainingContent);
             setFileContent(prev => prev + additionalText);
+            setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
             setFileLoadState(prev => ({
               ...prev,
               loadedContentSize: fullPreview.content!.length,
@@ -398,6 +398,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
           const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(remainingContent);
           setFileContent(prev => prev + additionalText);
+          setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
           setFileLoadState(prev => ({
             ...prev,
             loadedContentSize: fullPreview.content!.length,
@@ -413,6 +414,17 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       if (additionalPreview.content) {
         const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(additionalPreview.content);
         setFileContent(prev => prev + additionalText);
+
+        // 更新filePreview状态，特别是is_truncated状态
+        setFilePreview(prev => prev ? {
+          ...prev,
+          content: prev.content ?
+            new Uint8Array([...prev.content, ...additionalPreview.content!]) :
+            additionalPreview.content!,
+          is_truncated: additionalPreview.is_truncated,
+          preview_size: (prev.preview_size || 0) + additionalPreview.content!.length
+        } : additionalPreview);
+
         setFileLoadState(prev => ({
           ...prev,
           loadedContentSize: prev.loadedContentSize + additionalPreview.content!.length,
@@ -425,11 +437,12 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     } finally {
       setFileLoadState(prev => ({ ...prev, loadingMore: false }));
     }
-  }, [url, headers, filename, storageClient, fileLoadState.isLargeFile, fileLoadState.loadingMore, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, t]);
+  }, [url, headers, filename, storageClient, fileLoadState.loadingMore, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, filePreview?.is_truncated, t]);
 
   // 滚动到底部时的回调
   const handleScrollToBottom = useCallback(async () => {
-    if (!selectedEntry || !fileLoadState.isLargeFile || fileLoadState.loadingMore || fileLoadState.autoLoadTriggered) return;
+    if (!selectedEntry || !filePreview?.is_truncated || fileLoadState.loadingMore || fileLoadState.autoLoadTriggered) return;
+    if (!isTextLikeFile(selectedEntry.path)) return;
 
     const currentEndPosition = fileLoadState.currentFilePosition + fileLoadState.loadedContentSize;
     if (currentEndPosition >= fileLoadState.totalSize) return;
@@ -440,7 +453,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     setTimeout(() => {
       setFileLoadState(prev => ({ ...prev, autoLoadTriggered: false }));
     }, 1000);
-  }, [selectedEntry, fileLoadState.isLargeFile, fileLoadState.loadingMore, fileLoadState.autoLoadTriggered, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, loadMoreContent]);
+  }, [selectedEntry, filePreview?.is_truncated, fileLoadState.loadingMore, fileLoadState.autoLoadTriggered, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, loadMoreContent]);
 
   // 手动加载完整内容的函数（用于非文本文件）
   const loadFullContent = useCallback(async (entry: ArchiveEntry) => {
@@ -687,19 +700,17 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 									if ((isText || forceTextView) && fileContent) {
 										return (
 											<div className="h-full flex flex-col">
-												<VirtualizedTextViewer
+                									<VirtualizedTextViewer
 													content={fileContent}
 													searchTerm=""
 													onSearchResults={() => {}}
 													className="flex-1"
-													onScrollToBottom={fileLoadState.isLargeFile ? handleScrollToBottom : undefined}
+													onScrollToBottom={filePreview?.is_truncated ? handleScrollToBottom : undefined}
 													fileName={selectedEntry.path}
 													isMarkdown={false}
 													isMarkdownPreviewOpen={false}
-													setIsMarkdownPreviewOpen={() => {}}
-
-												/>
-												{fileLoadState.isLargeFile && (
+													setIsMarkdownPreviewOpen={() => {}}												/>
+												{filePreview?.is_truncated && (
 													<div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
 														<div className="flex items-center justify-between">
 															<span>
@@ -711,7 +722,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 																	<span>{t('loading.more.content')}</span>
 																</div>
 															)}
-															{!fileLoadState.loadingMore && fileLoadState.loadedContentSize < fileLoadState.totalSize && (
+															{!fileLoadState.loadingMore && filePreview?.is_truncated && (
 																<span className="text-blue-600 dark:text-blue-400">
 																	{t('scroll.to.load.more')}
 																</span>

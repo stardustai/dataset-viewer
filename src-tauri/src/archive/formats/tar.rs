@@ -26,10 +26,11 @@ impl CompressionHandlerDispatcher for TarHandler {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        offset: Option<u64>,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_tar_preview_with_progress(client, file_path, entry_path, max_size, progress_callback, cancel_rx).await
+        Self::extract_tar_preview_with_progress(client, file_path, entry_path, max_size, offset, progress_callback, cancel_rx).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -86,6 +87,7 @@ impl TarHandler {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        offset: Option<u64>,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
@@ -142,15 +144,29 @@ impl TarHandler {
 
                     // 找到了目标文件，分块读取其内容
                     let file_offset = current_offset + BLOCK_SIZE;
-                    let preview_size = max_size.min(entry_info.size as usize);
+
+                    // 计算实际的读取偏移量和大小
+                    let read_offset = offset.unwrap_or(0);
+                    if read_offset >= entry_info.size {
+                        // 偏移量超出文件大小，返回空内容
+                        return Ok(PreviewBuilder::new()
+                            .content(Vec::new())
+                            .total_size(entry_info.size)
+                            .with_truncated(false)
+                            .build());
+                    }
+
+                    let remaining_size = entry_info.size - read_offset;
+                    let preview_size = (max_size as u64).min(remaining_size) as usize;
+                    let actual_file_offset = file_offset + read_offset;
 
                     let content_data = if let Some(ref callback) = progress_callback {
                         // 分块读取以显示进度
                         let chunk_size = 64 * 1024; // 64KB chunks
                         let mut all_data = Vec::with_capacity(preview_size);
-                        let mut read_offset = 0u64;
-                        
-                        while read_offset < preview_size as u64 {
+                        let mut read_offset_in_chunk = 0u64;
+
+                        while read_offset_in_chunk < preview_size as u64 {
                             // 检查取消信号
                              if let Some(ref mut cancel_rx) = cancel_rx {
                                  if let Ok(_) = cancel_rx.try_recv() {
@@ -158,33 +174,35 @@ impl TarHandler {
                                  }
                              }
 
-                            let current_chunk_size = std::cmp::min(chunk_size, preview_size as u64 - read_offset);
-                            let chunk = client.read_file_range(file_path, file_offset + read_offset, current_chunk_size)
+                            let current_chunk_size = std::cmp::min(chunk_size, preview_size as u64 - read_offset_in_chunk);
+                            let chunk = client.read_file_range(file_path, actual_file_offset + read_offset_in_chunk, current_chunk_size)
                                 .await
                                 .map_err(|e| format!("Failed to read file content chunk: {}", e))?;
-                            
+
                             all_data.extend_from_slice(&chunk);
-                            read_offset += chunk.len() as u64;
-                            
+                            read_offset_in_chunk += chunk.len() as u64;
+
                             // 更新进度（基于文件内容读取）
-                            let total_progress = current_offset + BLOCK_SIZE + read_offset;
+                            let total_progress = current_offset + BLOCK_SIZE + read_offset + read_offset_in_chunk;
                             callback(total_progress, file_size);
                         }
-                        
+
                         all_data
                     } else {
                         // 直接读取全部内容
-                        client.read_file_range(file_path, file_offset, preview_size as u64).await
+                        client.read_file_range(file_path, actual_file_offset, preview_size as u64).await
                             .map_err(|e| format!("Failed to read file content: {}", e))?
                     };
 
                     let _mime_type = detect_mime_type(&content_data);
 
                     let data_len = content_data.len();
+                    let is_truncated = data_len >= max_size || (read_offset + data_len as u64) < entry_info.size;
+
                     return Ok(PreviewBuilder::new()
                         .content(content_data)
                         .total_size(entry_info.size)
-                        .with_truncated(data_len >= max_size || (data_len as u64) < entry_info.size)
+                        .with_truncated(is_truncated)
                         .build());
                 }
 
