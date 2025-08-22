@@ -29,10 +29,11 @@ impl CompressionHandlerDispatcher for TarGzHandler {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        offset: Option<u64>,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_tar_gz_preview_with_progress(client, file_path, entry_path, max_size, progress_callback, cancel_rx).await
+        Self::extract_tar_gz_preview_with_progress(client, file_path, entry_path, max_size, offset, progress_callback, cancel_rx).await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -99,6 +100,7 @@ impl TarGzHandler {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        _offset: Option<u64>, // TAR.GZ 格式不支持偏移量
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
@@ -124,7 +126,7 @@ impl TarGzHandler {
                 cb(current, total);
             }) as ProgressCallback
         });
-        
+
         let data = client.read_full_file_with_progress(file_path, progress_cb, cancel_rx).await
             .map_err(|e| format!("Failed to read file: {}", e))?;
 
@@ -203,21 +205,21 @@ impl TarGzHandler {
                     let path = entry.path().map_err(|e| e.to_string())?;
                     if path.to_string_lossy() == entry_path {
                         let total_size = entry.header().size().map_err(|e| e.to_string())?;
-                        
+
                         // 读取完整文件内容，然后截取预览部分（参考ZIP格式的处理方式）
                         let mut full_content = Vec::new();
                         entry.read_to_end(&mut full_content).map_err(|e| e.to_string())?;
-                        
+
                         // 保存完整内容长度
                         let full_content_len = full_content.len();
-                        
+
                         // 截取预览数据
                         let preview_data = if full_content_len > max_size {
                             full_content[..max_size].to_vec()
                         } else {
                             full_content
                         };
-                        
+
                         let is_truncated = preview_data.len() < full_content_len;
 
                         return Ok(PreviewBuilder::new()

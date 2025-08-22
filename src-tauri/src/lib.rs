@@ -214,6 +214,7 @@ async fn get_archive_preview_with_client(
     filename: String,
     entry_path: String,
     max_preview_size: Option<usize>,
+    offset: Option<u64>,
 ) -> Result<FilePreview, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
@@ -235,6 +236,7 @@ async fn get_archive_preview_with_client(
         filename,
         entry_path,
         max_preview_size,
+        offset,
         None::<fn(u64, u64)>, // 不使用进度回调
         None, // 不使用取消信号
     ).await
@@ -514,7 +516,8 @@ async fn get_file_preview(
     _headers: std::collections::HashMap<String, String>,
     filename: String,
     entry_path: String,
-    max_preview_size: Option<usize>
+    max_preview_size: Option<usize>,
+    offset: Option<u64>
 ) -> Result<FilePreview, String> {
     // 统一使用StorageClient接口进行流式预览
     let manager_arc = get_storage_manager().await;
@@ -531,6 +534,7 @@ async fn get_file_preview(
             filename,
             entry_path,
             max_preview_size,
+            offset, // 使用传入的 offset 参数
             None::<fn(u64, u64)>, // 不使用进度回调
             None, // 不使用取消信号
         ).await

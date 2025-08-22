@@ -64,6 +64,7 @@ impl ArchiveHandler {
         filename: String,
         entry_path: String,
         max_preview_size: Option<usize>,
+        offset: Option<u64>,
         progress_callback: Option<F>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String>
@@ -110,7 +111,7 @@ impl ArchiveHandler {
             let boxed: Box<dyn Fn(u64, u64) + Send + Sync> = Box::new(callback);
             boxed
         });
-        handler.extract_preview_with_client(client, &file_path, &entry_path, max_size, boxed_callback, cancel_rx).await
+        handler.extract_preview_with_client(client, &file_path, &entry_path, max_size, offset, boxed_callback, cancel_rx).await
     }
 
 

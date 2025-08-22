@@ -31,6 +31,7 @@ pub trait CompressionHandlerDispatcher: Send + Sync {
         file_path: &str,
         entry_path: &str,
         max_size: usize,
+        offset: Option<u64>,
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String>;

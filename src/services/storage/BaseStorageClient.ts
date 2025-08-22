@@ -162,12 +162,19 @@ export abstract class BaseStorageClient implements StorageClient {
     path: string,
     filename: string,
     entryPath: string,
-    maxPreviewSize?: number
+    maxPreviewSize?: number,
+    offset?: number  // 添加偏移量参数，但目前后端不支持
   ): Promise<FilePreview> {
     try {
       // 所有存储类型都使用统一的StorageClient流式接口
       console.log(`${this.protocol}存储使用统一流式预览:`, { path, filename, entryPath });
-      return await this.getArchiveFilePreviewWithClient(path, filename, entryPath, maxPreviewSize);
+
+      // 注意：当前后端不支持偏移量，如果传递了offset参数，应该抛出错误让调用者回退到完整加载
+      if (offset !== undefined && offset > 0) {
+        throw new Error('Archive file offset loading not supported');
+      }
+
+      return await this.getArchiveFilePreviewWithClient(path, filename, entryPath, maxPreviewSize, offset);
     } catch (error) {
       console.error('Failed to get archive file preview:', error);
       throw error;
@@ -200,7 +207,8 @@ export abstract class BaseStorageClient implements StorageClient {
     path: string,
     filename: string,
     entryPath: string,
-    maxPreviewSize?: number
+    maxPreviewSize?: number,
+    offset?: number
   ): Promise<FilePreview> {
     // 通过Tauri命令调用后端的存储客户端接口
     const result = await this.invokeWithTimeout('get_archive_preview_with_client', {
@@ -208,7 +216,8 @@ export abstract class BaseStorageClient implements StorageClient {
       filePath: path,
       filename,
       entryPath,
-      maxPreviewSize
+      maxPreviewSize,
+      offset
     }, DEFAULT_TIMEOUTS.default) as FilePreview;
 
     // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据

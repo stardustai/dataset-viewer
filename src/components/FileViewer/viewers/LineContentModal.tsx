@@ -102,8 +102,14 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
   const isJSONContent = !imageInfo.isImage && content.trim().match(/^[\[\{].*[\]\}]$/s);
   const isXMLContent = !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
 
-  // JSON和XML默认开启格式化
-  const [isFormatted, setIsFormatted] = useState<boolean>(Boolean(isJSONContent || isXMLContent));
+  const shouldDefaultFormat = Boolean(isJSONContent || isXMLContent);
+  const [manualFormatState, setManualFormatState] = useState<boolean | null>(null);
+  const isFormatted = manualFormatState !== null ? manualFormatState : shouldDefaultFormat;
+
+  // 当内容改变时，重置手动格式化状态，让新内容使用默认格式化
+  useEffect(() => {
+    setManualFormatState(null);
+  }, [content]);
 
   // 确定显示内容
   const displayContent = (() => {
@@ -132,7 +138,7 @@ export const LineContentModal: React.FC<LineContentModalProps> = ({
   })();
 
   const toggleFormatView = () => {
-    setIsFormatted(!isFormatted);
+    setManualFormatState(!isFormatted);
   };
 
   useEffect(() => {

@@ -542,6 +542,7 @@ impl DownloadManager {
             archive_filename.to_string(),
             entry_path.to_string(),
             Some(4 * 1024 * 1024 * 1024), // 4GB 限制
+            None, // 不使用 offset
             Some(progress_callback), // 使用进度回调显示提取进度
             Some(cancel_rx), // 传递取消信号
         ).await.map_err(|e| {
