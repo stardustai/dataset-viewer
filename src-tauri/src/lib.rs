@@ -728,6 +728,36 @@ async fn register_file_associations() -> Result<String, String> {
      }
 }
 
+/// 设置应用窗口主题
+/// 同步前端主题设置到系统窗口外观
+/// 参数 theme: "dark" | "light" | "system"
+#[tauri::command]
+async fn set_window_theme(app: tauri::AppHandle, theme: String) -> Result<String, String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let tauri_theme = match theme.as_str() {
+            "dark" => Some(tauri::Theme::Dark),
+            "light" => Some(tauri::Theme::Light),
+            "system" => None, // None 表示使用系统默认主题
+            _ => return Err(format!("Unknown theme: {}", theme)),
+        };
+
+        match window.set_theme(tauri_theme) {
+            Ok(_) => {
+                let theme_description = match theme.as_str() {
+                    "dark" => "Dark",
+                    "light" => "Light",
+                    "system" => "System default",
+                    _ => "Unknown"
+                };
+                Ok(format!("Window theme set to {}", theme_description))
+            },
+            Err(e) => Err(format!("Failed to set window theme: {}", e)),
+        }
+    } else {
+        Err("Main window not found".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -784,7 +814,9 @@ pub fn run() {
             analyze_archive_with_client,
             get_archive_preview_with_client,
             // 文件关联注册命令
-            register_file_associations
+            register_file_associations,
+            // 窗口主题设置命令
+            set_window_theme
         ])
         .setup(|app| {
             // 监听前端就绪事件
