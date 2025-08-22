@@ -17,6 +17,7 @@ interface FileViewerHeaderProps {
   filePath: string;
   fileType: string;
   onBack: () => void;
+  hideBackButton?: boolean; // 新增属性，用于隐藏返回按钮
   fileInfo: {
     fileType: string;
     isText: boolean;
@@ -44,6 +45,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
   filePath,
   fileType,
   onBack,
+  hideBackButton = false,
   fileInfo,
   isLargeFile = false,
   dataMetadata,
@@ -134,13 +136,15 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2 lg:space-x-4 min-w-0 flex-1">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
-            title={t('viewer.go.back')}
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          </button>
+          {!hideBackButton && (
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+              title={t('viewer.go.back')}
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
 
           <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
             <FileIcon fileType={fileType as any} size="lg" />

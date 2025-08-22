@@ -31,13 +31,15 @@ interface FileBrowserProps {
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
+  shouldRefresh?: boolean; // 新增：用于通知组件需要重新检查连接状态
 }
 
 export const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileSelect,
   onDisconnect,
   initialPath = '',
-  onDirectoryChange
+  onDirectoryChange,
+  shouldRefresh = false
 }) => {
   const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState(initialPath);
@@ -148,13 +150,25 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   };
 
   const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
+    console.log(`loadDirectory called: path="${path}", isManual=${isManual}, forceReload=${forceReload}, currentPath="${currentPath}", loading=${loading}`);
+
     // 防止重复请求
-    if (loadingRequest === path) {
+    if (loadingRequest === path && !forceReload) {
+      console.log('Skipping duplicate request for path:', path);
+      return;
+    }
+
+    // 检查存储是否已连接，如果未连接则返回错误但不设置loading状态
+    if (!StorageServiceManager.isConnected()) {
+      console.warn('Storage not connected, cannot load directory:', path);
+      setError('Storage connection not ready');
+      // 不在这里设置setLoading(false)，让重试机制处理
       return;
     }
 
     // 如果不是强制重新加载且路径相同，则直接返回
     if (!forceReload && !isManual && currentPath === path && files.length > 0) {
+      console.log('Skipping reload for same path with existing files:', path);
       return;
     }
 
@@ -286,6 +300,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       }, 50);
 
     } catch (err) {
+      console.error('Directory loading failed for path:', path, err);
       setError('Failed to load directory contents');
       setFailedPath(path); // 记录失败的路径
       // 清除文件列表以避免显示过期数据
@@ -308,9 +323,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           onDirectoryChange?.('');
         }
       }
-      console.error('Directory loading failed:', err);
       console.log('Files array cleared, length:', [].length);
     } finally {
+      console.log('loadDirectory finally block: clearing loading states for path:', path);
       setLoading(false);
       setLoadingRequest(null);
       setIsRefreshing(false); // 重置刷新按钮状态
@@ -478,13 +493,43 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
   };
 
-  // 初始加载 - 修复避免重复加载的逻辑
+  // 初始加载和重试逻辑
   useEffect(() => {
-    // 如果是首次加载（currentPath 为空）或者 initialPath 与当前路径不同时才加载
-    if (!currentPath || initialPath !== currentPath) {
-      loadDirectory(initialPath);
+    let retryTimer: NodeJS.Timeout;
+
+    // 如果存储已连接，直接加载
+    if (StorageServiceManager.isConnected()) {
+      // 如果是首次加载或路径不同时才加载
+      if (!currentPath || initialPath !== currentPath) {
+        loadDirectory(initialPath);
+      }
+    } else if (error && error.includes('Storage connection not ready')) {
+      // 只有当错误是由于存储未连接引起时才重试
+      console.log('Storage not connected, setting up retry...');
+      retryTimer = setTimeout(() => {
+        if (StorageServiceManager.isConnected()) {
+          console.log('Storage connection ready, retrying directory load');
+          setError(''); // 清除错误状态
+          loadDirectory(initialPath || currentPath, false, true);
+        }
+      }, 1000);
     }
-  }, [initialPath]);
+
+    return () => {
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+    };
+  }, [initialPath, error]); // 移除currentPath依赖避免过度触发
+
+  // 响应从文件查看器返回的刷新请求
+  useEffect(() => {
+    if (shouldRefresh && StorageServiceManager.isConnected()) {
+      console.log('Refreshing FileBrowser after returning from viewer');
+      setError(''); // 清除可能存在的错误状态
+      loadDirectory(initialPath || currentPath, false, true);
+    }
+  }, [shouldRefresh]);
 
   // 监听滚动事件，实时保存滚动位置
   useEffect(() => {
@@ -572,14 +617,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
     return () => clearTimeout(timer);
   }, [files.length, loading, error]); // 当这些状态变化时重新计算
-
-  // 当 initialPath 改变时加载
-  useEffect(() => {
-    // 只在 initialPath 与当前路径不同时才加载
-    if (initialPath !== currentPath) {
-      loadDirectory(initialPath);
-    }
-  }, [initialPath, currentPath]);
 
   const navigateUp = () => {
     if (currentPath === '') return; // Already at root

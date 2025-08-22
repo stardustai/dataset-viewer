@@ -138,15 +138,18 @@ export class StorageServiceManager {
       // 直接使用 setCurrentStorage 建立连接
       await this.setCurrentStorage(config);
 
-      // 连接成功后保存连接信息
-      await this.saveConnectionInfo(config);
+      // 只有非临时连接才保存连接信息
+      if (!config.isTemporary) {
+        // 连接成功后保存连接信息
+        await this.saveConnectionInfo(config);
 
-      // 设置为默认连接
-      const connections = this.getStoredConnections();
-      const matchingConnection = this.findMatchingStoredConnection(connections, config);
+        // 设置为默认连接
+        const connections = this.getStoredConnections();
+        const matchingConnection = this.findMatchingStoredConnection(connections, config);
 
-      if (matchingConnection) {
-        this.setDefaultConnection(matchingConnection.id);
+        if (matchingConnection) {
+          this.setDefaultConnection(matchingConnection.id);
+        }
       }
 
       return true;
@@ -637,13 +640,15 @@ export class StorageServiceManager {
    */
   static async connectToLocal(
     rootPath: string,
-    connectionName?: string
+    connectionName?: string,
+    isTemporary?: boolean
   ): Promise<boolean> {
     const config: ConnectionConfig = {
       type: 'local',
       rootPath,
       url: rootPath,
-      name: connectionName || `Local Files(${rootPath})`
+      name: connectionName || `Local Files(${rootPath})`,
+      isTemporary: isTemporary
     };
     return await this.connectWithConfig(config);
   }

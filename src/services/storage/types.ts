@@ -29,6 +29,8 @@ export interface ConnectionConfig {
   // HuggingFace 特定配置
   apiToken?: string; // HF API token for private datasets
   organization?: string; // 组织名称 (可选)
+  // 连接元数据
+  isTemporary?: boolean; // 临时连接，不保存到已保存连接中（如文件关联）
 }
 
 // 统一的分页选项
