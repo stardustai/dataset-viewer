@@ -262,12 +262,12 @@ export async function highlightCodeBlock(
         if (hasClass) {
           return match.replace(
             /class="([^"]*)"/,
-            'class="$1 p-4 !bg-gray-100 !dark:bg-gray-800 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700"'
+            'class="$1 p-4 !bg-gray-100 dark:!bg-gray-800 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700"'
           );
         } else {
           return match.replace(
             '<pre',
-            '<pre class="p-4 !bg-gray-100 !dark:bg-gray-800 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700"'
+            '<pre class="p-4 !bg-gray-100 dark:!bg-gray-800 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700"'
           );
         }
       }
