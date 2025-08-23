@@ -252,6 +252,7 @@ export const fileViewer = {
   'pcd.colorMode.uniform': 'Uniform Color',
   'pcd.uniformColor': 'Color',
   'pcd.showAxes': 'Show Axes',
+  'pcd.enableLOD': 'Enable LOD Optimization',
   'pcd.rotationSpeed': 'Rotation Speed',
   'pcd.mouseHint': 'Drag to rotate, scroll to zoom',
   'pcd.performanceWarning': 'Performance Warning',

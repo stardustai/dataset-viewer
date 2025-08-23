@@ -259,14 +259,17 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
     };
   }, []);
 
-  // 加载PCD文件
+  // 加载PCD文件（优化版，支持大文件分块加载）
   const loadPCDFile = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // 首先获取文件的一小部分来解析头部
-      const headerContent = await StorageServiceManager.getFileContent(filePath, 0, 4096);
+      // 获取文件大小
+      const fileSize = await StorageServiceManager.getFileSize(filePath);
+      
+      // 首先获取文件的一小部分来解析头部（增大到8KB以确保包含完整头部）
+      const headerContent = await StorageServiceManager.getFileContent(filePath, 0, Math.min(8192, fileSize));
       const pcdHeader = parsePCDHeader(headerContent.content);
 
       // 如果是二进制格式，暂时不支持
@@ -274,9 +277,64 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
         throw new Error(t('pcd.error.binaryNotSupported', '当前暂不支持二进制格式的PCD文件'));
       }
 
-      // 加载完整文件内容（对于大文件应该实现分块加载）
-      const fullContent = await StorageServiceManager.getFileContent(filePath);
-      const points = parseASCIIData(fullContent.content, pcdHeader);
+      let points: PCDPoint[];
+
+      // 对于大文件（>10MB），使用分块加载策略
+      if (fileSize > 10 * 1024 * 1024) {
+        // 大文件：实现智能采样，只加载部分数据以保证性能
+        const maxSampleSize = 1024 * 1024; // 每次最多读取1MB
+        let currentPosition = headerContent.content.indexOf('DATA ascii\n') + 11;
+        let sampledPoints: PCDPoint[] = [];
+        const samplingRate = Math.ceil(pcdHeader.points / settings.maxPointsToRender);
+
+        while (currentPosition < fileSize && sampledPoints.length < settings.maxPointsToRender) {
+          const chunkSize = Math.min(maxSampleSize, fileSize - currentPosition);
+          const chunkContent = await StorageServiceManager.getFileContent(filePath, currentPosition, chunkSize);
+          
+          const chunkLines = chunkContent.content.split('\n');
+          let processedInChunk = 0;
+          
+          for (let i = 0; i < chunkLines.length && sampledPoints.length < settings.maxPointsToRender; i += samplingRate) {
+            const line = chunkLines[i]?.trim();
+            if (!line) continue;
+            
+            const values = line.split(/\s+/).map(Number);
+            if (values.length < pcdHeader.fields.length) continue;
+            
+            const point: PCDPoint = { x: 0, y: 0, z: 0 };
+            pcdHeader.fields.forEach((field, index) => {
+              const value = values[index];
+              if (isNaN(value)) return;
+              
+              switch (field.toLowerCase()) {
+                case 'x': point.x = value; break;
+                case 'y': point.y = value; break;
+                case 'z': point.z = value; break;
+                case 'rgb': point.rgb = value; break;
+                case 'r': point.r = value; break;
+                case 'g': point.g = value; break;
+                case 'b': point.b = value; break;
+                case 'intensity': point.intensity = value; break;
+                default: point[field] = value;
+              }
+            });
+            
+            sampledPoints.push(point);
+            processedInChunk++;
+          }
+
+          currentPosition += chunkSize;
+          
+          // 如果这个块处理的点数很少，可能到了文件末尾
+          if (processedInChunk < 10) break;
+        }
+        
+        points = sampledPoints;
+      } else {
+        // 小文件：加载完整内容
+        const fullContent = await StorageServiceManager.getFileContent(filePath);
+        points = parseASCIIData(fullContent.content, pcdHeader);
+      }
       
       if (points.length === 0) {
         throw new Error(t('pcd.error.noValidPoints', '未找到有效的点云数据'));

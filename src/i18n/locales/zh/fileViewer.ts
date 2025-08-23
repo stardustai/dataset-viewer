@@ -239,6 +239,7 @@ export const fileViewer = {
   'pcd.colorMode.uniform': '单一颜色',
   'pcd.uniformColor': '颜色',
   'pcd.showAxes': '显示坐标轴',
+  'pcd.enableLOD': '启用LOD优化',
   'pcd.rotationSpeed': '旋转速度',
   'pcd.mouseHint': '鼠标拖拽旋转，滚轮缩放',
   'pcd.performanceWarning': '性能提醒',
