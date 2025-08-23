@@ -10,6 +10,7 @@ import { PresentationViewer } from './viewers/PresentationViewer';
 import { MediaViewer } from './viewers/MediaViewer';
 import { UniversalDataTableViewer } from './viewers/UniversalDataTableViewer';
 import { ArchiveViewer } from './viewers/ArchiveViewer';
+import { PCDViewer } from './viewers/PCDViewer';
 import { UnsupportedFormatDisplay } from '../common';
 
 interface VirtualizedTextViewerRef {
@@ -44,6 +45,7 @@ interface FileViewerContentProps {
     isArchive: boolean;
     isData: boolean;
     isSpreadsheet: boolean;
+    isPointCloud: boolean;
     isTextBased: boolean;
     canPreview: () => boolean;
     needsSpecialViewer: () => boolean;
@@ -220,6 +222,16 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         headers={StorageServiceManager.getHeaders()}
         filename={file.basename}
         storageClient={storageClient}
+      />
+    );
+  }
+
+  if (fileInfo.isPointCloud) {
+    return (
+      <PCDViewer
+        filePath={filePath}
+        fileName={file.basename}
+        fileSize={file.size}
       />
     );
   }
