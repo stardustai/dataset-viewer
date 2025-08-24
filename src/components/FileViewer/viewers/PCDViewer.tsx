@@ -225,14 +225,21 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
         setPcdData(pcdPoints);
         setStats(pointStats);
 
-        // 调用元数据回调
+        // 调用元数据回调 - 使用通用格式
         onMetadataLoaded?.({
-          pointCount: pointStats.pointCount,
-          hasColor: pointStats.hasColor,
-          hasIntensity: pointStats.hasIntensity,
-          bounds: pointStats.bounds,
-          center: pointStats.center,
-          scale: pointStats.scale
+          // 通用字段
+          numRows: pointStats.pointCount, // 点数作为行数
+          numColumns: pointStats.hasColor ? (pointStats.hasIntensity ? 7 : 6) : (pointStats.hasIntensity ? 4 : 3), // x,y,z + 可选的r,g,b + 可选的intensity
+          fileType: 'PCD',
+          // 扩展信息 - 任何格式都可以添加自己的扩展字段
+          extensions: {
+            pointCount: pointStats.pointCount,
+            hasColor: pointStats.hasColor,
+            hasIntensity: pointStats.hasIntensity,
+            bounds: pointStats.bounds,
+            center: pointStats.center,
+            scale: pointStats.scale
+          }
         });
 
         // 根据数据特性选择最佳的默认颜色模式

@@ -33,7 +33,12 @@ interface FileViewerHeaderProps {
     needsSpecialViewer: () => boolean;
   };
   isLargeFile?: boolean;
-  dataMetadata?: { numRows: number; numColumns: number } | null;
+  dataMetadata?: {
+    numRows: number;
+    numColumns: number;
+    fileType?: string;
+    extensions?: any; // 扩展字段，允许任何格式添加自己的特定信息
+  } | null;
   presentationMetadata?: { slideCount: number; size: { width: number; height: number } } | null;
   currentFilePosition?: number;
   totalSize?: number;
@@ -164,10 +169,17 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
                 </button>
               </div>
               <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">
-                {formatFileSize(file.size)} • {(fileInfo.isData || fileInfo.isSpreadsheet) && dataMetadata ?
-                  `${dataMetadata.numRows.toLocaleString()} rows • ${dataMetadata.numColumns} columns` :
+                {formatFileSize(file.size)} • {
+                  // 检查是否有扩展字段中的点云信息
+                  dataMetadata && dataMetadata.extensions && 'pointCount' in dataMetadata.extensions ?
+                    `${(dataMetadata.extensions as any).pointCount.toLocaleString()} points • ${(dataMetadata.extensions as any).hasColor ? 'RGB' : 'XYZ'}${(dataMetadata.extensions as any).hasIntensity ? '+I' : ''}` :
+                  // 通用数据文件（表格、CSV等）
+                  (fileInfo.isData || fileInfo.isSpreadsheet) && dataMetadata ?
+                    `${dataMetadata.numRows.toLocaleString()} rows • ${dataMetadata.numColumns} columns` :
+                  // 演示文件
                   fileInfo.isPresentation && presentationMetadata ?
-                  `${presentationMetadata.slideCount} slides • ${presentationMetadata.size.width} × ${presentationMetadata.size.height} pt` :
+                    `${presentationMetadata.slideCount} slides • ${presentationMetadata.size.width} × ${presentationMetadata.size.height} pt` :
+                  // 文本文件
                   fileInfo.isText ? getLanguageFromExtension(getFileExtension(file.basename)) : fileType
                 }
                 {isLargeFile && (
