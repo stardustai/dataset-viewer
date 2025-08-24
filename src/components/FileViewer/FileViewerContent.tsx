@@ -252,8 +252,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         component={PCDViewer}
         props={{
           filePath,
-          fileName: file.basename,
-          fileSize: file.size,
           onMetadataLoaded: setDataMetadata
         }}
         loadingText={t('loading.pointCloud', '正在加载点云渲染器...')}

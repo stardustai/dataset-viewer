@@ -47,8 +47,6 @@ interface RenderSettings {
 
 interface PointCloudViewerProps {
   filePath: string;
-  fileName?: string; // Make optional since not used
-  fileSize?: number; // Make optional since not used
   onMetadataLoaded?: (metadata: any) => void;
 }
 
@@ -98,6 +96,66 @@ const parsePtsFile = (text: string): THREE.BufferGeometry => {
   }
 
   return geometry;
+};
+
+// 计算点的颜色值
+const calculatePointColor = (
+  point: PCDPoint,
+  colorMode: string,
+  uniformColor: string,
+  stats: PCDStats
+): { r: number; g: number; b: number } => {
+  let r = 1, g = 1, b = 1;
+
+  switch (colorMode) {
+    case 'rgb':
+      if (point.rgb !== undefined) {
+        // 解析RGB值（通常是一个32位整数）
+        const rgb = Math.floor(point.rgb);
+        r = ((rgb >> 16) & 0xff) / 255;
+        g = ((rgb >> 8) & 0xff) / 255;
+        b = (rgb & 0xff) / 255;
+      } else if (point.r !== undefined && point.g !== undefined && point.b !== undefined) {
+        r = point.r / 255;
+        g = point.g / 255;
+        b = point.b / 255;
+      }
+      break;
+
+    case 'intensity':
+      if (point.intensity !== undefined) {
+        const intensity = Math.max(0, Math.min(1, point.intensity / 255));
+        r = g = b = intensity;
+      }
+      break;
+
+    case 'height':
+      const normalizedHeight = (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
+      // 使用更自然的渐变色：蓝色(低) -> 绿色(中) -> 红色(高)
+      if (normalizedHeight < 0.5) {
+        // 从蓝色到绿色
+        const t = normalizedHeight * 2;
+        r = t * 0.2;
+        g = 0.4 + t * 0.6;
+        b = 1.0 - t * 0.8;
+      } else {
+        // 从绿色到红色
+        const t = (normalizedHeight - 0.5) * 2;
+        r = 0.2 + t * 0.8;
+        g = 1.0 - t * 0.4;
+        b = 0.2 - t * 0.2;
+      }
+      break;
+
+    case 'uniform':
+      const color = new THREE.Color(uniformColor);
+      r = color.r;
+      g = color.g;
+      b = color.b;
+      break;
+  }
+
+  return { r, g, b };
 };
 
 // 从THREE.Points中提取点云统计信息
@@ -173,7 +231,7 @@ const extractPointCloudStats = (points: THREE.Points): PCDStats => {
   };
 };
 
-export const PCDViewer: React.FC<PointCloudViewerProps> = ({
+export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
   filePath,
   onMetadataLoaded
 }) => {
@@ -450,57 +508,8 @@ export const PCDViewer: React.FC<PointCloudViewerProps> = ({
       positions[index * 3 + 1] = point.y;
       positions[index * 3 + 2] = point.z;
 
-      // 颜色
-      let r = 1, g = 1, b = 1;
-
-      switch (settings.colorMode) {
-        case 'rgb':
-          if (point.rgb !== undefined) {
-            // 解析RGB值（通常是一个32位整数）
-            const rgb = Math.floor(point.rgb);
-            r = ((rgb >> 16) & 0xff) / 255;
-            g = ((rgb >> 8) & 0xff) / 255;
-            b = (rgb & 0xff) / 255;
-          } else if (point.r !== undefined && point.g !== undefined && point.b !== undefined) {
-            r = point.r / 255;
-            g = point.g / 255;
-            b = point.b / 255;
-          }
-          break;
-
-        case 'intensity':
-          if (point.intensity !== undefined) {
-            const intensity = Math.max(0, Math.min(1, point.intensity / 255));
-            r = g = b = intensity;
-          }
-          break;
-
-        case 'height':
-          const normalizedHeight = (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
-          // 使用更自然的渐变色：蓝色(低) -> 绿色(中) -> 红色(高)
-          if (normalizedHeight < 0.5) {
-            // 从蓝色到绿色
-            const t = normalizedHeight * 2;
-            r = t * 0.2;
-            g = 0.4 + t * 0.6;
-            b = 1.0 - t * 0.8;
-          } else {
-            // 从绿色到红色
-            const t = (normalizedHeight - 0.5) * 2;
-            r = 0.2 + t * 0.8;
-            g = 1.0 - t * 0.4;
-            b = 0.2 - t * 0.2;
-          }
-          break;
-
-        case 'uniform':
-          const color = new THREE.Color(settings.uniformColor);
-          r = color.r;
-          g = color.g;
-          b = color.b;
-          break;
-      }
-
+      // 颜色 - 使用统一的颜色计算函数
+      const { r, g, b } = calculatePointColor(point, settings.colorMode, settings.uniformColor, stats);
       colors[index * 3] = r;
       colors[index * 3 + 1] = g;
       colors[index * 3 + 2] = b;
@@ -576,55 +585,8 @@ export const PCDViewer: React.FC<PointCloudViewerProps> = ({
     const colors = geometry.attributes.color;
 
     pcdData.forEach((point, index) => {
-      let r = 1, g = 1, b = 1;
-
-      switch (settings.colorMode) {
-        case 'rgb':
-          if (point.rgb !== undefined) {
-            const rgb = Math.floor(point.rgb);
-            r = ((rgb >> 16) & 0xff) / 255;
-            g = ((rgb >> 8) & 0xff) / 255;
-            b = (rgb & 0xff) / 255;
-          } else if (point.r !== undefined && point.g !== undefined && point.b !== undefined) {
-            r = point.r / 255;
-            g = point.g / 255;
-            b = point.b / 255;
-          }
-          break;
-
-        case 'intensity':
-          if (point.intensity !== undefined) {
-            const intensity = Math.max(0, Math.min(1, point.intensity / 255));
-            r = g = b = intensity;
-          }
-          break;
-
-        case 'height':
-          const normalizedHeight = (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
-          // 使用更自然的渐变色：蓝色(低) -> 绿色(中) -> 红色(高)
-          if (normalizedHeight < 0.5) {
-            // 从蓝色到绿色
-            const t = normalizedHeight * 2;
-            r = t * 0.2;
-            g = 0.4 + t * 0.6;
-            b = 1.0 - t * 0.8;
-          } else {
-            // 从绿色到红色
-            const t = (normalizedHeight - 0.5) * 2;
-            r = 0.2 + t * 0.8;
-            g = 1.0 - t * 0.4;
-            b = 0.2 - t * 0.2;
-          }
-          break;
-
-        case 'uniform':
-          const color = new THREE.Color(settings.uniformColor);
-          r = color.r;
-          g = color.g;
-          b = color.b;
-          break;
-      }
-
+      // 使用统一的颜色计算函数
+      const { r, g, b } = calculatePointColor(point, settings.colorMode, settings.uniformColor, stats);
       colors.setXYZ(index, r, g, b);
     });
 
