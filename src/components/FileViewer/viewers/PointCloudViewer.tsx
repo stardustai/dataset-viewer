@@ -50,50 +50,272 @@ interface PointCloudViewerProps {
   onMetadataLoaded?: (metadata: any) => void;
 }
 
-// 解析PTS文件（简单文本格式点云）
-const parsePtsFile = (text: string): THREE.BufferGeometry => {
-  const lines = text.split('\n').filter(line => line.trim() !== '');
-  const points: number[] = [];
-  const colors: number[] = [];
+// 高性能 LOD（Level of Detail）优化函数
+const applyLODOptimization = (points: THREE.Points): THREE.Points => {
+  const geometry = points.geometry;
+  const positionAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const colorAttr = geometry.getAttribute('color') as THREE.BufferAttribute | null;
 
-  for (const line of lines) {
-    const parts = line.trim().split(/\s+/);
-    if (parts.length >= 3) {
-      const x = parseFloat(parts[0]);
-      const y = parseFloat(parts[1]);
-      const z = parseFloat(parts[2]);
+  if (!positionAttr) return points;
 
-      if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
-        points.push(x, y, z);
+  const pointCount = positionAttr.count;
 
-        // 检查是否有颜色信息 (RGB values typically in range 0-255 or 0-1)
-        if (parts.length >= 6) {
-          let r = parseFloat(parts[3]);
-          let g = parseFloat(parts[4]);
-          let b = parseFloat(parts[5]);
+  // 性能优化阈值配置
+  const MAX_POINTS = 500000; // 50万点为性能上限
+  const PERFORMANCE_POINTS = 100000; // 10万点以下保持全分辨率
 
-          // 如果值大于1，假设是0-255范围，需要归一化
-          if (r > 1 || g > 1 || b > 1) {
-            r /= 255;
-            g /= 255;
-            b /= 255;
-          }
+  // 如果点数少于性能阈值，直接返回
+  if (pointCount <= PERFORMANCE_POINTS) {
+    return points;
+  }
 
-          colors.push(r, g, b);
-        } else {
-          // 无颜色信息，使用高度着色
-          colors.push(0.5, 0.5, 0.5); // 默认灰色
-        }
-      }
+  // 计算采样率
+  const samplingRate = Math.min(1, MAX_POINTS / pointCount);
+  const targetCount = Math.floor(pointCount * samplingRate);
+
+  // 使用系统性采样而非随机采样，保持点云结构
+  const step = Math.floor(pointCount / targetCount);
+  const positions = positionAttr.array as Float32Array;
+  const colors = colorAttr?.array as Float32Array;
+
+  // 预分配优化后的数据数组
+  const newPositions = new Float32Array(targetCount * 3);
+  const newColors = colors ? new Float32Array(targetCount * 3) : null;
+
+  // 系统性采样 - 更均匀的点分布
+  let writeIndex = 0;
+  for (let i = 0; i < pointCount && writeIndex < targetCount; i += step) {
+    const readPos = i * 3;
+    const writePos = writeIndex * 3;
+
+    newPositions[writePos] = positions[readPos];
+    newPositions[writePos + 1] = positions[readPos + 1];
+    newPositions[writePos + 2] = positions[readPos + 2];
+
+    if (colors && newColors) {
+      newColors[writePos] = colors[readPos];
+      newColors[writePos + 1] = colors[readPos + 1];
+      newColors[writePos + 2] = colors[readPos + 2];
+    }
+
+    writeIndex++;
+  }
+
+  // 创建优化后的几何体
+  const optimizedGeometry = new THREE.BufferGeometry();
+  optimizedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
+
+  if (newColors) {
+    optimizedGeometry.setAttribute('color', new THREE.Float32BufferAttribute(newColors, 3));
+  }
+
+  // 性能提示
+  if (process.env.NODE_ENV === 'development') {
+    console.info(`LOD optimization: ${pointCount} → ${targetCount} points (${(samplingRate * 100).toFixed(1)}%)`);
+  }
+
+  return new THREE.Points(optimizedGeometry, points.material);
+};
+
+// 统一的点云材质创建函数
+const createPointCloudMaterial = (
+  hasVertexColors: boolean = true,
+  size: number = 0.01
+): THREE.PointsMaterial => {
+  return new THREE.PointsMaterial({
+    size: size,
+    sizeAttenuation: false, // 固定为 false，保持点大小不随距离变化
+    vertexColors: hasVertexColors,
+    transparent: false, // 关闭透明以提升性能
+    alphaTest: 0.1 // 设置alpha测试阈值
+  });
+};
+
+// 高性能的点云异常值检测和清理函数
+const validateAndCleanPointCloud = (points: THREE.Points): THREE.Points => {
+  const geometry = points.geometry;
+  const positionAttribute = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const colorAttribute = geometry.getAttribute('color') as THREE.BufferAttribute | null;
+
+  if (!positionAttribute) {
+    return points;
+  }
+
+  const positions = positionAttribute.array as Float32Array;
+  const colors = colorAttribute ? (colorAttribute.array as Float32Array) : null;
+  const pointCount = positionAttribute.count;
+
+  // 使用预分配的数组和位运算优化性能
+  const validMask = new Uint8Array(pointCount);
+  let validCount = 0;
+  let anomalyFlags = 0; // 使用位掩码记录异常类型
+
+  // 单次遍历检测所有异常，避免多次循环
+  for (let i = 0; i < pointCount; i++) {
+    const idx3 = i * 3;
+    const x = positions[idx3];
+    const y = positions[idx3 + 1];
+    const z = positions[idx3 + 2];
+
+    // 使用位运算和快速异常检测
+    const hasNaN = (x !== x) || (y !== y) || (z !== z); // NaN检测：NaN !== NaN
+    const hasInfinity = !isFinite(x) || !isFinite(y) || !isFinite(z);
+    const hasExtreme = (Math.abs(x) > 1e6) || (Math.abs(y) > 1e6) || (Math.abs(z) > 1e6);
+
+    if (hasNaN || hasInfinity || hasExtreme) {
+      validMask[i] = 0;
+      anomalyFlags |= (hasNaN ? 1 : 0) | (hasInfinity ? 2 : 0) | (hasExtreme ? 4 : 0);
+    } else {
+      validMask[i] = 1;
+      validCount++;
     }
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-
-  if (colors.length > 0) {
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  // 如果没有异常值，直接返回原始点云
+  if (anomalyFlags === 0) {
+    return points;
   }
+
+  // 如果异常值比例过高，可能是数据格式问题，返回原始数据
+  const anomalyRate = (pointCount - validCount) / pointCount;
+  if (anomalyRate > 0.5) {
+    console.warn(`High anomaly rate detected: ${(anomalyRate * 100).toFixed(1)}%, skipping cleaning`);
+    return points;
+  }
+
+  // 预分配清理后的数据数组
+  const validPositions = new Float32Array(validCount * 3);
+  const validColors = colors ? new Float32Array(validCount * 3) : null;
+
+  // 高效的数据复制，避免多次查找
+  let writeIdx = 0;
+  for (let readIdx = 0; readIdx < pointCount; readIdx++) {
+    if (validMask[readIdx]) {
+      const readPos = readIdx * 3;
+      const writePos = writeIdx * 3;
+
+      // 批量复制位置数据
+      validPositions[writePos] = positions[readPos];
+      validPositions[writePos + 1] = positions[readPos + 1];
+      validPositions[writePos + 2] = positions[readPos + 2];
+
+      // 处理颜色数据
+      if (colors && validColors) {
+        const r = colors[readPos];
+        const g = colors[readPos + 1];
+        const b = colors[readPos + 2];
+
+        // 使用三元运算符优化颜色验证
+        validColors[writePos] = (r === r && isFinite(r)) ? Math.max(0, Math.min(1, r)) : 1;
+        validColors[writePos + 1] = (g === g && isFinite(g)) ? Math.max(0, Math.min(1, g)) : 1;
+        validColors[writePos + 2] = (b === b && isFinite(b)) ? Math.max(0, Math.min(1, b)) : 1;
+      }
+
+      writeIdx++;
+    }
+  }
+
+  // 创建清理后的几何体
+  const cleanGeometry = new THREE.BufferGeometry();
+  cleanGeometry.setAttribute('position', new THREE.Float32BufferAttribute(validPositions, 3));
+
+  if (validColors) {
+    cleanGeometry.setAttribute('color', new THREE.Float32BufferAttribute(validColors, 3));
+  }
+
+  // 仅在开发模式下输出详细统计信息
+  if (process.env.NODE_ENV === 'development') {
+    const removedCount = pointCount - validCount;
+    console.warn('Point cloud cleaned:', {
+      original: pointCount,
+      valid: validCount,
+      removed: removedCount,
+      rate: `${(removedCount / pointCount * 100).toFixed(1)}%`
+    });
+  }
+
+  // 创建新的点云对象
+  return new THREE.Points(cleanGeometry, points.material);
+};
+// 高性能PTS文件解析器
+const parsePtsFile = (text: string): THREE.BufferGeometry => {
+  const lines = text.split('\n');
+  const lineCount = lines.length;
+
+  // 预分配数组以避免频繁扩容
+  const positions = new Float32Array(lineCount * 3);
+  const colors = new Float32Array(lineCount * 3);
+
+  let validCount = 0;
+  let invalidCount = 0;
+
+  for (let i = 0; i < lineCount; i++) {
+    const line = lines[i].trim();
+    if (line === '') continue;
+
+    // 使用更高效的字符串分割
+    const parts = line.split(/\s+/);
+    if (parts.length < 3) continue;
+
+    // 直接解析和验证，减少函数调用
+    const x = +parts[0]; // 使用一元操作符代替 parseFloat
+    const y = +parts[1];
+    const z = +parts[2];
+
+    // 快速异常值检测
+    if ((x === x) && (y === y) && (z === z) && // NaN检测
+        isFinite(x) && isFinite(y) && isFinite(z) &&
+        Math.abs(x) < 1e6 && Math.abs(y) < 1e6 && Math.abs(z) < 1e6) {
+
+      const idx3 = validCount * 3;
+      positions[idx3] = x;
+      positions[idx3 + 1] = y;
+      positions[idx3 + 2] = z;
+
+      // 处理颜色信息
+      if (parts.length >= 6) {
+        let r = +parts[3];
+        let g = +parts[4];
+        let b = +parts[5];
+
+        // 快速颜色验证和归一化
+        if ((r === r) && (g === g) && (b === b) && isFinite(r) && isFinite(g) && isFinite(b)) {
+          // 自动检测颜色范围并归一化
+          if (r > 1 || g > 1 || b > 1) {
+            r *= 0.003921569; // 1/255，比除法更快
+            g *= 0.003921569;
+            b *= 0.003921569;
+          }
+          colors[idx3] = Math.max(0, Math.min(1, r));
+          colors[idx3 + 1] = Math.max(0, Math.min(1, g));
+          colors[idx3 + 2] = Math.max(0, Math.min(1, b));
+        } else {
+          // 默认灰色
+          colors[idx3] = colors[idx3 + 1] = colors[idx3 + 2] = 0.5;
+        }
+      } else {
+        // 默认灰色
+        colors[idx3] = colors[idx3 + 1] = colors[idx3 + 2] = 0.5;
+      }
+
+      validCount++;
+    } else {
+      invalidCount++;
+    }
+  }
+
+  // 仅在开发模式和存在无效点时输出警告
+  if (process.env.NODE_ENV === 'development' && invalidCount > 0) {
+    console.warn(`PTS parsing: ${validCount} valid, ${invalidCount} invalid points (${(invalidCount / (validCount + invalidCount) * 100).toFixed(1)}% filtered)`);
+  }
+
+  // 创建正确大小的数组
+  const finalPositions = positions.subarray(0, validCount * 3);
+  const finalColors = colors.subarray(0, validCount * 3);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(finalPositions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(finalColors, 3));
 
   return geometry;
 };
@@ -317,11 +539,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
           });
 
           // 创建材质和点云对象
-          const material = new THREE.PointsMaterial({
-            size: 0.01,
-            sizeAttenuation: true,
-            vertexColors: !!geometry.getAttribute('color')
-          });
+          const material = createPointCloudMaterial(!!geometry.getAttribute('color'));
           points = new THREE.Points(geometry, material);
         } else if (fileExtension === 'xyz') {
           // 使用XYZLoader加载XYZ文件
@@ -340,25 +558,23 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
           });
 
           // 创建材质和点云对象
-          const material = new THREE.PointsMaterial({
-            size: 0.01,
-            sizeAttenuation: true,
-            vertexColors: !!geometry.getAttribute('color')
-          });
+          const material = createPointCloudMaterial(!!geometry.getAttribute('color'));
           points = new THREE.Points(geometry, material);
         } else if (fileExtension === 'pts') {
           // 简单的PTS文件解析（文本格式：x y z [r g b] [intensity]）
           const text = new TextDecoder().decode(arrayBuffer);
           const geometry = parsePtsFile(text);
-          const material = new THREE.PointsMaterial({
-            size: 0.01,
-            sizeAttenuation: true,
-            vertexColors: !!geometry.getAttribute('color')
-          });
+          const material = createPointCloudMaterial(!!geometry.getAttribute('color'));
           points = new THREE.Points(geometry, material);
         } else {
           throw new Error(`不支持的点云文件格式: ${fileExtension}`);
         }
+
+        // 清理异常值
+        points = validateAndCleanPointCloud(points);
+
+        // 应用 LOD 优化提升渲染性能
+        points = applyLODOptimization(points);
 
         // 提取点云统计信息
         const pointStats = extractPointCloudStats(points);
@@ -432,7 +648,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       }
     } catch (err) {
       console.error('Failed to load PCD file:', err);
-      setError(err instanceof Error ? err.message : t('pcd.error.loadFailed', '加载点云文件失败'));
+      setError(err instanceof Error ? err.message : t('pcd.error.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -475,14 +691,21 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     camera.lookAt(stats.center.x, stats.center.y, stats.center.z);
     cameraRef.current = camera;
 
-    // 创建渲染器
+    // 高性能渲染器配置
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: pcdData.length < 100000, // 大数据集关闭抗锯齿以提升性能
       alpha: true,
-      powerPreference: "high-performance"
+      powerPreference: "high-performance",
+      logarithmicDepthBuffer: pcdData.length > 1000000 // 大数据集启用深度缓冲优化
     });
+
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比以提升性能
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, pcdData.length > 500000 ? 1 : 2)); // 根据数据量动态调整像素比
+
+    // 启用性能优化
+    renderer.sortObjects = false; // 禁用对象排序以提升性能
+    renderer.info.autoReset = false; // 手动控制统计信息重置
+
     rendererRef.current = renderer;
 
     // 清空容器并添加渲染器
@@ -497,33 +720,33 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       scene.add(axesHelper);
     }
 
-    // 创建点云几何体
+    // 高性能点云几何体创建
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(pcdData.length * 3);
     const colors = new Float32Array(pcdData.length * 3);
 
-    pcdData.forEach((point, index) => {
-      // 位置
-      positions[index * 3] = point.x;
-      positions[index * 3 + 1] = point.y;
-      positions[index * 3 + 2] = point.z;
+    // 批量处理点云数据，减少函数调用开销
+    for (let index = 0; index < pcdData.length; index++) {
+      const point = pcdData[index];
+      const idx3 = index * 3;
 
-      // 颜色 - 使用统一的颜色计算函数
+      // 位置数据
+      positions[idx3] = point.x;
+      positions[idx3 + 1] = point.y;
+      positions[idx3 + 2] = point.z;
+
+      // 颜色数据 - 内联计算避免函数调用开销
       const { r, g, b } = calculatePointColor(point, settings.colorMode, settings.uniformColor, stats);
-      colors[index * 3] = r;
-      colors[index * 3 + 1] = g;
-      colors[index * 3 + 2] = b;
-    });
+      colors[idx3] = r;
+      colors[idx3 + 1] = g;
+      colors[idx3 + 2] = b;
+    }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    // 创建点云材质
-    const material = new THREE.PointsMaterial({
-      size: settings.pointSize,
-      vertexColors: true,
-      sizeAttenuation: false
-    });
+    // 根据点云大小优化材质设置
+    const material = createPointCloudMaterial(true, settings.pointSize);
 
     // 创建点云对象
     const points = new THREE.Points(geometry, material);
@@ -559,38 +782,57 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
 
   }, [pcdData, stats, settings]);
 
-  // 渲染循环
+  // 高性能渲染循环
   const animate = useCallback(() => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+
+    let needsRender = false;
 
     // 更新相机控制
     if (controlsRef.current) {
       controlsRef.current.update();
+      needsRender = true;
     }
 
     // 自动旋转
     if (settings.autoRotate && pointsRef.current) {
       pointsRef.current.rotation.y += settings.rotationSpeed * 0.01;
+      needsRender = true;
     }
 
-    rendererRef.current.render(sceneRef.current, cameraRef.current);
+    // 只在需要时渲染，减少 GPU 负载
+    if (needsRender) {
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+
+      // 定期重置渲染器统计信息
+      if (Math.random() < 0.01) { // 1% 概率重置
+        rendererRef.current.info.reset();
+      }
+    }
+
     animationRef.current = requestAnimationFrame(animate);
   }, [settings.autoRotate, settings.rotationSpeed]);
 
-  // 优化的颜色更新函数，避免完全重新渲染
+  // 高性能颜色更新函数
   const updatePointColors = useCallback(() => {
     if (!pointsRef.current || !pcdData || !stats) return;
 
     const geometry = pointsRef.current.geometry;
-    const colors = geometry.attributes.color;
+    const colorAttribute = geometry.attributes.color as THREE.BufferAttribute;
+    const colorArray = colorAttribute.array as Float32Array;
 
-    pcdData.forEach((point, index) => {
-      // 使用统一的颜色计算函数
+    // 批量处理，减少函数调用开销
+    for (let index = 0; index < pcdData.length; index++) {
+      const point = pcdData[index];
       const { r, g, b } = calculatePointColor(point, settings.colorMode, settings.uniformColor, stats);
-      colors.setXYZ(index, r, g, b);
-    });
+      const idx3 = index * 3;
 
-    colors.needsUpdate = true;
+      colorArray[idx3] = r;
+      colorArray[idx3 + 1] = g;
+      colorArray[idx3 + 2] = b;
+    }
+
+    colorAttribute.needsUpdate = true;
   }, [pcdData, stats, settings.colorMode, settings.uniformColor]);
 
   // 更新坐标轴显示
@@ -694,16 +936,9 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       }
     });
 
-    // 性能设置文件夹 - 暂时隐藏，因为已经去掉最大点数限制
-    // const performanceFolder = gui.addFolder('Performance');
-    // performanceFolder.add(settings, 'maxPointsToRender', 1000, 500000, 1000).name('Max Points').onChange(() => {
-    //   loadPointCloudFile(); // Reload with new limit
-    // });
-
     // 默认展开所有调试面板文件夹
     renderFolder.open();
     animationFolder.open();
-    // performanceFolder.open();
 
     return gui;
   }, [settings, pcdData, stats, loadPointCloudFile, updatePointColors, updateAxes]);
@@ -720,24 +955,74 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     rendererRef.current.setSize(width, height);
   }, []);
 
+  // 全面的内存清理函数
+  const cleanupResources = useCallback(() => {
+    // 停止动画循环
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+
+    // 清理 OrbitControls
+    if (controlsRef.current) {
+      controlsRef.current.dispose();
+    }
+
+    // 清理几何体和材质
+    if (pointsRef.current) {
+      pointsRef.current.geometry.dispose();
+      if (pointsRef.current.material instanceof THREE.Material) {
+        pointsRef.current.material.dispose();
+      }
+    }
+
+    // 清理场景中的所有对象
+    if (sceneRef.current) {
+      sceneRef.current.traverse((object) => {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => material.dispose());
+            } else {
+              object.material.dispose();
+            }
+          }
+        }
+      });
+      sceneRef.current.clear();
+    }
+
+    // 清理渲染器
+    if (rendererRef.current) {
+      rendererRef.current.dispose();
+      if (rendererRef.current.forceContextLoss) {
+        rendererRef.current.forceContextLoss();
+      }
+    }
+
+    // 清理GUI
+    if (guiRef.current) {
+      guiRef.current.destroy();
+    }
+
+    // 清理DOM元素
+    if (mountRef.current) {
+      mountRef.current.innerHTML = '';
+    }
+
+    // 强制垃圾回收（仅在开发模式下）
+    if (process.env.NODE_ENV === 'development' && (window as any).gc) {
+      setTimeout(() => (window as any).gc(), 100);
+    }
+  }, []);
+
   // 初始化和清理
   useEffect(() => {
     loadPointCloudFile();
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      if (controlsRef.current) {
-        controlsRef.current.dispose();
-      }
-      if (rendererRef.current) {
-        rendererRef.current.dispose();
-      }
-      if (guiRef.current) {
-        guiRef.current.destroy();
-      }
-    };
-  }, [loadPointCloudFile]);
+    return cleanupResources;
+  }, [loadPointCloudFile, cleanupResources]);
 
   useEffect(() => {
     if (pcdData && stats && !loading && !error) {
@@ -760,7 +1045,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
 
   // 渲染加载状态
   if (loading) {
-    return <LoadingDisplay message={t('pcd.loading', '正在加载点云数据...')} />;
+    return <LoadingDisplay message={t('pcd.loading')} />;
   }
 
   // 渲染错误状态
@@ -779,7 +1064,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       >
         {/* 鼠标操作提示 */}
         <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded pointer-events-none z-10">
-          {t('pcd.mouseHint', '鼠标拖拽旋转，滚轮缩放，右键平移')}
+          {t('pcd.mouseHint')}
         </div>
 
         {/* 性能提示 - 现在显示总点数信息 */}

@@ -11,7 +11,7 @@ import {
   MediaViewer,
   UniversalDataTableViewer,
   ArchiveViewer,
-  PCDViewer
+  PointCloudViewer
 } from './viewers';
 import { UnsupportedFormatDisplay } from '../common';
 
@@ -249,7 +249,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
   if (fileInfo.isPointCloud) {
     return (
       <LazyComponentWrapper
-        component={PCDViewer}
+        component={PointCloudViewer}
         props={{
           filePath,
           onMetadataLoaded: setDataMetadata
