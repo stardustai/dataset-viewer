@@ -211,4 +211,11 @@ export const fileViewer = {
   'virtual.viewer': '虚拟查看器',
   'virtual.view': '虚拟查看',
   'simple.view': '简单查看',
+
+  // PCD 点云文件查看器
+  'pcd.loading': '正在加载点云数据...',
+  'pcd.error.loadFailed': '加载PCD文件失败',
+  'pcd.mouseHint': '鼠标拖拽旋转，滚轮缩放，右键平移',
+  'pcd.pointCloudInfo': '点云信息',
+  'pcd.totalPoints': '正在渲染 {{count}} 个点',
 };

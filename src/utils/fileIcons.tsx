@@ -12,7 +12,8 @@ import {
   Database,
   FileType2,
   BookOpen,
-  Presentation
+  Presentation,
+  Box
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { FileType } from './fileTypes';
@@ -35,6 +36,7 @@ const FILE_ICON_CONFIG: Record<FileType | 'directory', FileIconConfig> = {
   spreadsheet: { icon: FileSpreadsheet, color: 'text-emerald-500' },
   archive: { icon: Archive, color: 'text-orange-500' },
   data: { icon: Database, color: 'text-cyan-500' },
+  pointcloud: { icon: Box, color: 'text-violet-500' },
   unknown: { icon: File, color: 'text-gray-400 dark:text-gray-500' }
 };
 

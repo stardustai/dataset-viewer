@@ -4,7 +4,7 @@ import { StorageServiceManager } from '../../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 import { formatFileSize } from '../../../utils/fileUtils';
 import { getFileUrl, getFileArrayBuffer, getFileHeader, getMimeType } from '../../../utils/fileDataUtils';
-import AV1VideoPlayer from './AV1VideoPlayer';
+import { AV1VideoPlayer } from './AV1VideoPlayer';
 import { Dav1dDecoderService } from '../../../services/dav1dDecoder';
 import { ImageRenderer } from './ImageRenderer';
 

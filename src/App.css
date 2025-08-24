@@ -201,3 +201,12 @@ body {
   font-variant-numeric: tabular-nums;
   user-select: none;
 }
+
+/* dat.GUI 样式自定义 */
+.dg li:not(.folder) input {
+  line-height: 12px !important;
+}
+
+.dg select {
+  background-color: transparent !important;
+}

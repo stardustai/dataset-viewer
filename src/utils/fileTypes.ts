@@ -1,4 +1,4 @@
-export type FileType = 'text' | 'markdown' | 'word' | 'presentation' | 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet' | 'data' | 'archive' | 'unknown';
+export type FileType = 'text' | 'markdown' | 'word' | 'presentation' | 'image' | 'pdf' | 'video' | 'audio' | 'spreadsheet' | 'data' | 'pointcloud' | 'archive' | 'unknown';
 
 export const getFileType = (filename: string): FileType => {
   const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
@@ -54,6 +54,11 @@ export const getFileType = (filename: string): FileType => {
     'parquet', 'pqt'
   ];
 
+  // Point cloud data files
+  const pointcloudExtensions = [
+    'pcd', 'ply', 'xyz', 'pts'
+  ];
+
   // Archive files
   const archiveExtensions = [
     'zip', 'tar', 'gz', 'tgz', 'bz2', 'xz', '7z', 'rar', 'lz4', 'zst', 'zstd', 'br'
@@ -69,6 +74,7 @@ export const getFileType = (filename: string): FileType => {
   if (audioExtensions.includes(ext)) return 'audio';
   if (spreadsheetExtensions.includes(ext)) return 'spreadsheet';
   if (dataExtensions.includes(ext)) return 'data';
+  if (pointcloudExtensions.includes(ext)) return 'pointcloud';
   if (archiveExtensions.includes(ext)) return 'archive';
 
   // Check for tar.gz and other compound extensions
@@ -114,4 +120,8 @@ export const isPresentationFile = (filename: string): boolean => {
 
 export const isTextLikeFile = (filename: string): boolean => {
   return isTextFile(filename) || isMarkdownFile(filename);
+};
+
+export const isPointCloudFile = (filename: string): boolean => {
+  return getFileType(filename) === 'pointcloud';
 };

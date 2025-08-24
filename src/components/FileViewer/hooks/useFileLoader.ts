@@ -48,10 +48,11 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
     isArchive: fileType === 'archive',
     isData: fileType === 'data',
     isSpreadsheet: fileType === 'spreadsheet',
+    isPointCloud: fileType === 'pointcloud',
     isTextBased: isTextBased,
     // 辅助方法
     canPreview: () => !['archive', 'unknown'].includes(fileType),
-    needsSpecialViewer: () => ['word', 'presentation', 'data', 'spreadsheet'].includes(fileType)
+    needsSpecialViewer: () => ['word', 'presentation', 'data', 'spreadsheet', 'pointcloud'].includes(fileType)
   };
 
   const loadFileContent = useCallback(async (forceLoad = false) => {

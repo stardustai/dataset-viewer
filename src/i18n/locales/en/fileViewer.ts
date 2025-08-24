@@ -225,4 +225,11 @@ export const fileViewer = {
   'virtual.view': 'Virtual View',
   'simple.view': 'Simple View',
 
+  // PCD Point Cloud Viewer
+  'pcd.loading': 'Loading point cloud data...',
+  'pcd.error.loadFailed': 'Failed to load PCD file',
+  'pcd.mouseHint': 'Drag to rotate, scroll to zoom, right-click to pan',
+  'pcd.pointCloudInfo': 'Point Cloud Info',
+  'pcd.totalPoints': 'Rendering {{count}} points',
+
 };
