@@ -712,9 +712,9 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
         {/* 性能提示 - 现在显示总点数信息 */}
         {stats && stats.pointCount > 100000 && (
           <div className="absolute bottom-4 left-4 bg-blue-500 bg-opacity-90 text-white text-sm px-3 py-2 rounded-lg z-10">
-            <div className="font-semibold">{t('pcd.pointCloudInfo', '点云信息')}</div>
+            <div className="font-semibold">{t('pcd.pointCloudInfo')}</div>
             <div className="text-xs mt-1">
-              {t('pcd.totalPoints', `正在渲染 ${stats.pointCount.toLocaleString()} 个点`)}
+              {t('pcd.totalPoints').replace('{{count}}', stats.pointCount.toLocaleString())}
             </div>
           </div>
         )}
