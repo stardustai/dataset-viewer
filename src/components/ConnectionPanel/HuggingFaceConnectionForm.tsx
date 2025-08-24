@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lock, Bot } from 'lucide-react';
+import { Lock, Bot, Loader2 } from 'lucide-react';
 import { ConnectionConfig } from '../../services/storage/types';
 import { StoredConnection } from '../../services/connectionStorage';
 
@@ -129,7 +129,7 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
       >
         {isConnecting ? (
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            <Loader2 className="w-4 h-4 animate-spin text-white mr-2" />
             {t('connecting')}
           </div>
         ) : (

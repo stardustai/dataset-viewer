@@ -15,6 +15,8 @@ interface NavigationHistory {
 interface DirectoryCache {
   path: string;
   files: any[]; // StorageFile[]
+  hasMore?: boolean; // 是否有更多页面
+  nextMarker?: string; // 下一页标记
   timestamp: number;
   lastAccess: number;
 }
@@ -248,9 +250,9 @@ class NavigationHistoryService {
   }
 
   /**
-   * 缓存目录数据
+   * 缓存目录数据（包含分页状态）
    */
-  cacheDirectory(path: string, files: any[]): void {
+  cacheDirectory(path: string, files: any[], hasMore?: boolean, nextMarker?: string): void {
     try {
       const cache = this.getDirectoryCache();
       const timestamp = Date.now();
@@ -258,6 +260,8 @@ class NavigationHistoryService {
       cache[path] = {
         path,
         files,
+        hasMore,
+        nextMarker,
         timestamp,
         lastAccess: timestamp
       };
@@ -284,9 +288,9 @@ class NavigationHistoryService {
   }
 
   /**
-   * 获取缓存的目录数据
+   * 获取缓存的目录数据（包含分页状态）
    */
-  getCachedDirectory(path: string): any[] | null {
+  getCachedDirectory(path: string): { files: any[], hasMore?: boolean, nextMarker?: string } | null {
     try {
       const cache = this.getDirectoryCache();
       const cached = cache[path];
@@ -306,7 +310,11 @@ class NavigationHistoryService {
       cache[path] = cached;
       localStorage.setItem(this.CACHE_STORAGE_KEY, JSON.stringify(cache));
 
-      return cached.files;
+      return {
+        files: cached.files,
+        hasMore: cached.hasMore,
+        nextMarker: cached.nextMarker
+      };
     } catch (error) {
       console.warn('Failed to get cached directory:', error);
       return null;
@@ -337,6 +345,35 @@ class NavigationHistoryService {
     } catch (error) {
       console.warn('Failed to load directory cache:', error);
       return {};
+    }
+  }
+
+  /**
+   * 更新缓存目录的分页状态（追加更多文件）
+   */
+  updateCachedDirectory(path: string, newFiles: any[], hasMore?: boolean, nextMarker?: string): void {
+    try {
+      const cache = this.getDirectoryCache();
+      const cached = cache[path];
+
+      if (cached) {
+        // 合并文件列表，避免重复
+        const existingFiles = cached.files || [];
+        const allFiles = [...existingFiles, ...newFiles];
+
+        cache[path] = {
+          ...cached,
+          files: allFiles,
+          hasMore,
+          nextMarker,
+          lastAccess: Date.now()
+        };
+
+        localStorage.setItem(this.CACHE_STORAGE_KEY, JSON.stringify(cache));
+        console.log(`Updated cache for ${path}: ${allFiles.length} total files, hasMore: ${hasMore}`);
+      }
+    } catch (error) {
+      console.warn('Failed to update cached directory:', error);
     }
   }
 

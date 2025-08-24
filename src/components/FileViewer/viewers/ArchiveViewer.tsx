@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Archive, Copy, Folder, Download } from 'lucide-react';
+import { Archive, Copy, Folder, Download, Loader2 } from 'lucide-react';
 import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { CompressionService } from '../../../services/compression';
 import { StorageServiceManager } from '../../../services/storage/StorageManager';
@@ -718,7 +718,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 															</span>
 															{fileLoadState.loadingMore && (
 																<div className="flex items-center gap-2">
-																	<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+																	<Loader2 className="w-4 h-4 animate-spin text-blue-500" />
 																	<span>{t('loading.more.content')}</span>
 																</div>
 															)}

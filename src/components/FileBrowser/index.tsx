@@ -10,7 +10,8 @@ import {
   X,
   Settings,
   ArrowLeft,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
@@ -228,16 +229,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
     // 尝试从缓存获取数据（除非是手动刷新或强制重新加载）
     if (!isManual && !forceReload) {
-      const cachedFiles = navigationHistoryService.getCachedDirectory(path);
-      if (cachedFiles) {
+      const cachedData = navigationHistoryService.getCachedDirectory(path);
+      if (cachedData) {
         console.log('Using cached directory data for:', path);
-        setFiles(cachedFiles);
+        setFiles(cachedData.files);
         setCurrentPath(path);
         setLoading(false);
 
-        // 重置分页状态，因为缓存数据不包含分页信息
-        setHasMore(false);
-        setNextMarker(undefined);
+        // 恢复分页状态，而不是重置
+        setHasMore(cachedData.hasMore || false);
+        setNextMarker(cachedData.nextMarker);
 
         // 记录访问历史
         navigationHistoryService.addToHistory(path);
@@ -323,8 +324,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setHasMore(fileList.hasMore || false);
       setNextMarker(fileList.nextMarker);
 
-      // 缓存目录数据
-      navigationHistoryService.cacheDirectory(path, fileList.files);
+      // 缓存目录数据（包含分页状态）
+      navigationHistoryService.cacheDirectory(path, fileList.files, fileList.hasMore, fileList.nextMarker);
 
       // 记录访问历史
       navigationHistoryService.addToHistory(path);
@@ -430,6 +431,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         // 更新分页状态
         setHasMore(result.hasMore || false);
         setNextMarker(result.nextMarker);
+
+        // 更新缓存
+        navigationHistoryService.updateCachedDirectory(currentPath, result.files, result.hasMore, result.nextMarker);
 
         console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}, nextMarker: ${result.nextMarker}`);
       } catch (err) {
@@ -1051,7 +1055,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                   {loadingMore && (
                     <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-50/95 dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 backdrop-blur-sm">
                       <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
                         <span>{t('loading.more')}</span>
                       </div>
                     </div>
