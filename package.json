@@ -29,7 +29,6 @@
     "@tauri-apps/plugin-os": "^2.3.0",
     "@tauri-apps/plugin-process": "^2.3.0",
     "@types/dat.gui": "^0.7.13",
-    "@types/dompurify": "^3.2.0",
     "@types/three": "^0.179.0",
     "dat.gui": "^0.7.9",
     "dav1d.js": "^0.1.1",
