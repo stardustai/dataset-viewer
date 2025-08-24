@@ -80,11 +80,11 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
         <div
           key={key}
           style={style}
-          className="overflow-visible"
+          className="overflow-visible text-black [&_*]:text-black"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.content || '') }}
         />
       );
-    
+
     case 'image':
       return (
         <img
@@ -95,7 +95,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
           className="object-contain"
         />
       );
-    
+
     case 'shape':
       return (
         <div
@@ -106,12 +106,12 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
           {element.content && (
             <div
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.content) }}
-              className="text-center"
+              className="text-center text-black [&_*]:text-black"
             />
           )}
         </div>
       );
-    
+
     case 'table':
       // 如果有content属性，使用HTML渲染
       if (element.content) {
@@ -121,9 +121,9 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
           txt.innerHTML = html;
           return txt.value;
         };
-        
+
         const decodedContent = decodeHtml(element.content);
-        
+
         return (
           <div
             key={key}
@@ -132,12 +132,12 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
           >
             <div
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(decodedContent) }}
-              className="w-full [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-700 [&_td]:text-sm [&_th]:text-sm"
+              className="w-full [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-100 [&_th]:text-sm [&_td]:text-sm [&_*]:text-black"
             />
           </div>
         );
       }
-      
+
       // 如果有data属性，使用表格数据渲染
       if (element.data && Array.isArray(element.data)) {
         return (
@@ -146,7 +146,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
             style={style}
             className="overflow-visible"
           >
-            <table className="w-full border-collapse border border-gray-200 dark:border-gray-600">
+            <table className="w-full border-collapse border border-gray-200">
               <tbody>
                 {element.data.map((row, rowIndex) => (
                   <tr key={rowIndex}>
@@ -155,24 +155,24 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
                       if (typeof cell === 'object' && (cell.merged || cell.isMerged || cell.skip || cell.hidden)) {
                         return null;
                       }
-                      
+
                       const cellContent = typeof cell === 'object' ? cell.text || cell.content || '' : String(cell);
                       const cellStyle: React.CSSProperties = {
                         height: element.rowHeights?.[rowIndex] ? `${element.rowHeights[rowIndex]}pt` : 'auto',
                         width: element.colWidths?.[cellIndex] ? `${element.colWidths[cellIndex]}pt` : 'auto',
                         backgroundColor: (typeof cell === 'object' ? cell.fillColor : null) || 'transparent',
                       };
-                      
+
                       // 获取合并属性 - 尝试多种可能的属性名
-                      const rowSpan = typeof cell === 'object' ? 
+                      const rowSpan = typeof cell === 'object' ?
                         (cell.rowspan || cell.rowSpan || cell.rows || cell.mergeDown || 1) : 1;
-                      const colSpan = typeof cell === 'object' ? 
+                      const colSpan = typeof cell === 'object' ?
                         (cell.colspan || cell.colSpan || cell.cols || cell.mergeRight || 1) : 1;
-                      
+
                       return (
                         <td
                           key={cellIndex}
-                          className="border border-gray-200 dark:border-gray-600 p-2 text-sm"
+                          className="border border-gray-200 p-2 text-sm text-black [&_*]:text-black"
                           style={cellStyle}
                           rowSpan={rowSpan}
                           colSpan={colSpan}
@@ -188,7 +188,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
           </div>
         );
       }
-        
+
       // 如果没有数据，显示占位符
       return (
         <div
@@ -199,7 +199,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
           {t('presentation.table.no.data')}
         </div>
       );
-    
+
     default:
       return (
         <div
@@ -221,26 +221,26 @@ const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height
   useEffect(() => {
     const updateScale = () => {
       if (!containerRef.current) return;
-      
+
       const container = containerRef.current.parentElement;
       if (!container) return;
 
       const containerRect = container.getBoundingClientRect();
       const availableWidth = containerRect.width - 64; // 减去 padding
       const availableHeight = containerRect.height - 120; // 垂直方向留更多间距
-      
+
       // 计算缩放比例，确保幻灯片完全适应容器
       const scaleX = availableWidth / slideSize.width;
       const scaleY = availableHeight / slideSize.height;
       const newScale = Math.min(scaleX, scaleY, 1); // 最大不超过原始大小
-      
+
       setScale(newScale);
     };
 
     // 使用 setTimeout 确保 DOM 完全渲染后再计算缩放
     const timer = setTimeout(updateScale, 0);
     window.addEventListener('resize', updateScale);
-    
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', updateScale);
@@ -250,7 +250,7 @@ const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height
   // 处理幻灯片背景
   let backgroundColor = '#ffffff';
   let backgroundImage = '';
-  
+
   if (slide.fill) {
     if (slide.fill.type === 'color') {
       backgroundColor = slide.fill.value as string;
@@ -278,18 +278,18 @@ const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      style={slideStyle} 
+      style={slideStyle}
       className="mx-auto"
     >
       {/* 渲染布局元素 */}
-      {slide.layoutElements?.map((element, index) => 
+      {slide.layoutElements?.map((element, index) =>
         renderSlideElement(element as RenderableElement, `layout-${index}`, t)
       )}
-      
+
       {/* 渲染幻灯片元素 */}
-      {slide.elements.map((element, index) => 
+      {slide.elements.map((element, index) =>
         renderSlideElement(element as RenderableElement, `element-${index}`, t)
       )}
     </div>
@@ -316,11 +316,11 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
 
         // 获取文件内容
         const arrayBuffer = await StorageServiceManager.getFileArrayBuffer(filePath);
-        
+
         // 使用 pptxtojson 解析 PPTX 文件
         const data = await parse(arrayBuffer);
         setPresentationData(data);
-        
+
         // 通知父组件 metadata 已加载
         if (onMetadataLoaded && data) {
           onMetadataLoaded({
@@ -342,7 +342,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
 
   if (loading) {
     return (
-      <LoadingDisplay 
+      <LoadingDisplay
         message={t('loading.presentation', { filename: fileName })}
         className={className}
       />
@@ -351,7 +351,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
 
   if (error) {
     return (
-      <ErrorDisplay 
+      <ErrorDisplay
         message={error}
         className={className}
       />
@@ -372,7 +372,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               {t('presentation.preview.description')}
             </p>
-            
+
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -401,20 +401,20 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
             <div key={index} className="">
               {/* 幻灯片内容 */}
               <div className="flex justify-center mb-4">
-                <SlideRenderer 
-                  slide={slide} 
+                <SlideRenderer
+                  slide={slide}
                   slideSize={presentationData.size}
                   t={t}
                 />
               </div>
-              
+
               {/* 页码 */}
               <div className="text-center">
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   {index + 1}
                 </span>
               </div>
-              
+
               {/* 幻灯片备注 */}
               {slide.note && (
                 <div className="mt-6 max-w-4xl mx-auto">

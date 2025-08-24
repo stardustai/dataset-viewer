@@ -3,14 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
-import { VirtualizedTextViewer } from './viewers/VirtualizedTextViewer';
-
-import { WordViewer } from './viewers/WordViewer';
-import { PresentationViewer } from './viewers/PresentationViewer';
-import { MediaViewer } from './viewers/MediaViewer';
-import { UniversalDataTableViewer } from './viewers/UniversalDataTableViewer';
-import { ArchiveViewer } from './viewers/ArchiveViewer';
-import { PCDViewer } from './viewers/PCDViewer';
+import { LazyComponentWrapper } from './LazyComponentWrapper';
+import {
+  VirtualizedTextViewer,
+  WordViewer,
+  PresentationViewer,
+  MediaViewer,
+  UniversalDataTableViewer,
+  ArchiveViewer,
+  PCDViewer
+} from './viewers';
 import { UnsupportedFormatDisplay } from '../common';
 
 interface VirtualizedTextViewerRef {
@@ -159,80 +161,103 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
 
   if (fileInfo.isWord) {
     return (
-      <WordViewer
-        filePath={filePath}
-        fileName={file.basename}
-        fileSize={file.size}
+      <LazyComponentWrapper
+        component={WordViewer}
+        props={{
+          filePath,
+          fileName: file.basename,
+          fileSize: file.size
+        }}
       />
     );
   }
 
   if (fileInfo.isPresentation) {
     return (
-      <PresentationViewer
-        filePath={filePath}
-        fileName={file.basename}
-        fileSize={file.size}
-        onMetadataLoaded={setPresentationMetadata}
+      <LazyComponentWrapper
+        component={PresentationViewer}
+        props={{
+          filePath,
+          fileName: file.basename,
+          fileSize: file.size,
+          onMetadataLoaded: setPresentationMetadata
+        }}
       />
     );
   }
 
   if (fileInfo.isMedia) {
     return (
-      <MediaViewer
-        filePath={filePath}
-        fileName={file.basename}
-        fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
-        fileSize={file.size}
-        hasAssociatedFiles={hasAssociatedFiles}
+      <LazyComponentWrapper
+        component={MediaViewer}
+        props={{
+          filePath,
+          fileName: file.basename,
+          fileType: fileType as 'image' | 'pdf' | 'video' | 'audio',
+          fileSize: file.size,
+          hasAssociatedFiles
+        }}
       />
     );
   }
 
   if (fileInfo.isSpreadsheet) {
     return (
-      <UniversalDataTableViewer
-        filePath={filePath}
-        fileName={file.basename}
-        fileSize={file.size}
-        fileType={file.basename.toLowerCase().endsWith('.xlsx') || file.basename.toLowerCase().endsWith('.xls') ? 'xlsx' :
-                 file.basename.toLowerCase().endsWith('.ods') ? 'ods' : 'csv'}
-        onMetadataLoaded={setDataMetadata}
+      <LazyComponentWrapper
+        component={UniversalDataTableViewer}
+        props={{
+          filePath,
+          fileName: file.basename,
+          fileSize: file.size,
+          fileType: file.basename.toLowerCase().endsWith('.xlsx') || file.basename.toLowerCase().endsWith('.xls') ? 'xlsx' :
+                   file.basename.toLowerCase().endsWith('.ods') ? 'ods' : 'csv',
+          onMetadataLoaded: setDataMetadata
+        }}
       />
     );
   }
 
   if (fileInfo.isData) {
     return (
-      <UniversalDataTableViewer
-        filePath={filePath}
-        fileName={file.basename}
-        fileSize={file.size}
-        fileType={file.basename.toLowerCase().endsWith('.parquet') || file.basename.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv'}
-        onMetadataLoaded={setDataMetadata}
+      <LazyComponentWrapper
+        component={UniversalDataTableViewer}
+        props={{
+          filePath,
+          fileName: file.basename,
+          fileSize: file.size,
+          fileType: file.basename.toLowerCase().endsWith('.parquet') || file.basename.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv',
+          onMetadataLoaded: setDataMetadata
+        }}
       />
     );
   }
 
   if (fileInfo.isArchive) {
     return (
-      <ArchiveViewer
-        url={StorageServiceManager.getFileUrl(filePath)}
-        headers={StorageServiceManager.getHeaders()}
-        filename={file.basename}
-        storageClient={storageClient}
+      <LazyComponentWrapper
+        component={ArchiveViewer}
+        props={{
+          url: StorageServiceManager.getFileUrl(filePath),
+          headers: StorageServiceManager.getHeaders(),
+          filename: file.basename,
+          storageClient
+        }}
       />
     );
   }
 
   if (fileInfo.isPointCloud) {
     return (
-      <PCDViewer
-        filePath={filePath}
-        fileName={file.basename}
-        fileSize={file.size}
-        onMetadataLoaded={setDataMetadata}
+      <LazyComponentWrapper
+        component={PCDViewer}
+        props={{
+          filePath,
+          fileName: file.basename,
+          fileSize: file.size,
+          onMetadataLoaded: setDataMetadata
+        }}
+        loadingText={t('loading.pointCloud', '正在加载点云渲染器...')}
+        fallbackHeight="h-64"
       />
     );
   }

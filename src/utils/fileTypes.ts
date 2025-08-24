@@ -56,7 +56,7 @@ export const getFileType = (filename: string): FileType => {
 
   // Point cloud data files
   const pointcloudExtensions = [
-    'pcd', 'ply', 'las', 'laz', 'xyz', 'pts'
+    'pcd', 'ply', 'xyz', 'pts'
   ];
 
   // Archive files

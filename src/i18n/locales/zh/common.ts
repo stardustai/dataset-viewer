@@ -18,6 +18,7 @@ export const common = {
   'ok': '确定',
   'retry': '重试',
   'loading': '加载中...',
+  'loading.pointCloud': '正在加载点云渲染器...',
   'optional': '(可选)',
   'close': '关闭',
 

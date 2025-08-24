@@ -208,6 +208,17 @@
         "name": "Presentation Files",
         "description": "Presentation files",
         "role": "Viewer"
+      },
+      {
+        "ext": [
+          "pcd",
+          "ply",
+          "xyz",
+          "pts"
+        ],
+        "name": "Point Cloud Files",
+        "description": "Point cloud data files",
+        "role": "Viewer"
       }
     ]
   }

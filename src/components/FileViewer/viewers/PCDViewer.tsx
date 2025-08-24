@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
-import { PCDLoader } from 'three-stdlib';
+import { PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
 import * as dat from 'dat.gui';
 import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
 import { StorageServiceManager } from '../../../services/storage';
@@ -45,12 +45,60 @@ interface RenderSettings {
   rotationSpeed: number;
 }
 
-interface PCDViewerProps {
+interface PointCloudViewerProps {
   filePath: string;
   fileName?: string; // Make optional since not used
   fileSize?: number; // Make optional since not used
   onMetadataLoaded?: (metadata: any) => void;
 }
+
+// 解析PTS文件（简单文本格式点云）
+const parsePtsFile = (text: string): THREE.BufferGeometry => {
+  const lines = text.split('\n').filter(line => line.trim() !== '');
+  const points: number[] = [];
+  const colors: number[] = [];
+
+  for (const line of lines) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      const x = parseFloat(parts[0]);
+      const y = parseFloat(parts[1]);
+      const z = parseFloat(parts[2]);
+
+      if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+        points.push(x, y, z);
+
+        // 检查是否有颜色信息 (RGB values typically in range 0-255 or 0-1)
+        if (parts.length >= 6) {
+          let r = parseFloat(parts[3]);
+          let g = parseFloat(parts[4]);
+          let b = parseFloat(parts[5]);
+
+          // 如果值大于1，假设是0-255范围，需要归一化
+          if (r > 1 || g > 1 || b > 1) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+          }
+
+          colors.push(r, g, b);
+        } else {
+          // 无颜色信息，使用高度着色
+          colors.push(0.5, 0.5, 0.5); // 默认灰色
+        }
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+
+  if (colors.length > 0) {
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  }
+
+  return geometry;
+};
 
 // 从THREE.Points中提取点云统计信息
 const extractPointCloudStats = (points: THREE.Points): PCDStats => {
@@ -125,7 +173,7 @@ const extractPointCloudStats = (points: THREE.Points): PCDStats => {
   };
 };
 
-export const PCDViewer: React.FC<PCDViewerProps> = ({
+export const PCDViewer: React.FC<PointCloudViewerProps> = ({
   filePath,
   onMetadataLoaded
 }) => {
@@ -156,40 +204,103 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
     rotationSpeed: 0.5
   });
 
-  // 加载PCD文件（优化版，支持大文件分块加载）
-  const loadPCDFile = useCallback(async () => {
+  // 加载点云文件（支持多种格式）
+  const loadPointCloudFile = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log('开始加载PCD文件:', filePath);
+      console.log('开始加载点云文件:', filePath);
 
-      // 获取存储服务并读取整个PCD文件
+      // 获取存储服务并读取整个点云文件
       const arrayBuffer = await StorageServiceManager.getFileArrayBuffer(filePath);
-      console.log('PCD文件大小:', arrayBuffer.byteLength);
+      console.log('点云文件大小:', arrayBuffer.byteLength);
 
-      // 使用PCDLoader解析PCD文件
-      const loader = new PCDLoader();
+      // 根据文件扩展名选择合适的加载器
+      const fileExtension = filePath.split('.').pop()?.toLowerCase();
+      console.log('文件扩展名:', fileExtension);
 
-      // PCDLoader期望的是ArrayBuffer，我们需要将其转换为适当的格式
-      // 创建一个Blob URL来让PCDLoader可以加载
+      let points: THREE.Points;
+
+      // 创建一个Blob URL来让加载器可以加载
       const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
 
       try {
-        // 使用PCDLoader加载点云数据
-        const points = await new Promise<THREE.Points>((resolve, reject) => {
-          loader.load(
-            url,
-            (loadedPoints) => {
-              resolve(loadedPoints);
-            },
-            undefined,
-            (error) => {
-              reject(error);
-            }
-          );
-        });
+        if (fileExtension === 'pcd') {
+          // 使用PCDLoader加载PCD文件
+          const loader = new PCDLoader();
+          points = await new Promise<THREE.Points>((resolve, reject) => {
+            loader.load(
+              url,
+              (loadedPoints: THREE.Points) => {
+                resolve(loadedPoints);
+              },
+              undefined,
+              (error: any) => {
+                reject(error);
+              }
+            );
+          });
+        } else if (fileExtension === 'ply') {
+          // 使用PLYLoader加载PLY文件
+          const loader = new PLYLoader();
+          const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
+            loader.load(
+              url,
+              (loadedGeometry: THREE.BufferGeometry) => {
+                resolve(loadedGeometry);
+              },
+              undefined,
+              (error: any) => {
+                reject(error);
+              }
+            );
+          });
+
+          // 创建材质和点云对象
+          const material = new THREE.PointsMaterial({
+            size: 0.01,
+            sizeAttenuation: true,
+            vertexColors: !!geometry.getAttribute('color')
+          });
+          points = new THREE.Points(geometry, material);
+        } else if (fileExtension === 'xyz') {
+          // 使用XYZLoader加载XYZ文件
+          const loader = new XYZLoader();
+          const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
+            loader.load(
+              url,
+              (loadedGeometry: THREE.BufferGeometry) => {
+                resolve(loadedGeometry);
+              },
+              undefined,
+              (error: any) => {
+                reject(error);
+              }
+            );
+          });
+
+          // 创建材质和点云对象
+          const material = new THREE.PointsMaterial({
+            size: 0.01,
+            sizeAttenuation: true,
+            vertexColors: !!geometry.getAttribute('color')
+          });
+          points = new THREE.Points(geometry, material);
+        } else if (fileExtension === 'pts') {
+          // 简单的PTS文件解析（文本格式：x y z [r g b] [intensity]）
+          const text = new TextDecoder().decode(arrayBuffer);
+          const geometry = parsePtsFile(text);
+          const material = new THREE.PointsMaterial({
+            size: 0.01,
+            sizeAttenuation: true,
+            vertexColors: !!geometry.getAttribute('color')
+          });
+          points = new THREE.Points(geometry, material);
+        } else {
+          throw new Error(`不支持的点云文件格式: ${fileExtension}`);
+        }
 
         // 提取点云统计信息
         const pointStats = extractPointCloudStats(points);
@@ -230,7 +341,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
           // 通用字段
           numRows: pointStats.pointCount, // 点数作为行数
           numColumns: pointStats.hasColor ? (pointStats.hasIntensity ? 7 : 6) : (pointStats.hasIntensity ? 4 : 3), // x,y,z + 可选的r,g,b + 可选的intensity
-          fileType: 'PCD',
+          fileType: fileExtension?.toUpperCase() || 'Point Cloud',
           // 扩展信息 - 任何格式都可以添加自己的扩展字段
           extensions: {
             pointCount: pointStats.pointCount,
@@ -263,7 +374,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
       }
     } catch (err) {
       console.error('Failed to load PCD file:', err);
-      setError(err instanceof Error ? err.message : t('pcd.error.loadFailed', '加载PCD文件失败'));
+      setError(err instanceof Error ? err.message : t('pcd.error.loadFailed', '加载点云文件失败'));
     } finally {
       setLoading(false);
     }
@@ -624,7 +735,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
     // 性能设置文件夹 - 暂时隐藏，因为已经去掉最大点数限制
     // const performanceFolder = gui.addFolder('Performance');
     // performanceFolder.add(settings, 'maxPointsToRender', 1000, 500000, 1000).name('Max Points').onChange(() => {
-    //   loadPCDFile(); // Reload with new limit
+    //   loadPointCloudFile(); // Reload with new limit
     // });
 
     // 默认展开所有调试面板文件夹
@@ -633,7 +744,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
     // performanceFolder.open();
 
     return gui;
-  }, [settings, pcdData, stats, loadPCDFile, updatePointColors, updateAxes]);
+  }, [settings, pcdData, stats, loadPointCloudFile, updatePointColors, updateAxes]);
 
   // 处理窗口大小变化
   const handleResize = useCallback(() => {
@@ -649,7 +760,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
 
   // 初始化和清理
   useEffect(() => {
-    loadPCDFile();
+    loadPointCloudFile();
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -664,7 +775,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
         guiRef.current.destroy();
       }
     };
-  }, [loadPCDFile]);
+  }, [loadPointCloudFile]);
 
   useEffect(() => {
     if (pcdData && stats && !loading && !error) {
