@@ -6,8 +6,6 @@ import * as dat from 'dat.gui';
 import { 
   RotateCcw, 
   Info, 
-  Eye, 
-  EyeOff,
   Settings
 } from 'lucide-react';
 import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
@@ -88,11 +86,11 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [pcdData, setPcdData] = useState<PCDPoint[] | null>(null);
   const [stats, setStats] = useState<PCDStats | null>(null);
-  const [showStats, setShowStats] = useState(true);
+  const [showMetadata, setShowMetadata] = useState(false);
   
   // 默认渲染设置
   const [settings, setSettings] = useState<RenderSettings>({
-    pointSize: 2.0,
+    pointSize: 0.8, // 减小默认点大小
     colorMode: 'rgb',
     uniformColor: '#ffffff',
     showAxes: true,
@@ -493,7 +491,8 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
       stats.scale * 10
     );
     
-    // 设置相机位置
+    // 设置相机位置和方向（Z轴向上）
+    camera.up.set(0, 0, 1); // 设置相机上方向为Z轴
     const distance = stats.scale * 1.5;
     camera.position.set(distance, distance, distance);
     camera.lookAt(stats.center.x, stats.center.y, stats.center.z);
@@ -610,6 +609,9 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
     controls.maxPolarAngle = Math.PI;
     controls.autoRotate = settings.autoRotate;
     controls.autoRotateSpeed = settings.rotationSpeed;
+    // 设置相机上方向为Z轴向上
+    camera.up.set(0, 0, 1);
+    controls.update();
     controlsRef.current = controls;
 
   }, [pcdData, stats, settings]);
@@ -636,6 +638,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
   const resetCamera = useCallback(() => {
     if (!cameraRef.current || !controlsRef.current || !stats) return;
     
+    cameraRef.current.up.set(0, 0, 1); // 确保相机上方向为Z轴
     const distance = stats.scale * 1.5;
     cameraRef.current.position.set(distance, distance, distance);
     controlsRef.current.target.set(stats.center.x, stats.center.y, stats.center.z);
@@ -648,7 +651,23 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
       guiRef.current.destroy();
     }
     
-    const gui = new dat.GUI({ width: 300 });
+    if (!mountRef.current) return;
+    
+    // 创建GUI并将其定位在画布容器内部
+    const gui = new dat.GUI({ 
+      width: 280,
+      autoPlace: false // 禁用自动定位
+    });
+    
+    // 将GUI添加到画布容器内部
+    const guiContainer = gui.domElement;
+    guiContainer.style.position = 'absolute';
+    guiContainer.style.top = '10px';
+    guiContainer.style.right = '10px';
+    guiContainer.style.zIndex = '100';
+    guiContainer.style.fontSize = '12px';
+    
+    mountRef.current.appendChild(guiContainer);
     guiRef.current = gui;
     
     // 渲染设置文件夹
@@ -785,11 +804,11 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
       <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setShowStats(!showStats)}
+            onClick={() => setShowMetadata(!showMetadata)}
             className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            title={showStats ? t('pcd.hideStats', '隐藏统计') : t('pcd.showStats', '显示统计')}
+            title={showMetadata ? t('pcd.hideMetadata', '隐藏元数据') : t('pcd.showMetadata', '显示元数据')}
           >
-            {showStats ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <Info className="w-4 h-4" />
           </button>
           
           <button
@@ -819,70 +838,66 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* 统计信息侧边栏 */}
-        {showStats && stats && (
-          <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-            <div className="p-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                <Info className="w-4 h-4 mr-2" />
-                {t('pcd.statistics', '统计信息')}
-              </h4>
+      {/* 3D视图区域 - 全屏显示 */}
+      <div 
+        ref={mountRef} 
+        className="flex-1 relative bg-gray-900"
+        style={{ minHeight: '400px' }}
+      >
+        {/* 元数据覆盖层 */}
+        {showMetadata && stats && (
+          <div className="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-4 rounded-lg z-20 max-w-xs">
+            <h4 className="text-sm font-semibold mb-3 flex items-center">
+              <Info className="w-4 h-4 mr-2" />
+              {t('pcd.metadata', '点云元数据')}
+            </h4>
+            
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-300">{t('pcd.pointCount', '点数量')}:</span>
+                <span className="font-mono text-white">{stats.pointCount.toLocaleString()}</span>
+              </div>
               
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">{t('pcd.pointCount', '点数量')}:</span>
-                  <span className="font-mono text-gray-900 dark:text-white">{stats.pointCount.toLocaleString()}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">{t('pcd.hasColor', '包含颜色')}:</span>
-                  <span className="text-gray-900 dark:text-white">
-                    {stats.hasColor ? t('common.yes', '是') : t('common.no', '否')}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">{t('pcd.hasIntensity', '包含强度')}:</span>
-                  <span className="text-gray-900 dark:text-white">
-                    {stats.hasIntensity ? t('common.yes', '是') : t('common.no', '否')}
-                  </span>
-                </div>
-                
-                <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <div className="text-gray-600 dark:text-gray-400 mb-1">{t('pcd.bounds', '边界')}:</div>
-                  <div className="font-mono text-xs space-y-1 text-gray-900 dark:text-white">
-                    <div>X: {stats.bounds.min.x.toFixed(3)} ~ {stats.bounds.max.x.toFixed(3)}</div>
-                    <div>Y: {stats.bounds.min.y.toFixed(3)} ~ {stats.bounds.max.y.toFixed(3)}</div>
-                    <div>Z: {stats.bounds.min.z.toFixed(3)} ~ {stats.bounds.max.z.toFixed(3)}</div>
-                  </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">{t('pcd.hasColor', '包含颜色')}:</span>
+                <span className="text-white">
+                  {stats.hasColor ? t('common.yes', '是') : t('common.no', '否')}
+                </span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-300">{t('pcd.hasIntensity', '包含强度')}:</span>
+                <span className="text-white">
+                  {stats.hasIntensity ? t('common.yes', '是') : t('common.no', '否')}
+                </span>
+              </div>
+              
+              <div className="pt-2 border-t border-gray-600">
+                <div className="text-gray-300 mb-1">{t('pcd.bounds', '边界')}:</div>
+                <div className="font-mono text-xs space-y-1 text-white">
+                  <div>X: {stats.bounds.min.x.toFixed(3)} ~ {stats.bounds.max.x.toFixed(3)}</div>
+                  <div>Y: {stats.bounds.min.y.toFixed(3)} ~ {stats.bounds.max.y.toFixed(3)}</div>
+                  <div>Z: {stats.bounds.min.z.toFixed(3)} ~ {stats.bounds.max.z.toFixed(3)}</div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* 3D视图区域 */}
-        <div 
-          ref={mountRef} 
-          className="flex-1 relative bg-gray-900"
-          style={{ minHeight: '400px' }}
-        >
-          {/* 鼠标操作提示 */}
-          <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded pointer-events-none z-10">
-            {t('pcd.mouseHint', '鼠标拖拽旋转，滚轮缩放，右键平移')}
-          </div>
-
-          {/* 性能提示 */}
-          {stats && stats.pointCount > settings.maxPointsToRender && (
-            <div className="absolute bottom-4 left-4 bg-yellow-500 bg-opacity-90 text-black text-sm px-3 py-2 rounded-lg z-10">
-              <div className="font-semibold">{t('pcd.performanceWarning', '性能提醒')}</div>
-              <div className="text-xs mt-1">
-                {t('pcd.pointsLimited', `仅显示前 ${settings.maxPointsToRender.toLocaleString()} 个点 (共 ${stats.pointCount.toLocaleString()} 个)`)}
-              </div>
-            </div>
-          )}
+        {/* 鼠标操作提示 */}
+        <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded pointer-events-none z-10">
+          {t('pcd.mouseHint', '鼠标拖拽旋转，滚轮缩放，右键平移')}
         </div>
+
+        {/* 性能提示 */}
+        {stats && stats.pointCount > settings.maxPointsToRender && (
+          <div className="absolute bottom-4 left-4 bg-yellow-500 bg-opacity-90 text-black text-sm px-3 py-2 rounded-lg z-10">
+            <div className="font-semibold">{t('pcd.performanceWarning', '性能提醒')}</div>
+            <div className="text-xs mt-1">
+              {t('pcd.pointsLimited', `仅显示前 ${settings.maxPointsToRender.toLocaleString()} 个点 (共 ${stats.pointCount.toLocaleString()} 个)`)}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
