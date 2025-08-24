@@ -3,11 +3,6 @@ import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 import * as dat from 'dat.gui';
-import { 
-  RotateCcw, 
-  Info, 
-  Settings
-} from 'lucide-react';
 import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
 import { StorageServiceManager } from '../../../services/storage';
 
@@ -67,10 +62,12 @@ interface PCDViewerProps {
   filePath: string;
   fileName?: string; // Make optional since not used
   fileSize?: number; // Make optional since not used
+  onMetadataLoaded?: (metadata: any) => void;
 }
 
 export const PCDViewer: React.FC<PCDViewerProps> = ({ 
-  filePath 
+  filePath,
+  onMetadataLoaded 
 }) => {
   const { t } = useTranslation();
   const mountRef = useRef<HTMLDivElement>(null);
@@ -86,11 +83,10 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [pcdData, setPcdData] = useState<PCDPoint[] | null>(null);
   const [stats, setStats] = useState<PCDStats | null>(null);
-  const [showMetadata, setShowMetadata] = useState(false);
   
   // 默认渲染设置
   const [settings, setSettings] = useState<RenderSettings>({
-    pointSize: 0.8, // 减小默认点大小
+    pointSize: 2.0, // 增加默认点大小以改善渲染效果
     colorMode: 'rgb',
     uniformColor: '#ffffff',
     showAxes: true,
@@ -453,6 +449,18 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
       const pointStats = calculateStats(points);
       setStats(pointStats);
 
+      // 发送元数据到父组件
+      if (onMetadataLoaded) {
+        onMetadataLoaded({
+          pointCount: pointStats.pointCount,
+          hasColor: pointStats.hasColor,
+          hasIntensity: pointStats.hasIntensity,
+          bounds: pointStats.bounds,
+          center: pointStats.center,
+          scale: pointStats.scale
+        });
+      }
+
       // 如果有颜色信息，默认使用RGB模式
       if (pointStats.hasColor && settings.colorMode === 'uniform') {
         setSettings(prev => ({ ...prev, colorMode: 'rgb' }));
@@ -493,7 +501,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
     
     // 设置相机位置和方向（Z轴向上）
     camera.up.set(0, 0, 1); // 设置相机上方向为Z轴
-    const distance = stats.scale * 1.5;
+    const distance = stats.scale * 2.5; // 增大初始距离以改善视图
     camera.position.set(distance, distance, distance);
     camera.lookAt(stats.center.x, stats.center.y, stats.center.z);
     cameraRef.current = camera;
@@ -634,17 +642,6 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
     animationRef.current = requestAnimationFrame(animate);
   }, [settings.autoRotate, settings.rotationSpeed]);
 
-  // 相机控制
-  const resetCamera = useCallback(() => {
-    if (!cameraRef.current || !controlsRef.current || !stats) return;
-    
-    cameraRef.current.up.set(0, 0, 1); // 确保相机上方向为Z轴
-    const distance = stats.scale * 1.5;
-    cameraRef.current.position.set(distance, distance, distance);
-    controlsRef.current.target.set(stats.center.x, stats.center.y, stats.center.z);
-    controlsRef.current.update();
-  }, [stats]);
-
   // 设置 dat.GUI
   const setupGUI = useCallback(() => {
     if (guiRef.current) {
@@ -765,6 +762,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
   useEffect(() => {
     if (pcdData && stats && !loading && !error) {
       initializeThreeJS();
+      setupGUI(); // 自动设置GUI，因为没有手动开关了
       animate();
     }
 
@@ -773,7 +771,7 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [pcdData, stats, loading, error, initializeThreeJS, animate]);
+  }, [pcdData, stats, loading, error, initializeThreeJS, animate, setupGUI]);
 
   useEffect(() => {
     // 重新初始化场景当设置改变时
@@ -800,90 +798,12 @@ export const PCDViewer: React.FC<PCDViewerProps> = ({
   // 主渲染
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-      {/* 简化工具栏 - 只保留必要控件 */}
-      <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setShowMetadata(!showMetadata)}
-            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            title={showMetadata ? t('pcd.hideMetadata', '隐藏元数据') : t('pcd.showMetadata', '显示元数据')}
-          >
-            <Info className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={() => {
-              if (guiRef.current) {
-                guiRef.current.destroy();
-                guiRef.current = null;
-              } else {
-                setupGUI();
-              }
-            }}
-            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            title={t('pcd.settings', '设置')}
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
-
-          <button
-            onClick={resetCamera}
-            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            title={t('pcd.resetView', '重置视图')}
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       {/* 3D视图区域 - 全屏显示 */}
       <div 
         ref={mountRef} 
         className="flex-1 relative bg-gray-900"
         style={{ minHeight: '400px' }}
       >
-        {/* 元数据覆盖层 */}
-        {showMetadata && stats && (
-          <div className="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-4 rounded-lg z-20 max-w-xs">
-            <h4 className="text-sm font-semibold mb-3 flex items-center">
-              <Info className="w-4 h-4 mr-2" />
-              {t('pcd.metadata', '点云元数据')}
-            </h4>
-            
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-300">{t('pcd.pointCount', '点数量')}:</span>
-                <span className="font-mono text-white">{stats.pointCount.toLocaleString()}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-300">{t('pcd.hasColor', '包含颜色')}:</span>
-                <span className="text-white">
-                  {stats.hasColor ? t('common.yes', '是') : t('common.no', '否')}
-                </span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-300">{t('pcd.hasIntensity', '包含强度')}:</span>
-                <span className="text-white">
-                  {stats.hasIntensity ? t('common.yes', '是') : t('common.no', '否')}
-                </span>
-              </div>
-              
-              <div className="pt-2 border-t border-gray-600">
-                <div className="text-gray-300 mb-1">{t('pcd.bounds', '边界')}:</div>
-                <div className="font-mono text-xs space-y-1 text-white">
-                  <div>X: {stats.bounds.min.x.toFixed(3)} ~ {stats.bounds.max.x.toFixed(3)}</div>
-                  <div>Y: {stats.bounds.min.y.toFixed(3)} ~ {stats.bounds.max.y.toFixed(3)}</div>
-                  <div>Z: {stats.bounds.min.z.toFixed(3)} ~ {stats.bounds.max.z.toFixed(3)}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* 鼠标操作提示 */}
         <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded pointer-events-none z-10">
           {t('pcd.mouseHint', '鼠标拖拽旋转，滚轮缩放，右键平移')}

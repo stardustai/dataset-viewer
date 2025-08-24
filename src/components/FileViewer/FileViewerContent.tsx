@@ -232,6 +232,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         filePath={filePath}
         fileName={file.basename}
         fileSize={file.size}
+        onMetadataLoaded={setDataMetadata}
       />
     );
   }
