@@ -94,6 +94,5 @@ export interface ServerCapabilities {
   supportsWebDAV: boolean;
   preferredMethod: 'PROPFIND' | 'GET' | 'AUTO';
   lastDetected: number;
-  supportsPagination: boolean;
   maxPageSize?: number;
 }

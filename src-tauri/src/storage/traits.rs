@@ -173,9 +173,6 @@ pub trait StorageClient: Send + Sync {
         Ok(path.to_string())
     }
 
-    /// 获取客户端能力
-    fn capabilities(&self) -> StorageCapabilities;
-
     /// 获取协议名称
     fn protocol(&self) -> &str;
 
@@ -184,32 +181,4 @@ pub trait StorageClient: Send + Sync {
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError>;
 
 
-}
-
-/// 存储能力描述
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageCapabilities {
-    pub supports_streaming: bool,
-    pub supports_range_requests: bool,
-    pub supports_multipart_upload: bool,
-    pub supports_metadata: bool,
-    pub supports_encryption: bool,
-    pub supports_directories: bool,
-    pub max_file_size: Option<u64>,
-    pub supported_methods: Vec<String>,
-}
-
-impl Default for StorageCapabilities {
-    fn default() -> Self {
-        Self {
-            supports_streaming: false,
-            supports_range_requests: false,
-            supports_multipart_upload: false,
-            supports_metadata: false,
-            supports_encryption: false,
-            supports_directories: false,
-            max_file_size: None,
-            supported_methods: vec!["GET".to_string(), "HEAD".to_string()],
-        }
-    }
 }

@@ -21,7 +21,7 @@ use aws_sdk_s3::presigning::PresigningConfig;
 
 use crate::storage::traits::{
     StorageClient, StorageRequest, StorageResponse, StorageError,
-    ConnectionConfig, StorageCapabilities, DirectoryResult, StorageFile, ListOptions, ProgressCallback
+    ConnectionConfig, DirectoryResult, StorageFile, ListOptions, ProgressCallback
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -934,24 +934,6 @@ impl StorageClient for OSSClient {
         println!("实际接收到 {} 字节", result.len());
 
         Ok(result)
-    }
-
-    fn capabilities(&self) -> StorageCapabilities {
-        StorageCapabilities {
-            supports_streaming: true,
-            supports_range_requests: true,
-            supports_multipart_upload: false,
-            supports_metadata: true,
-            supports_encryption: false,
-            supports_directories: true,
-            max_file_size: Some(5 * 1024 * 1024 * 1024), // 5GB
-            supported_methods: vec![
-                "GET".to_string(),
-                "HEAD".to_string(),
-                "PUT".to_string(),
-                "DELETE".to_string(),
-            ],
-        }
     }
 
     async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {

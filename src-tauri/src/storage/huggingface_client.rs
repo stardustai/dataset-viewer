@@ -7,7 +7,7 @@ use futures_util::StreamExt;
 
 use crate::storage::traits::{
     StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig,
-    StorageCapabilities, DirectoryResult, StorageFile, ListOptions, ProgressCallback,
+    DirectoryResult, StorageFile, ListOptions, ProgressCallback,
 };
 
 /// HuggingFace 数据集信息
@@ -58,8 +58,15 @@ impl HuggingFaceClient {
     async fn list_popular_datasets(&self, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
         let page_size = options.and_then(|o| o.page_size).unwrap_or(20);
 
-        let url = format!("{}?limit={}&sort=downloads&direction=-1",
-            format!("{}/datasets", self.api_url), page_size);
+        // 构建基础 URL
+        let mut url = format!("{}/datasets?limit={}", self.api_url, page_size);
+
+        // 如果有 marker，添加为 cursor 参数（HuggingFace API 的分页参数）
+        if let Some(marker) = options.and_then(|o| o.marker.as_ref()) {
+            if !marker.is_empty() {
+                url.push_str(&format!("&cursor={}", urlencoding::encode(marker)));
+            }
+        }
 
         let response = self.client
             .get(&url)
@@ -73,6 +80,41 @@ impl HuggingFaceClient {
                 format!("Failed to fetch datasets: {}", response.status())
             ));
         }
+
+        // 提取 Link header 信息以及下一页的 cursor（在消耗 response 之前）
+        let (has_more, next_cursor) = if let Some(link_header) = response.headers().get("Link") {
+            if let Ok(link_str) = link_header.to_str() {
+                let has_more = link_str.contains("rel=\"next\"");
+
+                // 从 Link header 中提取 cursor 参数
+                let next_cursor = if has_more {
+                    // 提取形如 <https://huggingface.co/api/datasets?cursor=xxx&limit=20>; rel="next" 的链接
+                    link_str.split(',')
+                        .find(|part| part.contains("rel=\"next\""))
+                        .and_then(|next_part| {
+                            // 提取 URL 部分
+                            next_part.trim()
+                                .strip_prefix('<')
+                                .and_then(|s| s.split('>').next())
+                        })
+                        .and_then(|url| {
+                            // 从 URL 中提取 cursor 参数
+                            url.split('&')
+                                .find(|param| param.starts_with("cursor="))
+                                .and_then(|cursor_param| cursor_param.strip_prefix("cursor="))
+                                .map(|cursor| urlencoding::decode(cursor).unwrap_or_default().into_owned())
+                        })
+                } else {
+                    None
+                };
+
+                (has_more, next_cursor)
+            } else {
+                (false, None)
+            }
+        } else {
+            (false, None)
+        };
 
         let datasets: Vec<DatasetInfo> = response
             .json()
@@ -92,10 +134,18 @@ impl HuggingFaceClient {
             })
             .collect();
 
+        // 根据 Link header 或返回数量判断是否有更多数据
+        let has_more = if !has_more {
+            // 如果没有 Link header 信息，根据返回数量判断
+            files.len() == page_size as usize
+        } else {
+            has_more
+        };
+
         Ok(DirectoryResult {
             files,
-            has_more: false,
-            next_marker: None,
+            has_more,
+            next_marker: next_cursor, // 使用从 Link header 提取的 cursor
             total_count: None,
             path: "/".to_string(),
         })
@@ -105,10 +155,19 @@ impl HuggingFaceClient {
     async fn search_datasets(&self, query: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
         let page_size = options.and_then(|o| o.page_size).unwrap_or(20);
 
-        let url = format!("{}?search={}&limit={}&sort=downloads&direction=-1",
-            format!("{}/datasets", self.api_url),
+        // 构建基础 URL
+        let mut url = format!("{}/datasets?search={}&limit={}",
+            self.api_url,
             urlencoding::encode(query),
-            page_size);
+            page_size
+        );
+
+        // 如果有 marker，添加为 cursor 参数
+        if let Some(marker) = options.and_then(|o| o.marker.as_ref()) {
+            if !marker.is_empty() {
+                url.push_str(&format!("&cursor={}", urlencoding::encode(marker)));
+            }
+        }
 
         let response = self.client
             .get(&url)
@@ -123,6 +182,41 @@ impl HuggingFaceClient {
             ));
         }
 
+        // 提取 Link header 信息以及下一页的 cursor（在消耗 response 之前）
+        let (has_more, next_cursor) = if let Some(link_header) = response.headers().get("Link") {
+            if let Ok(link_str) = link_header.to_str() {
+                let has_more = link_str.contains("rel=\"next\"");
+
+                // 从 Link header 中提取 cursor 参数
+                let next_cursor = if has_more {
+                    // 提取形如 <https://huggingface.co/api/datasets?cursor=xxx&limit=20>; rel="next" 的链接
+                    link_str.split(',')
+                        .find(|part| part.contains("rel=\"next\""))
+                        .and_then(|next_part| {
+                            // 提取 URL 部分
+                            next_part.trim()
+                                .strip_prefix('<')
+                                .and_then(|s| s.split('>').next())
+                        })
+                        .and_then(|url| {
+                            // 从 URL 中提取 cursor 参数
+                            url.split('&')
+                                .find(|param| param.starts_with("cursor="))
+                                .and_then(|cursor_param| cursor_param.strip_prefix("cursor="))
+                                .map(|cursor| urlencoding::decode(cursor).unwrap_or_default().into_owned())
+                        })
+                } else {
+                    None
+                };
+
+                (has_more, next_cursor)
+            } else {
+                (false, None)
+            }
+        } else {
+            (false, None)
+        };
+
         let datasets: Vec<DatasetInfo> = response
             .json()
             .await
@@ -141,10 +235,18 @@ impl HuggingFaceClient {
             })
             .collect();
 
+        // 根据 Link header 或返回数量判断是否有更多数据（has_more 已经在上面从 header 中提取了）
+        let has_more = if !has_more {
+            // 如果没有 Link header 信息，根据返回数量判断
+            files.len() == page_size as usize
+        } else {
+            has_more
+        };
+
         Ok(DirectoryResult {
             files,
-            has_more: false,
-            next_marker: None,
+            has_more,
+            next_marker: next_cursor, // 使用从 Link header 提取的 cursor
             total_count: None,
             path: format!("/search/{}", urlencoding::encode(query)),
         })
@@ -154,11 +256,19 @@ impl HuggingFaceClient {
     async fn list_organization_datasets(&self, org_name: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
         let page_size = options.and_then(|o| o.page_size).unwrap_or(20);
 
-        // 使用 author 参数搜索特定组织的数据集
-        let url = format!("{}?author={}&limit={}&sort=downloads&direction=-1",
-            format!("{}/datasets", self.api_url),
+        // 构建基础 URL
+        let mut url = format!("{}/datasets?author={}&limit={}",
+            self.api_url,
             urlencoding::encode(org_name),
-            page_size);
+            page_size
+        );
+
+        // 如果有 marker，添加为 cursor 参数
+        if let Some(marker) = options.and_then(|o| o.marker.as_ref()) {
+            if !marker.is_empty() {
+                url.push_str(&format!("&cursor={}", urlencoding::encode(marker)));
+            }
+        }
 
         let response = self.client
             .get(&url)
@@ -173,6 +283,41 @@ impl HuggingFaceClient {
             ));
         }
 
+        // 提取 Link header 信息以及下一页的 cursor（在消耗 response 之前）
+        let (has_more, next_cursor) = if let Some(link_header) = response.headers().get("link") {
+            if let Ok(link_str) = link_header.to_str() {
+                let has_more = link_str.contains("rel=\"next\"");
+
+                // 从 Link header 中提取 cursor 参数
+                let next_cursor = if has_more {
+                    // 提取形如 <https://huggingface.co/api/datasets?cursor=xxx&limit=20>; rel="next" 的链接
+                    link_str.split(',')
+                        .find(|part| part.contains("rel=\"next\""))
+                        .and_then(|next_part| {
+                            // 提取 URL 部分
+                            next_part.trim()
+                                .strip_prefix('<')
+                                .and_then(|s| s.split('>').next())
+                        })
+                        .and_then(|url| {
+                            // 从 URL 中提取 cursor 参数
+                            url.split('&')
+                                .find(|param| param.starts_with("cursor="))
+                                .and_then(|cursor_param| cursor_param.strip_prefix("cursor="))
+                                .map(|cursor| urlencoding::decode(cursor).unwrap_or_default().into_owned())
+                        })
+                } else {
+                    None
+                };
+
+                (has_more, next_cursor)
+            } else {
+                (false, None)
+            }
+        } else {
+            (false, None)
+        };
+
         let datasets: Vec<DatasetInfo> = response
             .json()
             .await
@@ -193,15 +338,15 @@ impl HuggingFaceClient {
 
         Ok(DirectoryResult {
             files,
-            has_more: false,
-            next_marker: None,
+            has_more,
+            next_marker: next_cursor, // 使用从 Link header 提取的 cursor
             total_count: None,
             path: org_name.to_string(),
         })
     }
 
     /// 列出数据集文件
-    async fn list_dataset_files(&self, dataset_id: &str, subpath: &str) -> Result<DirectoryResult, StorageError> {
+    async fn list_dataset_files(&self, dataset_id: &str, subpath: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
         // 使用 tree API 获取完整的文件信息
         let url = if subpath.is_empty() {
             format!("{}/datasets/{}/tree/main", self.api_url, dataset_id)
@@ -284,6 +429,20 @@ impl HuggingFaceClient {
             }
         }
 
+        // 应用排序
+        if let Some(opts) = options {
+            self.apply_file_sorting(&mut unique_files, opts);
+        } else {
+            // 默认排序：目录优先，然后按名称排序
+            unique_files.sort_by(|a, b| {
+                match (a.file_type.as_str(), b.file_type.as_str()) {
+                    ("directory", "file") => std::cmp::Ordering::Less,
+                    ("file", "directory") => std::cmp::Ordering::Greater,
+                    _ => a.filename.cmp(&b.filename),
+                }
+            });
+        }
+
         let path = if subpath.is_empty() {
             dataset_id.replace('/', ":")
         } else {
@@ -300,6 +459,75 @@ impl HuggingFaceClient {
             path,
         })
     }
+
+    /// 应用文件排序
+    fn apply_file_sorting(&self, files: &mut Vec<StorageFile>, options: &ListOptions) {
+        if let Some(sort_by) = &options.sort_by {
+            let ascending = options.sort_order.as_deref() != Some("desc");
+
+            match sort_by.as_str() {
+                "name" => {
+                    files.sort_by(|a, b| {
+                        // 目录优先
+                        match (a.file_type.as_str(), b.file_type.as_str()) {
+                            ("directory", "file") => std::cmp::Ordering::Less,
+                            ("file", "directory") => std::cmp::Ordering::Greater,
+                            _ => {
+                                if ascending {
+                                    a.filename.cmp(&b.filename)
+                                } else {
+                                    b.filename.cmp(&a.filename)
+                                }
+                            }
+                        }
+                    });
+                },
+                "size" => {
+                    files.sort_by(|a, b| {
+                        // 目录优先
+                        match (a.file_type.as_str(), b.file_type.as_str()) {
+                            ("directory", "file") => std::cmp::Ordering::Less,
+                            ("file", "directory") => std::cmp::Ordering::Greater,
+                            _ => {
+                                if ascending {
+                                    a.size.cmp(&b.size)
+                                } else {
+                                    b.size.cmp(&a.size)
+                                }
+                            }
+                        }
+                    });
+                },
+                "modified" => {
+                    files.sort_by(|a, b| {
+                        // 目录优先
+                        match (a.file_type.as_str(), b.file_type.as_str()) {
+                            ("directory", "file") => std::cmp::Ordering::Less,
+                            ("file", "directory") => std::cmp::Ordering::Greater,
+                            _ => {
+                                if ascending {
+                                    a.lastmod.cmp(&b.lastmod)
+                                } else {
+                                    b.lastmod.cmp(&a.lastmod)
+                                }
+                            }
+                        }
+                    });
+                },
+                _ => {
+                    // 默认按名称排序
+                    files.sort_by(|a, b| {
+                        match (a.file_type.as_str(), b.file_type.as_str()) {
+                            ("directory", "file") => std::cmp::Ordering::Less,
+                            ("file", "directory") => std::cmp::Ordering::Greater,
+                            _ => a.filename.cmp(&b.filename),
+                        }
+                    });
+                }
+            }
+        }
+    }
+
     /// 获取 MIME 类型
     fn get_mime_type(&self, filename: &str) -> String {
         let ext = filename.split('.').last().unwrap_or("").to_lowercase();
@@ -452,7 +680,7 @@ impl StorageClient for HuggingFaceClient {
         // 尝试解析数据集路径
         match self.parse_path(path) {
             Ok((dataset_id, file_path)) => {
-                self.list_dataset_files(&dataset_id, &file_path).await
+                self.list_dataset_files(&dataset_id, &file_path, options).await
             }
             Err(_) => {
                 // 如果路径解析失败，尝试将其视为组织名称
@@ -478,7 +706,7 @@ impl StorageClient for HuggingFaceClient {
                 // 检查是否包含路径分隔符
                 let parts: Vec<&str> = hf_url.splitn(2, '/').collect();
                 let first_part = parts[0];
-                
+
                 if first_part.contains(':') {
                     // 路径格式：owner:dataset/file_path
                     let dataset_parts: Vec<&str> = first_part.split(':').collect();
@@ -486,7 +714,7 @@ impl StorageClient for HuggingFaceClient {
                         let owner = dataset_parts[0];
                         let dataset = dataset_parts[1];
                         let dataset_id = format!("{}/{}", owner, dataset);
-                        
+
                         if parts.len() == 2 {
                             // 有文件路径
                             let file_path = parts[1];
@@ -567,7 +795,7 @@ impl StorageClient for HuggingFaceClient {
                 // 路径格式：owner:dataset/file_path
                 let parts: Vec<&str> = hf_url.splitn(2, '/').collect();
                 let dataset_id_part = parts[0];
-                
+
                 if dataset_id_part.contains(':') && parts.len() == 2 {
                     let dataset_parts: Vec<&str> = dataset_id_part.split(':').collect();
                     if dataset_parts.len() == 2 {
@@ -649,7 +877,7 @@ impl StorageClient for HuggingFaceClient {
     ) -> Result<Vec<u8>, StorageError> {
         let (dataset_id, file_path) = self.parse_path(path)?;
         let download_url = self.build_download_url(&dataset_id, &file_path);
-        
+
         println!("[DEBUG] HuggingFace read_file_range:");
         println!("[DEBUG] - path: {}", path);
         println!("[DEBUG] - dataset_id: {}", dataset_id);
@@ -684,7 +912,7 @@ impl StorageClient for HuggingFaceClient {
 
             let chunk = chunk_result
                 .map_err(|e| StorageError::NetworkError(format!("Failed to read chunk: {}", e)))?;
-            
+
             result.extend_from_slice(&chunk);
             downloaded += chunk.len() as u64;
 
@@ -721,9 +949,9 @@ impl StorageClient for HuggingFaceClient {
     async fn get_file_size(&self, path: &str) -> Result<u64, StorageError> {
         println!("[DEBUG] HuggingFace get_file_size called with:");
         println!("[DEBUG] - path: {}", path);
-        
+
         let (dataset_id, file_path) = self.parse_path(path)?;
-        
+
         println!("[DEBUG] - dataset_id: {}", dataset_id);
         println!("[DEBUG] - file_path: {}", file_path);
 
@@ -741,7 +969,7 @@ impl StorageClient for HuggingFaceClient {
         } else {
             tree_url
         };
-        
+
         println!("[DEBUG] - tree API URL: {}", url);
 
         let response = self.client
@@ -768,7 +996,7 @@ impl StorageClient for HuggingFaceClient {
         } else {
             // 降级到 HEAD 请求
             let download_url = self.build_download_url(&dataset_id, &file_path);
-            
+
             println!("[DEBUG] - fallback to HEAD request: {}", download_url);
 
             let response = self.client
@@ -798,22 +1026,6 @@ impl StorageClient for HuggingFaceClient {
     fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
         let (dataset_id, file_path) = self.parse_path(path)?;
         Ok(self.build_download_url(&dataset_id, &file_path))
-    }
-
-    fn capabilities(&self) -> StorageCapabilities {
-        StorageCapabilities {
-            supports_streaming: true,
-            supports_range_requests: true,
-            supports_multipart_upload: false,
-            supports_metadata: true,
-            supports_encryption: false,
-            supports_directories: true,
-            max_file_size: None,
-            supported_methods: vec![
-                "GET".to_string(),
-                "HEAD".to_string(),
-            ],
-        }
     }
 
     fn protocol(&self) -> &str {

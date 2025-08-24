@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { BaseStorageClient, DEFAULT_TIMEOUTS } from './BaseStorageClient';
+import { BaseStorageClient, DEFAULT_TIMEOUTS, DefaultSortOptions } from './BaseStorageClient';
 import { ConnectionConfig, DirectoryResult, ListOptions, ReadOptions, FileContent, StorageResponse } from './types';
 import type { ArchiveInfo, FilePreview } from '../../types';
 
@@ -16,6 +16,23 @@ interface HuggingFacePathInfo {
 export class HuggingFaceStorageClient extends BaseStorageClient {
   protected protocol = 'huggingface';
   private currentConfig: ConnectionConfig | null = null;
+
+  /**
+   * HuggingFace 使用服务端排序，默认按下载量降序
+   */
+  getDefaultSortOptions(): DefaultSortOptions | null {
+    return {
+      sortBy: 'size', // 'size' 映射到下载量
+      sortOrder: 'desc'
+    };
+  }
+
+  /**
+   * HuggingFace 使用较小的分页大小以提高响应速度
+   */
+  getDefaultPageSize(): number | null {
+    return 20;
+  }
 
   /**
    * 解析 HuggingFace 路径

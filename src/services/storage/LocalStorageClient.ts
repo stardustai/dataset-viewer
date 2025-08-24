@@ -1,4 +1,4 @@
-import { BaseStorageClient } from './BaseStorageClient';
+import { BaseStorageClient, DefaultSortOptions } from './BaseStorageClient';
 import {
   ConnectionConfig,
   DirectoryResult,
@@ -18,6 +18,20 @@ export class LocalStorageClient extends BaseStorageClient {
   protected protocol = 'local';
   private rootPath: string = '';
   private displayPath: string = '';
+
+  /**
+   * 本地文件系统不使用固定排序，让用户自由排序
+   */
+  getDefaultSortOptions(): DefaultSortOptions | null {
+    return null; // 使用前端排序
+  }
+
+  /**
+   * 本地文件系统通常不需要分页
+   */
+  getDefaultPageSize(): number | null {
+    return null; // 不分页
+  }
 
   /**
    * 获取连接的显示名称

@@ -341,17 +341,6 @@ async fn storage_is_connected() -> Result<bool, String> {
 }
 
 #[tauri::command]
-async fn storage_get_capabilities() -> Result<serde_json::Value, String> {
-    let manager_arc = get_storage_manager().await;
-    let manager = manager_arc.read().await;
-
-    match manager.current_capabilities().await {
-        Some(caps) => Ok(serde_json::to_value(caps).unwrap()),
-        None => Err("No active connection".to_string())
-    }
-}
-
-#[tauri::command]
 async fn storage_get_supported_protocols() -> Result<Vec<String>, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
@@ -820,7 +809,6 @@ pub fn run() {
             storage_connect,
             storage_disconnect,
             storage_is_connected,
-            storage_get_capabilities,
             storage_get_supported_protocols,
             storage_list_directory,
             storage_get_download_url,

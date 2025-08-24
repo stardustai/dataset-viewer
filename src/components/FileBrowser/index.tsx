@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
+import { ListOptions } from '../../services/storage/types';
 import { cleanPath } from '../../utils/pathUtils';
 import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
 import { navigationHistoryService } from '../../services/navigationHistory';
@@ -115,7 +116,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       filteredFiles = getFilteredFiles();
     }
 
-    // 对过滤后的文件进行排序
+    // 检查当前客户端是否使用服务端排序
+    const currentClient = StorageServiceManager.getCurrentClient();
+    const defaultSortOptions = currentClient.getDefaultSortOptions();
+
+    // 如果客户端指定了默认排序选项，则不应用前端排序，直接返回服务端排序的结果
+    if (defaultSortOptions) {
+      return filteredFiles;
+    }
+
+    // 否则对过滤后的文件进行前端排序
     return [...filteredFiles].sort((a, b) => {
       // 目录总是排在文件前面
       if (a.type === 'directory' && b.type !== 'directory') return -1;
@@ -294,7 +304,18 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
     try {
       console.log('Loading directory from server:', path);
-      const fileList = await StorageServiceManager.listDirectory(path);
+
+      // 获取当前客户端的默认分页大小
+      const currentClient = StorageServiceManager.getCurrentClient();
+      const defaultPageSize = currentClient.getDefaultPageSize();
+
+      // 构建请求选项
+      const listOptions: ListOptions = {};
+      if (defaultPageSize) {
+        listOptions.pageSize = defaultPageSize;
+      }
+
+      const fileList = await StorageServiceManager.listDirectory(path, listOptions);
       setFiles(fileList.files);
       setCurrentPath(path);
 
@@ -395,9 +416,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setLoadingMore(true);
         console.log('Loading more files with marker:', nextMarker);
 
+        const currentClient = StorageServiceManager.getCurrentClient();
+        const defaultPageSize = currentClient.getDefaultPageSize();
+
         const result = await StorageServiceManager.listDirectory(currentPath, {
           marker: nextMarker, // nextMarker can be null/undefined, which is fine
-          pageSize: 1000
+          pageSize: defaultPageSize || 1000 // 使用客户端默认页面大小，fallback 到 1000
         });
 
         // 将新文件追加到现有文件列表
@@ -476,10 +500,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       console.log('Fetching complete file list for folder download...');
 
+      const currentClient = StorageServiceManager.getCurrentClient();
+      const defaultPageSize = currentClient.getDefaultPageSize();
+
       while (hasMorePages) {
         const result = await StorageServiceManager.listDirectory(currentPath, {
           marker,
-          pageSize: 1000 // 使用大页面大小提高效率
+          pageSize: defaultPageSize || 1000 // 使用客户端默认页面大小，fallback 到 1000
         });
 
         allFiles.push(...result.files);

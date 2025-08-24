@@ -34,12 +34,34 @@ export const DEFAULT_TIMEOUTS: TimeoutConfig = {
 };
 
 /**
+ * 存储客户端排序选项
+ */
+export interface DefaultSortOptions {
+  /** 默认排序字段 */
+  sortBy?: 'name' | 'size' | 'modified';
+  /** 默认排序顺序 */
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
  * 统一存储客户端基类
  * 提供所有存储类型的通用接口实现
  */
 export abstract class BaseStorageClient implements StorageClient {
   protected abstract protocol: string;
   protected connected: boolean = false;
+
+  /**
+   * 获取默认排序选项
+   * 返回 null 表示使用前端排序，返回具体选项表示使用服务端排序
+   */
+  abstract getDefaultSortOptions(): DefaultSortOptions | null;
+
+  /**
+   * 获取默认分页大小
+   * 返回 null 表示不分页
+   */
+  abstract getDefaultPageSize(): number | null;
 
   /**
    * 带超时的 Tauri invoke 包装器

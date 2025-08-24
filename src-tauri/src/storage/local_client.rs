@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
-use super::traits::{StorageClient, StorageError, StorageRequest, StorageResponse, DirectoryResult, StorageFile, ListOptions, ConnectionConfig, StorageCapabilities, ProgressCallback};
+use super::traits::{StorageClient, StorageError, StorageRequest, StorageResponse, DirectoryResult, StorageFile, ListOptions, ConnectionConfig, ProgressCallback};
 use crate::utils::chunk_size;
 
 /// 本机文件系统存储客户端
@@ -421,25 +421,6 @@ impl StorageClient for LocalFileSystemClient {
         }
 
         Ok(metadata.len())
-    }
-
-    fn capabilities(&self) -> StorageCapabilities {
-        StorageCapabilities {
-            supports_directories: true,
-            supports_metadata: true,
-            supports_streaming: true,
-            supports_range_requests: true,
-            supports_multipart_upload: false,
-            supports_encryption: false,
-            max_file_size: None,
-            supported_methods: vec![
-                "READ_FILE".to_string(),
-                "READ_FILE_BINARY".to_string(),
-                "LIST_DIRECTORY".to_string(),
-                "GET_FILE_SIZE".to_string(),
-                "CHECK_ACCESS".to_string(),
-            ],
-        }
     }
 
     fn protocol(&self) -> &str {

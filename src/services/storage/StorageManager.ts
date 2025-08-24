@@ -336,7 +336,6 @@ export class StorageServiceManager {
    */
   static getStorageCapabilities(): {
     type: StorageClientType;
-    supportsPagination: boolean;
     supportsRangeRequests: boolean;
     supportsSearch: boolean;
   } {
@@ -349,14 +348,12 @@ export class StorageServiceManager {
       case 'webdav':
         return {
           type: 'webdav',
-          supportsPagination: false, // WebDAV 不原生支持分页
           supportsRangeRequests: true,
           supportsSearch: false, // 大多数 WebDAV 服务器不支持搜索
         };
       case 'local':
         return {
           type: 'local',
-          supportsPagination: false, // 本机文件系统不需要分页
           supportsRangeRequests: true,
           supportsSearch: true, // 本机文件系统支持文件名搜索
         };

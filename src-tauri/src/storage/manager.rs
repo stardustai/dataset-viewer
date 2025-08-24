@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use tokio::sync::{RwLock, Semaphore};
 use std::sync::Arc;
-use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, StorageCapabilities, DirectoryResult, ListOptions};
+use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, DirectoryResult, ListOptions};
 use super::webdav_client::WebDAVClient;
 use super::local_client::LocalFileSystemClient;
 use super::oss_client::OSSClient;
@@ -55,7 +55,7 @@ impl StorageManager {
 
         self.clients.insert(client_id.clone(), client.clone());
         self.active_client = Some(client_id);
-        
+
         // 更新缓存的客户端引用
         self.cached_client = Some(client.clone());
 
@@ -72,10 +72,10 @@ impl StorageManager {
             }
         }
         self.active_client = None;
-        
+
         // 清空缓存的客户端引用
         self.cached_client = None;
-        
+
         Ok(())
     }
 
@@ -88,14 +88,14 @@ impl StorageManager {
         let _permit = self.request_semaphore.acquire().await.map_err(|_| {
             StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
         })?;
-        
+
         // 快速获取缓存的客户端引用
         let client = if let Some(ref client) = self.cached_client {
             client.clone()
         } else {
             return Err(StorageError::NotConnected);
         };
-        
+
         // 直接执行请求，client 本身就是线程安全的
         client.request(request).await
     }
@@ -105,14 +105,14 @@ impl StorageManager {
         let _permit = self.request_semaphore.acquire().await.map_err(|_| {
             StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
         })?;
-        
+
         // 快速获取缓存的客户端引用
         let client = if let Some(ref client) = self.cached_client {
             client.clone()
         } else {
             return Err(StorageError::NotConnected);
         };
-        
+
         // 直接执行请求，client 本身就是线程安全的
         client.request_binary(request).await
     }
@@ -122,21 +122,16 @@ impl StorageManager {
         let _permit = self.request_semaphore.acquire().await.map_err(|_| {
             StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
         })?;
-        
+
         // 快速获取缓存的客户端引用
         let client = if let Some(ref client) = self.cached_client {
             client.clone()
         } else {
             return Err(StorageError::NotConnected);
         };
-        
+
         // 直接执行请求，client 本身就是线程安全的
         client.list_directory(path, options).await
-    }
-
-    pub async fn current_capabilities(&self) -> Option<StorageCapabilities> {
-        let client = self.cached_client.as_ref()?;
-        Some(client.capabilities())
     }
 
     pub fn get_current_client(&self) -> Option<Arc<dyn StorageClient + Send + Sync>> {
@@ -146,7 +141,7 @@ impl StorageManager {
     pub async fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
         let client = self.cached_client.as_ref()
             .ok_or(StorageError::NotConnected)?;
-        
+
         client.get_download_url(path)
     }
     pub fn supported_protocols(&self) -> Vec<&str> {

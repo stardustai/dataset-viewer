@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { BaseStorageClient } from './BaseStorageClient';
+import { BaseStorageClient, DefaultSortOptions } from './BaseStorageClient';
 import {
   ConnectionConfig,
   DirectoryResult,
@@ -26,6 +26,20 @@ interface OSSConnection {
 export class OSSStorageClient extends BaseStorageClient {
   protected protocol = 'oss';
   private connection: OSSConnection | null = null;
+
+  /**
+   * OSS 不使用固定排序，让用户自由排序
+   */
+  getDefaultSortOptions(): DefaultSortOptions | null {
+    return null; // 使用前端排序
+  }
+
+  /**
+   * OSS 使用大分页大小，提高批量处理效率
+   */
+  getDefaultPageSize(): number | null {
+    return 1000;
+  }
 
   /**
    * 统一解析 OSS 配置，支持带路径前缀的 bucket

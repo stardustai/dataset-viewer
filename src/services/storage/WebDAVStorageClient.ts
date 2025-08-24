@@ -1,4 +1,4 @@
-import { BaseStorageClient, DEFAULT_TIMEOUTS } from './BaseStorageClient';
+import { BaseStorageClient, DEFAULT_TIMEOUTS, DefaultSortOptions } from './BaseStorageClient';
 import {
   ConnectionConfig,
   DirectoryResult,
@@ -29,8 +29,21 @@ export class WebDAVStorageClient extends BaseStorageClient {
     supportsWebDAV: false,
     preferredMethod: 'AUTO',
     lastDetected: 0,
-    supportsPagination: false,
   };
+
+  /**
+   * WebDAV 不使用固定排序，让用户自由排序
+   */
+  getDefaultSortOptions(): DefaultSortOptions | null {
+    return null; // 使用前端排序
+  }
+
+  /**
+   * WebDAV 通常不需要分页
+   */
+  getDefaultPageSize(): number | null {
+    return null; // 不分页
+  }
 
   /**
    * 获取连接的显示名称
@@ -283,7 +296,6 @@ export class WebDAVStorageClient extends BaseStorageClient {
       supportsWebDAV: true,
       preferredMethod: 'PROPFIND',
       lastDetected: Date.now(),
-      supportsPagination: false,
     };
     console.log('Server capabilities set to WebDAV PROPFIND (handled by backend)');
   }
@@ -293,7 +305,6 @@ export class WebDAVStorageClient extends BaseStorageClient {
       supportsWebDAV: false,
       preferredMethod: 'AUTO',
       lastDetected: 0,
-      supportsPagination: false,
     };
   }
 
