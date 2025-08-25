@@ -112,6 +112,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     isLargeFile,
     filePath,
     totalSize,
+    currentFilePosition,
+    loadedContentSize,
     textViewerRef, // 传递textViewerRef
     performFullFileSearch,
     setSearchLoading: fileLoader.setSearchLoading,

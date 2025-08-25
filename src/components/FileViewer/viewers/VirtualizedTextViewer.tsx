@@ -486,8 +486,11 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
   const closeModal = () => setModalState(prev => ({ ...prev, isOpen: false }));
 
+  // 记录临时展开的行（用于自动收起）
+  const tempExpandedLineRef = useRef<number | null>(null);
+
   useImperativeHandle(ref, () => ({
-    scrollToLine: (lineNumber: number) => {
+    scrollToLine: (lineNumber: number, column?: number) => {
       // 计算目标行在原始文本中的索引
       const targetOriginalIndex = lineNumber - startLineNumber;
 
@@ -497,6 +500,44 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
       if (visibleIndex >= 0) {
         // 找到了对应的可见行，滚动到该位置
         virtualizer.scrollToIndex(visibleIndex, { align: 'center' });
+
+        // 如果指定了列位置，处理横向滚动
+        if (column && column > 0) {
+          // 检查这行是否是长行且被折叠了（使用正确的长行判断逻辑）
+          const targetLine = lines[targetOriginalIndex] || '';
+          const isLongLine = targetLine.length > 500; // 使用实际的长行阈值
+          const isCurrentlyExpanded = expandedLongLines.has(targetOriginalIndex);
+          const needsExpansion = isLongLine && !isCurrentlyExpanded;
+
+          // 如果需要展开，先展开
+          if (needsExpansion) {
+            // 收起之前临时展开的行
+            if (tempExpandedLineRef.current !== null && tempExpandedLineRef.current !== targetOriginalIndex) {
+              setExpandedLongLines(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(tempExpandedLineRef.current!);
+                return newSet;
+              });
+            }
+
+            // 展开当前行
+            setExpandedLongLines(prev => new Set([...prev, targetOriginalIndex]));
+            tempExpandedLineRef.current = targetOriginalIndex;
+          }
+
+          setTimeout(() => {
+            const container = containerRef.current;
+            if (container) {
+              const charWidth = 7.8; // 13px字体的近似字符宽度
+              const targetScrollLeft = Math.max(0, (column - 1) * charWidth - container.clientWidth / 3);
+
+              container.scrollTo({
+                left: targetScrollLeft,
+                behavior: 'smooth'
+              });
+            }
+          }, needsExpansion ? 150 : 100); // 展开需要稍长的等待时间
+        }
       } else if (targetOriginalIndex >= 0 && targetOriginalIndex < lines.length) {
         // 目标行存在但不在可见行列表中（可能因为代码折叠）
         // 尝试滚动到最接近的可见行
@@ -512,6 +553,45 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         });
 
         virtualizer.scrollToIndex(closestVisibleIndex, { align: 'center' });
+
+        // 如果有列位置，也处理横向滚动
+        if (column && column > 0) {
+          // 检查是否需要展开长行
+          if (targetOriginalIndex >= 0 && targetOriginalIndex < lines.length) {
+            const targetLine = lines[targetOriginalIndex];
+            const isLongLine = targetLine.length > 500; // 使用正确的长行阈值
+            const isCurrentlyExpanded = expandedLongLines.has(targetOriginalIndex);
+            const needsExpansion = isLongLine && !isCurrentlyExpanded;
+
+            if (needsExpansion) {
+              // 收起之前临时展开的行
+              if (tempExpandedLineRef.current !== null && tempExpandedLineRef.current !== targetOriginalIndex) {
+                setExpandedLongLines(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(tempExpandedLineRef.current!);
+                  return newSet;
+                });
+              }
+
+              // 展开当前行
+              setExpandedLongLines(prev => new Set([...prev, targetOriginalIndex]));
+              tempExpandedLineRef.current = targetOriginalIndex;
+            }
+          }
+
+          setTimeout(() => {
+            const container = containerRef.current;
+            if (container) {
+              const charWidth = 7.8;
+              const targetScrollLeft = Math.max(0, (column - 1) * charWidth - container.clientWidth / 3);
+
+              container.scrollTo({
+                left: targetScrollLeft,
+                behavior: 'smooth'
+              });
+            }
+          }, 100);
+        }
       }
     },
     scrollToPercentage: (percentage: number) => {

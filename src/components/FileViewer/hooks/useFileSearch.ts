@@ -16,6 +16,8 @@ interface UseFileSearchProps {
   isLargeFile: boolean;
   filePath: string;
   totalSize: number;
+  currentFilePosition: number;
+  loadedContentSize: number;
   textViewerRef: React.RefObject<VirtualizedTextViewerRef>;
   performFullFileSearch: (term: string) => Promise<FullFileSearchResult[]>;
   setSearchLoading: (loading: boolean) => void;
@@ -42,6 +44,8 @@ export const useFileSearch = ({
   isLargeFile,
   filePath,
   totalSize,
+  currentFilePosition,
+  loadedContentSize,
   textViewerRef,
   performFullFileSearch,
   setSearchLoading,
@@ -63,6 +67,15 @@ export const useFileSearch = ({
   const lastSearchModeRef = useRef<boolean>(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isNavigatingRef = useRef<boolean>(false);
+
+  // 清理定时器的函数
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSearchResults = useCallback((results: SearchResult[], isLimited?: boolean) => {
     setSearchLoading(false);
@@ -142,25 +155,44 @@ export const useFileSearch = ({
       return;
     }
 
-    // 大文件需要加载新内容
+    // 大文件：检查目标搜索结果是否在当前已加载的内容块中
+    const chunkSize = 64 * 1024; // 64KB
+    const targetPosition = result.filePosition;
+
+    // 获取当前已加载内容的范围
+    const currentChunkStart = currentFilePosition;
+    const currentChunkEnd = currentChunkStart + loadedContentSize;
+
+    // 如果目标位置在当前加载的内容范围内，直接滚动到目标行
+    if (targetPosition >= currentChunkStart && targetPosition <= currentChunkEnd) {
+      if (textViewerRef.current) {
+        // 计算目标行在当前内容中的相对位置
+        const avgBytesPerLine = 50;
+        const estimatedStartLine = Math.floor(currentChunkStart / avgBytesPerLine) + 1;
+        const targetLineInCurrentContent = Math.max(1, result.line - estimatedStartLine + 1);
+        textViewerRef.current.scrollToLine(targetLineInCurrentContent, result.column);
+      }
+      return;
+    }
+
+    // 如果目标位置不在当前内容中，才重新加载内容
     try {
       setLoading(true);
       isNavigatingRef.current = true; // 防止加载新内容时触发重新搜索
 
-      const chunkSize = 64 * 1024; // 64KB
-      const targetPosition = Math.max(0, result.filePosition - chunkSize / 2);
-      const endPosition = Math.min(targetPosition + chunkSize * 2, totalSize);
+      const newTargetPosition = Math.max(0, targetPosition - chunkSize / 2);
+      const endPosition = Math.min(newTargetPosition + chunkSize * 2, totalSize);
 
       const { StorageServiceManager } = await import('../../../services/storage');
-      const newContent = await StorageServiceManager.getFileContent(filePath, targetPosition, endPosition - targetPosition);
+      const newContent = await StorageServiceManager.getFileContent(filePath, newTargetPosition, endPosition - newTargetPosition);
 
       setContent(newContent.content);
-      setCurrentFilePosition(targetPosition);
+      setCurrentFilePosition(newTargetPosition);
       setLoadedContentSize(newContent.content.length);
 
       // 估算起始行号
       const avgBytesPerLine = 50;
-      const estimatedStartLine = Math.floor(targetPosition / avgBytesPerLine) + 1;
+      const estimatedStartLine = Math.floor(newTargetPosition / avgBytesPerLine) + 1;
       setBaselineStartLineNumber(Math.max(1, estimatedStartLine));
 
       // 延迟滚动，等待内容渲染完成
@@ -175,12 +207,9 @@ export const useFileSearch = ({
     } catch (err) {
       console.error('Failed to navigate to search result:', err);
       setError('Failed to navigate to search result');
+      isNavigatingRef.current = false; // 确保在错误时也重置标志
     } finally {
       setLoading(false);
-      // 确保在异常情况下也重置导航标志
-      if (isNavigatingRef.current) {
-        setTimeout(() => { isNavigatingRef.current = false; }, 200);
-      }
     }
   }, [isLargeFile, filePath, totalSize, textViewerRef, setLoading, setContent, setCurrentFilePosition, setLoadedContentSize, setBaselineStartLineNumber, setError]);
 
@@ -222,14 +251,35 @@ export const useFileSearch = ({
 
   // 搜索词变化时的防抖处理
   useEffect(() => {
+    // 导航期间不执行搜索
+    if (isNavigatingRef.current) {
+      return;
+    }
+
     // 清理之前的定时器
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
+    // 如果搜索词为空，立即清空结果
+    if (!searchTerm.trim() || searchTerm.trim().length < 2) {
+      setSearchResults([]);
+      setFullFileSearchResults([]);
+      setCurrentSearchIndex(-1);
+      setSearchLoading(false);
+      setFullFileSearchLoading(false);
+      setSearchResultsLimited(false);
+      setFullFileSearchLimited(false);
+      lastSearchTermRef.current = '';
+      return;
+    }
+
     // 防抖：300ms后执行搜索
     searchTimeoutRef.current = setTimeout(() => {
-      performSearch(searchTerm);
+      // 再次检查导航状态
+      if (!isNavigatingRef.current) {
+        performSearch(searchTerm);
+      }
     }, 300);
 
     return () => {
@@ -241,10 +291,15 @@ export const useFileSearch = ({
 
   // 搜索模式切换时立即重新搜索
   useEffect(() => {
+    // 导航期间不切换搜索模式
+    if (isNavigatingRef.current) {
+      return;
+    }
+
     if (searchTerm.trim() && searchTerm.trim().length >= 2) {
       performSearch(searchTerm, true); // 强制搜索
     }
-  }, [fullFileSearchMode, searchTerm, performSearch]);
+  }, [fullFileSearchMode, performSearch]); // 移除 searchTerm 依赖，避免重复触发
 
   return {
     handleSearchResults,
