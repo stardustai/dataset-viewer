@@ -1,12 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, BarChart3, Layers, X } from 'lucide-react';
+import { Search, Layers, X } from 'lucide-react';
 
 interface DataTableControlsProps {
   globalFilter: string;
   onGlobalFilterChange: (value: string) => void;
-  showMetadata: boolean;
-  onToggleMetadata: () => void;
   showColumnPanel: boolean;
   onToggleColumnPanel: () => void;
   filteredCount: number;
@@ -19,8 +17,6 @@ interface DataTableControlsProps {
 export const DataTableControls: React.FC<DataTableControlsProps> = ({
   globalFilter,
   onGlobalFilterChange,
-  showMetadata,
-  onToggleMetadata,
   showColumnPanel,
   onToggleColumnPanel,
   filteredCount,
@@ -96,15 +92,6 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
-            <button
-              onClick={onToggleMetadata}
-              className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
-                showMetadata ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'
-              }`}
-              title={t('data.table.metadata.toggle')}
-            >
-              <BarChart3 className="w-4 h-4" />
-            </button>
             <button
               onClick={onToggleColumnPanel}
               className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${

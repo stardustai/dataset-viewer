@@ -24,7 +24,6 @@ import type { DataProvider, DataMetadata } from '../data-providers';
 import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
 import {
   DataTableControls,
-  DataTableMetadata,
   DataTableColumnPanel,
   DataTableCell,
   CellDetailModal
@@ -76,7 +75,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   // Data state
   const [data, setData] = useState<Record<string, unknown>[]>([]);
-  const [metadata, setMetadata] = useState<DataMetadata | null>(null);
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -96,7 +94,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   // UI state
   const [showColumnPanel, setShowColumnPanel] = useState(false);
-  const [showMetadata, setShowMetadata] = useState(false);
   const [showCellModal, setShowCellModal] = useState(false);
   const [modalCellData, setModalCellData] = useState<{
     value: unknown;
@@ -126,7 +123,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
       // 初始化并获取元数据
       const meta = await provider.loadMetadata();
-      setMetadata(meta);
       setTotalRows(meta.numRows);
 
       // 设置工作表信息（如果适用）
@@ -213,7 +209,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
       // 重新获取元数据
       const meta = await dataProviderRef.current.loadMetadata();
-      setMetadata(meta);
       setTotalRows(meta.numRows);
 
       // 更新列信息
@@ -357,22 +352,10 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800">
-      {/* Metadata Panel */}
-      {showMetadata && metadata && (
-        <DataTableMetadata
-          metadata={metadata}
-          loadedRows={loadedRows}
-          totalRows={totalRows}
-          fileSize={fileSize}
-        />
-      )}
-
       {/* Controls */}
       <DataTableControls
         globalFilter={globalFilter}
         onGlobalFilterChange={setGlobalFilter}
-        showMetadata={showMetadata}
-        onToggleMetadata={() => setShowMetadata(!showMetadata)}
         showColumnPanel={showColumnPanel}
         onToggleColumnPanel={() => setShowColumnPanel(!showColumnPanel)}
         filteredCount={table.getRowModel().rows.length}

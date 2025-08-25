@@ -124,7 +124,6 @@ export const fileViewer = {
   'data.table.loaded.rows': 'Loaded {{loaded}} / {{total}} rows',
   'data.table.showing.filtered': 'Showing {{showing}} / {{total}} loaded records',
   'data.table.sheet.label': 'Sheet',
-  'data.table.metadata.toggle': 'Show/Hide metadata',
   'data.table.columns.toggle': 'Show/Hide column panel',
   'data.table.columns.visibility': 'Column visibility',
   'data.table.all.loaded': 'All data loaded',
@@ -150,10 +149,6 @@ export const fileViewer = {
   'data.table.chars': 'characters',
   'data.table.array.items': 'Array ({{count}} items)',
   'data.table.showing.rows': 'Showing {{showing}} of {{total}} loaded rows',
-  'data.table.metadata.rows': 'Rows',
-  'data.table.metadata.columns': 'Columns',
-  'data.table.metadata.loaded': 'Loaded',
-  'data.table.metadata.size': 'File Size',
 
   // 分块加载相关
   'file.loaded.chunks': 'Loaded {{chunks}} chunks ({{size}})',
