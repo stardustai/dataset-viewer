@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X } from 'lucide-react';
-import { micromark } from 'micromark';
-import { gfm, gfmHtml } from 'micromark-extension-gfm';
-import DOMPurify from 'dompurify';
 import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
-import { highlightMarkdownCode } from '../../../utils/markdownCodeHighlighter';
 import { useTheme } from '../../../hooks/useTheme';
 import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { LineContentModal } from './LineContentModal';
+import { MarkdownPreviewModal } from './MarkdownPreviewModal';
+import { FoldingIndicator } from './CodeFoldingControls';
+import {
+  parseFoldingRanges,
+  type FoldableRange
+} from '../../../utils/codeFolding';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -33,91 +34,11 @@ interface VirtualizedTextViewerRef {
   jumpToFilePosition: (filePosition: number) => void;
 }
 
-const MarkdownPreviewModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  content: string;
-  fileName: string;
-}> = ({ isOpen, onClose, content, fileName }) => {
-  const { t } = useTranslation();
-  const { isDark } = useTheme();
-  const [parsedContent, setParsedContent] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen || !content) return;
-
-    setIsLoading(true);
-
-    const parseMarkdown = async () => {
-      try {
-        const contentWithoutFrontMatter = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
-
-        // 使用 micromark 解析 markdown
-        const parsed = micromark(contentWithoutFrontMatter, {
-          allowDangerousHtml: true,
-          extensions: [gfm()],
-          htmlExtensions: [gfmHtml()]
-        });
-
-        // 为代码块添加语法高亮
-        const highlightedContent = await highlightMarkdownCode(parsed, isDark ? 'dark' : 'light');
-
-        setParsedContent(highlightedContent);
-      } catch (error) {
-        console.error('Error parsing markdown:', error);
-        setParsedContent(content);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    parseMarkdown();
-  }, [isOpen, content, isDark]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 shadow-xl w-full h-full flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {t('markdown.preview')} - {fileName}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-auto p-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-gray-600 dark:text-gray-400">
-                {t('markdown.parsing')}
-              </div>
-            </div>
-          ) : (
-            <div
-              className="prose prose-gray dark:prose-invert max-w-none prose-pre:bg-transparent prose-code:bg-gray-100 prose-code:dark:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(parsedContent) }}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const MAX_SEARCH_RESULTS = 1000;
-const MAX_LINE_LENGTH = 10000; // 超过此长度的行将被截断显示
-const LONG_LINE_THRESHOLD = 500; // 超过此长度认为是长行
-const TRUNCATE_LENGTH = 200; // 截断显示的字符数
+const MAX_LINE_LENGTH = 10000;
+const TRUNCATE_LENGTH = 200;
 
-export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, VirtualizedTextViewerProps>((
-  {
+export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, VirtualizedTextViewerProps>(({
     content,
     searchTerm = '',
     onSearchResults,
@@ -137,77 +58,123 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   const { isDark } = useTheme();
   const { enabled: syntaxHighlightingEnabled } = useSyntaxHighlighting();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [modalState, setModalState] = useState({
-    isOpen: false,
-    lineNumber: 0,
-    content: ''
-  });
 
-  // 语法高亮相关状态
+  // 简化状态管理
+  const [modalState, setModalState] = useState({ isOpen: false, lineNumber: 0, content: '' });
   const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
   const [isHighlighting, setIsHighlighting] = useState(false);
-
-  // 展开的长行状态
   const [expandedLongLines, setExpandedLongLines] = useState<Set<number>>(new Set());
+  const [foldableRanges, setFoldableRanges] = useState<FoldableRange[]>([]);
+  const [collapsedRanges, setCollapsedRanges] = useState<Set<string>>(new Set());
 
-  const lines = useMemo(() => content.split('\n'), [content]);
+  // 性能优化：添加高效的缓存映射
+  const [foldingRangeMap, setFoldingRangeMap] = useState<Map<number, FoldableRange>>(new Map());
 
-  // 自动加载逻辑：当行数少于30行时，自动触发加载更多
+  const lines = content.split('\n');
+
+  // 支持折叠检测 - 保留所有文件的折叠功能
+  const supportsFolding = fileName && ['json', 'jsonl', 'xml', 'svg', 'html', 'htm', 'yaml', 'yml']
+    .includes(fileName.split('.').pop()?.toLowerCase() || '');
+
+  // 优化的折叠解析 - 分批处理大文件以提升性能
   useEffect(() => {
-    if (lines.length < 30 && onScrollToBottom) {
-      const timer = setTimeout(() => {
-        onScrollToBottom();
-      }, 100); // 延迟100ms避免频繁触发
+    if (!supportsFolding) {
+      setFoldableRanges([]);
+      setCollapsedRanges(new Set());
+      setFoldingRangeMap(new Map());
+      return;
+    }
 
+    // 对于大文件，使用异步分批处理
+    const parseTimeout = setTimeout(() => {
+      try {
+        const ranges = parseFoldingRanges(lines, fileName);
+        setFoldableRanges(ranges);
+
+        // 构建行号到折叠范围的映射，实现 O(1) 查找
+        const rangeMap = new Map<number, FoldableRange>();
+        ranges.forEach(range => {
+          rangeMap.set(range.startLine, range);
+        });
+        setFoldingRangeMap(rangeMap);
+      } catch (error) {
+        console.warn('Failed to parse folding ranges:', error);
+        // 解析失败时设置为空，但不影响基本功能
+        setFoldableRanges([]);
+        setFoldingRangeMap(new Map());
+      }
+    }, 0);
+
+    return () => clearTimeout(parseTimeout);
+  }, [fileName, supportsFolding]);
+
+  // 高度优化的可见行计算
+  const visibleLines = useMemo(() => {
+    // 如果不支持折叠或没有折叠区间，直接返回所有行
+    if (!supportsFolding || collapsedRanges.size === 0 || foldableRanges.length === 0) {
+      return lines.map((line, index) => ({ line, originalIndex: index }));
+    }
+
+    // 为大文件优化：预计算折叠行的集合，避免重复计算
+    const collapsedLinesSet = new Set<number>();
+    for (const rangeId of collapsedRanges) {
+      const range = foldableRanges.find(r => r.id === rangeId);
+      if (range) {
+        for (let i = range.startLine + 1; i <= range.endLine; i++) {
+          collapsedLinesSet.add(i);
+        }
+      }
+    }
+
+    // 高效过滤：只遍历一次，避免重复计算
+    const result: { line: string; originalIndex: number }[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (!collapsedLinesSet.has(i)) {
+        result.push({ line: lines[i], originalIndex: i });
+      }
+    }
+    return result;
+  }, [lines, collapsedRanges, foldableRanges, supportsFolding]);
+
+  // 性能优化：使用 useCallback 缓存折叠范围获取函数
+  const getFoldableRangeAtLineOptimized = useCallback((lineIndex: number) => {
+    return supportsFolding ? foldingRangeMap.get(lineIndex) || null : null;
+  }, [supportsFolding, foldingRangeMap]);
+
+  const handleToggleFoldingRange = useCallback((rangeId: string) => {
+    setCollapsedRanges(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rangeId)) {
+        newSet.delete(rangeId);
+      } else {
+        newSet.add(rangeId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // 简化计算
+  const lineNumberWidth = Math.max(40, (startLineNumber + lines.length - 1).toString().length * 8 + 24);
+  const detectedLanguage = syntaxHighlightingEnabled && fileName ? getLanguageFromFileName(fileName) : 'text';
+  const shouldHighlight = syntaxHighlightingEnabled && isLanguageSupported(detectedLanguage);
+
+  // 自动加载逻辑 + 清空高亮缓存
+  useEffect(() => {
+    // 自动加载
+    if (lines.length < 30 && onScrollToBottom) {
+      const timer = setTimeout(onScrollToBottom, 100);
       return () => clearTimeout(timer);
     }
-  }, [lines.length, onScrollToBottom]);
 
-  // 计算每行是否为长行
-  const lineMetrics = useMemo(() => {
-    return lines.map((line, index) => {
-      const length = line.length;
-      const isLong = length > LONG_LINE_THRESHOLD;
-      const isExpanded = expandedLongLines.has(index);
+    // 内容变化时清空高亮缓存
+    setHighlightedLines(new Map());
+  }, [lines.length, onScrollToBottom, detectedLanguage, isDark]);
 
-      return {
-        isLong,
-        length,
-        isExpanded
-      };
-    });
-  }, [lines, expandedLongLines]);
-
-  const calculateLineNumberWidth = useMemo(() => {
-    const maxLineNumber = startLineNumber + lines.length - 1;
-    return Math.max(40, maxLineNumber.toString().length * 8 + 24);
-  }, [lines.length, startLineNumber]);
-
-  // 检测编程语言
-  const detectedLanguage = useMemo(() => {
-    if (!syntaxHighlightingEnabled || !fileName) return 'text';
-    return getLanguageFromFileName(fileName);
-  }, [syntaxHighlightingEnabled, fileName]);
-
-  const shouldHighlight = useMemo(() => {
-    return syntaxHighlightingEnabled && isLanguageSupported(detectedLanguage);
-  }, [syntaxHighlightingEnabled, detectedLanguage]);
-
-  // 创建搜索结果的Map以提高查找性能
-  const searchResultsMap = useMemo(() => {
-    const map = new Map<number, boolean>();
-    searchResults.forEach(result => {
-      map.set(result.line, true);
-    });
-    return map;
-  }, [searchResults]);
-
-  // 缓存搜索正则表达式
-  const searchRegex = useMemo(() => {
-    if (!searchTerm || searchTerm.length < 2) return null;
-    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`(${escapedTerm})`, 'gi');
-  }, [searchTerm]);
+  // 搜索相关
+  const searchResultsMap = new Map(searchResults.map(result => [result.line, true]));
+  const searchRegex = searchTerm && searchTerm.length >= 2
+    ? new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    : null;
 
   // 高亮行的异步处理和缓存
   const highlightVisibleLines = useCallback(async (virtualItems: any[]) => {
@@ -252,7 +219,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   }, [shouldHighlight, isHighlighting, highlightedLines, lines, detectedLanguage, isDark]);
 
   const virtualizer = useVirtualizer({
-    count: lines.length,
+    count: visibleLines.length,
     getScrollElement: () => containerRef.current,
     estimateSize: () => 24, // 固定行高
     overscan: 3,
@@ -263,14 +230,10 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   useEffect(() => {
     if (shouldHighlight) {
       const virtualItems = virtualizer.getVirtualItems();
-      highlightVisibleLines(virtualItems);
+      const lineIndexesToHighlight = virtualItems.map(item => visibleLines[item.index]?.originalIndex).filter(index => index !== undefined);
+      highlightVisibleLines(virtualItems.map((item, i) => ({ ...item, index: lineIndexesToHighlight[i] })).filter(item => item.index !== undefined));
     }
-  }, [virtualizer.getVirtualItems(), shouldHighlight, highlightVisibleLines]);
-
-  // 当语言或主题变化时，清空缓存
-  useEffect(() => {
-    setHighlightedLines(new Map());
-  }, [detectedLanguage, isDark]);
+  }, [virtualizer.getVirtualItems(), shouldHighlight, highlightVisibleLines, visibleLines]);
 
   const performSearch = useCallback((term: string) => {
     if (!term || term.length < 2) {
@@ -279,51 +242,48 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     }
 
     const results: Array<{ line: number; column: number; text: string; match: string }> = [];
-    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(escapedTerm, 'gi');
-    let isLimited = false;
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
 
-    for (let i = 0; i < lines.length && results.length < MAX_SEARCH_RESULTS; i++) {
-      const line = lines[i];
+    for (const { line, originalIndex } of visibleLines) {
+      if (results.length >= MAX_SEARCH_RESULTS) break;
 
-      // 对于超长行，限制搜索范围以提高性能
-      const searchLine = line.length > MAX_LINE_LENGTH ?
-        line.substring(0, MAX_LINE_LENGTH) :
-        line;
-
+      const searchLine = line.length > MAX_LINE_LENGTH ? line.substring(0, MAX_LINE_LENGTH) : line;
       let match;
       regex.lastIndex = 0;
 
       while ((match = regex.exec(searchLine)) !== null && results.length < MAX_SEARCH_RESULTS) {
         results.push({
-          line: startLineNumber + i,
+          line: startLineNumber + originalIndex,
           column: match.index + 1,
-          text: line.length > 200 ? line.substring(0, 200) + '...' : line, // 截断显示的文本
+          text: line.length > 200 ? line.substring(0, 200) + '...' : line,
           match: match[0]
         });
 
-        if (regex.lastIndex === match.index) {
-          regex.lastIndex++;
-        }
+        if (regex.lastIndex === match.index) regex.lastIndex++;
       }
     }
 
-    if (results.length >= MAX_SEARCH_RESULTS) {
-      isLimited = true;
-    }
-
-    onSearchResults?.(results, isLimited);
-  }, [lines, onSearchResults, startLineNumber]);
+    onSearchResults?.(results, results.length >= MAX_SEARCH_RESULTS);
+  }, [onSearchResults, startLineNumber, visibleLines]);
 
   useEffect(() => {
     performSearch(searchTerm);
   }, [searchTerm, performSearch]);
 
-  const renderLineWithHighlight = useCallback((line: string, lineIndex: number) => {
-    const currentLineNumber = startLineNumber + lineIndex;
-    const lineMetric = lineMetrics[lineIndex];
-    const isLongLine = lineMetric?.isLong || false;
-    const isExpanded = lineMetric?.isExpanded || false;
+  const renderLineWithHighlight = useCallback((line: string, _lineIndex: number, originalLineIndex: number) => {
+    const currentLineNumber = startLineNumber + originalLineIndex;
+    const isLongLine = line.length > 500;
+    const isExpanded = expandedLongLines.has(originalLineIndex);
+
+    // 性能优化：只在支持折叠时检查折叠范围
+    let foldableRange: FoldableRange | null = null;
+    let isRangeCollapsed = false;
+
+    if (supportsFolding) {
+      // 使用优化的缓存函数而不是每次线性查找
+      foldableRange = getFoldableRangeAtLineOptimized(originalLineIndex);
+      isRangeCollapsed = foldableRange ? collapsedRanges.has(foldableRange.id) : false;
+    }
 
     // 对于超长行，如果未展开则截断显示
     let displayLine = line;
@@ -336,8 +296,8 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
     // 获取语法高亮的内容（仅对较短的行或已展开的行进行语法高亮）
     let processedLine = displayLine;
-    if (shouldHighlight && highlightedLines.has(lineIndex) && (line.length < MAX_LINE_LENGTH || isExpanded)) {
-      const highlighted = highlightedLines.get(lineIndex);
+    if (shouldHighlight && highlightedLines.has(originalLineIndex) && (line.length < MAX_LINE_LENGTH || isExpanded)) {
+      const highlighted = highlightedLines.get(originalLineIndex);
       if (highlighted && highlighted !== line) {
         processedLine = highlighted;
       }
@@ -353,6 +313,13 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
               processedLine
             }
           </span>
+          {/* 代码折叠指示器 */}
+          {foldableRange && (
+            <FoldingIndicator
+              isCollapsed={isRangeCollapsed}
+              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+            />
+          )}
           {showExpandButton && (
             <button
               className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -361,9 +328,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                 setExpandedLongLines(prev => {
                   const newSet = new Set(prev);
                   if (isExpanded) {
-                    newSet.delete(lineIndex);
+                    newSet.delete(originalLineIndex);
                   } else {
-                    newSet.add(lineIndex);
+                    newSet.add(originalLineIndex);
                   }
                   return newSet;
                 });
@@ -386,6 +353,13 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
               processedLine
             }
           </span>
+          {/* 代码折叠指示器 */}
+          {foldableRange && (
+            <FoldingIndicator
+              isCollapsed={isRangeCollapsed}
+              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+            />
+          )}
           {showExpandButton && (
             <button
               className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -394,9 +368,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                 setExpandedLongLines(prev => {
                   const newSet = new Set(prev);
                   if (isExpanded) {
-                    newSet.delete(lineIndex);
+                    newSet.delete(originalLineIndex);
                   } else {
-                    newSet.add(lineIndex);
+                    newSet.add(originalLineIndex);
                   }
                   return newSet;
                 });
@@ -426,6 +400,13 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         return (
           <div className="flex items-center">
             <span dangerouslySetInnerHTML={{ __html: processedLine }} />
+            {/* 代码折叠指示器 */}
+            {foldableRange && (
+              <FoldingIndicator
+                isCollapsed={isRangeCollapsed}
+                onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+              />
+            )}
             {showExpandButton && (
               <button
                 className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -434,9 +415,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                   setExpandedLongLines(prev => {
                     const newSet = new Set(prev);
                     if (isExpanded) {
-                      newSet.delete(lineIndex);
+                      newSet.delete(originalLineIndex);
                     } else {
-                      newSet.add(lineIndex);
+                      newSet.add(originalLineIndex);
                     }
                     return newSet;
                   });
@@ -478,6 +459,13 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
               return part;
             })}
           </span>
+          {/* 代码折叠指示器 */}
+          {foldableRange && (
+            <FoldingIndicator
+              isCollapsed={isRangeCollapsed}
+              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+            />
+          )}
           {showExpandButton && (
             <button
               className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -486,9 +474,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                 setExpandedLongLines(prev => {
                   const newSet = new Set(prev);
                   if (isExpanded) {
-                    newSet.delete(lineIndex);
+                    newSet.delete(originalLineIndex);
                   } else {
-                    newSet.add(lineIndex);
+                    newSet.add(originalLineIndex);
                   }
                   return newSet;
                 });
@@ -529,6 +517,13 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
               return part;
             })}
           </span>
+          {/* 代码折叠指示器 */}
+          {foldableRange && (
+            <FoldingIndicator
+              isCollapsed={isRangeCollapsed}
+              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+            />
+          )}
           {showExpandButton && (
             <button
               className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -537,9 +532,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                 setExpandedLongLines(prev => {
                   const newSet = new Set(prev);
                   if (isExpanded) {
-                    newSet.delete(lineIndex);
+                    newSet.delete(originalLineIndex);
                   } else {
-                    newSet.add(lineIndex);
+                    newSet.add(originalLineIndex);
                   }
                   return newSet;
                 });
@@ -551,43 +546,37 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         </div>
       );
     }
-  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines, lineMetrics, expandedLongLines, setExpandedLongLines]);
+  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines, expandedLongLines, setExpandedLongLines, foldableRanges, collapsedRanges, handleToggleFoldingRange, t, supportsFolding, getFoldableRangeAtLineOptimized]);
 
-  const handleLineClick = useCallback((lineIndex: number) => {
-    const lineContent = lines[lineIndex] || '';
-    const lineNumber = startLineNumber + lineIndex;
-
+  const handleLineClick = (originalLineIndex: number) => {
     setModalState({
       isOpen: true,
-      lineNumber,
-      content: lineContent
+      lineNumber: startLineNumber + originalLineIndex,
+      content: lines[originalLineIndex] || ''
     });
-  }, [lines, startLineNumber]);
+  };
 
-  const handleContentClick = useCallback((lineIndex: number) => {
-    // 检查是否有选中的文字，如果有就不弹窗
+  const handleContentClick = (originalLineIndex: number, event: React.MouseEvent) => {
     const selection = window.getSelection();
-    if (selection && selection.toString().length > 0) {
+    if (selection?.toString().length || (event.target as HTMLElement).closest('button')) {
       return;
     }
+    handleLineClick(originalLineIndex);
+  };
 
-    // 执行点击事件
-    handleLineClick(lineIndex);
-  }, [handleLineClick]);
-
-  const closeModal = useCallback(() => {
-    setModalState(prev => ({ ...prev, isOpen: false }));
-  }, []);
+  const closeModal = () => setModalState(prev => ({ ...prev, isOpen: false }));
 
   useImperativeHandle(ref, () => ({
     scrollToLine: (lineNumber: number) => {
       const targetIndex = lineNumber - startLineNumber;
-      if (targetIndex >= 0 && targetIndex < lines.length) {
-        virtualizer.scrollToIndex(targetIndex, { align: 'center' });
+      // 在可见行中找到对应的虚拟行索引
+      const visibleIndex = visibleLines.findIndex(item => item.originalIndex === targetIndex);
+      if (visibleIndex >= 0) {
+        virtualizer.scrollToIndex(visibleIndex, { align: 'center' });
       }
     },
     scrollToPercentage: (percentage: number) => {
-      const targetIndex = Math.floor((lines.length - 1) * (percentage / 100));
+      const targetIndex = Math.floor((visibleLines.length - 1) * (percentage / 100));
       virtualizer.scrollToIndex(targetIndex, { align: 'start' });
     },
     jumpToFilePosition: (filePosition: number) => {
@@ -602,9 +591,13 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         currentPosition += lines[i].length + 1;
       }
 
-      virtualizer.scrollToIndex(targetLineIndex, { align: 'center' });
+      // 在可见行中找到对应的虚拟行索引
+      const visibleIndex = visibleLines.findIndex(item => item.originalIndex === targetLineIndex);
+      if (visibleIndex >= 0) {
+        virtualizer.scrollToIndex(visibleIndex, { align: 'center' });
+      }
     }
-  }), [virtualizer, lines, startLineNumber]);
+  }), [virtualizer, lines, startLineNumber, visibleLines]);
 
   // 行号区域引用
   const lineNumberRef = useRef<HTMLDivElement>(null);
@@ -644,7 +637,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
             ref={lineNumberRef}
             className="flex-shrink-0 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-hidden relative z-10"
             style={{
-              width: `${calculateLineNumberWidth}px`,
+              width: `${lineNumberWidth}px`,
               pointerEvents: 'none'
             }}
         >
@@ -655,7 +648,11 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
-              const currentLineNumber = startLineNumber + virtualItem.index;
+              const visibleLineItem = visibleLines[virtualItem.index];
+              if (!visibleLineItem) return null;
+
+              const { originalIndex } = visibleLineItem;
+              const currentLineNumber = startLineNumber + originalIndex;
               const isCurrentSearchLine = currentSearchIndex >= 0 &&
                 searchResults[currentSearchIndex] &&
                 searchResults[currentSearchIndex].line === currentLineNumber;
@@ -673,7 +670,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                      transform: `translateY(${virtualItem.start}px)`,
                      pointerEvents: 'auto'
                    }}
-                   onClick={() => handleLineClick(virtualItem.index)}
+                   onClick={() => handleLineClick(originalIndex)}
                    title="点击查看完整行内容"
                  >
                   {isCurrentSearchLine && (
@@ -698,11 +695,14 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
-              const currentLineNumber = startLineNumber + virtualItem.index;
+              const visibleLineItem = visibleLines[virtualItem.index];
+              if (!visibleLineItem) return null;
+
+              const { line: lineContent, originalIndex } = visibleLineItem;
+              const currentLineNumber = startLineNumber + originalIndex;
               const isCurrentSearchLine = currentSearchIndex >= 0 &&
                 searchResults[currentSearchIndex] &&
                 searchResults[currentSearchIndex].line === currentLineNumber;
-              const lineContent = lines[virtualItem.index] || '';
 
               return (
                 <div
@@ -714,14 +714,14 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
                     height: `${virtualItem.size}px`,
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
-                  onClick={() => handleContentClick(virtualItem.index)}
+                  onClick={(event) => handleContentClick(originalIndex, event)}
                   title="点击查看完整行内容"
                 >
                   <div className={`text-[13px] font-mono leading-6 h-full pl-2 pr-4 whitespace-pre ${
                     shouldHighlight ? '' : 'text-gray-900 dark:text-gray-100'
                   }`}>
                     <div className="min-w-max">
-                      {renderLineWithHighlight(lineContent, virtualItem.index)}
+                      {renderLineWithHighlight(lineContent, virtualItem.index, originalIndex)}
                     </div>
                   </div>
                 </div>
