@@ -5,7 +5,6 @@ export const fileBrowser = {
   'go.home': '主页',
   'directory.empty': '此目录为空',
   'all.files.hidden': '所有文件都是隐藏文件',
-  'show.hidden': '显示隐藏文件',
   'hide.hidden': '隐藏文件',
   'show.hidden.files': '显示以 . 开头的隐藏文件',
   'hide.hidden.files': '隐藏以 . 开头的隐藏文件',

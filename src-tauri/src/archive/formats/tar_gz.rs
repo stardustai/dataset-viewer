@@ -65,26 +65,10 @@ impl TarGzHandler {
     ) -> Result<ArchiveInfo, String> {
         log::debug!("开始流式分析TAR.GZ文件: {}", file_path);
 
-        // 统一使用流式处理，限制内存使用
-        const MAX_MEMORY_USAGE: usize = 100 * 1024 * 1024; // 100MB 内存限制
-
         let file_size = client.get_file_size(file_path).await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
 
-        // 对于超大文件给出警告，但仍然尝试处理
-        if file_size > MAX_MEMORY_USAGE as u64 {
-            log::warn!("TAR.GZ文件较大 ({:.2} GB)，流式处理中...", file_size as f64 / 1_073_741_824.0);
-        }
-
-        // 一次性读取并解压缩分析（对于TAR.GZ格式，流式解压缩比较复杂）
-        // 我们设置内存限制来保护系统
-        if file_size > MAX_MEMORY_USAGE as u64 {
-            return Err(format!(
-                "TAR.GZ文件过大 ({:.2} GB)，超过内存限制 ({} MB)。请使用专用工具处理大型压缩文件。",
-                file_size as f64 / 1_073_741_824.0,
-                MAX_MEMORY_USAGE / 1024 / 1024
-            ));
-        }
+        log::info!("TAR.GZ文件大小: {:.2} MB", file_size as f64 / (1024.0 * 1024.0));
 
         let data = client.read_full_file(file_path).await
             .map_err(|e| format!("Failed to read file: {}", e))?;
@@ -106,19 +90,10 @@ impl TarGzHandler {
     ) -> Result<FilePreview, String> {
         log::debug!("开始流式提取TAR.GZ预览（带进度）: {} -> {}", file_path, entry_path);
 
-        // 统一使用内存限制
-        const MAX_MEMORY_USAGE: usize = 100 * 1024 * 1024; // 100MB
-
         let file_size = client.get_file_size(file_path).await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
 
-        if file_size > MAX_MEMORY_USAGE as u64 {
-            return Err(format!(
-                "TAR.GZ文件过大 ({:.2} GB)，超过内存限制 ({} MB)。建议下载后本地处理。",
-                file_size as f64 / 1_073_741_824.0,
-                MAX_MEMORY_USAGE / 1024 / 1024
-            ));
-        }
+        log::info!("TAR.GZ文件大小: {:.2} MB", file_size as f64 / (1024.0 * 1024.0));
 
         // 直接读取全部数据，避免人为分块导致的性能问题
         let progress_cb = progress_callback.map(|cb| {

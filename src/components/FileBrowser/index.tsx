@@ -816,8 +816,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               className="flex items-center space-x-2 p-2 sm:px-3 sm:py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title={showHidden ? t('hide.hidden.files') : t('show.hidden.files')}
             >
-              {showHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="hidden lg:inline">{showHidden ? t('hide.hidden') : t('show.hidden')}</span>
+              {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              <span className="hidden lg:inline">{t('hide.hidden')}</span>
             </button>
             <LanguageSwitcher />
             {/* 响应式设置按钮 */}

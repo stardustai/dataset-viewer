@@ -126,18 +126,34 @@ export class WebDAVStorageClient extends BaseStorageClient {
 
   /**
    * 将前端路径转换为协议统一的地址格式
-   * WebDAV 协议格式：webdav://host/path/to/file
+   * WebDAV 协议格式：webdav://host:port/base-path/file-path
    */
   toProtocolUrl(path: string): string {
     if (!this.connection?.url) {
       throw new Error('Not connected to WebDAV server');
     }
 
-    // 提取主机部分并构建 webdav:// 协议URL
-    const url = new URL(this.connection.url);
+    // 解析连接URL以获取完整的基础路径
+    const connectionUrl = new URL(this.connection.url);
     const cleanPath = path.replace(/^\/+/, '');
 
-    return cleanPath ? `webdav://${url.host}/${cleanPath}` : `webdav://${url.host}`;
+    // 构建完整的协议URL，保留连接URL中的路径部分
+    const basePath = connectionUrl.pathname.replace(/\/+$/, ''); // 移除末尾斜杠
+
+    if (cleanPath) {
+      if (basePath && basePath !== '/') {
+        // 如果连接URL包含基础路径，需要合并路径
+        return `webdav://${connectionUrl.host}${basePath}/${cleanPath}`;
+      } else {
+        // 如果连接URL是根路径
+        return `webdav://${connectionUrl.host}/${cleanPath}`;
+      }
+    } else {
+      // 根目录情况
+      return basePath && basePath !== '/'
+        ? `webdav://${connectionUrl.host}${basePath}`
+        : `webdav://${connectionUrl.host}`;
+    }
   }
 
   /**

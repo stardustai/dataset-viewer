@@ -5,7 +5,6 @@ export const fileBrowser = {
   'go.home': 'Home',
   'directory.empty': 'This directory is empty',
   'all.files.hidden': 'All files are hidden files',
-  'show.hidden': 'Show Hidden',
   'hide.hidden': 'Hide Hidden',
   'show.hidden.files': 'Show hidden files starting with .',
   'hide.hidden.files': 'Hide hidden files starting with .',

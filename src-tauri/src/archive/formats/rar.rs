@@ -148,13 +148,6 @@ impl RarHandler {
     ) -> Result<ArchiveInfo, String> {
         println!("开始下载RAR文件进行分析: {} (大小: {} 字节)", filename, file_size);
 
-        // 限制最大下载大小（比如100MB）
-        const MAX_DOWNLOAD_SIZE: u64 = 100 * 1024 * 1024;
-        if file_size > MAX_DOWNLOAD_SIZE {
-            return Err(format!("RAR file is too large for analysis: {} bytes (max: {} bytes)",
-                             file_size, MAX_DOWNLOAD_SIZE));
-        }
-
         let data = HttpClient::download_file(url, headers).await?;
         Self::analyze_rar_complete(&data)
     }
@@ -168,13 +161,6 @@ impl RarHandler {
         println!("开始下载RAR文件进行分析: {}", filename);
 
         let data = HttpClient::download_file(url, headers).await?;
-
-        // 检查下载的文件大小
-        const MAX_DOWNLOAD_SIZE: usize = 100 * 1024 * 1024;
-        if data.len() > MAX_DOWNLOAD_SIZE {
-            return Err(format!("RAR file is too large for analysis: {} bytes (max: {} bytes)",
-                             data.len(), MAX_DOWNLOAD_SIZE));
-        }
 
         Self::analyze_rar_complete(&data)
     }

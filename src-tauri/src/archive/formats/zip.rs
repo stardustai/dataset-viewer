@@ -1,7 +1,7 @@
 /// ZIP 格式处理器
 use crate::archive::types::*;
 use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
-use crate::storage::traits::{StorageClient, ProgressCallback};
+use crate::storage::traits::StorageClient;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -476,11 +476,6 @@ impl ZipHandler {
                 cd_data[offset + 10], cd_data[offset + 11]
             ]);
 
-            let crc32 = u32::from_le_bytes([
-                cd_data[offset + 16], cd_data[offset + 17],
-                cd_data[offset + 18], cd_data[offset + 19]
-            ]);
-
             let compressed_size_32 = u32::from_le_bytes([
                 cd_data[offset + 20], cd_data[offset + 21],
                 cd_data[offset + 22], cd_data[offset + 23]
@@ -534,7 +529,6 @@ impl ZipHandler {
                     compression_method,
                     compressed_size,
                     local_header_offset,
-                    crc32,
                 }));
             }
 
@@ -684,7 +678,7 @@ impl ZipHandler {
             .await?
             .ok_or_else(|| "File not found in archive".to_string())?;
 
-        // 验证文件大小限制
+        // 空文件直接返回
         if file_info.compressed_size == 0 {
             return Ok(PreviewBuilder::new()
                 .content(Vec::new())
@@ -693,12 +687,190 @@ impl ZipHandler {
                 .build());
         }
 
-        if file_info.compressed_size > 100 * 1024 * 1024 { // 100MB限制
-            return Err(format!("Compressed file too large: {} bytes, exceeds 100MB limit", file_info.compressed_size));
+        // 根据压缩方法选择合适的读取策略
+        Self::read_zip_content_with_strategy(
+            client, file_path, &file_info, max_size, offset, progress_callback, cancel_rx
+        ).await
+    }
+
+    /// 根据压缩方法选择读取策略
+    async fn read_zip_content_with_strategy(
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        file_info: &ZipFileInfo,
+        max_size: usize,
+        offset: Option<u64>,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<FilePreview, String> {
+        let offset_val = offset.unwrap_or(0);
+
+        // 获取数据偏移量（跳过本地文件头）
+        let local_header_size = Self::get_local_header_size(client.clone(), file_path, file_info.local_header_offset).await?;
+        let data_offset = file_info.local_header_offset + local_header_size;
+
+        match file_info.compression_method {
+            0 => {
+                // Uncompressed: direct range read
+                Self::read_uncompressed_content(
+                    client, file_path, data_offset, file_info.compressed_size,
+                    offset_val, max_size, progress_callback, cancel_rx
+                ).await
+            }
+            8 => {
+                // Deflate compression: streaming decompression
+                Self::read_deflate_content(
+                    client, file_path, data_offset, file_info.compressed_size,
+                    offset_val, max_size, progress_callback, cancel_rx
+                ).await
+            }
+            _ => {
+                Err(format!("Unsupported compression method: {}", file_info.compression_method))
+            }
+        }
+    }
+
+    /// Read uncompressed content (true chunked loading)
+    async fn read_uncompressed_content(
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        data_offset: u64,
+        total_size: u64,
+        offset_val: u64,
+        max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<FilePreview, String> {
+        let actual_offset = offset_val.min(total_size);
+        let remaining = total_size - actual_offset;
+        let read_size = (max_size as u64).min(remaining);
+
+        if read_size == 0 {
+            return Ok(PreviewBuilder::new()
+                .content(Vec::new())
+                .with_truncated(false)
+                .total_size(total_size)
+                .build());
         }
 
-        // 读取本地文件头
-        let local_header = client.read_file_range(file_path, file_info.local_header_offset, 30)
+        let progress_cb = progress_callback.map(|cb| {
+            Arc::new(move |current: u64, total: u64| cb(current, total)) as crate::storage::traits::ProgressCallback
+        });
+
+        // Read the required data chunk directly
+        let data = client.read_file_range_with_progress(
+            file_path,
+            data_offset + actual_offset,
+            read_size,
+            progress_cb,
+            cancel_rx.take(),
+        ).await.map_err(|e| format!("Failed to read uncompressed data: {}", e))?;
+
+        let is_truncated = actual_offset + (data.len() as u64) < total_size;
+
+        Ok(PreviewBuilder::new()
+            .content(data)
+            .with_truncated(is_truncated)
+            .total_size(total_size)
+            .build())
+    }
+
+    /// Read Deflate compressed content (smart chunked approach)
+    async fn read_deflate_content(
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        data_offset: u64,
+        compressed_size: u64,
+        offset_val: u64,
+        max_size: usize,
+        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<FilePreview, String> {
+        let progress_cb = progress_callback.map(|cb| {
+            Arc::new(move |current: u64, total: u64| cb(current, total)) as crate::storage::traits::ProgressCallback
+        });
+
+        use flate2::read::DeflateDecoder;
+        use std::io::{Read, Cursor};
+
+        // For large files or later chunks, use smart size limit
+        let chunk_limit = if offset_val > 0 && compressed_size > 5 * 1024 * 1024 {
+            // For offset requests on large files, limit compressed data read
+            (compressed_size / 4).min(2 * 1024 * 1024) // Max 2MB or 1/4 of file
+        } else {
+            compressed_size // Read all for small files or first chunk
+        };
+
+        // Read limited compressed data
+        let compressed_data = client.read_file_range_with_progress(
+            file_path,
+            data_offset,
+            chunk_limit,
+            progress_cb,
+            cancel_rx.take(),
+        ).await.map_err(|e| format!("Failed to read compressed data: {}", e))?;
+
+        // Decompress with size limit
+        let mut decoder = DeflateDecoder::new(Cursor::new(compressed_data));
+        let mut decompressed = Vec::new();
+
+        // Read in chunks to avoid excessive memory usage
+        let mut buffer = [0u8; 8192];
+        let mut total_decompressed = 0;
+        let decompression_limit = (max_size * 3).max(1024 * 1024); // Allow some overshoot
+
+        loop {
+            match decoder.read(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(n) => {
+                    decompressed.extend_from_slice(&buffer[..n]);
+                    total_decompressed += n;
+
+                    // Stop if we have enough data
+                    if total_decompressed >= decompression_limit {
+                        break;
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    // Partial decompression is ok for chunked reading
+                    break;
+                }
+                Err(e) => return Err(format!("Deflate decompression failed: {}", e)),
+            }
+        }
+
+        if decompressed.is_empty() {
+            return Err("No data could be decompressed".to_string());
+        }
+
+        // Apply offset and size limit
+        let start_pos = offset_val as usize;
+        let result_data = if start_pos >= decompressed.len() {
+            Vec::new()
+        } else {
+            let end_pos = (start_pos + max_size).min(decompressed.len());
+            decompressed[start_pos..end_pos].to_vec()
+        };
+
+        let is_truncated = chunk_limit < compressed_size ||
+                          total_decompressed >= decompression_limit ||
+                          result_data.len() == max_size;
+
+        Ok(PreviewBuilder::new()
+            .content(result_data)
+            .with_truncated(is_truncated)
+            .total_size(total_decompressed as u64)
+            .build())
+    }
+
+    /// Get local file header size
+    async fn get_local_header_size(
+        client: Arc<dyn StorageClient>,
+        file_path: &str,
+        local_header_offset: u64,
+    ) -> Result<u64, String> {
+        // Read local file header fixed part (30 bytes)
+        let local_header = client.read_file_range(file_path, local_header_offset, 30)
             .await
             .map_err(|e| format!("Failed to read local header: {}", e))?;
 
@@ -706,41 +878,24 @@ impl ZipHandler {
             return Err("Invalid local header".to_string());
         }
 
+        // Extract filename and extra field lengths
         let filename_len = u16::from_le_bytes([local_header[26], local_header[27]]) as u64;
         let extra_len = u16::from_le_bytes([local_header[28], local_header[29]]) as u64;
 
-        let data_offset = file_info.local_header_offset + 30 + filename_len + extra_len;
-
-        // 总是读取完整的压缩数据，因为CRC32校验需要完整的解压数据
-        // 只在解压后截取所需的预览大小
-        let progress_cb = progress_callback.map(|cb| {
-            Arc::new(move |current: u64, total: u64| {
-                cb(current, total);
-            }) as ProgressCallback
-        });
-
-        let compressed_data = client.read_file_range_with_progress(file_path, data_offset, file_info.compressed_size, progress_cb, cancel_rx)
-            .await
-            .map_err(|e| format!("Failed to read compressed data: {}", e))?;
-
-        if compressed_data.len() != file_info.compressed_size as usize {
-            return Err(format!("Read data length ({}) does not match expected length ({})", compressed_data.len(), file_info.compressed_size));
-        }
-
-        Self::decompress_zip_data(&compressed_data, file_info.compression_method, max_size, offset, file_info.crc32)
+        // Local file header size = fixed header(30) + filename length + extra field length
+        Ok(30 + filename_len + extra_len)
     }
 
-    /// 通过存储客户端在ZIP中查找文件
+    /// Find file in ZIP via storage client
     async fn find_file_in_zip_with_client(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         file_size: u64,
         target_path: &str,
     ) -> Result<Option<ZipFileInfo>, String> {
-        let start_pos;
-        // 读取文件末尾来查找中央目录
+        // Read file footer to find central directory
         let footer_size = std::cmp::min(65536, file_size);
-        start_pos = file_size.saturating_sub(footer_size);
+        let start_pos = file_size.saturating_sub(footer_size);
 
         let footer_data = client.read_file_range(file_path, start_pos, footer_size)
             .await
@@ -761,13 +916,11 @@ impl ZipHandler {
             eocd_data[16], eocd_data[17], eocd_data[18], eocd_data[19]
         ]) as u64;
 
-
-
-        // 检查是否为ZIP64格式
+        // Check if ZIP64 format
         let (final_cd_offset, final_cd_size) = if cd_offset == 0xFFFFFFFF {
-            // 查找ZIP64 EOCD定位器
+            // Find ZIP64 EOCD locator
             if let Some(zip64_locator_pos) = Self::find_zip64_eocd(&footer_data, eocd_pos) {
-                // 解析ZIP64 EOCD记录
+                // Parse ZIP64 EOCD record
                 let (zip64_cd_offset, zip64_cd_size, _zip64_total_entries) = Self::parse_zip64_eocd(
                     client.clone(),
                     file_path,
@@ -782,100 +935,19 @@ impl ZipHandler {
                 return Err("ZIP64 format detected but ZIP64 EOCD locator not found".to_string());
             }
         } else {
-            // 检查偏移量是否合理
+            // Check if offset is reasonable
             if (cd_offset as u64) >= file_size {
                 return Err(format!("Invalid central directory offset: {} >= file size {}", cd_offset, file_size));
             }
             (cd_offset as u64, cd_size as u64)
         };
 
-        // 读取中央目录
+        // Read central directory
         let cd_data = client.read_file_range(file_path, final_cd_offset, final_cd_size)
             .await
             .map_err(|e| format!("Failed to read central directory: {}", e))?;
 
         Self::find_file_in_central_directory(&cd_data, target_path)
-    }
-
-    /// 解压缩ZIP数据
-    fn decompress_zip_data(
-        compressed_data: &[u8],
-        compression_method: u16,
-        max_size: usize,
-        offset: Option<u64>,
-        expected_crc32: u32,
-    ) -> Result<FilePreview, String> {
-        // 验证输入参数
-        if compressed_data.is_empty() {
-            return Ok(PreviewBuilder::new()
-                .content(Vec::new())
-                .with_truncated(false)
-                .total_size(0)
-                .build());
-        }
-
-        // 解压缩数据
-        let decompressed_data = match compression_method {
-            0 => {
-                // 无压缩 - 直接使用原始数据
-                compressed_data.to_vec()
-            }
-            8 => {
-                // Deflate压缩 (原始deflate格式，不包含zlib头部)
-                use flate2::read::DeflateDecoder;
-                use std::io::{Read, Cursor};
-
-                let cursor = Cursor::new(compressed_data);
-                let decoder = DeflateDecoder::new(cursor);
-                let mut decompressed = Vec::new();
-
-                // 限制解压缩后的最大大小以防止内存耗尽
-                let max_decompressed_size = std::cmp::max(max_size * 10, 50 * 1024 * 1024); // 最大50MB或10倍预览大小
-
-                // 使用带限制的读取
-                let mut limited_reader = decoder.take(max_decompressed_size as u64);
-                limited_reader.read_to_end(&mut decompressed)
-                    .map_err(|e| format!("Deflate decompression failed: {}. Data may be corrupted or format incorrect", e))?;
-
-                decompressed
-            }
-            _ => {
-                return Err(format!("Unsupported compression method: {}. Only supports Store(0) and Deflate(8)", compression_method));
-            }
-        };
-
-        // 验证CRC32校验和（只有完整解压时才能验证）
-        let offset_val = offset.unwrap_or(0);
-        let should_verify_crc = offset_val == 0; // 只有从头开始时才验证CRC32
-
-        if should_verify_crc {
-            let actual_crc32 = crc32fast::hash(&decompressed_data);
-            if actual_crc32 != expected_crc32 {
-                return Err(format!(
-                    "CRC32 verification failed: expected {:08x}, actual {:08x}. File may be corrupted",
-                    expected_crc32, actual_crc32
-                ));
-            }
-        }
-
-        // 应用偏移量和截取预览数据
-        let total_size = decompressed_data.len() as u64;
-        let skip_bytes = std::cmp::min(offset_val as usize, decompressed_data.len());
-        let remaining_data = &decompressed_data[skip_bytes..];
-
-        let preview_data = if remaining_data.len() > max_size {
-            remaining_data[..max_size].to_vec()
-        } else {
-            remaining_data.to_vec()
-        };
-
-        let is_truncated = skip_bytes + preview_data.len() < total_size as usize;
-
-        Ok(PreviewBuilder::new()
-            .content(preview_data)
-            .with_truncated(is_truncated)
-            .total_size(total_size)
-            .build())
     }
 }
 
@@ -886,5 +958,4 @@ struct ZipFileInfo {
     compression_method: u16,
     compressed_size: u64,
     local_header_offset: u64,
-    crc32: u32,
 }
