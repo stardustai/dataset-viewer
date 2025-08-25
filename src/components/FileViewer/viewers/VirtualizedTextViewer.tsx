@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
@@ -6,11 +6,8 @@ import { useTheme } from '../../../hooks/useTheme';
 import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { LineContentModal } from './LineContentModal';
 import { MarkdownPreviewModal } from './MarkdownPreviewModal';
-import { FoldingIndicator } from './CodeFoldingControls';
-import {
-  parseFoldingRanges,
-  type FoldableRange
-} from '../../../utils/codeFolding';
+import { FoldingIndicator, useFoldingLogic } from './CodeFoldingControls';
+import type { FoldableRange } from '../../../utils/codeFolding';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -64,94 +61,21 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [expandedLongLines, setExpandedLongLines] = useState<Set<number>>(new Set());
-  const [foldableRanges, setFoldableRanges] = useState<FoldableRange[]>([]);
-  const [collapsedRanges, setCollapsedRanges] = useState<Set<string>>(new Set());
-
-  // 性能优化：添加高效的缓存映射
-  const [foldingRangeMap, setFoldingRangeMap] = useState<Map<number, FoldableRange>>(new Map());
 
   const lines = content.split('\n');
 
-  // 支持折叠检测 - 保留所有文件的折叠功能
-  const supportsFolding = fileName && ['json', 'jsonl', 'xml', 'svg', 'html', 'htm', 'yaml', 'yml']
-    .includes(fileName.split('.').pop()?.toLowerCase() || '');
-
-  // 优化的折叠解析 - 分批处理大文件以提升性能
-  useEffect(() => {
-    if (!supportsFolding) {
-      setFoldableRanges([]);
-      setCollapsedRanges(new Set());
-      setFoldingRangeMap(new Map());
-      return;
-    }
-
-    // 对于大文件，使用异步分批处理
-    const parseTimeout = setTimeout(() => {
-      try {
-        const ranges = parseFoldingRanges(lines, fileName);
-        setFoldableRanges(ranges);
-
-        // 构建行号到折叠范围的映射，实现 O(1) 查找
-        const rangeMap = new Map<number, FoldableRange>();
-        ranges.forEach(range => {
-          rangeMap.set(range.startLine, range);
-        });
-        setFoldingRangeMap(rangeMap);
-      } catch (error) {
-        console.warn('Failed to parse folding ranges:', error);
-        // 解析失败时设置为空，但不影响基本功能
-        setFoldableRanges([]);
-        setFoldingRangeMap(new Map());
-      }
-    }, 0);
-
-    return () => clearTimeout(parseTimeout);
-  }, [fileName, supportsFolding]);
-
-  // 高度优化的可见行计算
-  const visibleLines = useMemo(() => {
-    // 如果不支持折叠或没有折叠区间，直接返回所有行
-    if (!supportsFolding || collapsedRanges.size === 0 || foldableRanges.length === 0) {
-      return lines.map((line, index) => ({ line, originalIndex: index }));
-    }
-
-    // 为大文件优化：预计算折叠行的集合，避免重复计算
-    const collapsedLinesSet = new Set<number>();
-    for (const rangeId of collapsedRanges) {
-      const range = foldableRanges.find(r => r.id === rangeId);
-      if (range) {
-        for (let i = range.startLine + 1; i <= range.endLine; i++) {
-          collapsedLinesSet.add(i);
-        }
-      }
-    }
-
-    // 高效过滤：只遍历一次，避免重复计算
-    const result: { line: string; originalIndex: number }[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      if (!collapsedLinesSet.has(i)) {
-        result.push({ line: lines[i], originalIndex: i });
-      }
-    }
-    return result;
-  }, [lines, collapsedRanges, foldableRanges, supportsFolding]);
-
-  // 性能优化：使用 useCallback 缓存折叠范围获取函数
-  const getFoldableRangeAtLineOptimized = useCallback((lineIndex: number) => {
-    return supportsFolding ? foldingRangeMap.get(lineIndex) || null : null;
-  }, [supportsFolding, foldingRangeMap]);
-
-  const handleToggleFoldingRange = useCallback((rangeId: string) => {
-    setCollapsedRanges(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(rangeId)) {
-        newSet.delete(rangeId);
-      } else {
-        newSet.add(rangeId);
-      }
-      return newSet;
-    });
-  }, []);
+  // 使用新的折叠逻辑 hook
+  const {
+    supportsFolding,
+    foldableRanges,
+    collapsedRanges,
+    visibleLines,
+    getFoldableRangeAtLine,
+    toggleFoldingRange
+  } = useFoldingLogic({
+    lines,
+    fileName
+  });
 
   // 简化计算
   const lineNumberWidth = Math.max(40, (startLineNumber + lines.length - 1).toString().length * 8 + 24);
@@ -281,7 +205,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
     if (supportsFolding) {
       // 使用优化的缓存函数而不是每次线性查找
-      foldableRange = getFoldableRangeAtLineOptimized(originalLineIndex);
+      foldableRange = getFoldableRangeAtLine(originalLineIndex);
       isRangeCollapsed = foldableRange ? collapsedRanges.has(foldableRange.id) : false;
     }
 
@@ -317,7 +241,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
           {foldableRange && (
             <FoldingIndicator
               isCollapsed={isRangeCollapsed}
-              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+              onToggle={() => toggleFoldingRange(foldableRange.id)}
             />
           )}
           {showExpandButton && (
@@ -357,7 +281,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
           {foldableRange && (
             <FoldingIndicator
               isCollapsed={isRangeCollapsed}
-              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+              onToggle={() => toggleFoldingRange(foldableRange.id)}
             />
           )}
           {showExpandButton && (
@@ -404,7 +328,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
             {foldableRange && (
               <FoldingIndicator
                 isCollapsed={isRangeCollapsed}
-                onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+                onToggle={() => toggleFoldingRange(foldableRange.id)}
               />
             )}
             {showExpandButton && (
@@ -463,7 +387,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
           {foldableRange && (
             <FoldingIndicator
               isCollapsed={isRangeCollapsed}
-              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+              onToggle={() => toggleFoldingRange(foldableRange.id)}
             />
           )}
           {showExpandButton && (
@@ -521,7 +445,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
           {foldableRange && (
             <FoldingIndicator
               isCollapsed={isRangeCollapsed}
-              onToggle={() => handleToggleFoldingRange(foldableRange.id)}
+              onToggle={() => toggleFoldingRange(foldableRange.id)}
             />
           )}
           {showExpandButton && (
@@ -546,7 +470,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         </div>
       );
     }
-  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines, expandedLongLines, setExpandedLongLines, foldableRanges, collapsedRanges, handleToggleFoldingRange, t, supportsFolding, getFoldableRangeAtLineOptimized]);
+  }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines, expandedLongLines, setExpandedLongLines, foldableRanges, collapsedRanges, toggleFoldingRange, t, supportsFolding, getFoldableRangeAtLine]);
 
   const handleLineClick = (originalLineIndex: number) => {
     setModalState({

@@ -219,14 +219,7 @@ export const fileViewer = {
   'pcd.pointCloudInfo': '点云信息',
   'pcd.totalPoints': '正在渲染 {{count}} 个点',
 
-  // Code folding
-  'code.folding': '代码折叠',
-  'code.folding.enable': '启用代码折叠',
-  'code.folding.disable': '禁用代码折叠',
+  // 代码折叠
   'fold.range': '折叠区间',
   'unfold.range': '展开区间',
-  'fold.all': '折叠全部',
-  'unfold.all': '展开全部',
-  'folded.lines': '已折叠 {{count}} 行',
-  'code.folding.supported': '支持 JSON、XML、YAML 等格式的代码折叠',
 };

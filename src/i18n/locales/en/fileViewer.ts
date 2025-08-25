@@ -233,14 +233,7 @@ export const fileViewer = {
   'pcd.totalPoints': 'Rendering {{count}} points',
 
   // Code folding
-  'code.folding': 'Code Folding',
-  'code.folding.enable': 'Enable code folding',
-  'code.folding.disable': 'Disable code folding',
   'fold.range': 'Fold range',
   'unfold.range': 'Unfold range',
-  'fold.all': 'Fold all',
-  'unfold.all': 'Unfold all',
-  'folded.lines': '{{count}} lines folded',
-  'code.folding.supported': 'Supports code folding for JSON, XML, YAML and other formats',
 
 };
