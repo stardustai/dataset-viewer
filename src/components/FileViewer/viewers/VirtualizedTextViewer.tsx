@@ -212,9 +212,22 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     onSearchResults?.(results, results.length >= MAX_SEARCH_RESULTS);
   }, [onSearchResults, startLineNumber, visibleLines]);
 
+  // 使用 ref 来存储最后执行的搜索词，避免内容变化时重复搜索
+  const lastSearchTermRef = useRef<string>('');
+  const lastVisibleLinesCountRef = useRef<number>(0);
+
   useEffect(() => {
-    performSearch(searchTerm);
-  }, [searchTerm, performSearch]);
+    // 只有搜索词真正变化，或者可见行发生了显著变化时才执行搜索
+    const currentVisibleCount = visibleLines.length;
+    const shouldSearch = searchTerm !== lastSearchTermRef.current ||
+                        Math.abs(currentVisibleCount - lastVisibleLinesCountRef.current) > 100;
+
+    if (shouldSearch) {
+      lastSearchTermRef.current = searchTerm;
+      lastVisibleLinesCountRef.current = currentVisibleCount;
+      performSearch(searchTerm);
+    }
+  }, [searchTerm, performSearch, visibleLines.length]);
 
   const renderLineWithHighlight = useCallback((line: string, _lineIndex: number, originalLineIndex: number) => {
     const currentLineNumber = startLineNumber + originalLineIndex;
@@ -329,8 +342,52 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
       );
     }
 
-    // 处理搜索高亮（对于长行，优化搜索性能）
+    // 获取当前活跃搜索结果的详细信息
+    const currentActiveResult = currentSearchIndex >= 0 ? searchResults[currentSearchIndex] : null;
     const searchDisplayLine = isLongLine && !isExpanded ? displayLine : line;
+
+    // 简化的搜索高亮渲染
+    const renderSearchHighlight = (text: string) => {
+      const parts: React.ReactNode[] = [];
+      let lastIndex = 0;
+      let match;
+
+      searchRegex.lastIndex = 0;
+      while ((match = searchRegex.exec(text)) !== null) {
+        // 添加匹配前的文本
+        if (match.index > lastIndex) {
+          parts.push(text.slice(lastIndex, match.index));
+        }
+
+        // 检查这个匹配是否是当前活跃的匹配
+        const isActiveMatch = currentActiveResult &&
+          currentActiveResult.line === currentLineNumber &&
+          currentActiveResult.column === match.index + 1;
+
+        parts.push(
+          <mark
+            key={`match-${match.index}`}
+            className={isActiveMatch ? 'search-highlight-active' : 'search-highlight'}
+          >
+            {match[0]}
+          </mark>
+        );
+
+        lastIndex = match.index + match[0].length;
+
+        // 防止无限循环
+        if (match.index === searchRegex.lastIndex) {
+          searchRegex.lastIndex++;
+        }
+      }
+
+      // 添加最后剩余的文本
+      if (lastIndex < text.length) {
+        parts.push(text.slice(lastIndex));
+      }
+
+      return parts;
+    };
 
     if (shouldHighlight && processedLine !== displayLine && searchDisplayLine.length < MAX_LINE_LENGTH) {
       // 对于已经语法高亮的代码，创建一个临时元素来提取纯文本
@@ -338,11 +395,9 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
       tempDiv.innerHTML = processedLine;
       const textContent = tempDiv.textContent || tempDiv.innerText || '';
 
-      // 在纯文本中查找搜索词并高亮
+      // 如果纯文本中没有搜索匹配，直接返回语法高亮版本
       searchRegex.lastIndex = 0;
-      const parts = textContent.split(searchRegex);
-
-      if (parts.length === 1) {
+      if (!searchRegex.test(textContent)) {
         return (
           <div className="flex items-center">
             <span dangerouslySetInnerHTML={{ __html: processedLine }} />
@@ -375,123 +430,42 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
           </div>
         );
       }
-
-      // 简化处理：当有搜索结果时，显示带搜索高亮的原始文本，而不是语法高亮
-      searchRegex.lastIndex = 0;
-      const textParts = searchDisplayLine.split(searchRegex);
-
-      return (
-        <div className="flex items-center">
-          <span>
-            {textParts.map((part, index) => {
-              searchRegex.lastIndex = 0;
-              if (searchRegex.test(part)) {
-                const isCurrentMatch = currentSearchIndex >= 0 &&
-                  searchResults[currentSearchIndex] &&
-                  searchResults[currentSearchIndex].line === currentLineNumber;
-
-                return (
-                  <mark
-                    key={index}
-                    className={isCurrentMatch
-                      ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
-                      : 'bg-yellow-200 dark:bg-yellow-800'
-                    }
-                  >
-                    {part}
-                  </mark>
-                );
-              }
-              return part;
-            })}
-          </span>
-          {/* 代码折叠指示器 */}
-          {foldableRange && (
-            <FoldingIndicator
-              isCollapsed={isRangeCollapsed}
-              onToggle={() => toggleFoldingRange(foldableRange.id)}
-            />
-          )}
-          {showExpandButton && (
-            <button
-              className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpandedLongLines(prev => {
-                  const newSet = new Set(prev);
-                  if (isExpanded) {
-                    newSet.delete(originalLineIndex);
-                  } else {
-                    newSet.add(originalLineIndex);
-                  }
-                  return newSet;
-                });
-              }}
-            >
-              {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
-            </button>
-          )}
-        </div>
-      );
-    } else {
-      // 普通文本的搜索高亮处理
-      searchRegex.lastIndex = 0;
-      const parts = searchDisplayLine.split(searchRegex);
-
-      return (
-        <div className="flex items-center">
-          <span>
-            {parts.map((part, index) => {
-              searchRegex.lastIndex = 0;
-              if (searchRegex.test(part)) {
-                const isCurrentMatch = currentSearchIndex >= 0 &&
-                  searchResults[currentSearchIndex] &&
-                  searchResults[currentSearchIndex].line === currentLineNumber;
-
-                return (
-                  <mark
-                    key={index}
-                    className={isCurrentMatch
-                      ? 'bg-blue-300 dark:bg-blue-600 text-blue-900 dark:text-blue-100'
-                      : 'bg-yellow-200 dark:bg-yellow-800'
-                    }
-                  >
-                    {part}
-                  </mark>
-                );
-              }
-              return part;
-            })}
-          </span>
-          {/* 代码折叠指示器 */}
-          {foldableRange && (
-            <FoldingIndicator
-              isCollapsed={isRangeCollapsed}
-              onToggle={() => toggleFoldingRange(foldableRange.id)}
-            />
-          )}
-          {showExpandButton && (
-            <button
-              className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpandedLongLines(prev => {
-                  const newSet = new Set(prev);
-                  if (isExpanded) {
-                    newSet.delete(originalLineIndex);
-                  } else {
-                    newSet.add(originalLineIndex);
-                  }
-                  return newSet;
-                });
-              }}
-            >
-              {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
-            </button>
-          )}
-        </div>
-      );
     }
+
+    // 普通文本或有搜索匹配时的高亮处理
+    return (
+      <div className="flex items-center">
+        <span>
+          {renderSearchHighlight(searchDisplayLine)}
+        </span>
+        {/* 代码折叠指示器 */}
+        {foldableRange && (
+          <FoldingIndicator
+            isCollapsed={isRangeCollapsed}
+            onToggle={() => toggleFoldingRange(foldableRange.id)}
+          />
+        )}
+        {showExpandButton && (
+          <button
+            className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpandedLongLines(prev => {
+                const newSet = new Set(prev);
+                if (isExpanded) {
+                  newSet.delete(originalLineIndex);
+                } else {
+                  newSet.add(originalLineIndex);
+                }
+                return newSet;
+              });
+            }}
+          >
+            {isExpanded ? t('collapse.long.line') : t('expand.long.line')}
+          </button>
+        )}
+      </div>
+    );
   }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines, expandedLongLines, setExpandedLongLines, foldableRanges, collapsedRanges, toggleFoldingRange, t, supportsFolding, getFoldableRangeAtLine]);
 
   const handleLineClick = (originalLineIndex: number) => {
@@ -514,11 +488,30 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
 
   useImperativeHandle(ref, () => ({
     scrollToLine: (lineNumber: number) => {
-      const targetIndex = lineNumber - startLineNumber;
+      // 计算目标行在原始文本中的索引
+      const targetOriginalIndex = lineNumber - startLineNumber;
+
       // 在可见行中找到对应的虚拟行索引
-      const visibleIndex = visibleLines.findIndex(item => item.originalIndex === targetIndex);
+      const visibleIndex = visibleLines.findIndex(item => item.originalIndex === targetOriginalIndex);
+
       if (visibleIndex >= 0) {
+        // 找到了对应的可见行，滚动到该位置
         virtualizer.scrollToIndex(visibleIndex, { align: 'center' });
+      } else if (targetOriginalIndex >= 0 && targetOriginalIndex < lines.length) {
+        // 目标行存在但不在可见行列表中（可能因为代码折叠）
+        // 尝试滚动到最接近的可见行
+        let closestVisibleIndex = 0;
+        let minDistance = Infinity;
+
+        visibleLines.forEach((item, index) => {
+          const distance = Math.abs(item.originalIndex - targetOriginalIndex);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestVisibleIndex = index;
+          }
+        });
+
+        virtualizer.scrollToIndex(closestVisibleIndex, { align: 'center' });
       }
     },
     scrollToPercentage: (percentage: number) => {
