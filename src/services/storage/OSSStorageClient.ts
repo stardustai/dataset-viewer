@@ -38,7 +38,7 @@ export class OSSStorageClient extends BaseStorageClient {
    * OSS 使用大分页大小，提高批量处理效率
    */
   getDefaultPageSize(): number | null {
-    return 1000;
+    return 100;
   }
 
   /**
@@ -251,7 +251,7 @@ export class OSSStorageClient extends BaseStorageClient {
       const result = await invoke('storage_list_directory', {
         path: objectKeyPrefix, // 传递处理后的对象键，而不是协议URL
         options: {
-          pageSize: options.pageSize || 1000,
+          pageSize: options.pageSize || 100,
           marker: options.marker,
           // 只有用户明确指定prefix时才使用，否则让后端根据path自动处理
           prefix: objectKeyPrefix || options.prefix,
