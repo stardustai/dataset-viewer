@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
-  parseFoldingRanges,
-  type FoldableRange
-} from '../../../utils/codeFolding';
+  createFoldingProvider,
+  type FoldableRange,
+  type FoldingProvider
+} from '../../../utils/folding';
 
 // 折叠指示器组件
 interface FoldingIndicatorProps {
@@ -40,17 +41,17 @@ export const FoldingIndicator: React.FC<FoldingIndicatorProps> = ({
   );
 };
 
-// 折叠逻辑管理 Hook
+// 折叠逻辑管理 Hook - 按需计算版本
 export interface UseFoldingLogicProps {
   lines: string[];
   fileName: string;
+  visibleRange?: { start: number; end: number }; // 当前可见范围
 }
 
 export interface UseFoldingLogicResult {
   supportsFolding: boolean;
   foldableRanges: FoldableRange[];
   collapsedRanges: Set<string>;
-  foldingRangeMap: Map<number, FoldableRange>;
   visibleLines: { line: string; originalIndex: number }[];
   getFoldableRangeAtLine: (lineIndex: number) => FoldableRange | null;
   toggleFoldingRange: (rangeId: string) => void;
@@ -59,55 +60,57 @@ export interface UseFoldingLogicResult {
 
 export const useFoldingLogic = ({
   lines,
-  fileName
+  fileName,
+  visibleRange
 }: UseFoldingLogicProps): UseFoldingLogicResult => {
-  const [foldableRanges, setFoldableRanges] = useState<FoldableRange[]>([]);
+  // 只保存已折叠的区间ID
   const [collapsedRanges, setCollapsedRanges] = useState<Set<string>>(new Set());
-  const [foldingRangeMap, setFoldingRangeMap] = useState<Map<number, FoldableRange>>(new Map());
+  const [provider, setProvider] = useState<FoldingProvider | null>(null);
+  const [foldableRanges, setFoldableRanges] = useState<FoldableRange[]>([]);
 
   // 支持折叠检测
   const supportsFolding = Boolean(fileName && ['json', 'jsonl', 'xml', 'svg', 'html', 'htm', 'yaml', 'yml']
     .includes(fileName.split('.').pop()?.toLowerCase() || ''));
 
-  // 折叠解析逻辑
+  // 计算内容哈希以避免不必要的更新
+  const contentHash = useMemo(() => {
+    if (lines.length === 0) return '';
+    // 简单哈希：首行 + 长度 + 末行
+    return `${lines[0] || ''}-${lines.length}-${lines[lines.length - 1] || ''}`;
+  }, [lines]);
+
+  // Initialize the folding provider when content changes
   useEffect(() => {
-    if (!supportsFolding) {
+    if (supportsFolding && lines.length > 0) {
+      const content = lines.join('\n');
+      const newProvider = createFoldingProvider(fileName, content);
+      setProvider(newProvider);
+    } else {
+      setProvider(null);
+    }
+  }, [supportsFolding, contentHash, fileName]); // 使用 contentHash 而不是 lines
+
+  // 按需计算当前可见范围内的折叠区间
+  useEffect(() => {
+    if (!provider || !supportsFolding || lines.length === 0) {
       setFoldableRanges([]);
-      setCollapsedRanges(new Set());
-      setFoldingRangeMap(new Map());
       return;
     }
 
-    // 异步处理大文件性能优化
-    const parseTimeout = setTimeout(() => {
-      try {
-        const ranges = parseFoldingRanges(lines, fileName);
-        setFoldableRanges(ranges);
+    const startLine = visibleRange?.start || 0;
+    const endLine = visibleRange?.end || lines.length - 1;
 
-        // 构建行号到折叠范围的映射，实现 O(1) 查找
-        const rangeMap = new Map<number, FoldableRange>();
-        ranges.forEach(range => {
-          rangeMap.set(range.startLine, range);
-        });
-        setFoldingRangeMap(rangeMap);
-      } catch (error) {
-        console.warn('Failed to parse folding ranges:', error);
-        setFoldableRanges([]);
-        setFoldingRangeMap(new Map());
-      }
-    }, 0);
+    const ranges = provider.getFoldingRangesInRange(lines, startLine, endLine);
+    setFoldableRanges(ranges);
+  }, [provider, supportsFolding, visibleRange?.start, visibleRange?.end, lines.length]); // 分别依赖具体属性
 
-    return () => clearTimeout(parseTimeout);
-  }, [fileName, supportsFolding, lines]);
-
-  // 计算可见行
+  // 计算可见行（考虑折叠状态）
   const visibleLines = useMemo(() => {
-    // 如果不支持折叠或没有折叠区间，直接返回所有行
-    if (!supportsFolding || collapsedRanges.size === 0 || foldableRanges.length === 0) {
+    if (!supportsFolding || collapsedRanges.size === 0) {
       return lines.map((line, index) => ({ line, originalIndex: index }));
     }
 
-    // 为大文件优化：预计算折叠行的集合，避免重复计算
+    // 构建折叠行的集合
     const collapsedLinesSet = new Set<number>();
     for (const rangeId of collapsedRanges) {
       const range = foldableRanges.find(r => r.id === rangeId);
@@ -118,7 +121,7 @@ export const useFoldingLogic = ({
       }
     }
 
-    // 高效过滤：只遍历一次，避免重复计算
+    // 过滤掉折叠的行
     const result: { line: string; originalIndex: number }[] = [];
     for (let i = 0; i < lines.length; i++) {
       if (!collapsedLinesSet.has(i)) {
@@ -128,10 +131,25 @@ export const useFoldingLogic = ({
     return result;
   }, [lines, collapsedRanges, foldableRanges, supportsFolding]);
 
-  // 获取指定行的折叠范围
+  // 获取指定行的折叠范围（按需计算）
   const getFoldableRangeAtLine = useCallback((lineIndex: number) => {
-    return supportsFolding ? foldingRangeMap.get(lineIndex) || null : null;
-  }, [supportsFolding, foldingRangeMap]);
+    if (!provider || !supportsFolding) return null;
+
+    // 首先从当前已计算的范围中查找
+    const existingRange = foldableRanges.find(range => range.startLine === lineIndex);
+    if (existingRange) {
+      return existingRange;
+    }
+
+    // 如果不在当前范围内，使用 provider 计算
+    try {
+      const range = provider.getFoldingRangeAt(lines, lineIndex);
+      return range;
+    } catch (error) {
+      console.warn('Error parsing folding range at line', lineIndex, error);
+      return null;
+    }
+  }, [provider, supportsFolding, foldableRanges, lines]);
 
   // 切换折叠状态
   const toggleFoldingRange = useCallback((rangeId: string) => {
@@ -151,11 +169,15 @@ export const useFoldingLogic = ({
     return collapsedRanges.has(rangeId);
   }, [collapsedRanges]);
 
+  // 当文件改变时清除状态
+  useEffect(() => {
+    setCollapsedRanges(new Set());
+  }, [fileName]);
+
   return {
     supportsFolding,
     foldableRanges,
     collapsedRanges,
-    foldingRangeMap,
     visibleLines,
     getFoldableRangeAtLine,
     toggleFoldingRange,

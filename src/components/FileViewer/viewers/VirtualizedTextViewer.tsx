@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
+import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
@@ -7,7 +7,7 @@ import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { LineContentModal } from './LineContentModal';
 import { MarkdownPreviewModal } from './MarkdownPreviewModal';
 import { FoldingIndicator, useFoldingLogic } from './CodeFoldingControls';
-import type { FoldableRange } from '../../../utils/codeFolding';
+import type { FoldableRange } from '../../../utils/folding';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -62,9 +62,12 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [expandedLongLines, setExpandedLongLines] = useState<Set<number>>(new Set());
 
-  const lines = content.split('\n');
+  const lines = useMemo(() => content.split('\n'), [content]);
 
-  // 使用新的折叠逻辑 hook
+  // 虚拟化器状态
+  const [visibleRange, setVisibleRange] = useState<{ start: number; end: number }>({ start: 0, end: 100 });
+
+  // 使用新的折叠逻辑 hook（按需计算）
   const {
     supportsFolding,
     foldableRanges,
@@ -74,7 +77,8 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     toggleFoldingRange
   } = useFoldingLogic({
     lines,
-    fileName
+    fileName,
+    visibleRange
   });
 
   // 简化计算
@@ -149,6 +153,24 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     overscan: 3,
     measureElement: undefined,
   });
+
+  // 更新可见范围用于按需折叠计算
+  useEffect(() => {
+    const virtualItems = virtualizer.getVirtualItems();
+    if (virtualItems.length > 0) {
+      const start = Math.max(0, virtualItems[0].index - 50); // 扩展范围确保不遗漏
+      const end = Math.min(visibleLines.length - 1, virtualItems[virtualItems.length - 1].index + 50);
+
+      // 将虚拟行索引转换回原始行索引
+      const startOriginalIndex = visibleLines[start]?.originalIndex || 0;
+      const endOriginalIndex = visibleLines[end]?.originalIndex || lines.length - 1;
+
+      setVisibleRange({
+        start: Math.max(0, startOriginalIndex - 20),
+        end: Math.min(lines.length - 1, endOriginalIndex + 20)
+      });
+    }
+  }, [virtualizer.getVirtualItems(), visibleLines, lines.length]);
 
   // 当虚拟项改变时，触发可见行的语法高亮
   useEffect(() => {
