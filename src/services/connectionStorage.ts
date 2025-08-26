@@ -56,10 +56,17 @@ class ConnectionStorageService {
       // 如果有 URL 被标准化，保存更新后的连接
       if (needsSave) {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(migratedConnections));
-        return migratedConnections;
       }
 
-      return connections;
+      const finalConnections = needsSave ? migratedConnections : connections;
+
+      // 按照最后连接时间排序，最近的在前面
+      // 对于没有 lastConnected 的连接，使用当前时间作为默认值
+      return finalConnections.sort((a: StoredConnection, b: StoredConnection) => {
+        const aTime = new Date(a.lastConnected || new Date().toISOString()).getTime();
+        const bTime = new Date(b.lastConnected || new Date().toISOString()).getTime();
+        return bTime - aTime; // 降序排列，最新的在前面
+      });
     } catch (error) {
       console.error('Failed to load stored connections:', error);
       return [];

@@ -13,6 +13,12 @@ export const errors = {
   'error.load.details': 'Failed to load details',
   'error.preview.file': 'Failed to preview file',
 
+  // Permission and authentication errors
+  'error.access.denied': 'Access denied: Please check your credentials and permissions',
+  'error.directory.not.found': 'Directory not found',
+  'error.authentication.failed': 'Authentication failed: Please check your credentials',
+  'error.network.failed': 'Network connection failed: Please check your connection',
+
   // Download errors
   'download.failed': 'Download failed',
   'errors.download.failed': 'File download failed: {{error}}',

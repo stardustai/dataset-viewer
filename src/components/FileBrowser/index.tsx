@@ -362,15 +362,39 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
     } catch (err) {
       console.error('Directory loading failed for path:', path, err);
-      setError('Failed to load directory contents');
+
+      // 解析错误类型，提供更具体的错误信息
+      const errorMessage = String(err);
+      let displayError = t('error.load.directory');
+      let shouldRetryPathFallback = true;
+
+      if (errorMessage.includes('403') || errorMessage.includes('Forbidden') || errorMessage.includes('AccessDenied')) {
+        displayError = t('error.access.denied');
+        shouldRetryPathFallback = false; // 权限错误不尝试路径回退
+      } else if (errorMessage.includes('404') || errorMessage.includes('NotFound')) {
+        displayError = t('error.directory.not.found');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        displayError = t('error.authentication.failed');
+        shouldRetryPathFallback = false;
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+        displayError = t('error.network.failed');
+      }
+
+      // 如果有失败的路径，将其添加到错误信息中
+      if (path) {
+        displayError = `${displayError}。${t('error.failed.path')}: ${path}`;
+      }
+
+      setError(displayError);
       setFailedPath(path); // 记录失败的路径
       // 清除文件列表以避免显示过期数据
       setFiles([]);
       // 重置分页状态
       setHasMore(false);
       setNextMarker(undefined);
-      // 发生错误时，尝试恢复到上一个有效路径或根目录
-      if (path !== '') {
+
+      // 只有在非权限错误的情况下才尝试路径回退
+      if (shouldRetryPathFallback && path !== '') {
         // 如果不是根目录出错，尝试恢复到父目录或根目录
         const segments = path.split('/').filter(s => s);
         if (segments.length > 1) {
@@ -590,7 +614,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         clearTimeout(retryTimer);
       }
     };
-  }, [initialPath, error]); // 移除currentPath依赖避免过度触发
+  }, [initialPath]); // 移除error依赖避免无限重试循环
 
   // 响应从文件查看器返回的刷新请求
   useEffect(() => {
@@ -960,7 +984,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
           {error && (
             <ErrorDisplay
-              message={failedPath ? `${t('error.load.directory')}。${t('error.failed.path')}: ${failedPath}` : t('error.load.directory')}
+              message={error} // 直接使用error状态中的具体错误信息
               onRetry={() => {
                 // 重试加载失败的路径，如果没有记录失败路径则加载当前路径
                 const retryPath = failedPath || currentPath;

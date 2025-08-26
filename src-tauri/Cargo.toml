@@ -58,11 +58,6 @@ hmac = "0.12"
 sha1 = "0.10"
 sha2 = "0.10"
 hex = "0.4"
-# AWS SDK 支持 (用于 SigV4 预签名 URL)
-aws-config = "1.1"
-aws-sdk-s3 = "1.15"
-aws-credential-types = "1.1"
-aws-types = "1.1"
 # 添加 futures 以支持 block_on
 futures = "0.3"
 

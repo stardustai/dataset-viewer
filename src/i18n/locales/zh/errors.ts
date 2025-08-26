@@ -14,6 +14,12 @@ export const errors = {
   'error.load.details': '加载详细信息失败',
   'error.preview.file': '预览文件失败',
 
+  // 权限和认证错误
+  'error.access.denied': '访问被拒绝：请检查您的凭据和权限设置',
+  'error.directory.not.found': '目录不存在',
+  'error.authentication.failed': '身份验证失败：请检查您的凭据',
+  'error.network.failed': '网络连接失败：请检查您的网络连接',
+
   // 下载错误
   'download.failed': '下载失败',
   'errors.download.failed': '文件下载失败：{{error}}',

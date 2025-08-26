@@ -2,6 +2,7 @@ pub mod traits;
 pub mod manager;
 pub mod webdav_client;
 pub mod local_client;
+pub mod oss;
 pub mod oss_client;
 pub mod huggingface_client;
 
