@@ -127,7 +127,7 @@ impl HuggingFaceClient {
                 filename: dataset.id.replace('/', ":"), // 使用 : 替代 / 来避免路径解析问题
                 basename: dataset.id.replace('/', ":"), // 统一使用 : 分隔符格式
                 lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
-                size: 0,
+                size: "0".to_string(),
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
                 etag: None,
@@ -228,7 +228,7 @@ impl HuggingFaceClient {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
                 basename: dataset.id.replace('/', ":"), // 统一使用 : 分隔符格式
                 lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
-                size: 0,
+                size: "0".to_string(),
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
                 etag: None,
@@ -329,7 +329,7 @@ impl HuggingFaceClient {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
                 basename: dataset.id.replace('/', ":"), // 统一使用 : 分隔符格式
                 lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
-                size: 0,
+                size: "0".to_string(),
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
                 etag: None,
@@ -397,7 +397,7 @@ impl HuggingFaceClient {
                         filename: first_part.to_string(),
                         basename: first_part.to_string(),
                         lastmod: "unknown".to_string(),
-                        size: 0, // 目录大小设为0
+                        size: "0".to_string(), // 目录大小设为0
                         file_type: "directory".to_string(),
                         mime: Some("application/x-directory".to_string()),
                         etag: None,
@@ -408,7 +408,7 @@ impl HuggingFaceClient {
                         filename: relative_path.clone(),
                         basename: relative_path.clone(),
                         lastmod: "unknown".to_string(),
-                        size: file.size,
+                        size: file.size.to_string(),
                         file_type: if file.file_type == "directory" { "directory" } else { "file" }.to_string(),
                         mime: if file.file_type == "directory" {
                             Some("application/x-directory".to_string())
@@ -449,7 +449,7 @@ impl HuggingFaceClient {
             format!("{}/{}", dataset_id.replace('/', ":"), subpath)
         };
 
-        let total_count = unique_files.len() as u64;
+        let total_count = unique_files.len().to_string();
 
         Ok(DirectoryResult {
             files: unique_files,

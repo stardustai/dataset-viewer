@@ -17,9 +17,9 @@ impl CompressionHandlerDispatcher for GzipHandler {
         client: Arc<dyn StorageClient>,
         file_path: &str,
         _filename: &str,
-        max_size: Option<usize>,
+        max_size: Option<u32>,
     ) -> Result<ArchiveInfo, String> {
-        Self::analyze_with_storage_client(client, file_path, max_size).await
+        Self::analyze_with_storage_client(client, file_path, max_size.map(|s| s as usize)).await
     }
 
     async fn extract_preview_with_client(
@@ -106,8 +106,8 @@ impl GzipHandler {
 
         let entry = ArchiveEntry {
             path: original_filename.clone(),
-            size: estimated_uncompressed_size,
-            compressed_size: Some(file_size),
+            size: estimated_uncompressed_size.to_string(),
+            compressed_size: Some(file_size.to_string()),
             is_dir: false,
             modified_time: None,
             crc32: None,

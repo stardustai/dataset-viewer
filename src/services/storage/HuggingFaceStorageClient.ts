@@ -1,7 +1,8 @@
-import { invoke } from '@tauri-apps/api/core';
-import { BaseStorageClient, DEFAULT_TIMEOUTS, DefaultSortOptions } from './BaseStorageClient';
-import { ConnectionConfig, DirectoryResult, ListOptions, ReadOptions, FileContent, StorageResponse } from './types';
+import { BaseStorageClient, DefaultSortOptions } from './BaseStorageClient';
+import { ConnectionConfig, ReadOptions, FileContent } from './types';
+import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 import type { ArchiveInfo, FilePreview } from '../../types';
+import { commands } from '../../types/tauri-commands';
 
 /**
  * HuggingFace 路径信息
@@ -232,18 +233,18 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
         actualPath = org;
       }
 
-      // 直接传递路径给后端，后端负责处理所有格式转换
-      return await invoke<DirectoryResult>('storage_list', {
-        path: actualPath,
-        options: options ? {
+      // 使用基类的统一包装器，自动处理类型转换
+      return await this.invokeListDirectory(
+        actualPath,
+        options ? {
           pageSize: options.pageSize,
           marker: options.marker,
           prefix: options.prefix,
           recursive: options.recursive,
           sortBy: options.sortBy,
           sortOrder: options.sortOrder,
-        } : null,
-      });
+        } : undefined,
+      );
     } catch (error) {
       console.error(`Failed to list directory ${path}:`, error);
       throw new Error(`Failed to list directory: ${error}`);
@@ -269,18 +270,22 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
       }
 
       // 使用统一的 storage_request 方法获取文件内容
-      const response = await invoke<StorageResponse>('storage_request', {
-        protocol: this.protocol,
-        method: 'GET',
-        url: this.toProtocolUrl(path),
+      const response = await commands.storageRequest(
+        this.protocol,
+        'GET',
+        this.toProtocolUrl(path),
         headers,
-        body: undefined,
-        options: undefined
-      });
+        null,
+        null
+      );
+
+      if (response.status === 'error') {
+        throw new Error(response.error);
+      }
 
       return {
-        content: response.body || '',
-        size: parseInt(response.headers['content-length'] || '0'),
+        content: response.data.body || '',
+        size: parseInt(response.data.headers['content-length'] || '0'),
         encoding: 'utf-8',
       };
     } catch (error) {
@@ -297,16 +302,20 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
 
     try {
       // 使用统一的 storage_request 方法获取文件头信息
-      const response = await invoke<StorageResponse>('storage_request', {
-        protocol: this.protocol,
-        method: 'HEAD',
-        url: this.toProtocolUrl(path),
-        headers: this.getAuthHeaders(),
-        body: undefined,
-        options: undefined
-      });
+      const response = await commands.storageRequest(
+        this.protocol,
+        'HEAD',
+        this.toProtocolUrl(path),
+        this.getAuthHeaders(),
+        null,
+        null
+      );
 
-      const sizeHeader = response.headers['content-length'] || response.headers['Content-Length'];
+      if (response.status === 'error') {
+        throw new Error(response.error);
+      }
+
+      const sizeHeader = response.data.headers['content-length'] || response.data.headers['Content-Length'];
       if (sizeHeader) {
         return parseInt(sizeHeader, 10);
       }
@@ -326,16 +335,20 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
 
     try {
       // 使用统一的 storage_request_binary 方法
-      const response = await invoke<number[]>('storage_request_binary', {
-        protocol: this.protocol,
-        method: 'GET',
-        url: this.toProtocolUrl(path),
-        headers: this.getAuthHeaders(),
-        options: undefined
-      });
+      const response = await commands.storageRequestBinary(
+        this.protocol,
+        'GET',
+        this.toProtocolUrl(path),
+        this.getAuthHeaders(),
+        null
+      );
+
+      if (response.status === 'error') {
+        throw new Error(response.error);
+      }
 
       // 直接从二进制数据创建 Blob
-      return new Blob([new Uint8Array(response)]);
+      return new Blob([new Uint8Array(response.data)]);
     } catch (error) {
       console.error(`Failed to download file ${path}:`, error);
       throw error;
@@ -369,12 +382,18 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     // 使用协议URL格式
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    return await this.invokeWithTimeout('archive_scan', {
-      protocol: this.protocol,
-      filePath: path, // 直接使用传入的路径
+    const result = await commands.archiveScan(
+      this.protocol,
+      path,
       filename,
-      maxSize
-    }, DEFAULT_TIMEOUTS.default);
+      maxSize || null
+    );
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return result.data;
   }
 
   /**
@@ -388,19 +407,25 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await this.invokeWithTimeout('archive_read', {
-      protocol: this.protocol,
-      filePath: path, // 直接使用传入的路径
+    const result = await commands.archiveRead(
+      this.protocol,
+      path,
       filename,
       entryPath,
-      maxPreviewSize
-    }, DEFAULT_TIMEOUTS.default) as FilePreview;
+      maxPreviewSize || null,
+      null  // offset 参数，HuggingFace 不支持偏移量
+    );
 
-    // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据
-    if (result.content && !(result.content instanceof Uint8Array)) {
-      result.content = new Uint8Array(result.content as number[]);
+    if (result.status === 'error') {
+      throw new Error(result.error);
     }
 
-    return result;
+    // 转换为主项目的 FilePreview 格式，确保 content 是 Uint8Array
+    return {
+      content: new Uint8Array(result.data.content),
+      is_truncated: result.data.is_truncated,
+      total_size: result.data.total_size,
+      preview_size: result.data.preview_size
+    };
   }
 }

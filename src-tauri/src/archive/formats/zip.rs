@@ -14,7 +14,7 @@ impl CompressionHandlerDispatcher for ZipHandler {
         client: Arc<dyn StorageClient>,
         file_path: &str,
         _filename: &str,
-        _max_size: Option<usize>,
+        _max_size: Option<u32>,
     ) -> Result<ArchiveInfo, String> {
         Self::analyze_with_storage_client(client, file_path).await
     }
@@ -432,15 +432,15 @@ impl ZipHandler {
 
             entries.push(ArchiveEntry {
                 path: filename,
-                size: uncompressed_size,
-                compressed_size: Some(compressed_size),
+                size: uncompressed_size.to_string(),
+                compressed_size: Some(compressed_size.to_string()),
                 is_dir,
                 modified_time: None, // 可以从DOS时间字段解析
                 crc32: Some(u32::from_le_bytes([
                     cd_data[offset + 16], cd_data[offset + 17],
                     cd_data[offset + 18], cd_data[offset + 19]
                 ])),
-                index: parsed_entries as usize,
+                index: parsed_entries as u32,
                 metadata: HashMap::new(),
             });
 
@@ -646,7 +646,9 @@ impl ZipHandler {
 
         // 使用优化的解析方法
         let entries = Self::parse_central_directory_optimized(&cd_data, total_entries)?;
-        let total_uncompressed_size = entries.iter().map(|e| e.size).sum();
+        let total_uncompressed_size: u64 = entries.iter()
+            .map(|e| e.size.parse::<u64>().unwrap_or(0))
+            .sum();
 
         Ok(ArchiveInfoBuilder::new(CompressionType::Zip)
             .entries(entries)

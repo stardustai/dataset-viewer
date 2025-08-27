@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Link } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { invoke } from '@tauri-apps/api/core';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
 import { navigationHistoryService } from '../../services/navigationHistory';
@@ -9,6 +8,7 @@ import { connectionStorage } from '../../services/connectionStorage';
 import { settingsStorage } from '../../services/settingsStorage';
 import { showToast } from '../../utils/clipboard';
 import type { UpdateCheckResult } from '../../types';
+import { commands } from '../../types/tauri-commands';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -103,9 +103,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const handleRegisterFileAssociations = async () => {
     setIsRegisteringFileAssociations(true);
     try {
-      const result = await invoke<string>('system_register_files');
-      console.log('File associations registered successfully:', result);
-      showToast(t('file.associations.success'), 'success');
+      const result = await commands.systemRegisterFiles();
+      if (result.status === 'ok') {
+        console.log('File associations registered successfully:', result.data);
+        showToast(t('file.associations.success'), 'success');
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       console.error('Failed to register file associations:', error);
       showToast(t('file.associations.failed'), 'error');

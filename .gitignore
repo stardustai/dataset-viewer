@@ -30,5 +30,8 @@ dist-ssr
 # Tauri specific
 /src-tauri/target
 
+# Auto-generated TypeScript types
+/src/types/tauri-commands.ts
+
 # Package lock files (keep pnpm-lock.yaml if using pnpm)
 package-lock.json

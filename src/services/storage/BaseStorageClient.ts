@@ -1,37 +1,11 @@
-import { invoke } from '@tauri-apps/api/core';
+import { commands, DirectoryResult, ListOptions, ConnectionConfig as TauriConnectionConfig } from '../../types/tauri-commands';
 import {
   StorageClient,
   ConnectionConfig,
-  DirectoryResult,
   FileContent,
-  ListOptions,
   ReadOptions
 } from './types';
 import { ArchiveInfo, FilePreview } from '../../types';
-
-/**
- * 超时配置
- */
-interface TimeoutConfig {
-  /** 默认超时时间（毫秒） */
-  default: number;
-  /** 连接超时时间（毫秒） */
-  connect: number;
-  /** 下载超时时间（毫秒） */
-  download: number;
-  /** 列表操作超时时间（毫秒） */
-  list: number;
-}
-
-/**
- * 默认超时配置
- */
-export const DEFAULT_TIMEOUTS: TimeoutConfig = {
-  default: 30000,   // 30秒
-  connect: 15000,   // 15秒
-  download: 300000, // 5分钟
-  list: 60000,      // 1分钟
-};
 
 /**
  * 存储客户端排序选项
@@ -64,32 +38,19 @@ export abstract class BaseStorageClient implements StorageClient {
   abstract getDefaultPageSize(): number | null;
 
   /**
-   * 带超时的 Tauri invoke 包装器
-   * @param command Tauri 命令名
-   * @param args 命令参数
-   * @param timeoutMs 超时时间（毫秒），默认使用 DEFAULT_TIMEOUTS.default
-   * @returns Promise<T>
+   * 专用的 listDirectory 包装器，直接使用 commands.storageList
    */
-  protected async invokeWithTimeout<T>(
-    command: string,
-    args?: Record<string, any>,
-    timeoutMs: number = DEFAULT_TIMEOUTS.default
-  ): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Tauri command '${command}' timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+  protected async invokeListDirectory(
+    path: string,
+    options?: ListOptions
+  ): Promise<DirectoryResult> {
+    const result = await commands.storageList(path, options || null);
 
-      invoke<T>(command, args)
-        .then((result) => {
-          clearTimeout(timeoutId);
-          resolve(result);
-        })
-        .catch((error) => {
-          clearTimeout(timeoutId);
-          reject(error);
-        });
-    });
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return result.data;
   }
 
   /**
@@ -145,18 +106,19 @@ export abstract class BaseStorageClient implements StorageClient {
     // 确保 savePath 不是 undefined，如果是则设为 null
     const normalizedSavePath = savePath === undefined ? null : savePath;
 
-    const params = {
+    const result = await commands.downloadFile(
       method,
       url,
-      headers,
       filename,
-      savePath: normalizedSavePath,
-    };
-    return await this.invokeWithTimeout(
-      'download_file',
-      params,
-      DEFAULT_TIMEOUTS.download
+      headers,
+      normalizedSavePath
     );
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return result.data;
   }
 
   /**
@@ -214,12 +176,18 @@ export abstract class BaseStorageClient implements StorageClient {
     maxSize?: number
   ): Promise<ArchiveInfo> {
     // 通过Tauri命令调用后端的存储客户端接口
-    return await this.invokeWithTimeout('archive_scan', {
-      protocol: this.protocol,
-      filePath: path,
+    const result = await commands.archiveScan(
+      this.protocol,
+      path,
       filename,
-      maxSize
-    }, DEFAULT_TIMEOUTS.default);
+      maxSize || null
+    );
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return result.data;
   }
 
   /**
@@ -233,21 +201,26 @@ export abstract class BaseStorageClient implements StorageClient {
     offset?: number
   ): Promise<FilePreview> {
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await this.invokeWithTimeout('archive_read', {
-      protocol: this.protocol,
-      filePath: path,
+    const result = await commands.archiveRead(
+      this.protocol,
+      path,
       filename,
       entryPath,
-      maxPreviewSize,
-      offset
-    }, DEFAULT_TIMEOUTS.default) as FilePreview;
+      maxPreviewSize || null,
+      offset?.toString() || null
+    );
 
-    // 确保 content 是 Uint8Array 类型，处理 Tauri 序列化的二进制数据
-    if (result.content && !(result.content instanceof Uint8Array)) {
-      result.content = new Uint8Array(result.content as number[]);
+    if (result.status === 'error') {
+      throw new Error(result.error);
     }
 
-    return result;
+    // 转换为主项目的 FilePreview 格式，确保 content 是 Uint8Array
+    return {
+      content: new Uint8Array(result.data.content),
+      is_truncated: result.data.is_truncated,
+      total_size: result.data.total_size,
+      preview_size: result.data.preview_size
+    };
   }
 
   /**
@@ -292,13 +265,30 @@ export abstract class BaseStorageClient implements StorageClient {
     extraOptions?: any;
   }): Promise<boolean> {
     try {
-      const connected = await this.invokeWithTimeout<boolean>(
-        'storage_connect',
-        { config },
-        DEFAULT_TIMEOUTS.connect
-      );
-      this.connected = connected;
-      return connected;
+      // 构建符合 Tauri 后端 ConnectionConfig 的对象
+      const tauriConfig: TauriConnectionConfig = {
+        protocol: config.protocol,
+        url: config.url ?? null,
+        username: config.username ?? null,
+        password: config.password ?? null,
+        accessKey: config.accessKey ?? null,
+        secretKey: config.secretKey ?? null,
+        region: config.region ?? null,
+        bucket: config.bucket ?? null,
+        endpoint: config.endpoint ?? null,
+        extraOptions: config.extraOptions ?? null,
+      };
+
+      const result = await commands.storageConnect(tauriConfig);
+
+      if (result.status === 'error') {
+        console.error(`${config.protocol} connection failed:`, result.error);
+        this.connected = false;
+        return false;
+      }
+
+      this.connected = result.data;
+      return result.data;
     } catch (error) {
       console.error(`${config.protocol} connection failed:`, error);
       this.connected = false;
@@ -311,7 +301,11 @@ export abstract class BaseStorageClient implements StorageClient {
    */
   protected async disconnectFromBackend(): Promise<void> {
     try {
-      await this.invokeWithTimeout('storage_disconnect', undefined, 5000); // 5秒超时
+      const result = await commands.storageDisconnect();
+
+      if (result.status === 'error') {
+        console.warn('Failed to disconnect from storage backend:', result.error);
+      }
     } catch (error) {
       console.warn('Failed to disconnect from storage backend:', error);
     }

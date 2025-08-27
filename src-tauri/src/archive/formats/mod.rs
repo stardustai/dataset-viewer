@@ -21,7 +21,7 @@ pub trait CompressionHandlerDispatcher: Send + Sync {
         client: Arc<dyn StorageClient>,
         file_path: &str,
         filename: &str,
-        max_size: Option<usize>,
+        max_size: Option<u32>,
     ) -> Result<ArchiveInfo, String>;
 
     /// 通过存储客户端提取文件预览（统一接口，支持流式提取、进度回调和取消信号）

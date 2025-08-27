@@ -1,14 +1,12 @@
 import { BaseStorageClient, DefaultSortOptions } from './BaseStorageClient';
 import {
   ConnectionConfig,
-  DirectoryResult,
   FileContent,
-  ListOptions,
   ReadOptions,
-  StorageResponse
 } from './types';
+import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 import { ArchiveInfo, FilePreview } from '../../types';
-import { invoke } from '@tauri-apps/api/core';
+import { commands } from '../../types/tauri-commands';
 
 /**
  * 本机文件系统存储客户端
@@ -139,18 +137,18 @@ export class LocalStorageClient extends BaseStorageClient {
     }
 
     try {
-      // 使用统一的后端命令，直接调用 storage_list
-      const result = await invoke<DirectoryResult>('storage_list', {
+      // 使用基类的统一包装器，自动处理类型转换
+      const result = await this.invokeListDirectory(
         path,
-        options: options ? {
+        options ? {
           pageSize: options.pageSize,
           marker: options.marker,
           prefix: options.prefix,
           recursive: options.recursive,
           sortBy: options.sortBy,
           sortOrder: options.sortOrder,
-        } : null,
-      });
+        } : undefined,
+      );
 
       return result;
     } catch (error) {
@@ -164,18 +162,24 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const response = await invoke<StorageResponse>('storage_request', {
-      protocol: this.protocol,
-      method: 'READ_FILE',
-      url: this.toProtocolUrl(path),
-      headers: {},
-      body: undefined,
-      options: {
+    const result = await commands.storageRequest(
+      this.protocol,
+      'READ_FILE',
+      this.toProtocolUrl(path),
+      {},
+      null,
+      {
         protocol: 'local',
-        start: options?.start,
-        length: options?.length
-      }
-    });
+        start: options?.start?.toString(),
+        length: options?.length?.toString()
+			}
+    );
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    const response = result.data;
 
     if (response.status !== 200) {
       throw new Error(`Failed to read file: ${response.body}`);
@@ -195,18 +199,22 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const response = await invoke<StorageResponse>('storage_request', {
-      protocol: this.protocol,
-      method: 'GET_FILE_SIZE',
-      url: this.toProtocolUrl(path),
-      headers: {},
-      body: undefined,
-      options: {
+    const result = await commands.storageRequest(
+      this.protocol,
+      'GET_FILE_SIZE',
+      this.toProtocolUrl(path),
+      {},
+      null,
+      {
         protocol: 'local'
       }
-    });
+    );
 
-    if (response.status !== 200) {
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    const response = result.data;    if (response.status !== 200) {
       throw new Error(`Failed to get file size: ${response.body}`);
     }
 
@@ -219,16 +227,22 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    // 对于本机文件，直接读取为二进制数据
-    const response = await invoke<number[]>('storage_request_binary', {
-      protocol: this.protocol,
-      method: 'READ_FILE_BINARY',
-      url: this.toProtocolUrl(path),
-      headers: {},
-      options: {
+        // 对于本机文件，直接读取为二进制数据
+    const result = await commands.storageRequestBinary(
+      this.protocol,
+      'READ_FILE_BINARY',
+      this.toProtocolUrl(path),
+      {},
+      {
         protocol: 'local'
       }
-    });
+    );
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    const response = result.data;
 
     // 直接使用返回的二进制数据创建 Blob
     const uint8Array = new Uint8Array(response);

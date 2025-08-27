@@ -14,6 +14,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { StorageFile } from '../../types';
+import { commands } from '../../types/tauri-commands';
+import { compareFileSize } from '../../utils/typeUtils';
 import { StorageServiceManager } from '../../services/storage';
 import { ListOptions } from '../../services/storage/types';
 import { cleanPath } from '../../utils/pathUtils';
@@ -35,6 +37,11 @@ interface FileBrowserProps {
   onDirectoryChange?: (path: string) => void;
   shouldRefresh?: boolean; // 新增：用于通知组件需要重新检查连接状态
 }
+
+// 类型适配函数：将 null 转换为 undefined
+const nullToUndefined = function<T>(value: T | null): T | undefined {
+  return value === null ? undefined : value;
+};
 
 export const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileSelect,
@@ -139,7 +146,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           compareValue = a.basename.toLowerCase().localeCompare(b.basename.toLowerCase());
           break;
         case 'size':
-          compareValue = (a.size || 0) - (b.size || 0);
+          compareValue = compareFileSize(a.size || '0', b.size || '0');
           break;
         case 'modified':
           compareValue = new Date(a.lastmod).getTime() - new Date(b.lastmod).getTime();
@@ -311,7 +318,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       const defaultPageSize = currentClient.getDefaultPageSize();
 
       // 构建请求选项
-      const listOptions: ListOptions = {};
+      const listOptions: Partial<ListOptions> = {};
       if (defaultPageSize) {
         listOptions.pageSize = defaultPageSize;
       }
@@ -322,10 +329,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       // 设置分页状态
       setHasMore(fileList.hasMore || false);
-      setNextMarker(fileList.nextMarker);
+      setNextMarker(nullToUndefined(fileList.nextMarker));
 
       // 缓存目录数据（包含分页状态）
-      navigationHistoryService.cacheDirectory(path, fileList.files, fileList.hasMore, fileList.nextMarker);
+      navigationHistoryService.cacheDirectory(path, fileList.files, fileList.hasMore, nullToUndefined(fileList.nextMarker));
 
       // 记录访问历史
       navigationHistoryService.addToHistory(path);
@@ -454,10 +461,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
         // 更新分页状态
         setHasMore(result.hasMore || false);
-        setNextMarker(result.nextMarker);
+        setNextMarker(nullToUndefined(result.nextMarker));
 
         // 更新缓存
-        navigationHistoryService.updateCachedDirectory(currentPath, result.files, result.hasMore, result.nextMarker);
+        navigationHistoryService.updateCachedDirectory(currentPath, result.files, result.hasMore, nullToUndefined(result.nextMarker));
 
         console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}, nextMarker: ${result.nextMarker}`);
       } catch (err) {
@@ -497,8 +504,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       }
 
       // 让用户选择一次保存目录
-      const { invoke } = await import('@tauri-apps/api/core');
-      const selectedDirectory = await invoke<string | null>('system_select_folder');
+      const result = await commands.systemSelectFolder();
+
+      if (result.status === 'error') {
+        console.error('Failed to select folder:', result.error);
+        return;
+      }
+
+      const selectedDirectory = result.data;
 
       if (!selectedDirectory) {
         return;
@@ -539,7 +552,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
         allFiles.push(...result.files);
         hasMorePages = result.hasMore || false;
-        marker = result.nextMarker;
+        marker = nullToUndefined(result.nextMarker);
 
         // 安全检查：防止无限循环
         if (hasMorePages && !marker) {
@@ -882,7 +895,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             onNavigateToSegment={navigateToSegment}
             onNavigateToPath={navigateToPath}
             onCopyPath={copyFullPath}
-            homeLabel={t('home')}
+            homeLabel="Home"
             showHomeIcon={true}
           />
 

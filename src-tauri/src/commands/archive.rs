@@ -13,11 +13,12 @@ static ARCHIVE_HANDLER: LazyLock<Arc<ArchiveHandler>> =
 /// 分析压缩包结构（统一接口）
 /// 支持多种压缩格式的流式分析
 #[tauri::command]
+#[specta::specta]
 pub async fn archive_analyze(
     url: String,
     _headers: HashMap<String, String>,
     filename: String,
-    max_size: Option<usize>,
+    max_size: Option<u32>,
 ) -> Result<ArchiveInfo, String> {
     // 统一使用StorageClient接口进行流式分析
     let manager_arc = get_storage_manager().await;
@@ -42,13 +43,14 @@ pub async fn archive_analyze(
 /// 获取文件预览（统一接口）
 /// 支持压缩包内文件的流式预览
 #[tauri::command(rename_all = "camelCase")]
+#[specta::specta]
 pub async fn archive_preview(
     url: String,
     _headers: HashMap<String, String>,
     filename: String,
     entry_path: String,
-    max_preview_size: Option<usize>,
-    offset: Option<u64>
+    max_preview_size: Option<u32>,
+    offset: Option<String>  // 使用字符串表示大数字
 ) -> Result<FilePreview, String> {
     // 统一使用StorageClient接口进行流式预览
     let manager_arc = get_storage_manager().await;
@@ -65,7 +67,7 @@ pub async fn archive_preview(
             filename,
             entry_path,
             max_preview_size,
-            offset, // 使用传入的 offset 参数
+            offset.and_then(|s| s.parse::<u64>().ok()), // 将字符串转换为u64
             None::<fn(u64, u64)>, // 不使用进度回调
             None, // 不使用取消信号
         ).await
@@ -77,11 +79,12 @@ pub async fn archive_preview(
 /// 通过存储客户端分析压缩包结构
 /// 直接使用指定的存储客户端进行分析
 #[tauri::command]
+#[specta::specta]
 pub async fn archive_scan(
     _protocol: String,
     file_path: String,
     filename: String,
-    max_size: Option<usize>,
+    max_size: Option<u32>,
 ) -> Result<ArchiveInfo, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
@@ -108,13 +111,14 @@ pub async fn archive_scan(
 /// 通过存储客户端获取压缩包预览
 /// 直接使用指定的存储客户端进行预览
 #[tauri::command]
+#[specta::specta]
 pub async fn archive_read(
     _protocol: String,
     file_path: String,
     filename: String,
     entry_path: String,
-    max_preview_size: Option<usize>,
-    offset: Option<u64>,
+    max_preview_size: Option<u32>,
+    offset: Option<String>,  // 使用字符串表示大数字
 ) -> Result<FilePreview, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
@@ -136,7 +140,7 @@ pub async fn archive_read(
         filename,
         entry_path,
         max_preview_size,
-        offset,
+        offset.and_then(|s| s.parse::<u64>().ok()), // 将字符串转换为u64
         None::<fn(u64, u64)>, // 不使用进度回调
         None, // 不使用取消信号
     ).await

@@ -1,12 +1,9 @@
-export interface StorageFile {
-  filename: string;
-  basename: string;
-  lastmod: string;
-  size: number;
-  type: 'file' | 'directory';
-  mime?: string;
-  etag?: string;
-}
+// 重新导出 tauri-commands 中的 StorageFile 作为主要类型定义
+export type { StorageFile } from './tauri-commands';
+
+// 类型保护函数，帮助检查文件类型
+export const isFileType = (file: { type: string }): boolean => file.type === 'file';
+export const isDirectoryType = (file: { type: string }): boolean => file.type === 'directory';
 
 export interface StorageConnection {
   url: string;
@@ -54,36 +51,13 @@ export interface UpdateCheckResult {
   fileSize?: string;
 }
 
-export interface ArchiveEntry {
-  path: string;
-  size: number;
-  is_dir: boolean;
-  modified_time?: string;
-  compressed_size?: number;
-}
-
-export interface ArchiveInfo {
-  entries: ArchiveEntry[];
-  total_entries: number;
-  compression_type: string;
-  total_uncompressed_size: number;
-  total_compressed_size: number;
-  supports_streaming?: boolean;
-  supports_random_access?: boolean;
-  analysis_status?: AnalysisStatus;
-}
-
-interface AnalysisStatus {
-  Complete?: {};
-  Partial?: { analyzed_entries: number };
-  Streaming?: { estimated_entries: number | null };
-  Failed?: { error: string };
-}
+// 重新导出 tauri-commands 中的 Archive 相关类型
+export type { ArchiveEntry, ArchiveInfo } from './tauri-commands';
 
 export interface FilePreview {
   content: Uint8Array;
   is_truncated: boolean;
-  total_size: number;
+  total_size: string; // 改为字符串类型，与后端保持一致
   preview_size: number;
 }
 

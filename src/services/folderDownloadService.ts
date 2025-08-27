@@ -1,5 +1,7 @@
 import { StorageServiceManager } from './storage/StorageManager';
 import { StorageFile } from '../types';
+import { safeParseInt, calculateTotalSize } from '../utils/typeUtils';
+import { commands } from '../types/tauri-commands';
 
 export interface FolderDownloadState {
   folderId: string;
@@ -120,7 +122,7 @@ export class FolderDownloadService {
           // 立即开始下载当前目录的文件
           const currentFiles = files.filter(file => file.type === 'file');
           let totalFiles = currentFiles.length;
-          let totalSize = currentFiles.reduce((sum: number, file: StorageFile) => sum + file.size, 0);
+          let totalSize = calculateTotalSize(currentFiles);
 
           // 更新初始状态
           state.totalFiles = totalFiles;
@@ -241,8 +243,7 @@ export class FolderDownloadService {
 
     // 同时调用后端取消所有下载
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('download_cancel_all');
+      await commands.downloadCancelAll();
     } catch (error) {
       console.warn('Failed to cancel backend downloads:', error);
     }
@@ -354,7 +355,7 @@ export class FolderDownloadService {
 
       // 更新进度
       state.completedFiles++;
-      state.downloadedSize += file.size;
+      state.downloadedSize += safeParseInt(file.size);
       state.progress = state.totalFiles > 0 ? Math.round((state.completedFiles / state.totalFiles) * 100) : 0;
 
       this.updateState(state.folderId, state);
@@ -408,9 +409,16 @@ export class FolderDownloadService {
             pageSize: 1000 // 使用大页面大小提高效率
           });
 
-          subFiles.push(...subDirectoryResult.files);
+          // 类型转换：将 tauri-commands StorageFile[] 转换为前端 StorageFile[]
+          const convertedFiles = subDirectoryResult.files.map(file => ({
+            ...file,
+            mime: file.mime ?? undefined,
+            etag: file.etag ?? undefined
+          } as import('../types').StorageFile));
+
+          subFiles.push(...convertedFiles);
           hasMore = subDirectoryResult.hasMore || false;
-          nextMarker = subDirectoryResult.nextMarker;
+          nextMarker = subDirectoryResult.nextMarker ?? undefined;
 
           // 更新扫描进度
           const currentFileCount = subFiles.filter(file => file.type === 'file').length;
@@ -428,7 +436,7 @@ export class FolderDownloadService {
         // 动态更新总文件数和大小
         const subCurrentFiles = subFiles.filter(file => file.type === 'file');
         const additionalFiles = subCurrentFiles.length;
-        const additionalSize = subCurrentFiles.reduce((sum: number, file: StorageFile) => sum + file.size, 0);
+        const additionalSize = calculateTotalSize(subCurrentFiles);
 
         // 添加调试日志用于验证分页
         console.log(`Directory ${dir.basename}: found ${additionalFiles} files and ${subFiles.filter(file => file.type === 'directory').length} subdirectories through pagination`);

@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { X, Download, Check, AlertCircle, StopCircle, FolderOpen, Square, Pause } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { formatFileSize } from '../utils/fileUtils';
 import { FolderDownloadService } from '../services/folderDownloadService';
+import { commands } from '../types/tauri-commands';
 
 interface DownloadProgressProps {
   isVisible: boolean;
@@ -246,7 +246,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
       const timeoutMs = 5000; // 5秒
 
       await Promise.race([
-        invoke('download_cancel', { filename }),
+        commands.downloadCancel(filename),
         new Promise<never>((_, reject) => {
           setTimeout(() => {
             reject(new Error(`取消下载超时 (${timeoutMs}ms)`));
@@ -303,7 +303,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
     try {
       await FolderDownloadService.stopAllDownloads();
       // 也取消后端的所有下载
-      await invoke('download_cancel_all');
+      await commands.downloadCancelAll();
       console.log('All downloads stopped');
     } catch (error) {
       console.error('Failed to stop all downloads:', error);

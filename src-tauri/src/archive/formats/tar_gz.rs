@@ -18,7 +18,7 @@ impl CompressionHandlerDispatcher for TarGzHandler {
         client: Arc<dyn StorageClient>,
         file_path: &str,
         _filename: &str,
-        _max_size: Option<usize>,
+        _max_size: Option<u32>,
     ) -> Result<ArchiveInfo, String> {
         Self::analyze_with_storage_client(client, file_path).await
     }
@@ -135,7 +135,7 @@ impl TarGzHandler {
 
                     entries.push(ArchiveEntry {
                         path: path.to_string_lossy().to_string(),
-                        size,
+                        size: size.to_string(),
                         compressed_size: None,
                         is_dir,
                         modified_time: header.mtime().ok().map(|timestamp| {
@@ -148,7 +148,7 @@ impl TarGzHandler {
                             datetime.to_rfc3339()
                         }),
                         crc32: None,
-                        index,
+                        index: index as u32,
                         metadata: HashMap::new(),
                     });
                 }

@@ -6,6 +6,7 @@ use std::process::Command;
 /// 显示文件夹选择对话框
 /// 跨平台的目录选择功能
 #[tauri::command]
+#[specta::specta]
 pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<String>, String> {
     #[cfg(target_os = "ios")]
     {
@@ -53,9 +54,10 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
     }
 }
 
-/// 注册文件关联
-/// 在不同平台上注册应用程序与支持的文件类型的关联
+/// 注册支持的文件类型关联
+/// 将应用程序注册为特定文件类型的默认程序
 #[tauri::command]
+#[specta::specta]
 pub async fn system_register_files() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
@@ -75,10 +77,10 @@ pub async fn system_register_files() -> Result<String, String> {
     }
 }
 
-/// 设置应用窗口主题
-/// 同步前端主题设置到系统窗口外观
-/// 参数 theme: "dark" | "light" | "system"
+/// 设置应用主题
+/// 支持自动、亮色、暗色三种主题模式
 #[tauri::command]
+#[specta::specta]
 pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<String, String> {
     use tauri::Manager;
 

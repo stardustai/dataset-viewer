@@ -1,14 +1,12 @@
-import { invoke } from '@tauri-apps/api/core';
 import { BaseStorageClient, DefaultSortOptions } from './BaseStorageClient';
 import {
   ConnectionConfig,
-  DirectoryResult,
   FileContent,
-  ListOptions,
   ReadOptions,
-  StorageResponse
 } from './types';
+import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 import { ArchiveInfo, FilePreview } from '../../types';
+import { commands } from '../../types/tauri-commands';
 
 interface OSSConnection {
   endpoint: string;
@@ -238,7 +236,7 @@ export class OSSStorageClient extends BaseStorageClient {
     this.connection = null;
   }
 
-  async listDirectory(path: string, options: ListOptions = {}): Promise<DirectoryResult> {
+  async listDirectory(path: string, options?: Partial<ListOptions>): Promise<DirectoryResult> {
     if (!this.connection) {
       throw new Error('Not connected to OSS');
     }
@@ -247,21 +245,21 @@ export class OSSStorageClient extends BaseStorageClient {
     const objectKeyPrefix = this.normalizePath(path);
 
     try {
-      // 直接调用后端的 list_directory 方法，而不是通用的 request 方法
-      const result = await invoke('storage_list', {
-        path: objectKeyPrefix, // 传递处理后的对象键，而不是协议URL
-        options: {
-          pageSize: options.pageSize || 100,
-          marker: options.marker,
+      // 使用基类的统一包装器，自动处理类型转换
+      const result = await this.invokeListDirectory(
+        objectKeyPrefix, // 传递处理后的对象键，而不是协议URL
+        options ? {
+          pageSize: options.pageSize || null,
+          marker: options.marker || null,
           // 只有用户明确指定prefix时才使用，否则让后端根据path自动处理
-          prefix: objectKeyPrefix || options.prefix,
-          recursive: options.recursive || false,
-          sortBy: options.sortBy || 'name',
-          sortOrder: options.sortOrder || 'asc',
-        }
-      });
+          prefix: options.prefix || null,
+          recursive: options.recursive || null,
+          sortBy: options.sortBy || null,
+          sortOrder: options.sortOrder || null,
+        } : undefined
+      );
 
-      return result as DirectoryResult;
+      return result;
     } catch (error) {
       console.error('Failed to list OSS directory:', error);
       throw new Error(`Failed to list directory: ${error}`);
@@ -286,14 +284,20 @@ export class OSSStorageClient extends BaseStorageClient {
       }
 
       // 使用统一的协议URL格式
-      const response = await invoke<StorageResponse>('storage_request', {
-        protocol: this.protocol,
-        method: 'GET',
-        url: this.toProtocolUrl(path),
+      const result = await commands.storageRequest(
+        this.protocol,
+        'GET',
+        this.toProtocolUrl(path),
         headers,
-        body: undefined,
-        options: undefined
-      });
+        null,
+        null
+      );
+
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
+
+      const response = result.data;
 
       return {
         content: response.body || '',
@@ -312,15 +316,20 @@ export class OSSStorageClient extends BaseStorageClient {
     }
 
     try {
-      const response = await invoke<StorageResponse>('storage_request', {
-        protocol: this.protocol,
-        method: 'HEAD',
-        url: this.toProtocolUrl(path),
-        headers: this.getAuthHeaders(),
-        body: undefined,
-        options: undefined
-      });
+      const result = await commands.storageRequest(
+        this.protocol,
+        'HEAD',
+        this.toProtocolUrl(path),
+        this.getAuthHeaders(),
+        null,
+        null
+      );
 
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
+
+      const response = result.data;
       return parseInt(response.headers['content-length'] || '0');
     } catch (error) {
       console.error('Failed to get OSS file size:', error);
@@ -334,13 +343,19 @@ export class OSSStorageClient extends BaseStorageClient {
     }
 
     try {
-      const response = await invoke<number[]>('storage_request_binary', {
-        protocol: this.protocol,
-        method: 'GET',
-        url: this.toProtocolUrl(path),
-        headers: this.getAuthHeaders(),
-        options: undefined
-      });
+      const result = await commands.storageRequestBinary(
+        this.protocol,
+        'GET',
+        this.toProtocolUrl(path),
+        this.getAuthHeaders(),
+        null
+      );
+
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
+
+      const response = result.data;
 
       // 直接使用返回的二进制数据创建 Blob
       const uint8Array = new Uint8Array(response);

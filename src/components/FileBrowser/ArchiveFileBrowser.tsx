@@ -11,6 +11,7 @@ import { VirtualizedFileList } from './VirtualizedFileList';
 import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
 import { cleanPath } from '../../utils/pathUtils';
 import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
+import { compareFileSize } from '../../utils/typeUtils';
 
 interface ArchiveFileBrowserProps {
   archiveInfo: ArchiveInfo;
@@ -80,7 +81,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
           comparison = a.basename.localeCompare(b.basename);
           break;
         case 'size':
-          comparison = a.size - b.size;
+          comparison = compareFileSize(a.size, b.size);
           break;
         case 'modified':
           comparison = new Date(a.lastmod).getTime() - new Date(b.lastmod).getTime();

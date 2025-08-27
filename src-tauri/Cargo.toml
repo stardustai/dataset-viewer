@@ -4,6 +4,7 @@ version = "1.2.1"
 description = "Dataset Viewer - A modern multi-source dataset browser"
 authors = ["you"]
 edition = "2021"
+default-run = "dataset-viewer"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,8 +15,19 @@ edition = "2021"
 name = "dataset_viewer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# Main application binary
+[[bin]]
+name = "dataset-viewer"
+path = "src/main.rs"
+
+# Binary for exporting TypeScript bindings
+[[bin]]
+name = "export-bindings"
+path = "src/bin/export-bindings.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -29,6 +41,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_bytes = "0.11"
 url = "2.5"
+# 添加 tauri-specta 相关依赖
+tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
+specta = "2.0.0-rc.21"
+specta-typescript = "0.0.9"
 base64 = "0.21"
 tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"

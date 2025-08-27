@@ -668,7 +668,7 @@ impl WebDAVClient {
             filename: filename.clone(),
             basename: filename,
             lastmod: resp.lastmod,
-            size: if is_directory { 0 } else { resp.size }, // 目录大小为0
+            size: if is_directory { "0".to_string() } else { resp.size.to_string() }, // 目录大小为0
             file_type,
             mime,
             etag: None,

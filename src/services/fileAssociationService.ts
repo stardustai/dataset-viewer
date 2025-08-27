@@ -132,8 +132,10 @@ export class FileAssociationService {
         filename: fileName,
         basename: fileName,
         lastmod: new Date().toISOString(),
-        size: fileSize,
-        type: 'file'
+        size: String(fileSize),
+        type: 'file',
+        mime: null,
+        etag: null
       };
     } catch (error) {
       console.error('Failed to get file size:', error);
@@ -143,8 +145,10 @@ export class FileAssociationService {
         filename: fileName,
         basename: fileName,
         lastmod: new Date().toISOString(),
-        size: 0,
-        type: 'file'
+        size: '0',
+        type: 'file',
+        mime: null,
+        etag: null
       };
     }
   }

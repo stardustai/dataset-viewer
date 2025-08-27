@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Folder, FolderOpen, FolderSearch } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
+import { commands } from '../../types/tauri-commands';
 
 interface LocalConnectionFormProps {
   onConnect: (rootPath: string) => void;
@@ -48,9 +48,9 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
   const handleSelectDirectory = async () => {
     try {
       // 使用 Tauri 的对话框 API 选择目录
-      const selected = await invoke<string | null>('system_select_folder');
-      if (selected) {
-        setRootPath(selected);
+      const result = await commands.systemSelectFolder();
+      if (result.status === 'ok' && result.data) {
+        setRootPath(result.data);
       }
     } catch (error) {
       console.error('Failed to open directory dialog:', error);

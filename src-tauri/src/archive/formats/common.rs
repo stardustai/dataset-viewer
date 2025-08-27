@@ -69,8 +69,8 @@ pub fn is_text_content(data: &[u8]) -> bool {
 pub struct PreviewBuilder {
     content: Vec<u8>,
     is_truncated: bool,
-    total_size: u64,
-    preview_size: usize,
+    total_size: String,  // 使用字符串表示大数字
+    preview_size: u32,
 }
 
 impl PreviewBuilder {
@@ -78,13 +78,13 @@ impl PreviewBuilder {
         Self {
             content: Vec::new(),
             is_truncated: false,
-            total_size: 0,
+            total_size: "0".to_string(),
             preview_size: 0,
         }
     }
 
     pub fn content(mut self, content: Vec<u8>) -> Self {
-        self.preview_size = content.len();
+        self.preview_size = content.len() as u32;
         self.content = content;
         self
     }
@@ -97,7 +97,7 @@ impl PreviewBuilder {
     }
 
     pub fn total_size(mut self, size: u64) -> Self {
-        self.total_size = size;
+        self.total_size = size.to_string();
         self
     }
 
@@ -119,9 +119,9 @@ impl PreviewBuilder {
 pub struct ArchiveInfoBuilder {
     compression_type: crate::archive::types::CompressionType,
     entries: Vec<crate::archive::types::ArchiveEntry>,
-    total_entries: usize,
-    total_uncompressed_size: u64,
-    total_compressed_size: u64,
+    total_entries: u32,
+    total_uncompressed_size: String,  // 使用字符串表示大数字
+    total_compressed_size: String,  // 使用字符串表示大数字
     supports_streaming: bool,
     supports_random_access: bool,
     analysis_status: crate::archive::types::AnalysisStatus,
@@ -133,8 +133,8 @@ impl ArchiveInfoBuilder {
             compression_type,
             entries: Vec::new(),
             total_entries: 0,
-            total_uncompressed_size: 0,
-            total_compressed_size: 0,
+            total_uncompressed_size: "0".to_string(),
+            total_compressed_size: "0".to_string(),
             supports_streaming: false,
             supports_random_access: false,
             analysis_status: crate::archive::types::AnalysisStatus::Complete,
@@ -142,23 +142,23 @@ impl ArchiveInfoBuilder {
     }
 
     pub fn entries(mut self, entries: Vec<crate::archive::types::ArchiveEntry>) -> Self {
-        self.total_entries = entries.len();
+        self.total_entries = entries.len() as u32;
         self.entries = entries;
         self
     }
 
-    pub fn total_entries(mut self, count: usize) -> Self {
+    pub fn total_entries(mut self, count: u32) -> Self {
         self.total_entries = count;
         self
     }
 
     pub fn total_uncompressed_size(mut self, size: u64) -> Self {
-        self.total_uncompressed_size = size;
+        self.total_uncompressed_size = size.to_string();
         self
     }
 
     pub fn total_compressed_size(mut self, size: u64) -> Self {
-        self.total_compressed_size = size;
+        self.total_compressed_size = size.to_string();
         self
     }
 

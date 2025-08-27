@@ -105,7 +105,7 @@ export const fileViewer = {
   'archive.empty': 'Archive is empty',
   'folder.selected': 'Folder Selected',
   'folder.info.message': 'This is a folder. Folders in archives are used for organizing file structure and cannot be entered or previewed.',
-  'archive.root': 'Root',
+  'archive.root': 'Home',
   'archive.back': 'Back',
 
   // Data Table Viewer

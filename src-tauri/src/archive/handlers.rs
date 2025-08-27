@@ -16,7 +16,7 @@ impl ArchiveHandler {
         client: Arc<dyn StorageClient>,
         file_path: String,
         filename: String,
-        max_size: Option<usize>,
+        max_size: Option<u32>,
     ) -> Result<ArchiveInfo, String> {
         let compression_type = CompressionType::from_filename(&filename);
 
@@ -62,7 +62,7 @@ impl ArchiveHandler {
         file_path: String,
         filename: String,
         entry_path: String,
-        max_preview_size: Option<usize>,
+        max_preview_size: Option<u32>,
         offset: Option<u64>,
         progress_callback: Option<F>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
@@ -103,7 +103,7 @@ impl ArchiveHandler {
         };
 
         // 如果没有指定大小限制，使用4GB作为最大限制（用于下载完整文件）
-        let max_size = max_preview_size.unwrap_or(4 * 1024 * 1024 * 1024); // 默认4GB
+        let max_size = max_preview_size.map(|s| s as usize).unwrap_or(4 * 1024 * 1024 * 1024); // 默认4GB
 
         // 统一使用支持进度回调的方法
         let boxed_callback = progress_callback.map(|callback| {

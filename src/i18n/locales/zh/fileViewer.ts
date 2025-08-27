@@ -102,7 +102,7 @@ export const fileViewer = {
   'archive.empty': '压缩文件为空',
   'folder.selected': '已选择文件夹',
   'folder.info.message': '这是一个文件夹。压缩文件中的文件夹仅用于组织文件结构，无法进入或预览内容。',
-  'archive.root': '根目录',
+  'archive.root': 'Home',
   'archive.back': '返回上级',
 
   // 数据表格查看器
