@@ -599,10 +599,10 @@ impl StorageClient for HuggingFaceClient {
         // 尝试解析数据集路径
         match self.parse_path(path) {
             Ok((dataset_id, file_path)) => {
-                // 分解 dataset_id (owner:dataset) 为 owner 和 dataset
-                let parts: Vec<&str> = dataset_id.split(':').collect();
+                // 分解 dataset_id (owner/dataset) 为 owner 和 dataset
+                let parts: Vec<&str> = dataset_id.split('/').collect();
                 if parts.len() != 2 {
-                    return Err(StorageError::InvalidConfig(format!("Invalid dataset ID format: {}", dataset_id)));
+                    return Err(StorageError::InvalidConfig(format!("Invalid dataset ID format, expected 'owner/dataset': {}", dataset_id)));
                 }
                 let (owner, dataset) = (parts[0], parts[1]);
                 self.list_dataset_files(owner, dataset, &file_path, options).await
