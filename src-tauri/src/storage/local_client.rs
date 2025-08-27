@@ -229,16 +229,6 @@ impl StorageClient for LocalFileSystemClient {
             files.push(storage_file);
         }
 
-        // 按名称排序
-        files.sort_by(|a, b| {
-            // 目录优先，然后按名称排序
-            match (a.file_type.as_str(), b.file_type.as_str()) {
-                ("directory", "file") => std::cmp::Ordering::Less,
-                ("file", "directory") => std::cmp::Ordering::Greater,
-                _ => a.filename.cmp(&b.filename),
-            }
-        });
-
         Ok(DirectoryResult {
             files,
             has_more: false,
@@ -520,16 +510,6 @@ impl LocalFileSystemClient {
 
             files.push(storage_file);
         }
-
-        // 按名称排序
-        files.sort_by(|a, b| {
-            // 目录优先，然后按名称排序
-            match (a.file_type.as_str(), b.file_type.as_str()) {
-                ("directory", "file") => std::cmp::Ordering::Less,
-                ("file", "directory") => std::cmp::Ordering::Greater,
-                _ => a.filename.cmp(&b.filename),
-            }
-        });
 
         let result = DirectoryResult {
             files,

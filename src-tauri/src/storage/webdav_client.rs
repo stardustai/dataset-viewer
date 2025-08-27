@@ -681,41 +681,7 @@ impl WebDAVClient {
             files.retain(|f| f.filename.starts_with(prefix));
         }
 
-        // 应用排序
-        if let Some(sort_by) = &options.sort_by {
-            let ascending = options.sort_order.as_deref() != Some("desc");
 
-            match sort_by.as_str() {
-                "name" => {
-                    files.sort_by(|a, b| {
-                        if ascending {
-                            a.filename.cmp(&b.filename)
-                        } else {
-                            b.filename.cmp(&a.filename)
-                        }
-                    });
-                },
-                "size" => {
-                    files.sort_by(|a, b| {
-                        if ascending {
-                            a.size.cmp(&b.size)
-                        } else {
-                            b.size.cmp(&a.size)
-                        }
-                    });
-                },
-                "modified" => {
-                    files.sort_by(|a, b| {
-                        if ascending {
-                            a.lastmod.cmp(&b.lastmod)
-                        } else {
-                            b.lastmod.cmp(&a.lastmod)
-                        }
-                    });
-                },
-                _ => {}, // 不支持的排序字段
-            }
-        }
 
         // 应用分页
         if let Some(page_size) = options.page_size {

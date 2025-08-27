@@ -346,7 +346,8 @@ impl HuggingFaceClient {
     }
 
     /// 列出数据集文件
-    async fn list_dataset_files(&self, dataset_id: &str, subpath: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_dataset_files(&self, owner: &str, dataset: &str, subpath: &str, _options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+        let dataset_id = format!("{}/{}", owner, dataset);
         // 使用 tree API 获取完整的文件信息
         let url = if subpath.is_empty() {
             format!("{}/datasets/{}/tree/main", self.api_url, dataset_id)
@@ -429,20 +430,6 @@ impl HuggingFaceClient {
             }
         }
 
-        // 应用排序
-        if let Some(opts) = options {
-            self.apply_file_sorting(&mut unique_files, opts);
-        } else {
-            // 默认排序：目录优先，然后按名称排序
-            unique_files.sort_by(|a, b| {
-                match (a.file_type.as_str(), b.file_type.as_str()) {
-                    ("directory", "file") => std::cmp::Ordering::Less,
-                    ("file", "directory") => std::cmp::Ordering::Greater,
-                    _ => a.filename.cmp(&b.filename),
-                }
-            });
-        }
-
         let path = if subpath.is_empty() {
             dataset_id.replace('/', ":")
         } else {
@@ -458,74 +445,6 @@ impl HuggingFaceClient {
             total_count: Some(total_count),
             path,
         })
-    }
-
-    /// 应用文件排序
-    fn apply_file_sorting(&self, files: &mut Vec<StorageFile>, options: &ListOptions) {
-        if let Some(sort_by) = &options.sort_by {
-            let ascending = options.sort_order.as_deref() != Some("desc");
-
-            match sort_by.as_str() {
-                "name" => {
-                    files.sort_by(|a, b| {
-                        // 目录优先
-                        match (a.file_type.as_str(), b.file_type.as_str()) {
-                            ("directory", "file") => std::cmp::Ordering::Less,
-                            ("file", "directory") => std::cmp::Ordering::Greater,
-                            _ => {
-                                if ascending {
-                                    a.filename.cmp(&b.filename)
-                                } else {
-                                    b.filename.cmp(&a.filename)
-                                }
-                            }
-                        }
-                    });
-                },
-                "size" => {
-                    files.sort_by(|a, b| {
-                        // 目录优先
-                        match (a.file_type.as_str(), b.file_type.as_str()) {
-                            ("directory", "file") => std::cmp::Ordering::Less,
-                            ("file", "directory") => std::cmp::Ordering::Greater,
-                            _ => {
-                                if ascending {
-                                    a.size.cmp(&b.size)
-                                } else {
-                                    b.size.cmp(&a.size)
-                                }
-                            }
-                        }
-                    });
-                },
-                "modified" => {
-                    files.sort_by(|a, b| {
-                        // 目录优先
-                        match (a.file_type.as_str(), b.file_type.as_str()) {
-                            ("directory", "file") => std::cmp::Ordering::Less,
-                            ("file", "directory") => std::cmp::Ordering::Greater,
-                            _ => {
-                                if ascending {
-                                    a.lastmod.cmp(&b.lastmod)
-                                } else {
-                                    b.lastmod.cmp(&a.lastmod)
-                                }
-                            }
-                        }
-                    });
-                },
-                _ => {
-                    // 默认按名称排序
-                    files.sort_by(|a, b| {
-                        match (a.file_type.as_str(), b.file_type.as_str()) {
-                            ("directory", "file") => std::cmp::Ordering::Less,
-                            ("file", "directory") => std::cmp::Ordering::Greater,
-                            _ => a.filename.cmp(&b.filename),
-                        }
-                    });
-                }
-            }
-        }
     }
 
     /// 获取 MIME 类型
@@ -680,7 +599,13 @@ impl StorageClient for HuggingFaceClient {
         // 尝试解析数据集路径
         match self.parse_path(path) {
             Ok((dataset_id, file_path)) => {
-                self.list_dataset_files(&dataset_id, &file_path, options).await
+                // 分解 dataset_id (owner:dataset) 为 owner 和 dataset
+                let parts: Vec<&str> = dataset_id.split(':').collect();
+                if parts.len() != 2 {
+                    return Err(StorageError::InvalidConfig(format!("Invalid dataset ID format: {}", dataset_id)));
+                }
+                let (owner, dataset) = (parts[0], parts[1]);
+                self.list_dataset_files(owner, dataset, &file_path, options).await
             }
             Err(_) => {
                 // 如果路径解析失败，尝试将其视为组织名称

@@ -24,26 +24,18 @@ pub struct StorageResponse {
     pub metadata: Option<HashMap<String, String>>,
 }
 
-// 文件列表响应类型
-#[derive(specta::Type, serde::Serialize, serde::Deserialize)]
-pub struct FileListResponse {
-    pub files: Vec<FileItem>,
-    pub has_more: bool,
-    pub next_marker: Option<String>,
+/// Helper function to stringify JSON values appropriately
+fn stringify_json_value(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Bool(b) => b.to_string(),
+        _ => value.to_string()
+    }
 }
 
-#[derive(specta::Type, serde::Serialize, serde::Deserialize)]
-pub struct FileItem {
-    pub name: String,
-    pub path: String,
-    pub size: u64,
-    pub is_dir: bool,
-    pub modified: Option<String>,
-    pub url: Option<String>,
-}
-
-/// 通用存储请求
-/// 支持各种 HTTP 方法的存储操作
+/// 数据请求
+/// 处理 GET、POST 等 HTTP 请求
 #[tauri::command]
 #[specta::specta]
 pub async fn storage_request(
@@ -139,16 +131,14 @@ pub async fn storage_request(
             status: response.status,
             headers: response.headers,
             body: response.body,
-            metadata: response.metadata.map(|v| {
-                // 将 serde_json::Value 转换为 HashMap<String, String>
-                if let serde_json::Value::Object(map) = v {
+            metadata: match response.metadata {
+                Some(serde_json::Value::Object(map)) => Some(
                     map.into_iter()
-                        .map(|(k, v)| (k, v.to_string()))
+                        .map(|(k, v)| (k, stringify_json_value(&v)))
                         .collect()
-                } else {
-                    HashMap::new()
-                }
-            }),
+                ),
+                _ => None
+            },
         }),
         Err(e) => Err(format!("Storage request failed: {}", e))
     }

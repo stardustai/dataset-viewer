@@ -1,9 +1,16 @@
+import type { StorageFile } from './tauri-commands';
+
 // 重新导出 tauri-commands 中的 StorageFile 作为主要类型定义
-export type { StorageFile } from './tauri-commands';
+export type { StorageFile };
 
 // 类型保护函数，帮助检查文件类型
-export const isFileType = (file: { type: string }): boolean => file.type === 'file';
-export const isDirectoryType = (file: { type: string }): boolean => file.type === 'directory';
+export const isFileType = (file: Pick<StorageFile, 'type'>): file is StorageFile & { type: 'file' } => {
+	return file.type === 'file';
+}
+
+export const isDirectoryType = (file: Pick<StorageFile, 'type'>): file is StorageFile & { type: 'directory' } => {
+	return file.type === 'directory';
+}
 
 export interface StorageConnection {
   url: string;
