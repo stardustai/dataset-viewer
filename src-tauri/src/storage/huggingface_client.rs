@@ -1,12 +1,12 @@
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
-use std::collections::HashMap;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use futures_util::StreamExt;
 
 use crate::storage::traits::{
-    StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig,
+    StorageClient, StorageError, ConnectionConfig,
     DirectoryResult, StorageFile, ListOptions, ProgressCallback,
 };
 
@@ -543,20 +543,6 @@ impl HuggingFaceClient {
         headers
     }
 
-    /// 统一的请求构建方法
-    fn build_request(&self, method: &str, url: &str) -> Result<reqwest::RequestBuilder, StorageError> {
-        let req_builder = match method {
-            "GET" => self.client.get(url),
-            "HEAD" => self.client.head(url),
-            "POST" => self.client.post(url),
-            "PUT" => self.client.put(url),
-            "DELETE" => self.client.delete(url),
-            _ => return Err(StorageError::RequestFailed("Unsupported method".to_string())),
-        };
-
-        // 总是添加认证头（如果没有token，get_reqwest_headers会自动处理）
-        Ok(req_builder.headers(self.get_reqwest_headers()))
-    }
 }
 
 #[async_trait]
@@ -612,180 +598,6 @@ impl StorageClient for HuggingFaceClient {
                 self.list_organization_datasets(path_trimmed, options).await
             }
         }
-    }
-
-    async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
-        if !self.is_connected().await {
-            return Err(StorageError::NotConnected);
-        }
-
-        // 处理 huggingface:// 协议 URL
-        let actual_url = if request.url.starts_with("huggingface://") {
-            // 解析 huggingface://owner:dataset/file_path 或 huggingface://organization 格式
-            let hf_url = request.url.strip_prefix("huggingface://").unwrap_or(&request.url);
-
-            if hf_url.is_empty() {
-                // 根路径，返回数据集列表页面
-                "https://huggingface.co/datasets".to_string()
-            } else {
-                // 检查是否包含路径分隔符
-                let parts: Vec<&str> = hf_url.splitn(2, '/').collect();
-                let first_part = parts[0];
-
-                if first_part.contains(':') {
-                    // 路径格式：owner:dataset/file_path
-                    let dataset_parts: Vec<&str> = first_part.split(':').collect();
-                    if dataset_parts.len() == 2 {
-                        let owner = dataset_parts[0];
-                        let dataset = dataset_parts[1];
-                        let dataset_id = format!("{}/{}", owner, dataset);
-
-                        if parts.len() == 2 {
-                            // 有文件路径
-                            let file_path = parts[1];
-                            format!("https://huggingface.co/datasets/{}/resolve/main/{}", dataset_id, file_path)
-                        } else {
-                            // 只有数据集，返回数据集页面
-                            format!("https://huggingface.co/datasets/{}", dataset_id)
-                        }
-                    } else {
-                        return Err(StorageError::RequestFailed("Invalid dataset identifier format".to_string()));
-                    }
-                } else if !first_part.contains('/') {
-                    // 这是一个组织名称，返回组织页面
-                    format!("https://huggingface.co/{}", first_part)
-                } else {
-                    // 只有 owner，返回 owner 的数据集列表
-                    format!("https://huggingface.co/datasets?search={}", first_part)
-                }
-            }
-        } else {
-            return Err(StorageError::RequestFailed("Only huggingface:// protocol URLs are supported".to_string()));
-        };
-
-        let mut req_builder = self.build_request(&request.method, &actual_url)?;
-
-        // 添加自定义头
-        for (key, value) in &request.headers {
-            if let Ok(header_name) = reqwest::header::HeaderName::from_bytes(key.as_bytes()) {
-                if let Ok(header_value) = reqwest::header::HeaderValue::from_str(value) {
-                    req_builder = req_builder.header(header_name, header_value);
-                }
-            }
-        }
-
-        // 添加请求体
-        if let Some(body) = &request.body {
-            req_builder = req_builder.body(body.clone());
-        }
-
-        let response = req_builder
-            .send()
-            .await
-            .map_err(|e| StorageError::NetworkError(e.to_string()))?;
-
-        let status = response.status().as_u16();
-        let headers: HashMap<String, String> = response
-            .headers()
-            .iter()
-            .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
-            .collect();
-
-        let body = response
-            .text()
-            .await
-            .map_err(|e| StorageError::RequestFailed(e.to_string()))?;
-
-        Ok(StorageResponse {
-            status,
-            headers,
-            body,
-            metadata: None,
-        })
-    }
-
-    async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
-        if !self.is_connected().await {
-            return Err(StorageError::NotConnected);
-        }
-
-        // 处理 huggingface:// 协议 URL
-        let actual_url = if request.url.starts_with("huggingface://") {
-            // 解析 huggingface://owner:dataset/file_path 格式
-            let hf_url = request.url.strip_prefix("huggingface://").unwrap_or(&request.url);
-
-            if hf_url.is_empty() {
-                return Err(StorageError::RequestFailed("Invalid HuggingFace URL for binary request".to_string()));
-            } else {
-                // 路径格式：owner:dataset/file_path
-                let parts: Vec<&str> = hf_url.splitn(2, '/').collect();
-                let dataset_id_part = parts[0];
-
-                if dataset_id_part.contains(':') && parts.len() == 2 {
-                    let dataset_parts: Vec<&str> = dataset_id_part.split(':').collect();
-                    if dataset_parts.len() == 2 {
-                        let owner = dataset_parts[0];
-                        let dataset = dataset_parts[1];
-                        let file_path = parts[1];
-                        let dataset_id = format!("{}/{}", owner, dataset);
-                        // 构建文件下载 URL
-                        format!("https://huggingface.co/datasets/{}/resolve/main/{}", dataset_id, file_path)
-                    } else {
-                        return Err(StorageError::RequestFailed("Invalid dataset identifier format for binary request".to_string()));
-                    }
-                } else {
-                    return Err(StorageError::RequestFailed("Invalid HuggingFace URL format for binary request".to_string()));
-                }
-            }
-        } else {
-            return Err(StorageError::RequestFailed("Only huggingface:// protocol URLs are supported".to_string()));
-        };
-
-        let mut req_builder = match request.method.as_str() {
-            "GET" => self.client.get(&actual_url),
-            "HEAD" => self.client.head(&actual_url),
-            _ => return Err(StorageError::RequestFailed("Unsupported method for binary request".to_string())),
-        };
-
-        // 总是添加认证头（如果没有token，get_reqwest_headers会自动处理）
-        req_builder = req_builder.headers(self.get_reqwest_headers());
-
-        // 添加自定义头
-        for (key, value) in &request.headers {
-            if let Ok(header_name) = reqwest::header::HeaderName::from_bytes(key.as_bytes()) {
-                if let Ok(header_value) = reqwest::header::HeaderValue::from_str(value) {
-                    req_builder = req_builder.header(header_name, header_value);
-                    println!("HuggingFace: Added custom header to binary request: {} = {}", key, value);
-                }
-            }
-        }
-
-        println!("HuggingFace: Sending binary {} request to: {}", request.method, actual_url);
-        let response = req_builder
-            .send()
-            .await
-            .map_err(|e| {
-                println!("HuggingFace: Network error during binary request: {}", e);
-                StorageError::NetworkError(e.to_string())
-            })?;
-
-        let status = response.status();
-        println!("HuggingFace: Received binary response with status: {}", status);
-
-        if !status.is_success() {
-            println!("HuggingFace: Binary request failed with status: {}", status);
-            return Err(StorageError::RequestFailed(
-                format!("Request failed with status: {}", status)
-            ));
-        }
-
-        let bytes_result = response
-            .bytes()
-            .await
-            .map(|b| b.to_vec())
-            .map_err(|e| StorageError::RequestFailed(e.to_string()));
-
-        bytes_result
     }
 
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {

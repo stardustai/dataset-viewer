@@ -6,7 +6,6 @@ import {
 } from './types';
 import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 import { ArchiveInfo, FilePreview } from '../../types';
-import { commands } from '../../types/tauri-commands';
 
 /**
  * 本机文件系统存储客户端
@@ -162,36 +161,24 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const result = await commands.storageRequest(
-      this.protocol,
-      'READ_FILE',
-      this.toProtocolUrl(path),
-      {},
-      null,
-      {
-        protocol: 'local',
-        start: options?.start?.toString(),
-        length: options?.length?.toString()
-			}
-    );
+    try {
+      // 使用新的统一二进制接口读取文件
+      const data = await this.readFileBytes(path, options?.start, options?.length);
 
-    if (result.status === 'error') {
-      throw new Error(result.error);
+      // 解码为文本
+      const content = this.decodeTextContent(data);
+
+      // 获取文件大小信息
+      const size = options?.length || data.length;
+
+      return {
+        content,
+        size,
+        encoding: 'utf-8'
+      };
+    } catch (error) {
+      throw new Error(`Failed to read file: ${error}`);
     }
-
-    const response = result.data;
-
-    if (response.status !== 200) {
-      throw new Error(`Failed to read file: ${response.body}`);
-    }
-
-    const data = JSON.parse(response.body);
-
-    return {
-      content: data.content,
-      size: data.size,
-      encoding: data.encoding || 'utf-8'
-    };
   }
 
   async getFileSize(path: string): Promise<number> {
@@ -199,27 +186,11 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-    const result = await commands.storageRequest(
-      this.protocol,
-      'GET_FILE_SIZE',
-      this.toProtocolUrl(path),
-      {},
-      null,
-      {
-        protocol: 'local'
-      }
-    );
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
+    try {
+      return await this.getFileSizeInternal(path);
+    } catch (error) {
+      throw new Error(`Failed to get file size: ${error}`);
     }
-
-    const response = result.data;    if (response.status !== 200) {
-      throw new Error(`Failed to get file size: ${response.body}`);
-    }
-
-    const data = JSON.parse(response.body);
-    return data.size;
   }
 
   async downloadFile(path: string): Promise<Blob> {
@@ -227,26 +198,15 @@ export class LocalStorageClient extends BaseStorageClient {
       throw new Error('Local storage not connected');
     }
 
-        // 对于本机文件，直接读取为二进制数据
-    const result = await commands.storageRequestBinary(
-      this.protocol,
-      'READ_FILE_BINARY',
-      this.toProtocolUrl(path),
-      {},
-      {
-        protocol: 'local'
-      }
-    );
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
+    try {
+      // 使用新的统一二进制接口读取整个文件
+      const data = await this.readFileBytes(path);
+      // 创建一个新的 Uint8Array 来确保兼容性
+      const compatibleArray = new Uint8Array(data);
+      return new Blob([compatibleArray]);
+    } catch (error) {
+      throw new Error(`Failed to download file: ${error}`);
     }
-
-    const response = result.data;
-
-    // 直接使用返回的二进制数据创建 Blob
-    const uint8Array = new Uint8Array(response);
-    return new Blob([uint8Array]);
   }
 
   async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {

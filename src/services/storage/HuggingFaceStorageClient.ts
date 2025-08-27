@@ -258,34 +258,15 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     }
 
     try {
-      // 准备请求头，支持范围请求
-      const headers = this.getAuthHeaders();
+      // 使用新的统一二进制接口读取文件
+      const data = await this.readFileBytes(path, options?.start, options?.length);
 
-      // 如果指定了范围参数，添加 Range 头
-      if (options?.start !== undefined && options?.length !== undefined) {
-        const end = options.start + options.length - 1;
-        headers['Range'] = `bytes=${options.start}-${end}`;
-      } else if (options?.start !== undefined && options?.end !== undefined) {
-        headers['Range'] = `bytes=${options.start}-${options.end}`;
-      }
-
-      // 使用统一的 storage_request 方法获取文件内容
-      const response = await commands.storageRequest(
-        this.protocol,
-        'GET',
-        this.toProtocolUrl(path),
-        headers,
-        null,
-        null
-      );
-
-      if (response.status === 'error') {
-        throw new Error(response.error);
-      }
+      // 解码为文本
+      const content = this.decodeTextContent(data);
 
       return {
-        content: response.data.body || '',
-        size: parseInt(response.data.headers['content-length'] || '0'),
+        content,
+        size: data.length,
         encoding: 'utf-8',
       };
     } catch (error) {
@@ -301,29 +282,9 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     }
 
     try {
-      // 使用统一的 storage_request 方法获取文件头信息
-      const response = await commands.storageRequest(
-        this.protocol,
-        'HEAD',
-        this.toProtocolUrl(path),
-        this.getAuthHeaders(),
-        null,
-        null
-      );
-
-      if (response.status === 'error') {
-        throw new Error(response.error);
-      }
-
-      const sizeHeader = response.data.headers['content-length'] || response.data.headers['Content-Length'];
-      if (sizeHeader) {
-        return parseInt(sizeHeader, 10);
-      }
-
-      throw new Error('Content-Length header not found');
+      return await this.getFileSizeInternal(path);
     } catch (error) {
-      console.error(`Failed to get file size for ${path}:`, error);
-      throw error;
+      throw new Error(`Failed to get file size: ${error}`);
     }
   }
 
@@ -334,23 +295,12 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     }
 
     try {
-      // 使用统一的 storage_request_binary 方法
-      const response = await commands.storageRequestBinary(
-        this.protocol,
-        'GET',
-        this.toProtocolUrl(path),
-        this.getAuthHeaders(),
-        null
-      );
-
-      if (response.status === 'error') {
-        throw new Error(response.error);
-      }
-
-      // 直接从二进制数据创建 Blob
-      return new Blob([new Uint8Array(response.data)]);
+      // 使用新的统一二进制接口读取整个文件
+      const data = await this.readFileBytes(path);
+      const compatibleArray = new Uint8Array(data);
+      return new Blob([compatibleArray]);
     } catch (error) {
-      console.error(`Failed to download file ${path}:`, error);
+      console.error(`Failed to download file for ${path}:`, error);
       throw error;
     }
   }

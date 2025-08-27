@@ -1,176 +1,79 @@
 // 统一存储接口命令
 // 提供多协议存储连接和文件操作能力
 
-use crate::storage::{StorageRequest, ConnectionConfig, get_storage_manager, ListOptions, DirectoryResult};
-use std::collections::HashMap;
+use crate::storage::{ConnectionConfig, get_storage_manager, ListOptions, DirectoryResult};
 
-// 为类型导出添加 specta 支持
-#[derive(specta::Type, serde::Serialize, serde::Deserialize)]
-pub struct StorageRequestParams {
-    pub protocol: String,
-    pub method: String,
-    pub url: String,
-    pub headers: HashMap<String, String>,
-    pub body: Option<String>,
-    pub options: Option<HashMap<String, String>>,
-}
 
-// 通用的存储响应类型
-#[derive(specta::Type, serde::Serialize, serde::Deserialize)]
-pub struct StorageResponse {
-    pub status: u16,
-    pub headers: HashMap<String, String>,
-    pub body: String,
-    pub metadata: Option<HashMap<String, String>>,
-}
 
-/// Helper function to stringify JSON values appropriately
-fn stringify_json_value(value: &serde_json::Value) -> String {
-    match value {
-        serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::Bool(b) => b.to_string(),
-        _ => value.to_string()
-    }
-}
-
-/// 数据请求
-/// 处理 GET、POST 等 HTTP 请求
+/// 文件读取接口
+/// 支持完整读取和区间读取，统一返回二进制数据
 #[tauri::command]
 #[specta::specta]
-pub async fn storage_request(
-    protocol: String,
-    method: String,
-    url: String,
-    headers: HashMap<String, String>,
-    body: Option<String>,
-    options: Option<HashMap<String, String>>,
-) -> Result<StorageResponse, String> {
-    let manager_arc = get_storage_manager().await;
-
-    // 如果是本地文件系统的连接检查，需要先创建临时客户端
-    if protocol == "local" && method == "CHECK_ACCESS" {
-        // 创建连接配置
-        let config = ConnectionConfig {
-            protocol: "local".to_string(),
-            url: Some(url.clone()),
-            access_key: None,
-            secret_key: None,
-            region: None,
-            bucket: None,
-            endpoint: None,
-            username: None,
-            password: None,
-            extra_options: None,
-        };
-
-        // 使用 StorageManager 的 connect 方法 - 需要写锁
-        let mut manager = manager_arc.write().await;
-        match manager.connect(&config).await {
-            Ok(_) => {
-                // 返回成功响应
-                return Ok(StorageResponse {
-                    status: 200,
-                    headers: HashMap::new(),
-                    body: "OK".to_string(),
-                    metadata: None,
-                });
-            }
-            Err(e) => {
-                return Err(format!("Local storage connection failed: {}", e));
-            }
-        }
-    }
-
-    // 如果是 HuggingFace 的连接检查，需要先创建临时客户端
-    if protocol == "huggingface" && method == "CHECK_ACCESS" {
-        // 创建连接配置
-        let config = ConnectionConfig {
-            protocol: "huggingface".to_string(),
-            url: Some(url.clone()),
-            access_key: None,
-            secret_key: None,
-            region: None,
-            bucket: None,
-            endpoint: None,
-            username: None,
-            password: None,
-            extra_options: options.clone(),
-        };
-
-        // 使用 StorageManager 的 connect 方法 - 需要写锁
-        let mut manager = manager_arc.write().await;
-        match manager.connect(&config).await {
-            Ok(_) => {
-                // 返回成功响应
-                return Ok(StorageResponse {
-                    status: 200,
-                    headers: HashMap::new(),
-                    body: "OK".to_string(),
-                    metadata: None,
-                });
-            }
-            Err(e) => {
-                return Err(format!("HuggingFace connection failed: {}", e));
-            }
-        }
-    }
-
-    let request = StorageRequest {
-        method,
-        url,
-        headers,
-        body,
-        options,
-    };
-
-    // 对于普通请求，使用读锁（已优化为支持并发）
-    let manager = manager_arc.read().await;
-    match manager.request(&request).await {
-        Ok(response) => Ok(StorageResponse {
-            status: response.status,
-            headers: response.headers,
-            body: response.body,
-            metadata: match response.metadata {
-                Some(serde_json::Value::Object(map)) => Some(
-                    map.into_iter()
-                        .map(|(k, v)| (k, stringify_json_value(&v)))
-                        .collect()
-                ),
-                _ => None
-            },
-        }),
-        Err(e) => Err(format!("Storage request failed: {}", e))
-    }
-}
-
-/// 二进制数据请求
-/// 用于获取文件的原始二进制数据
-#[tauri::command]
-#[specta::specta]
-pub async fn storage_request_binary(
-    _protocol: String,
-    method: String,
-    url: String,
-    headers: HashMap<String, String>,
-    options: Option<HashMap<String, String>>,
+pub async fn storage_read_file(
+    path: String,
+    start: Option<String>,
+    length: Option<String>,
 ) -> Result<Vec<u8>, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    let request = StorageRequest {
-        method,
-        url,
-        headers,
-        body: None,
-        options,
+    // 获取当前客户端
+    let client = manager.get_current_client()
+        .ok_or_else(|| "No storage client connected".to_string())?;
+
+    // 解析字符串参数为数字
+    let start_u64 = if let Some(start_str) = start {
+        Some(start_str.parse::<u64>()
+            .map_err(|e| format!("Invalid start parameter: {}", e))?)
+    } else {
+        None
     };
 
-    match manager.request_binary(&request).await {
-        Ok(data) => Ok(data),
-        Err(e) => Err(format!("Binary request failed: {}", e))
-    }
+    let length_u64 = if let Some(length_str) = length {
+        Some(length_str.parse::<u64>()
+            .map_err(|e| format!("Invalid length parameter: {}", e))?)
+    } else {
+        None
+    };
+
+    // 根据参数选择读取方式
+    let result = if let Some(start_pos) = start_u64 {
+        if let Some(read_length) = length_u64 {
+            // 区间读取
+            client.read_file_range(&path, start_pos, read_length).await
+        } else {
+            // 从指定位置读取到文件末尾
+            let total_size = client.get_file_size(&path).await
+                .map_err(|e| format!("Failed to get file size: {}", e))?;
+            let read_length = total_size.saturating_sub(start_pos);
+            client.read_file_range(&path, start_pos, read_length).await
+        }
+    } else {
+        // 读取完整文件
+        client.read_full_file(&path).await
+    };
+
+    result.map_err(|e| format!("Failed to read file: {}", e))
 }
+
+/// 获取文件大小
+#[tauri::command]
+#[specta::specta]
+pub async fn storage_get_file_size(path: String) -> Result<String, String> {
+    let manager_arc = get_storage_manager().await;
+    let manager = manager_arc.read().await;
+
+    let client = manager.get_current_client()
+        .ok_or_else(|| "No storage client connected".to_string())?;
+
+    let size = client.get_file_size(&path).await
+        .map_err(|e| format!("Failed to get file size: {}", e))?;
+
+    // 返回字符串格式的文件大小，避免 u64 的 BigInt 问题
+    Ok(size.to_string())
+}
+
+
 
 /// 连接到存储服务
 /// 支持本地文件系统、WebDAV、OSS、HuggingFace 等多种协议

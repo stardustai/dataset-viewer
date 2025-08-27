@@ -6,7 +6,6 @@ import {
 } from './types';
 import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 import { ArchiveInfo, FilePreview } from '../../types';
-import { commands } from '../../types/tauri-commands';
 
 interface OSSConnection {
   endpoint: string;
@@ -272,36 +271,15 @@ export class OSSStorageClient extends BaseStorageClient {
     }
 
     try {
-      const headers: Record<string, string> = {
-        ...this.getAuthHeaders(),
-      };
+      // 使用新的统一二进制接口读取文件
+      const data = await this.readFileBytes(path, options?.start, options?.length);
 
-      // 添加范围请求头（如果指定）
-      if (options.start !== undefined || options.length !== undefined) {
-        const start = options.start || 0;
-        const end = options.length ? start + options.length - 1 : '';
-        headers['Range'] = `bytes=${start}-${end}`;
-      }
-
-      // 使用统一的协议URL格式
-      const result = await commands.storageRequest(
-        this.protocol,
-        'GET',
-        this.toProtocolUrl(path),
-        headers,
-        null,
-        null
-      );
-
-      if (result.status === 'error') {
-        throw new Error(result.error);
-      }
-
-      const response = result.data;
+      // 解码为文本
+      const content = this.decodeTextContent(data);
 
       return {
-        content: response.body || '',
-        size: parseInt(response.headers['content-length'] || '0'),
+        content,
+        size: data.length,
         encoding: 'utf-8',
       };
     } catch (error) {
@@ -316,23 +294,8 @@ export class OSSStorageClient extends BaseStorageClient {
     }
 
     try {
-      const result = await commands.storageRequest(
-        this.protocol,
-        'HEAD',
-        this.toProtocolUrl(path),
-        this.getAuthHeaders(),
-        null,
-        null
-      );
-
-      if (result.status === 'error') {
-        throw new Error(result.error);
-      }
-
-      const response = result.data;
-      return parseInt(response.headers['content-length'] || '0');
+      return await this.getFileSizeInternal(path);
     } catch (error) {
-      console.error('Failed to get OSS file size:', error);
       throw new Error(`Failed to get file size: ${error}`);
     }
   }
@@ -343,23 +306,10 @@ export class OSSStorageClient extends BaseStorageClient {
     }
 
     try {
-      const result = await commands.storageRequestBinary(
-        this.protocol,
-        'GET',
-        this.toProtocolUrl(path),
-        this.getAuthHeaders(),
-        null
-      );
-
-      if (result.status === 'error') {
-        throw new Error(result.error);
-      }
-
-      const response = result.data;
-
-      // 直接使用返回的二进制数据创建 Blob
-      const uint8Array = new Uint8Array(response);
-      return new Blob([uint8Array]);
+      // 使用新的统一二进制接口读取整个文件
+      const data = await this.readFileBytes(path);
+      const compatibleArray = new Uint8Array(data);
+      return new Blob([compatibleArray]);
     } catch (error) {
       console.error('Failed to download OSS file:', error);
       throw new Error(`Failed to download file: ${error}`);

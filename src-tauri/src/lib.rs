@@ -101,8 +101,8 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
             // 统一存储接口命令
-            storage_request,
-            storage_request_binary,
+            storage_read_file,
+            storage_get_file_size,
             storage_connect,
             storage_disconnect,
             storage_list,

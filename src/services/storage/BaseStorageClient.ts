@@ -331,4 +331,51 @@ export abstract class BaseStorageClient implements StorageClient {
 
   // 可选的带进度下载方法，由子类实现
   downloadFileWithProgress?(_path: string, _filename: string, _savePath?: string): Promise<string>;
+
+  /**
+   * 读取文件内容（统一二进制接口）
+   * @param path 文件路径
+   * @param start 起始位置（可选）
+   * @param length 读取长度（可选）
+   * @returns 二进制数据
+   */
+  protected async readFileBytes(path: string, start?: number, length?: number): Promise<Uint8Array> {
+    const result = await commands.storageReadFile(
+      this.toProtocolUrl(path),
+      start !== undefined ? start.toString() : null,
+      length !== undefined ? length.toString() : null
+    );
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return new Uint8Array(result.data);
+  }
+
+  /**
+   * 获取文件大小（统一接口）
+   * @param path 文件路径
+   * @returns 文件大小
+   */
+  protected async getFileSizeInternal(path: string): Promise<number> {
+    const result = await commands.storageGetFileSize(this.toProtocolUrl(path));
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return parseInt(result.data, 10);
+  }
+
+  /**
+   * 将二进制数据解码为文本
+   * @param data 二进制数据
+   * @param encoding 编码格式，默认 utf-8
+   * @returns 文本内容
+   */
+  protected decodeTextContent(data: Uint8Array, encoding: string = 'utf-8'): string {
+    const decoder = new TextDecoder(encoding);
+    return decoder.decode(data);
+  }
 }

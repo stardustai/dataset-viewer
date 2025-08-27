@@ -122,20 +122,6 @@ impl WebDAVClient {
         })
     }
 
-    /// 判断错误是否应该重试
-    fn should_retry_internal(&self, error: &StorageError) -> bool {
-        match error {
-            StorageError::NetworkError(msg) => {
-                // 网络相关错误通常可以重试
-                msg.contains("timeout") ||
-                msg.contains("connection") ||
-                msg.contains("dns") ||
-                msg.contains("refused")
-            },
-            StorageError::RequestFailed(_) => false, // HTTP错误通常不重试
-            _ => false,
-        }
-    }
 }
 
 #[async_trait]
@@ -170,7 +156,6 @@ impl StorageClient for WebDAVClient {
     <D:resourcetype/>
   </D:prop>
 </D:propfind>"#.to_string()),
-            options: None,
         };
 
         match self.execute_request_internal(&test_request).await {
@@ -217,7 +202,6 @@ impl StorageClient for WebDAVClient {
                 headers
             },
             body: Some(propfind_body.to_string()),
-            options: None,
         };
 
         let response = self.execute_request_internal(&request).await?;
@@ -265,72 +249,6 @@ impl StorageClient for WebDAVClient {
             total_count: None,
             path: path.to_string(),
         })
-    }
-
-    async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
-        let max_retries = 3;
-        let mut last_error = None;
-
-        for attempt in 0..=max_retries {
-            match self.execute_request_internal(request).await {
-                Ok(response) => return Ok(response),
-                Err(e) => {
-                    last_error = Some(e.clone());
-
-                    // 如果不应该重试或者已经是最后一次尝试，直接返回错误
-                    if !self.should_retry_internal(&e) || attempt == max_retries {
-                        break;
-                    }
-
-                    // 指数退避：1秒、2秒、4秒
-                    let delay = Duration::from_secs(1 << attempt);
-                    tokio::time::sleep(delay).await;
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| StorageError::RequestFailed("error.unknown".to_string())))
-    }
-
-    async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
-        // 处理 webdav:// 协议 URL
-        let actual_url = self.parse_webdav_url(&request.url)?;
-
-        let mut req_builder = match request.method.as_str() {
-            "GET" => self.download_client.get(&actual_url),
-            "POST" => self.download_client.post(&actual_url),
-            "PUT" => self.download_client.put(&actual_url),
-            _ => return Err(StorageError::RequestFailed(format!("Unsupported binary method: {}", request.method))),
-        };
-
-        // 添加认证头
-        if let Some(ref auth) = self.auth_header {
-            req_builder = req_builder.header("Authorization", auth);
-        }
-
-        // 添加其他头部
-        for (key, value) in &request.headers {
-            req_builder = req_builder.header(key, value);
-        }
-
-        // 添加请求体
-        if let Some(ref body) = request.body {
-            req_builder = req_builder.body(body.clone());
-        }
-
-        let response = req_builder.send().await
-            .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown"))
-            ));
-        }
-
-        let bytes = response.bytes().await
-            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
-
-        Ok(bytes.to_vec())
     }
 
     fn protocol(&self) -> &str {

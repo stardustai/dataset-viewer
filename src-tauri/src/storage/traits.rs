@@ -58,7 +58,6 @@ pub struct StorageRequest {
     pub url: String,
     pub headers: HashMap<String, String>,
     pub body: Option<String>,
-    pub options: Option<HashMap<String, String>>,
 }
 
 /// 连接配置
@@ -116,12 +115,6 @@ pub trait StorageClient: Send + Sync {
 
     /// 列出目录内容
     async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError>;
-
-    /// 发起请求
-    async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError>;
-
-    /// 发起二进制请求
-    async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError>;
 
     /// 读取文件的指定范围（用于压缩包等需要随机访问的场景）
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError>;

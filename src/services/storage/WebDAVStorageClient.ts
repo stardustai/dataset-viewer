@@ -202,85 +202,44 @@ export class WebDAVStorageClient extends BaseStorageClient {
   async getFileContent(path: string, options?: ReadOptions): Promise<FileContent> {
     if (!this.connection) throw new Error('Not connected');
 
-    const headers: Record<string, string> = {
-      'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
-    };
+    try {
+      // 使用新的统一二进制接口读取文件
+      const data = await this.readFileBytes(path, options?.start, options?.length);
 
-    if (options?.start !== undefined && options?.length !== undefined) {
-      headers['Range'] = `bytes=${options.start}-${options.start + options.length - 1}`;
+      // 解码为文本
+      const content = this.decodeTextContent(data);
+
+      return {
+        content,
+        size: data.length,
+        encoding: 'utf-8'
+      };
+    } catch (error) {
+      throw new Error(`Failed to get file content: ${error}`);
     }
-
-    const response = await commands.storageRequest(
-      this.protocol,
-      'GET',
-      this.toProtocolUrl(path),
-      headers,
-      null,
-      null
-    );
-
-    if (response.status === 'error') {
-      throw new Error(`Failed to get file content: ${response.error}`);
-    }
-
-    if (response.data.status < 200 || response.data.status >= 300) {
-      throw new Error(`Failed to get file content: ${response.data.status}`);
-    }
-
-    return {
-      content: response.data.body,
-      size: parseInt(response.data.headers['content-length'] || '0'),
-      encoding: 'utf-8'
-    };
   }
 
   async getFileSize(path: string): Promise<number> {
     if (!this.connection) throw new Error('Not connected');
 
-    // 使用完整URL，与其他接口保持一致
-    const response = await commands.storageRequest(
-      this.protocol,
-      'HEAD',
-      this.toProtocolUrl(path),
-      {
-        'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
-      },
-      null,
-      null
-    );
-
-    if (response.status === 'error') {
-      throw new Error(`Failed to get file size: ${response.error}`);
+    try {
+      return await this.getFileSizeInternal(path);
+    } catch (error) {
+      throw new Error(`Failed to get file size: ${error}`);
     }
-
-    if (response.data.status < 200 || response.data.status >= 300) {
-      throw new Error(`Failed to get file size: ${response.data.status}`);
-    }
-
-    const contentLength = response.data.headers['content-length'];
-    return contentLength ? parseInt(contentLength, 10) : 0;
   }
 
   async downloadFile(path: string): Promise<Blob> {
     if (!this.connection) throw new Error('Not connected');
 
-    const response = await commands.storageRequestBinary(
-      this.protocol,
-      'GET',
-      this.toProtocolUrl(path),
-      {
-        'Authorization': `Basic ${btoa(`${this.connection.username}:${this.connection.password}`)}`
-      },
-      null
-    );
-
-    if (response.status === 'error') {
-      throw new Error(`Failed to download file: ${response.error}`);
+    try {
+      // 使用新的统一二进制接口读取整个文件
+      const data = await this.readFileBytes(path);
+      const compatibleArray = new Uint8Array(data);
+      return new Blob([compatibleArray], { type: 'application/octet-stream' });
+    } catch (error) {
+      throw new Error(`Failed to download file: ${error}`);
     }
-
-    // 直接使用返回的二进制数据创建 Blob
-    const uint8Array = new Uint8Array(response.data);
-    return new Blob([uint8Array], { type: 'application/octet-stream' });
   }
 
   async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {

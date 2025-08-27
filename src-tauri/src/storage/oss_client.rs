@@ -7,12 +7,12 @@ use urlencoding;
 use futures_util::StreamExt;
 
 use crate::storage::traits::{
-    StorageClient, StorageRequest, StorageResponse, StorageError,
+    StorageClient, StorageError,
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback
 };
 use crate::storage::oss::{
     build_oss_auth_headers, build_aws_auth_headers, generate_oss_presigned_url, generate_aws_presigned_url,
-    parse_oss_url, extract_object_key, build_full_path, build_object_url,
+    extract_object_key, build_full_path, build_object_url,
     normalize_uri_for_signing, parse_list_objects_response
 };
 
@@ -439,139 +439,6 @@ impl StorageClient for OSSClient {
 
     async fn is_connected(&self) -> bool {
         self.connected.load(Ordering::Relaxed)
-    }
-
-    async fn request(&self, req: &StorageRequest) -> Result<StorageResponse, StorageError> {
-        if !self.is_connected().await {
-            return Err(StorageError::NotConnected);
-        }
-
-        // 处理 oss:// 协议 URL
-        let (object_key, actual_url) = parse_oss_url(&req.url, &self.endpoint, &self.config.bucket.as_ref().unwrap_or(&String::new()))?;
-
-        // 对于签名，使用对象键路径
-        let signing_uri = normalize_uri_for_signing(&format!("/{}", object_key));
-
-        // 构建认证头
-        let signing_method = if req.method == "LIST" { "GET" } else { &req.method };
-        let auth_headers = self.build_auth_headers(signing_method, &signing_uri, &req.headers, None);
-
-        // 发送请求
-        let mut req_builder = match req.method.as_str() {
-            "GET" => self.client.get(&actual_url),
-            "HEAD" => self.client.head(&actual_url),
-            "PUT" => self.client.put(&actual_url),
-            "POST" => self.client.post(&actual_url),
-            "DELETE" => self.client.delete(&actual_url),
-            "LIST" => {
-                // 特殊处理列表请求
-                let query_params = if let Some(body) = &req.body {
-                    serde_json::from_str::<serde_json::Value>(body)
-                        .map_err(|e| StorageError::RequestFailed(format!("Invalid list request body: {}", e)))?
-                } else {
-                    serde_json::Value::Null
-                };
-
-                // 构建 LIST 请求 URL - 根据平台使用不同的参数
-                let mut list_url = if self.platform == OSSPlatform::AwsS3 {
-                    format!("{}/?list-type=2", self.endpoint.trim_end_matches('/'))
-                } else {
-                    format!("{}/?", self.endpoint.trim_end_matches('/'))
-                };
-
-                if let Some(prefix) = query_params.get("prefix").and_then(|v| v.as_str()) {
-                    if !prefix.is_empty() {
-                        list_url.push_str(&format!("&prefix={}", urlencoding::encode(prefix)));
-                    }
-                }
-                if let Some(delimiter) = query_params.get("delimiter").and_then(|v| v.as_str()) {
-                    list_url.push_str(&format!("&delimiter={}", urlencoding::encode(delimiter)));
-                }
-                if let Some(max_keys) = query_params.get("max-keys").and_then(|v| v.as_u64()) {
-                    list_url.push_str(&format!("&max-keys={}", max_keys));
-                }
-                if let Some(marker) = query_params.get("marker").and_then(|v| v.as_str()) {
-                    let param_name = if self.platform == OSSPlatform::AwsS3 {
-                        "continuation-token"
-                    } else {
-                        "marker"
-                    };
-                    list_url.push_str(&format!("&{}={}", param_name, urlencoding::encode(marker)));
-                }
-
-                self.client.get(&list_url)
-            }
-            _ => return Err(StorageError::RequestFailed(format!("Unsupported method: {}", req.method))),
-        };
-
-        // 添加认证头
-        for (key, value) in auth_headers {
-            req_builder = req_builder.header(&key, &value);
-        }
-
-        // 添加请求体
-        if let Some(body) = &req.body {
-            if req.method != "LIST" {
-                req_builder = req_builder.body(body.clone());
-            }
-        }
-
-        let response = req_builder.send().await
-            .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
-
-        let status = response.status().as_u16();
-        let headers: HashMap<String, String> = response
-            .headers()
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-            .collect();
-
-        let body = response.text().await.unwrap_or_default();
-
-        Ok(StorageResponse {
-            status,
-            headers,
-            body,
-            metadata: None,
-        })
-    }
-
-    async fn request_binary(&self, req: &StorageRequest) -> Result<Vec<u8>, StorageError> {
-        if !self.is_connected().await {
-            return Err(StorageError::NotConnected);
-        }
-
-        // 处理 oss:// 协议 URL
-        let (object_key, actual_url) = parse_oss_url(&req.url, &self.endpoint, &self.config.bucket.as_ref().unwrap_or(&String::new()))?;
-
-        // 对于签名，使用对象键路径
-        let signing_uri = normalize_uri_for_signing(&format!("/{}", object_key));
-
-        let auth_headers = self.build_auth_headers(&req.method, &signing_uri, &req.headers, None);
-
-        let mut req_builder = match req.method.as_str() {
-            "GET" => self.client.get(&actual_url),
-            "HEAD" => self.client.head(&actual_url),
-            _ => return Err(StorageError::RequestFailed(format!("Unsupported binary method: {}", req.method))),
-        };
-
-        for (key, value) in auth_headers {
-            req_builder = req_builder.header(&key, &value);
-        }
-
-        let response = req_builder.send().await
-            .map_err(|e| StorageError::NetworkError(format!("Binary request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(format!(
-                "Binary request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        response.bytes().await
-            .map(|bytes| bytes.to_vec())
-            .map_err(|e| StorageError::RequestFailed(format!("Failed to read response body: {}", e)))
     }
 
     async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {

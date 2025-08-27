@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use tokio::sync::{RwLock, Semaphore};
 use std::sync::Arc;
-use super::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, DirectoryResult, ListOptions};
+use super::traits::{StorageClient, StorageError, ConnectionConfig, DirectoryResult, ListOptions};
 use super::webdav_client::WebDAVClient;
 use super::local_client::LocalFileSystemClient;
 use super::oss_client::OSSClient;
@@ -79,39 +79,7 @@ impl StorageManager {
         Ok(())
     }
 
-    pub async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
-        // 获取并发许可
-        let _permit = self.request_semaphore.acquire().await.map_err(|_| {
-            StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
-        })?;
 
-        // 快速获取缓存的客户端引用
-        let client = if let Some(ref client) = self.cached_client {
-            client.clone()
-        } else {
-            return Err(StorageError::NotConnected);
-        };
-
-        // 直接执行请求，client 本身就是线程安全的
-        client.request(request).await
-    }
-
-    pub async fn request_binary(&self, request: &StorageRequest) -> Result<Vec<u8>, StorageError> {
-        // 获取并发许可
-        let _permit = self.request_semaphore.acquire().await.map_err(|_| {
-            StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
-        })?;
-
-        // 快速获取缓存的客户端引用
-        let client = if let Some(ref client) = self.cached_client {
-            client.clone()
-        } else {
-            return Err(StorageError::NotConnected);
-        };
-
-        // 直接执行请求，client 本身就是线程安全的
-        client.request_binary(request).await
-    }
 
     pub async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
         // 获取并发许可
