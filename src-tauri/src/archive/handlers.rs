@@ -102,8 +102,8 @@ impl ArchiveHandler {
                 .ok_or_else(|| "Unsupported archive format".to_string())?
         };
 
-        // 如果没有指定大小限制，使用4GB作为最大限制（用于下载完整文件）
-        let max_size = max_preview_size.map(|s| s as usize).unwrap_or(4 * 1024 * 1024 * 1024); // 默认4GB
+        // 如果没有指定大小限制，使用尽可能大的限制（用于下载完整文件）
+        let max_size = max_preview_size.map(|s| s as usize).unwrap_or(usize::MAX); // 使用 usize 的最大值
 
         // 统一使用支持进度回调的方法
         let boxed_callback = progress_callback.map(|callback| {

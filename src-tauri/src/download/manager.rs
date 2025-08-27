@@ -541,7 +541,7 @@ impl DownloadManager {
             archive_path.to_string(),
             archive_filename.to_string(),
             entry_path.to_string(),
-            Some(4 * 1024 * 1024 * 1024), // 4GB 限制
+            Some(u32::MAX), // 使用 u32 的最大值作为限制
             None, // 不使用 offset
             Some(progress_callback), // 使用进度回调显示提取进度
             Some(cancel_rx), // 传递取消信号
