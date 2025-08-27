@@ -194,6 +194,101 @@
         <div class="absolute top-1/2 left-1/4 w-20 h-20 bg-cyan-500/10 rounded-full blur-xl animate-pulse-slow" style="animation-delay: 4s;"></div>
     </div>
 
+    <!-- Screenshots Section -->
+    <div class="relative py-24 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-6">
+                    <span class="text-gradient" data-i18n="screenshots.title">产品预览</span>
+                </h2>
+                <p class="text-lg text-gray-300 max-w-2xl mx-auto" data-i18n="screenshots.subtitle">
+                    直观体验强大功能
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Connection Screenshot -->
+                <div class="group relative overflow-hidden rounded-2xl card-glow transition-all duration-500 hover:scale-105">
+                    <img src="https://github.com/stardustai/dataset-viewer/blob/main/screenshots/connect.png?raw=true" alt="Connection Setup" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="absolute bottom-6 left-6 right-6">
+                            <h3 class="text-xl font-bold text-white mb-2" data-i18n="screenshots.connect.title">连接配置</h3>
+                            <p class="text-gray-300 text-sm" data-i18n="screenshots.connect.desc">支持WebDAV、OSS、本地文件等多种连接方式</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JSON Viewer Screenshot -->
+                <div class="group relative overflow-hidden rounded-2xl card-glow transition-all duration-500 hover:scale-105">
+                    <img src="https://github.com/stardustai/dataset-viewer/blob/main/screenshots/json.png?raw=true" alt="JSON Viewer" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="absolute bottom-6 left-6 right-6">
+                            <h3 class="text-xl font-bold text-white mb-2" data-i18n="screenshots.json.title">JSON查看器</h3>
+                            <p class="text-gray-300 text-sm" data-i18n="screenshots.json.desc">结构化显示，语法高亮，可折叠展开</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code Viewer Screenshot -->
+                <div class="group relative overflow-hidden rounded-2xl card-glow transition-all duration-500 hover:scale-105">
+                    <img src="https://github.com/stardustai/dataset-viewer/blob/main/screenshots/code.png?raw=true" alt="Code Viewer" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="absolute bottom-6 left-6 right-6">
+                            <h3 class="text-xl font-bold text-white mb-2" data-i18n="screenshots.code.title">代码查看器</h3>
+                            <p class="text-gray-300 text-sm" data-i18n="screenshots.code.desc">多语言语法高亮，支持大文件查看</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sheet Viewer Screenshot -->
+                <div class="group relative overflow-hidden rounded-2xl card-glow transition-all duration-500 hover:scale-105">
+                    <img src="https://github.com/stardustai/dataset-viewer/blob/main/screenshots/sheet.png?raw=true" alt="Spreadsheet Viewer" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="absolute bottom-6 left-6 right-6">
+                            <h3 class="text-xl font-bold text-white mb-2" data-i18n="screenshots.sheet.title">数据表格</h3>
+                            <p class="text-gray-300 text-sm" data-i18n="screenshots.sheet.desc">CSV/Excel表格可视化，支持筛选排序</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Point Cloud Screenshot -->
+                <div class="group relative overflow-hidden rounded-2xl card-glow transition-all duration-500 hover:scale-105">
+                    <img src="https://github.com/stardustai/dataset-viewer/blob/main/screenshots/pointcloud.png?raw=true" alt="Point Cloud Viewer" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="absolute bottom-6 left-6 right-6">
+                            <h3 class="text-xl font-bold text-white mb-2" data-i18n="screenshots.pointcloud.title">点云可视化</h3>
+                            <p class="text-gray-300 text-sm" data-i18n="screenshots.pointcloud.desc">3D点云数据交互式查看</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Archive Viewer Screenshot -->
+                <div class="group relative overflow-hidden rounded-2xl card-glow transition-all duration-500 hover:scale-105">
+                    <img src="https://github.com/stardustai/dataset-viewer/blob/main/screenshots/archive.png?raw=true" alt="Archive Viewer" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="absolute bottom-6 left-6 right-6">
+                            <h3 class="text-xl font-bold text-white mb-2" data-i18n="screenshots.archive.title">压缩包浏览</h3>
+                            <p class="text-gray-300 text-sm" data-i18n="screenshots.archive.desc">ZIP、TAR等压缩包免解压直接浏览</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Demo CTA -->
+            <div class="text-center mt-16">
+                <div class="inline-flex items-center space-x-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur border border-white/20 rounded-2xl px-8 py-4">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M19 10a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-white/90 font-medium" data-i18n="screenshots.cta">想看更多功能？立即下载体验完整版本</span>
+                    <svg class="w-5 h-5 text-white/60 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Download Section -->
     <div class="relative py-24 px-6">
         <div class="max-w-6xl mx-auto">
@@ -481,6 +576,21 @@
                 'hero.viewer': 'Viewer',
                 'hero.subtitle': '现代化的数据集浏览器',
                 'hero.description': '支持百GB级大文件实时查看、智能搜索高亮、跨平台原生性能',
+                'screenshots.title': '产品预览',
+                'screenshots.subtitle': '直观体验强大功能',
+                'screenshots.connect.title': '连接配置',
+                'screenshots.connect.desc': '支持WebDAV、OSS、本地文件等多种连接方式',
+                'screenshots.json.title': 'JSON查看器',
+                'screenshots.json.desc': '结构化显示，语法高亮，可折叠展开',
+                'screenshots.code.title': '代码查看器',
+                'screenshots.code.desc': '多语言语法高亮，支持大文件查看',
+                'screenshots.sheet.title': '数据表格',
+                'screenshots.sheet.desc': 'CSV/Excel表格可视化，支持筛选排序',
+                'screenshots.pointcloud.title': '点云可视化',
+                'screenshots.pointcloud.desc': '3D点云数据交互式查看',
+                'screenshots.archive.title': '压缩包浏览',
+                'screenshots.archive.desc': 'ZIP、TAR等压缩包免解压直接浏览',
+                'screenshots.cta': '想看更多功能？立即下载体验完整版本',
                 'download.title': '立即下载',
                 'download.subtitle': '为您的平台选择合适的版本'
             },
@@ -536,6 +646,21 @@
                 'hero.viewer': 'Viewer',
                 'hero.subtitle': 'Modern Dataset Browser',
                 'hero.description': 'Support for real-time viewing of 100GB+ files, intelligent search highlighting, and cross-platform native performance',
+                'screenshots.title': 'Product Preview',
+                'screenshots.subtitle': 'Experience powerful features visually',
+                'screenshots.connect.title': 'Connection Setup',
+                'screenshots.connect.desc': 'Support for WebDAV, OSS, local files and more',
+                'screenshots.json.title': 'JSON Viewer',
+                'screenshots.json.desc': 'Structured display with syntax highlighting and collapsible nodes',
+                'screenshots.code.title': 'Code Viewer',
+                'screenshots.code.desc': 'Multi-language syntax highlighting with large file support',
+                'screenshots.sheet.title': 'Data Sheets',
+                'screenshots.sheet.desc': 'CSV/Excel visualization with filtering and sorting',
+                'screenshots.pointcloud.title': 'Point Cloud Viewer',
+                'screenshots.pointcloud.desc': 'Interactive 3D point cloud data visualization',
+                'screenshots.archive.title': 'Archive Browser',
+                'screenshots.archive.desc': 'Browse ZIP, TAR archives without extraction',
+                'screenshots.cta': 'Want to see more features? Download to experience the full version',
                 'download.title': 'Download Now',
                 'download.subtitle': 'Choose the right version for your platform'
             }

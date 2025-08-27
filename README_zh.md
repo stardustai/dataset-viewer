@@ -41,26 +41,38 @@
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <b>连接设置</b><br>
+      <b>🔗 连接设置</b><br>
       <img src="screenshots/connect.png" alt="连接设置" style="max-width:100%;">
       <br><em>简便的连接管理，支持多种存储类型</em>
     </td>
     <td align="center" width="50%">
-      <b>数据浏览器</b><br>
-      <img src="screenshots/home.png" alt="数据浏览器" style="max-width:100%;">
-      <br><em>现代化数据浏览器，具有直观导航和主题支持</em>
+      <b>📊 JSON查看器</b><br>
+      <img src="screenshots/json.png" alt="JSON查看器" style="max-width:100%;">
+      <br><em>结构化JSON显示，语法高亮，可折叠节点</em>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <b>文本查看器</b><br>
-      <img src="screenshots/text.png" alt="文本查看器" style="max-width:100%;">
-      <br><em>高级文本查看器，具有搜索功能和虚拟化渲染</em>
+      <b>💻 代码查看器</b><br>
+      <img src="screenshots/code.png" alt="代码查看器" style="max-width:100%;">
+      <br><em>多语言语法高亮，支持大文件查看</em>
     </td>
     <td align="center" width="50%">
-      <b>压缩包查看器</b><br>
-      <img src="screenshots/archive.png" alt="压缩包查看器" style="max-width:100%;">
-      <br><em>压缩包流式预览，支持文件预览和高效内容浏览</em>
+      <b>📋 数据表格</b><br>
+      <img src="screenshots/sheet.png" alt="数据表格" style="max-width:100%;">
+      <br><em>CSV/Excel表格可视化，支持筛选和排序功能</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <b>🌐 点云查看器</b><br>
+      <img src="screenshots/pointcloud.png" alt="点云查看器" style="max-width:100%;">
+      <br><em>交互式3D点云数据可视化</em>
+    </td>
+    <td align="center" width="50%">
+      <b>📦 压缩包浏览器</b><br>
+      <img src="screenshots/archive.png" alt="压缩包浏览器" style="max-width:100%;">
+      <br><em>浏览ZIP/TAR压缩包，无需解压</em>
     </td>
   </tr>
 </table>

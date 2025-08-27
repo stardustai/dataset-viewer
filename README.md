@@ -41,26 +41,38 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 <table width="100%">
   <tr>
     <td align="center" width="50%">
-      <b>Connection Setup</b><br>
+      <b>🔗 Connection Setup</b><br>
       <img src="screenshots/connect.png" alt="Connection Setup" style="max-width:100%;">
       <br><em>Easy connection management with multiple storage types</em>
     </td>
     <td align="center" width="50%">
-      <b>File Browser</b><br>
-      <img src="screenshots/home.png" alt="File Browser" style="max-width:100%;">
-      <br><em>Modern file browser with intuitive navigation and theme support</em>
+      <b>📊 JSON Viewer</b><br>
+      <img src="screenshots/json.png" alt="JSON Viewer" style="max-width:100%;">
+      <br><em>Structured JSON display with syntax highlighting and collapsible nodes</em>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <b>Text Viewer</b><br>
-      <img src="screenshots/text.png" alt="Text Viewer" style="max-width:100%;">
-      <br><em>Advanced text viewer with search capabilities and virtualized rendering</em>
+      <b>💻 Code Viewer</b><br>
+      <img src="screenshots/code.png" alt="Code Viewer" style="max-width:100%;">
+      <br><em>Multi-language syntax highlighting with large file support</em>
     </td>
     <td align="center" width="50%">
-      <b>Archive Viewer</b><br>
-      <img src="screenshots/archive.png" alt="Archive Viewer" style="max-width:100%;">
-      <br><em>Archive streaming with file preview and efficient content browsing</em>
+      <b>📋 Data Sheets</b><br>
+      <img src="screenshots/sheet.png" alt="Data Sheets" style="max-width:100%;">
+      <br><em>CSV/Excel visualization with filtering and sorting capabilities</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <b>🌐 Point Cloud Viewer</b><br>
+      <img src="screenshots/pointcloud.png" alt="Point Cloud Viewer" style="max-width:100%;">
+      <br><em>Interactive 3D point cloud data visualization</em>
+    </td>
+    <td align="center" width="50%">
+      <b>📦 Archive Browser</b><br>
+      <img src="screenshots/archive.png" alt="Archive Browser" style="max-width:100%;">
+      <br><em>Browse ZIP/TAR archives without extraction</em>
     </td>
   </tr>
 </table>
