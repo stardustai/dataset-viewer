@@ -484,7 +484,7 @@ export class StorageServiceManager {
     const timeoutMs = 300000; // 5分钟
 
     return Promise.race([
-      invoke('download_archive_file_with_progress', {
+      invoke('download_extract', {
         archivePath,
         archiveFilename,
         entryPath,
@@ -504,7 +504,7 @@ export class StorageServiceManager {
    */
   static async getDefaultDownloadPath(filename: string): Promise<string> {
     const { invoke } = await import('@tauri-apps/api/core');
-    return await invoke<string>('get_default_download_path', { filename });
+    return await invoke<string>('download_get_path', { filename });
   }
 
   /**
@@ -541,7 +541,7 @@ export class StorageServiceManager {
    */
   static async getDownloadUrl(path: string): Promise<string> {
     const { invoke } = await import('@tauri-apps/api/core');
-    return await invoke<string>('storage_get_download_url', { path });
+    return await invoke<string>('storage_get_url', { path });
   }
 
   /**

@@ -233,7 +233,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
       }
 
       // 直接传递路径给后端，后端负责处理所有格式转换
-      return await invoke<DirectoryResult>('storage_list_directory', {
+      return await invoke<DirectoryResult>('storage_list', {
         path: actualPath,
         options: options ? {
           pageSize: options.pageSize,
@@ -369,7 +369,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     // 使用协议URL格式
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    return await this.invokeWithTimeout('analyze_archive_with_client', {
+    return await this.invokeWithTimeout('archive_scan', {
       protocol: this.protocol,
       filePath: path, // 直接使用传入的路径
       filename,
@@ -388,7 +388,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await this.invokeWithTimeout('get_archive_preview_with_client', {
+    const result = await this.invokeWithTimeout('archive_read', {
       protocol: this.protocol,
       filePath: path, // 直接使用传入的路径
       filename,

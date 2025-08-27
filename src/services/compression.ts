@@ -19,9 +19,9 @@ export class CompressionService {
     maxSize?: number
   ): Promise<ArchiveInfo> {
     const timeoutMs = 30000; // 30秒
-    
+
     return Promise.race([
-      invoke('analyze_archive', {
+      invoke('archive_analyze', {
         url,
         headers,
         filename,
@@ -46,9 +46,9 @@ export class CompressionService {
     maxPreviewSize?: number
   ): Promise<FilePreview> {
     const timeoutMs = 30000; // 30秒
-    
+
     const result = await Promise.race([
-      invoke('get_file_preview', {
+      invoke('archive_preview', {
         url,
         headers,
         filename,
@@ -61,9 +61,9 @@ export class CompressionService {
         }, timeoutMs);
       })
     ]) as FilePreviewInvokeResponse;
-    
+
     const content = new Uint8Array(result.content);
-    
+
     return {
       content,
       is_truncated: result.is_truncated,

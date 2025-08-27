@@ -103,7 +103,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const handleRegisterFileAssociations = async () => {
     setIsRegisteringFileAssociations(true);
     try {
-      const result = await invoke<string>('register_file_associations');
+      const result = await invoke<string>('system_register_files');
       console.log('File associations registered successfully:', result);
       showToast(t('file.associations.success'), 'success');
     } catch (error) {

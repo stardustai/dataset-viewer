@@ -242,7 +242,7 @@ export class FolderDownloadService {
     // 同时调用后端取消所有下载
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('cancel_all_downloads');
+      await invoke('download_cancel_all');
     } catch (error) {
       console.warn('Failed to cancel backend downloads:', error);
     }

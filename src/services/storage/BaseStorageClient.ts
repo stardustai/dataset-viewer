@@ -153,7 +153,7 @@ export abstract class BaseStorageClient implements StorageClient {
       savePath: normalizedSavePath,
     };
     return await this.invokeWithTimeout(
-      'download_file_with_progress',
+      'download_file',
       params,
       DEFAULT_TIMEOUTS.download
     );
@@ -214,7 +214,7 @@ export abstract class BaseStorageClient implements StorageClient {
     maxSize?: number
   ): Promise<ArchiveInfo> {
     // 通过Tauri命令调用后端的存储客户端接口
-    return await this.invokeWithTimeout('analyze_archive_with_client', {
+    return await this.invokeWithTimeout('archive_scan', {
       protocol: this.protocol,
       filePath: path,
       filename,
@@ -233,7 +233,7 @@ export abstract class BaseStorageClient implements StorageClient {
     offset?: number
   ): Promise<FilePreview> {
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await this.invokeWithTimeout('get_archive_preview_with_client', {
+    const result = await this.invokeWithTimeout('archive_read', {
       protocol: this.protocol,
       filePath: path,
       filename,

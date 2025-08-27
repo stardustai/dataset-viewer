@@ -248,7 +248,7 @@ export class OSSStorageClient extends BaseStorageClient {
 
     try {
       // 直接调用后端的 list_directory 方法，而不是通用的 request 方法
-      const result = await invoke('storage_list_directory', {
+      const result = await invoke('storage_list', {
         path: objectKeyPrefix, // 传递处理后的对象键，而不是协议URL
         options: {
           pageSize: options.pageSize || 100,

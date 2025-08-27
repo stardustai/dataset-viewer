@@ -6,7 +6,7 @@ use std::process::Command;
 /// 显示文件夹选择对话框
 /// 跨平台的目录选择功能
 #[tauri::command]
-pub async fn show_folder_dialog(_app: tauri::AppHandle) -> Result<Option<String>, String> {
+pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<String>, String> {
     #[cfg(target_os = "ios")]
     {
         return Err("Folder selection is not supported on iOS platform".to_string());
@@ -56,7 +56,7 @@ pub async fn show_folder_dialog(_app: tauri::AppHandle) -> Result<Option<String>
 /// 注册文件关联
 /// 在不同平台上注册应用程序与支持的文件类型的关联
 #[tauri::command]
-pub async fn register_file_associations() -> Result<String, String> {
+pub async fn system_register_files() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
         register_windows_file_associations().await
@@ -79,7 +79,7 @@ pub async fn register_file_associations() -> Result<String, String> {
 /// 同步前端主题设置到系统窗口外观
 /// 参数 theme: "dark" | "light" | "system"
 #[tauri::command]
-pub async fn set_window_theme(app: tauri::AppHandle, theme: String) -> Result<String, String> {
+pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<String, String> {
     use tauri::Manager;
 
     if let Some(window) = app.get_webview_window("main") {

@@ -62,7 +62,7 @@ export const useTheme = () => {
     applyThemeToDOM(shouldBeDark);
 
     // 异步同步窗口主题
-    invoke('set_window_theme', { theme }).catch(error => {
+    invoke('system_set_theme', { theme }).catch(error => {
       console.warn('Failed to sync window theme:', error);
     });
 

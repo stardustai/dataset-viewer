@@ -13,7 +13,7 @@ static ARCHIVE_HANDLER: LazyLock<Arc<ArchiveHandler>> =
 /// 分析压缩包结构（统一接口）
 /// 支持多种压缩格式的流式分析
 #[tauri::command]
-pub async fn analyze_archive(
+pub async fn archive_analyze(
     url: String,
     _headers: HashMap<String, String>,
     filename: String,
@@ -42,7 +42,7 @@ pub async fn analyze_archive(
 /// 获取文件预览（统一接口）
 /// 支持压缩包内文件的流式预览
 #[tauri::command(rename_all = "camelCase")]
-pub async fn get_file_preview(
+pub async fn archive_preview(
     url: String,
     _headers: HashMap<String, String>,
     filename: String,
@@ -77,7 +77,7 @@ pub async fn get_file_preview(
 /// 通过存储客户端分析压缩包结构
 /// 直接使用指定的存储客户端进行分析
 #[tauri::command]
-pub async fn analyze_archive_with_client(
+pub async fn archive_scan(
     _protocol: String,
     file_path: String,
     filename: String,
@@ -108,7 +108,7 @@ pub async fn analyze_archive_with_client(
 /// 通过存储客户端获取压缩包预览
 /// 直接使用指定的存储客户端进行预览
 #[tauri::command]
-pub async fn get_archive_preview_with_client(
+pub async fn archive_read(
     _protocol: String,
     file_path: String,
     filename: String,

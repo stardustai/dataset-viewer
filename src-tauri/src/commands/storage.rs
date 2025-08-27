@@ -176,7 +176,7 @@ pub async fn storage_disconnect() -> Result<bool, String> {
 /// 列出目录内容
 /// 支持分页和过滤选项
 #[tauri::command]
-pub async fn storage_list_directory(
+pub async fn storage_list(
     path: String,
     options: Option<ListOptions>,
 ) -> Result<serde_json::Value, String> {
@@ -192,7 +192,7 @@ pub async fn storage_list_directory(
 /// 获取文件下载 URL
 /// 根据存储类型生成相应的下载链接
 #[tauri::command]
-pub async fn storage_get_download_url(path: String) -> Result<String, String> {
+pub async fn storage_get_url(path: String) -> Result<String, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 

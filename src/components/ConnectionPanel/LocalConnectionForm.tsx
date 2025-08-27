@@ -48,7 +48,7 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
   const handleSelectDirectory = async () => {
     try {
       // 使用 Tauri 的对话框 API 选择目录
-      const selected = await invoke<string | null>('show_folder_dialog');
+      const selected = await invoke<string | null>('system_select_folder');
       if (selected) {
         setRootPath(selected);
       }

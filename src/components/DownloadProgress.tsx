@@ -246,7 +246,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
       const timeoutMs = 5000; // 5秒
 
       await Promise.race([
-        invoke('cancel_download', { filename }),
+        invoke('download_cancel', { filename }),
         new Promise<never>((_, reject) => {
           setTimeout(() => {
             reject(new Error(`取消下载超时 (${timeoutMs}ms)`));
@@ -303,7 +303,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
     try {
       await FolderDownloadService.stopAllDownloads();
       // 也取消后端的所有下载
-      await invoke('cancel_all_downloads');
+      await invoke('download_cancel_all');
       console.log('All downloads stopped');
     } catch (error) {
       console.error('Failed to stop all downloads:', error);

@@ -113,26 +113,26 @@ pub fn run() {
             storage_request_binary,
             storage_connect,
             storage_disconnect,
-            storage_list_directory,
-            storage_get_download_url,
+            storage_list,
+            storage_get_url,
             // 下载管理命令
-            download_file_with_progress,
-            cancel_download,
-            cancel_all_downloads,
-            download_archive_file_with_progress,
-            get_default_download_path,
+            download_file,
+            download_cancel,
+            download_cancel_all,
+            download_extract,
+            download_get_path,
             // 系统对话框命令
-            show_folder_dialog,
+            system_select_folder,
             // 压缩包处理命令
-            analyze_archive,
-            get_file_preview,
+            archive_analyze,
+            archive_preview,
             // 新增：通过存储客户端的压缩包处理命令
-            analyze_archive_with_client,
-            get_archive_preview_with_client,
+            archive_scan,
+            archive_read,
             // 文件关联注册命令
-            register_file_associations,
+            system_register_files,
             // 窗口主题设置命令
-            set_window_theme
+            system_set_theme
         ])
         .setup(|app| {
             // 监听前端就绪事件

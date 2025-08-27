@@ -139,8 +139,8 @@ export class LocalStorageClient extends BaseStorageClient {
     }
 
     try {
-      // 使用统一的后端命令，直接调用 storage_list_directory
-      const result = await invoke<DirectoryResult>('storage_list_directory', {
+      // 使用统一的后端命令，直接调用 storage_list
+      const result = await invoke<DirectoryResult>('storage_list', {
         path,
         options: options ? {
           pageSize: options.pageSize,

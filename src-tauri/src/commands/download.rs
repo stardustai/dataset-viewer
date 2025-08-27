@@ -13,7 +13,7 @@ static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
 /// 带进度显示的文件下载
 /// 支持实时进度更新和下载取消功能
 #[tauri::command]
-pub async fn download_file_with_progress(
+pub async fn download_file(
     app: tauri::AppHandle,
     method: String,
     url: String,
@@ -51,20 +51,20 @@ pub async fn download_file_with_progress(
 
 /// 取消指定文件的下载
 #[tauri::command]
-pub async fn cancel_download(filename: String) -> Result<String, String> {
+pub async fn download_cancel(filename: String) -> Result<String, String> {
     DOWNLOAD_MANAGER.cancel_download(&filename)
 }
 
 /// 取消所有正在进行的下载
 #[tauri::command]
-pub async fn cancel_all_downloads() -> Result<String, String> {
+pub async fn download_cancel_all() -> Result<String, String> {
     DOWNLOAD_MANAGER.cancel_all_downloads()
 }
 
 /// 下载压缩包内的文件（带进度）
 /// 支持从压缩包中提取单个文件并下载
 #[tauri::command]
-pub async fn download_archive_file_with_progress(
+pub async fn download_extract(
     app: tauri::AppHandle,
     archive_path: String,
     archive_filename: String,
@@ -88,7 +88,7 @@ pub async fn download_archive_file_with_progress(
 /// 获取系统默认下载路径
 /// 根据操作系统返回合适的下载目录
 #[tauri::command]
-pub async fn get_default_download_path(filename: String) -> Result<String, String> {
+pub async fn download_get_path(filename: String) -> Result<String, String> {
     // 获取系统默认下载目录
     if let Some(download_dir) = dirs::download_dir() {
         let save_path = download_dir.join(&filename);

@@ -498,7 +498,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       // 让用户选择一次保存目录
       const { invoke } = await import('@tauri-apps/api/core');
-      const selectedDirectory = await invoke<string | null>('show_folder_dialog');
+      const selectedDirectory = await invoke<string | null>('system_select_folder');
 
       if (!selectedDirectory) {
         return;
