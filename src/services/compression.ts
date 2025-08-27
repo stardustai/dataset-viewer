@@ -7,14 +7,13 @@ export class CompressionService {
    */
   static async analyzeArchive(
     url: string,
-    headers: Record<string, string>,
     filename: string,
     maxSize?: number
   ): Promise<ArchiveInfo> {
     const timeoutMs = 30000; // 30秒
 
     const result = await Promise.race([
-      commands.archiveAnalyze(url, headers, filename, maxSize || null),
+      commands.archiveGetFileInfo(url, filename, maxSize || null),
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`压缩文件分析超时 (${timeoutMs}ms)`));
@@ -34,7 +33,6 @@ export class CompressionService {
    */
   static async extractFilePreview(
     url: string,
-    headers: Record<string, string>,
     filename: string,
     entryPath: string,
     maxPreviewSize?: number
@@ -42,7 +40,7 @@ export class CompressionService {
     const timeoutMs = 30000; // 30秒
 
     const response = await Promise.race([
-      commands.archivePreview(url, headers, filename, entryPath, maxPreviewSize || null, null),
+      commands.archiveGetFileContent(url, filename, entryPath, maxPreviewSize || null, null),
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`文件预览提取超时 (${timeoutMs}ms)`));

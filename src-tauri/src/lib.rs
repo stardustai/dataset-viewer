@@ -101,8 +101,8 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
             // 统一存储接口命令
-            storage_read_file,
-            storage_get_file_size,
+            storage_get_file_content,
+            storage_get_file_info,
             storage_connect,
             storage_disconnect,
             storage_list,
@@ -115,12 +115,9 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             download_get_path,
             // 系统对话框命令
             system_select_folder,
-            // 压缩包处理命令
-            archive_analyze,
-            archive_preview,
-            // 新增：通过存储客户端的压缩包处理命令
-            archive_scan,
-            archive_read,
+            // 压缩包处理命令（统一接口）
+            archive_get_file_info,
+            archive_get_file_content,
             // 文件关联注册命令
             system_register_files,
             // 窗口主题设置命令

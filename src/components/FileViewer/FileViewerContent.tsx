@@ -238,7 +238,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         component={ArchiveViewer}
         props={{
           url: StorageServiceManager.getFileUrl(filePath),
-          headers: StorageServiceManager.getHeaders(),
           filename: file.basename,
           storageClient
         }}

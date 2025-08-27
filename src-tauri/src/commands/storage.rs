@@ -2,14 +2,25 @@
 // 提供多协议存储连接和文件操作能力
 
 use crate::storage::{ConnectionConfig, get_storage_manager, ListOptions, DirectoryResult};
+use serde::{Deserialize, Serialize};
+
+/// 文件信息结构
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FileInfo {
+    /// 文件大小（字节）
+    pub size: String,
+    /// 最后修改时间（ISO 8601 格式）
+    pub modified_time: Option<String>,
+}
 
 
 
-/// 文件读取接口
+/// 获取文件内容接口
 /// 支持完整读取和区间读取，统一返回二进制数据
 #[tauri::command]
 #[specta::specta]
-pub async fn storage_read_file(
+pub async fn storage_get_file_content(
     path: String,
     start: Option<String>,
     length: Option<String>,
@@ -56,21 +67,43 @@ pub async fn storage_read_file(
     result.map_err(|e| format!("Failed to read file: {}", e))
 }
 
-/// 获取文件大小
+/// 获取文件信息
+/// 返回文件元数据信息，包括大小、修改时间等
 #[tauri::command]
 #[specta::specta]
-pub async fn storage_get_file_size(path: String) -> Result<String, String> {
+pub async fn storage_get_file_info(path: String) -> Result<FileInfo, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
     let client = manager.get_current_client()
         .ok_or_else(|| "No storage client connected".to_string())?;
 
-    let size = client.get_file_size(&path).await
-        .map_err(|e| format!("Failed to get file size: {}", e))?;
-
-    // 返回字符串格式的文件大小，避免 u64 的 BigInt 问题
-    Ok(size.to_string())
+    // 首先尝试获取文件大小来检查文件是否存在
+    match client.get_file_size(&path).await {
+        Ok(size) => {
+            // 文件存在
+            Ok(FileInfo {
+                size: size.to_string(),
+                modified_time: None, // TODO: 从存储客户端获取修改时间
+            })
+        },
+        Err(_) => {
+            // 文件不存在或无法访问，尝试检查是否为目录
+            match manager.list_directory(&path, None).await {
+                Ok(_) => {
+                    // 是目录
+                    Ok(FileInfo {
+                        size: "0".to_string(),
+                        modified_time: None,
+                    })
+                },
+                Err(e) => {
+                    // 不存在
+                    Err(format!("File not found: {}", e))
+                }
+            }
+        }
+    }
 }
 
 

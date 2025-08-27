@@ -176,8 +176,7 @@ export abstract class BaseStorageClient implements StorageClient {
     maxSize?: number
   ): Promise<ArchiveInfo> {
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveScan(
-      this.protocol,
+    const result = await commands.archiveGetFileInfo(
       path,
       filename,
       maxSize || null
@@ -201,8 +200,7 @@ export abstract class BaseStorageClient implements StorageClient {
     offset?: number
   ): Promise<FilePreview> {
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveRead(
-      this.protocol,
+    const result = await commands.archiveGetFileContent(
       path,
       filename,
       entryPath,
@@ -340,7 +338,7 @@ export abstract class BaseStorageClient implements StorageClient {
    * @returns 二进制数据
    */
   protected async readFileBytes(path: string, start?: number, length?: number): Promise<Uint8Array> {
-    const result = await commands.storageReadFile(
+    const result = await commands.storageGetFileContent(
       this.toProtocolUrl(path),
       start !== undefined ? start.toString() : null,
       length !== undefined ? length.toString() : null
@@ -359,13 +357,13 @@ export abstract class BaseStorageClient implements StorageClient {
    * @returns 文件大小
    */
   protected async getFileSizeInternal(path: string): Promise<number> {
-    const result = await commands.storageGetFileSize(this.toProtocolUrl(path));
+    const result = await commands.storageGetFileInfo(this.toProtocolUrl(path));
 
     if (result.status === 'error') {
       throw new Error(result.error);
     }
 
-    return parseInt(result.data, 10);
+    return parseInt(result.data.size, 10);
   }
 
   /**

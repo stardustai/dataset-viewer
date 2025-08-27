@@ -292,8 +292,7 @@ export class WebDAVStorageClient extends BaseStorageClient {
   ): Promise<ArchiveInfo> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveScan(
-      this.protocol,
+    const result = await commands.archiveGetFileInfo(
       path,
       filename,
       maxSize || null
@@ -317,8 +316,7 @@ export class WebDAVStorageClient extends BaseStorageClient {
   ): Promise<FilePreview> {
     // 直接使用传入的路径，因为它已经是协议URL格式
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveRead(
-      this.protocol,
+    const result = await commands.archiveGetFileContent(
       path,
       filename,
       entryPath,

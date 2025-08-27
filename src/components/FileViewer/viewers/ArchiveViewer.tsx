@@ -42,7 +42,6 @@ const extractErrorMessage = (err: unknown, fallbackKey: string, t: (key: string)
 
 interface ArchiveViewerProps {
   url: string;
-  headers: Record<string, string>;
   filename: string;
   // 新增：可选的存储客户端，用于本地文件处理
   storageClient?: any;
@@ -52,7 +51,6 @@ interface ArchiveViewerProps {
 
 export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   url,
-  headers,
   filename,
   storageClient
 }) => {
@@ -120,7 +118,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         const maxSize = 1024 * 1024; // 1MB
         info = await CompressionService.analyzeArchive(
           url,
-          headers,
           filename,
           maxSize
         );
@@ -153,8 +150,8 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         // 回退到直接的压缩服务接口
         detailedInfo = await CompressionService.analyzeArchive(
           url,
-          headers,
-          filename
+          filename,
+          undefined // 无大小限制
         );
       }
 
@@ -252,7 +249,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         } else {
           preview = await CompressionService.extractFilePreview(
             url,
-            headers,
             filename,
             entry.path,
             loadSize
@@ -282,7 +278,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       } else {
         preview = await CompressionService.extractFilePreview(
           url,
-          headers,
           filename,
           entry.path,
           initialLoadSize
@@ -391,7 +386,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         console.warn('CompressionService does not support offset loading, loading full file');
         const fullPreview = await CompressionService.extractFilePreview(
           url,
-          headers,
           filename,
           entry.path,
           fileLoadState.totalSize
@@ -439,7 +433,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     } finally {
       setFileLoadState(prev => ({ ...prev, loadingMore: false }));
     }
-  }, [url, headers, filename, storageClient, fileLoadState.loadingMore, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, filePreview?.is_truncated, t]);
+  }, [url, filename, storageClient, fileLoadState.loadingMore, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, filePreview?.is_truncated, t]);
 
   // 滚动到底部时的回调
   const handleScrollToBottom = useCallback(async () => {
@@ -474,7 +468,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       } else {
         fullPreview = await CompressionService.extractFilePreview(
           url,
-          headers,
           filename,
           entry.path,
           safeParseInt(entry.size) || undefined // 加载完整文件
@@ -500,7 +493,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     } finally {
       setFileLoadState(prev => ({ ...prev, manualLoading: false }));
     }
-  }, [url, headers, filename, storageClient, fileLoadState.manualLoading, t]);
+  }, [url, filename, storageClient, fileLoadState.manualLoading, t]);
 
   // 强制以文本方式查看文件的函数
   const loadAsText = useCallback(async (entry: ArchiveEntry) => {
@@ -519,7 +512,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       } else {
         fullPreview = await CompressionService.extractFilePreview(
           url,
-          headers,
           filename,
           entry.path,
           safeParseInt(entry.size) || undefined // 加载完整文件
@@ -547,7 +539,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     } finally {
       setFileLoadState(prev => ({ ...prev, manualLoading: false }));
     }
-  }, [url, headers, filename, storageClient, fileLoadState.manualLoading, t]);
+  }, [url, filename, storageClient, fileLoadState.manualLoading, t]);
 
 
   // 复制压缩包内文件路径到剪贴板
