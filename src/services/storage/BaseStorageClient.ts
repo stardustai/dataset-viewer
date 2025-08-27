@@ -97,7 +97,6 @@ export abstract class BaseStorageClient implements StorageClient {
    * 使用 Tauri 后端提供的流式下载和进度事件
    */
   protected async downloadWithProgress(
-    method: string,
     url: string,
     filename: string,
     savePath?: string,
@@ -106,8 +105,7 @@ export abstract class BaseStorageClient implements StorageClient {
     // 确保 savePath 不是 undefined，如果是则设为 null
     const normalizedSavePath = savePath === undefined ? null : savePath;
 
-    const result = await commands.downloadFile(
-      method,
+    const result = await commands.downloadStart(
       url,
       filename,
       headers,

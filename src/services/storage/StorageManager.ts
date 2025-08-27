@@ -483,26 +483,13 @@ export class StorageServiceManager {
     const timeoutMs = 300000; // 5分钟
 
     const result = await Promise.race([
-      commands.downloadExtract(archivePath, archiveFilename, entryPath, entryFilename, savePath || null),
+      commands.downloadExtractFile(archivePath, archiveFilename, entryPath, entryFilename, savePath || null),
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`文件提取超时 (${timeoutMs}ms)`));
         }, timeoutMs);
       })
     ]);
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-
-    return result.data;
-  }
-
-  /**
-   * 获取默认下载路径
-   */
-  static async getDefaultDownloadPath(filename: string): Promise<string> {
-    const result = await commands.downloadGetPath(filename);
 
     if (result.status === 'error') {
       throw new Error(result.error);

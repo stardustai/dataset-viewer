@@ -246,7 +246,6 @@ export class WebDAVStorageClient extends BaseStorageClient {
     if (!this.connection) throw new Error('Not connected');
 
     return await this.downloadWithProgress(
-      'GET',
       this.toProtocolUrl(path),
       filename,
       savePath,

@@ -314,7 +314,7 @@ export class HuggingFaceStorageClient extends BaseStorageClient {
     try {
       // 构建下载 URL 并使用 downloadWithProgress 方法
       const downloadUrl = this.buildDownloadUrl(path);
-      return await this.downloadWithProgress('GET', downloadUrl, filename, savePath, this.getAuthHeaders());
+      return await this.downloadWithProgress(downloadUrl, filename, savePath, this.getAuthHeaders());
     } catch (error) {
       console.error(`Failed to download file with progress ${path}:`, error);
       throw error;

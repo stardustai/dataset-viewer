@@ -326,7 +326,6 @@ export class OSSStorageClient extends BaseStorageClient {
 
     try {
       return await this.downloadWithProgress(
-        'GET',
         this.toProtocolUrl(path),
         filename,
         savePath,

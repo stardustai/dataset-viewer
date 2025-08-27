@@ -108,11 +108,10 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
             storage_list,
             storage_get_url,
             // 下载管理命令
-            download_file,
+            download_start,
             download_cancel,
             download_cancel_all,
-            download_extract,
-            download_get_path,
+            download_extract_file,
             // 系统对话框命令
             system_select_folder,
             // 压缩包处理命令（统一接口）

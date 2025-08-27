@@ -561,17 +561,16 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   // 下载压缩包内的单个文件
   const downloadFile = async (entry: ArchiveEntry) => {
     try {
-      // 获取默认下载路径
+      // 获取文件名
       const entryFilename = entry.path.split('/').pop() || entry.path;
-      const defaultPath = await StorageServiceManager.getDefaultDownloadPath(entryFilename);
-      console.log('Default download path for archive entry:', defaultPath);
+      console.log('Downloading archive entry:', entryFilename);
 
+      // 不传 savePath，让后端自动使用默认下载路径
       await StorageServiceManager.downloadArchiveFileWithProgress(
         url,
         filename,
         entry.path,
-        entryFilename,
-        defaultPath
+        entryFilename
       );
     } catch (err) {
       console.error('Failed to download file:', err);

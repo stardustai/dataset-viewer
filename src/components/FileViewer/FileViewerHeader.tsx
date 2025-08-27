@@ -92,12 +92,8 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
     try {
       console.log('Starting download for file:', file.basename, 'Path:', filePath);
 
-      // 获取默认下载路径
-      const defaultPath = await StorageServiceManager.getDefaultDownloadPath(file.basename);
-      console.log('Default download path:', defaultPath);
-
-      // 使用默认路径进行下载
-      const result = await StorageServiceManager.downloadFileWithProgress(filePath, file.basename, defaultPath);
+      // 不传 savePath，让后端自动使用默认下载路径
+      const result = await StorageServiceManager.downloadFileWithProgress(filePath, file.basename);
       console.log('Download initiated:', result);
 
       // 下载进度将通过事件系统处理，这里不需要显示 alert

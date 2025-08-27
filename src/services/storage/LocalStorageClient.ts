@@ -215,7 +215,7 @@ export class LocalStorageClient extends BaseStorageClient {
     }
 
     // 对于本地文件，使用正常的GET方法获取数据
-    return await this.downloadWithProgress('GET', this.toProtocolUrl(path), filename, savePath);
+    return await this.downloadWithProgress(this.toProtocolUrl(path), filename, savePath);
   }
 
   /**
