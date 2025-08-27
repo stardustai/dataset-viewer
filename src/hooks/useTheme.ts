@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { settingsStorage } from '../services/settingsStorage';
+import { commands } from '../types/tauri-commands';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -62,7 +62,7 @@ export const useTheme = () => {
     applyThemeToDOM(shouldBeDark);
 
     // 异步同步窗口主题
-    invoke('system_set_theme', { theme }).catch(error => {
+    commands.systemSetTheme(theme).catch((error: any) => {
       console.warn('Failed to sync window theme:', error);
     });
 

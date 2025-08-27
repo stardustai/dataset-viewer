@@ -6,6 +6,7 @@ import { StorageServiceManager } from '../../../services/storage/StorageManager'
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
 import { getFileType, isMediaFile, isDataFile, isSpreadsheetFile, isTextLikeFile } from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
+import { safeParseInt } from '../../../utils/typeUtils';
 import { configManager } from '../../../config';
 
 import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
@@ -168,7 +169,8 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
   const previewFile = async (entry: ArchiveEntry) => {
     // 检查是否为占位符条目（大文件的流式处理条目）
-    if (entry.is_dir && entry.size === 0 && archiveInfo?.analysis_status?.Streaming !== undefined) {
+    if (entry.is_dir && entry.size === '0' && archiveInfo?.analysis_status &&
+        typeof archiveInfo.analysis_status === 'object' && 'Streaming' in archiveInfo.analysis_status) {
       await loadDetailedArchiveInfo();
       return;
     }
@@ -206,7 +208,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         manualLoading: false
       });
 
-      const fileSize = entry.size || 0;
+      const fileSize = safeParseInt(entry.size) || 0;
 
       // 判断是否为文本文件
       const isTextFileType = isTextLikeFile(entry.path);
@@ -229,7 +231,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           const emptyPreview: FilePreview = {
             content: new Uint8Array(0),
             is_truncated: true,
-            total_size: fileSize,
+            total_size: entry.size,
             preview_size: 0
           };
           setFilePreview(emptyPreview);
@@ -467,7 +469,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           url,
           filename,
           entry.path,
-          entry.size || undefined // 加载完整文件
+          safeParseInt(entry.size) || undefined // 加载完整文件
         );
       } else {
         fullPreview = await CompressionService.extractFilePreview(
@@ -475,7 +477,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           headers,
           filename,
           entry.path,
-          entry.size || undefined // 加载完整文件
+          safeParseInt(entry.size) || undefined // 加载完整文件
         );
       }
 
@@ -512,7 +514,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           url,
           filename,
           entry.path,
-          entry.size || undefined // 加载完整文件
+          safeParseInt(entry.size) || undefined // 加载完整文件
         );
       } else {
         fullPreview = await CompressionService.extractFilePreview(
@@ -520,7 +522,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           headers,
           filename,
           entry.path,
-          entry.size || undefined // 加载完整文件
+          safeParseInt(entry.size) || undefined // 加载完整文件
         );
       }
 
@@ -659,7 +661,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 									<p className="text-sm text-gray-600 dark:text-gray-400">
 										{t('file.size.label')}: {formatFileSize(selectedEntry.size)}
 										{(() => {
-											const formattedTime = formatModifiedTime(selectedEntry.modified_time);
+											const formattedTime = formatModifiedTime(selectedEntry.modified_time || undefined);
 											return formattedTime ? (
 												<span className="ml-4">
 													{t('file.modified.time')}: {formattedTime}
@@ -734,7 +736,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 										);
 									} else if (isMedia) {
 										// 媒体文件：小于10MB自动加载，大于10MB需要手动加载
-										const fileSize = selectedEntry.size || 0;
+										const fileSize = safeParseInt(selectedEntry.size) || 0;
 										const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
 
 										if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
@@ -752,13 +754,13 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 												filePath={virtualFilePath}
 												fileName={selectedEntry.path}
 												fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
-												fileSize={selectedEntry.size}
+												fileSize={safeParseInt(selectedEntry.size)}
 												previewContent={filePreview.content}
 											/>
 										);
 									} else if (isData || isSpreadsheet) {
 										// 数据文件：小于10MB自动加载，大于10MB需要手动加载
-										const fileSize = selectedEntry.size || 0;
+										const fileSize = safeParseInt(selectedEntry.size) || 0;
 										const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
 
 										if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
@@ -775,7 +777,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 											<UniversalDataTableViewer
 												filePath={virtualFilePath}
 												fileName={selectedEntry.path}
-												fileSize={selectedEntry.size}
+												fileSize={safeParseInt(selectedEntry.size)}
 												fileType={isSpreadsheet ?
 													(selectedEntry.path.toLowerCase().endsWith('.xlsx') || selectedEntry.path.toLowerCase().endsWith('.xls') ? 'xlsx' : 'ods') :
 													(selectedEntry.path.toLowerCase().endsWith('.parquet') || selectedEntry.path.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv')

@@ -1,4 +1,9 @@
 // 存储类型定义
+import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
+
+// 重新导出从 tauri-commands 导入的类型，使其对外可用
+export type { DirectoryResult, ListOptions };
+
 export type StorageClientType = 'webdav' | 'oss' | 's3' | 'local' | 'huggingface';
 export interface StorageClient {
   connect(config: ConnectionConfig): Promise<boolean>;
@@ -33,44 +38,12 @@ export interface ConnectionConfig {
   isTemporary?: boolean; // 临时连接，不保存到已保存连接中（如文件关联）
 }
 
-// 统一的分页选项
-export interface ListOptions {
-  pageSize?: number;        // 每页大小（OSS 使用，WebDAV 忽略）
-  marker?: string;          // 分页标记（OSS 使用，WebDAV 忽略）
-  prefix?: string;          // 路径前缀过滤
-  recursive?: boolean;      // 是否递归列出子目录
-  sortBy?: 'name' | 'size' | 'modified';  // 排序方式
-  sortOrder?: 'asc' | 'desc';
-}
-
-// 统一的目录结果
-export interface DirectoryResult {
-  files: StorageFile[];
-  hasMore: boolean;         // 是否有更多数据
-  nextMarker?: string;      // 下一页标记（仅 OSS 使用）
-  totalCount?: number;      // 总数量（如果可获取）
-  path: string;             // 当前路径
-}
-
-// 统一的文件信息接口
-interface StorageFile {
-  filename: string;   // 用于内部路径导航和API调用的标识符（如 HF 的 owner:dataset）
-  basename: string;   // 用于UI显示的文件/目录名称（如 owner/dataset）
-  lastmod: string;
-  size: number;
-  type: 'file' | 'directory';
-  mime?: string;
-  etag?: string;
-  // 扩展元数据
-  metadata?: Record<string, any>;
-}
-
 // 文件内容接口
 export interface FileContent {
   content: string;
   size: number;
   encoding: string;
-  totalSize?: number; // 总文件大小（用于范围请求）
+  totalSize?: string; // 总文件大小（用于范围请求），改为字符串类型
 }
 
 // 读取选项

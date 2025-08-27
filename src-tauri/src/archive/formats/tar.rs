@@ -15,7 +15,7 @@ impl CompressionHandlerDispatcher for TarHandler {
         client: Arc<dyn StorageClient>,
         file_path: &str,
         _filename: &str,
-        _max_size: Option<usize>,
+        _max_size: Option<u32>,
     ) -> Result<ArchiveInfo, String> {
         Self::analyze_with_storage_client(client, file_path).await
     }
@@ -97,7 +97,7 @@ impl TarHandler {
             .map_err(|e| format!("Failed to get file size: {}", e))?;
 
         let mut current_offset = 0u64;
-        let mut index = 0;
+        let mut index: u32 = 0;
 
         // TAR文件以512字节为一个块
         const BLOCK_SIZE: u64 = 512;
@@ -145,18 +145,21 @@ impl TarHandler {
                     // 找到了目标文件，分块读取其内容
                     let file_offset = current_offset + BLOCK_SIZE;
 
+                    // 解析文件大小
+                    let file_size = entry_info.size.parse::<u64>().unwrap_or(0);
+
                     // 计算实际的读取偏移量和大小
                     let read_offset = offset.unwrap_or(0);
-                    if read_offset >= entry_info.size {
+                    if read_offset >= file_size {
                         // 偏移量超出文件大小，返回空内容
                         return Ok(PreviewBuilder::new()
                             .content(Vec::new())
-                            .total_size(entry_info.size)
+                            .total_size(file_size)
                             .with_truncated(false)
                             .build());
                     }
 
-                    let remaining_size = entry_info.size - read_offset;
+                    let remaining_size = file_size - read_offset;
                     let preview_size = (max_size as u64).min(remaining_size) as usize;
                     let actual_file_offset = file_offset + read_offset;
 
@@ -197,17 +200,18 @@ impl TarHandler {
                     let _mime_type = detect_mime_type(&content_data);
 
                     let data_len = content_data.len();
-                    let is_truncated = data_len >= max_size || (read_offset + data_len as u64) < entry_info.size;
+                    let is_truncated = data_len >= max_size || (read_offset + data_len as u64) < file_size;
 
                     return Ok(PreviewBuilder::new()
                         .content(content_data)
-                        .total_size(entry_info.size)
+                        .total_size(file_size)
                         .with_truncated(is_truncated)
                         .build());
                 }
 
                 // 计算文件数据的大小（向上舍入到512字节的倍数）
-                let file_size_blocks = (entry_info.size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+                let file_size = entry_info.size.parse::<u64>().unwrap_or(0);
+                let file_size_blocks = (file_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
                 let file_data_size = file_size_blocks * BLOCK_SIZE;
 
                 // 跳过头部和文件数据
@@ -245,7 +249,7 @@ impl TarHandler {
         let mut entries = Vec::new();
         let mut total_uncompressed_size = 0u64;
         let mut current_offset = 0u64;
-        let mut index = 0;
+        let mut index: u32 = 0;
 
         // TAR文件以512字节为一个块
         const BLOCK_SIZE: u64 = 512;
@@ -273,11 +277,12 @@ impl TarHandler {
 
             // 解析TAR头部
             if let Ok(entry_info) = Self::parse_tar_header(&header_data, index) {
-                total_uncompressed_size += entry_info.size;
+                let file_size = entry_info.size.parse::<u64>().unwrap_or(0);
+                total_uncompressed_size += file_size;
                 entries.push(entry_info);
 
                 // 计算文件数据的大小（向上舍入到512字节的倍数）
-                let file_size_blocks = (entries.last().unwrap().size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+                let file_size_blocks = (file_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
                 let file_data_size = file_size_blocks * BLOCK_SIZE;
 
                 // 跳过头部和文件数据
@@ -306,7 +311,7 @@ impl TarHandler {
             .supports_streaming(true)
             .supports_random_access(false)
             .analysis_status(if entry_count >= 10000 {
-                AnalysisStatus::Partial { analyzed_entries: entry_count }
+                AnalysisStatus::Partial { analyzed_entries: entry_count as u32 }
             } else {
                 AnalysisStatus::Complete
             })
@@ -314,7 +319,7 @@ impl TarHandler {
     }
 
     /// 解析TAR头部信息
-    fn parse_tar_header(header: &[u8], index: usize) -> Result<ArchiveEntry, String> {
+    fn parse_tar_header(header: &[u8], index: u32) -> Result<ArchiveEntry, String> {
         if header.len() < 512 {
             return Err("Header too short".to_string());
         }
@@ -358,8 +363,8 @@ impl TarHandler {
 
         Ok(ArchiveEntry {
             path: name,
-            size: size,
-            compressed_size: Some(size), // TAR文件不压缩
+            size: size.to_string(),
+            compressed_size: Some(size.to_string()), // TAR文件不压缩
             is_dir: is_directory,
             modified_time: last_modified,
             crc32: None,

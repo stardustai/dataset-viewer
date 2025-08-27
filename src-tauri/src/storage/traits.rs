@@ -7,12 +7,12 @@ use std::sync::Arc;
 pub type ProgressCallback = Arc<dyn Fn(u64, u64) + Send + Sync>;
 
 /// 统一的文件信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct StorageFile {
     pub filename: String,
     pub basename: String,
     pub lastmod: String,
-    pub size: u64,
+    pub size: String,  // 使用字符串表示大数字
     #[serde(rename = "type")]
     pub file_type: String, // "file" or "directory"
     pub mime: Option<String>,
@@ -20,18 +20,18 @@ pub struct StorageFile {
 }
 
 /// 统一的目录列表结果
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DirectoryResult {
     pub files: Vec<StorageFile>,
     pub has_more: bool,
     pub next_marker: Option<String>,
-    pub total_count: Option<u64>,
+    pub total_count: Option<String>,  // 使用字符串表示大数字
     pub path: String,
 }
 
 /// 统一的列表选项
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ListOptions {
     pub page_size: Option<u32>,
@@ -58,11 +58,11 @@ pub struct StorageRequest {
     pub url: String,
     pub headers: HashMap<String, String>,
     pub body: Option<String>,
-    pub options: Option<serde_json::Value>,
+    pub options: Option<HashMap<String, String>>,
 }
 
 /// 连接配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionConfig {
     pub protocol: String,

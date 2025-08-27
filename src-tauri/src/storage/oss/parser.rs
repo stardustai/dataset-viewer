@@ -129,7 +129,7 @@ pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<Di
                         filename: String::new(),
                         basename: String::new(),
                         lastmod: String::new(),
-                        size: 0,
+                        size: "0".to_string(),
                         file_type: "file".to_string(),
                         mime: None,
                         etag: None,
@@ -158,7 +158,7 @@ pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<Di
                             obj.lastmod = current_text.clone();
                         }
                         "Size" => {
-                            obj.size = current_text.parse().unwrap_or(0);
+                            obj.size = current_text.parse::<u64>().unwrap_or(0).to_string();
                         }
                         "ETag" => {
                             obj.etag = Some(current_text.trim_matches('"').to_string());
@@ -192,7 +192,7 @@ pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<Di
                                         filename: dir_name.to_string(),
                                         basename: dir_name.to_string(),
                                         lastmod: Utc::now().to_rfc3339(),
-                                        size: 0,
+                                        size: "0".to_string(),
                                         file_type: "directory".to_string(),
                                         mime: None,
                                         etag: None,

@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -210,7 +209,7 @@ impl StorageClient for LocalFileSystemClient {
                 .map_err(|e| StorageError::IoError(format!("Failed to get metadata: {}", e)))?;
 
             let is_directory = metadata.is_dir();
-            let size = if is_directory { 0 } else { metadata.len() };
+            let size = if is_directory { "0".to_string() } else { metadata.len().to_string() };
             let mime_type = if is_directory {
                 None
             } else {
@@ -229,16 +228,6 @@ impl StorageClient for LocalFileSystemClient {
 
             files.push(storage_file);
         }
-
-        // 按名称排序
-        files.sort_by(|a, b| {
-            // 目录优先，然后按名称排序
-            match (a.file_type.as_str(), b.file_type.as_str()) {
-                ("directory", "file") => std::cmp::Ordering::Less,
-                ("file", "directory") => std::cmp::Ordering::Greater,
-                _ => a.filename.cmp(&b.filename),
-            }
-        });
 
         Ok(DirectoryResult {
             files,
@@ -472,7 +461,7 @@ impl StorageClient for LocalFileSystemClient {
 }
 
 impl LocalFileSystemClient {
-    async fn list_directory_internal(&self, path: &str, _options: Option<&Value>) -> Result<StorageResponse, StorageError> {
+    async fn list_directory_internal(&self, path: &str, _options: Option<&HashMap<String, String>>) -> Result<StorageResponse, StorageError> {
         let dir_path = self.build_safe_path(path)?;
 
         if !dir_path.exists() {
@@ -502,7 +491,7 @@ impl LocalFileSystemClient {
                 .map_err(|e| StorageError::IoError(format!("Failed to get metadata: {}", e)))?;
 
             let is_directory = metadata.is_dir();
-            let size = if is_directory { 0 } else { metadata.len() };
+            let size = if is_directory { "0".to_string() } else { metadata.len().to_string() };
             let mime_type = if is_directory {
                 None
             } else {
@@ -521,16 +510,6 @@ impl LocalFileSystemClient {
 
             files.push(storage_file);
         }
-
-        // 按名称排序
-        files.sort_by(|a, b| {
-            // 目录优先，然后按名称排序
-            match (a.file_type.as_str(), b.file_type.as_str()) {
-                ("directory", "file") => std::cmp::Ordering::Less,
-                ("file", "directory") => std::cmp::Ordering::Greater,
-                _ => a.filename.cmp(&b.filename),
-            }
-        });
 
         let result = DirectoryResult {
             files,
@@ -551,7 +530,7 @@ impl LocalFileSystemClient {
         })
     }
 
-    async fn read_file(&self, path: &str, options: Option<&Value>) -> Result<StorageResponse, StorageError> {
+    async fn read_file(&self, path: &str, options: Option<&HashMap<String, String>>) -> Result<StorageResponse, StorageError> {
         let file_path = self.build_safe_path(path)?;
 
         if !file_path.exists() {
@@ -571,8 +550,11 @@ impl LocalFileSystemClient {
 
         // 检查是否需要部分读取
         let (start, length) = if let Some(opts) = options {
-            let start = opts.get("start").and_then(|v| v.as_u64()).unwrap_or(0);
-            let length = opts.get("length").and_then(|v| v.as_u64());
+            let start = opts.get("start")
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(0);
+            let length = opts.get("length")
+                .and_then(|v| v.parse::<u64>().ok());
             (start, length)
         } else {
             (0, None)

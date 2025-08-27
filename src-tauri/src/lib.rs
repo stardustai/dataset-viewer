@@ -2,10 +2,11 @@ mod storage;
 mod archive;  // 压缩包处理功能
 mod download; // 下载管理功能
 mod utils;    // 通用工具模块
-mod commands; // Tauri 命令模块
+pub mod commands; // Tauri 命令模块 - 公开以便外部访问
 
 use commands::*;  // 导入所有命令
 use tauri::{Emitter, Listener};
+use tauri_specta::{collect_commands, Builder};
 
 // 前端状态管理 - 用于文件关联处理
 static FRONTEND_STATE: std::sync::Mutex<FrontendState> = std::sync::Mutex::new(
@@ -94,20 +95,11 @@ fn handle_frontend_ready(app: &tauri::AppHandle) {
     }
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    let builder = tauri::Builder::default();
-
-    let builder = builder
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_opener::init());
-
-    let builder = builder
-        .invoke_handler(tauri::generate_handler![
+/// 创建统一的 tauri-specta Builder
+/// 用于命令注册和类型导出
+pub fn create_specta_builder() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new()
+        .commands(collect_commands![
             // 统一存储接口命令
             storage_request,
             storage_request_binary,
@@ -134,6 +126,39 @@ pub fn run() {
             // 窗口主题设置命令
             system_set_theme
         ])
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    let builder = create_specta_builder();
+
+    // 在开发模式下自动导出 TypeScript 绑定
+    #[cfg(debug_assertions)]
+    {
+        use specta_typescript::Typescript;
+
+        builder
+            .export(
+                Typescript::default()
+                    .formatter(specta_typescript::formatter::prettier)
+                    .header("// @ts-nocheck"),
+                "../src/types/tauri-commands.ts",
+            )
+            .expect("Failed to export TypeScript bindings");
+    }
+
+    let tauri_builder = tauri::Builder::default();
+
+    let tauri_builder = tauri_builder
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_opener::init());
+
+    let tauri_builder = tauri_builder
+        .invoke_handler(builder.invoke_handler())
         .setup(|app| {
             // 监听前端就绪事件
             let app_handle = app.handle().clone();
@@ -152,7 +177,7 @@ pub fn run() {
             Ok(())
         });
 
-    builder
+    tauri_builder
         .build(tauri::generate_context!())
         .expect("error building tauri application")
         .run(|app, event| {

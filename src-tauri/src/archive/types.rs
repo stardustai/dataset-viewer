@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// 压缩格式类型
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
 pub enum CompressionType {
     Zip,
     Gzip,
@@ -72,28 +72,28 @@ impl fmt::Display for CompressionType {
 }
 
 /// 压缩包条目信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ArchiveEntry {
     pub path: String,
-    pub size: u64,
-    pub compressed_size: Option<u64>,
+    pub size: String,  // 使用字符串表示大数字
+    pub compressed_size: Option<String>,  // 使用字符串表示大数字
     pub is_dir: bool,
     pub modified_time: Option<String>,
     pub crc32: Option<u32>,
     /// 条目在压缩包中的索引
-    pub index: usize,
+    pub index: u32,
     /// 额外的元数据
     pub metadata: HashMap<String, String>,
 }
 
 /// 压缩包整体信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ArchiveInfo {
     pub compression_type: CompressionType,
     pub entries: Vec<ArchiveEntry>,
-    pub total_entries: usize,
-    pub total_uncompressed_size: u64,
-    pub total_compressed_size: u64,
+    pub total_entries: u32,
+    pub total_uncompressed_size: String,  // 使用字符串表示大数字
+    pub total_compressed_size: String,  // 使用字符串表示大数字
     /// 是否支持流式读取
     pub supports_streaming: bool,
     /// 是否支持随机访问
@@ -103,26 +103,26 @@ pub struct ArchiveInfo {
 }
 
 /// 分析状态
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub enum AnalysisStatus {
     /// 完整分析完成
     Complete,
     /// 部分分析（只读取了部分条目）
-    Partial { analyzed_entries: usize },
+    Partial { analyzed_entries: u32 },
     /// 流式分析（基于文件头/尾分析）
-    Streaming { estimated_entries: Option<usize> },
+    Streaming { estimated_entries: Option<u32> },
     /// 分析失败
     Failed { error: String },
 }
 
 /// 文件预览结果
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct FilePreview {
     #[serde(with = "serde_bytes")]
     pub content: Vec<u8>,
     pub is_truncated: bool,
-    pub total_size: u64,
-    pub preview_size: usize,
+    pub total_size: String,  // 使用字符串表示大数字
+    pub preview_size: u32,
 }
 
 

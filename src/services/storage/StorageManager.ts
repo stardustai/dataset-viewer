@@ -6,6 +6,7 @@ import { HuggingFaceStorageClient } from './HuggingFaceStorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
 import { connectionStorage, StoredConnection } from '../connectionStorage';
 import { formatServiceName } from '../../utils/urlUtils';
+import { commands } from '../../types/tauri-commands';
 
 /**
  * 存储客户端工厂
@@ -478,33 +479,36 @@ export class StorageServiceManager {
     entryFilename: string,
     savePath?: string
   ): Promise<string> {
-    const { invoke } = await import('@tauri-apps/api/core');
-
     // 使用超时保护，下载操作使用较长的超时时间
     const timeoutMs = 300000; // 5分钟
 
-    return Promise.race([
-      invoke('download_extract', {
-        archivePath,
-        archiveFilename,
-        entryPath,
-        entryFilename,
-        save_path: savePath,
-      }) as Promise<string>,
+    const result = await Promise.race([
+      commands.downloadExtract(archivePath, archiveFilename, entryPath, entryFilename, savePath || null),
       new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error(`下载操作超时 (${timeoutMs}ms)`));
+          reject(new Error(`文件提取超时 (${timeoutMs}ms)`));
         }, timeoutMs);
       })
     ]);
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return result.data;
   }
 
   /**
    * 获取默认下载路径
    */
   static async getDefaultDownloadPath(filename: string): Promise<string> {
-    const { invoke } = await import('@tauri-apps/api/core');
-    return await invoke<string>('download_get_path', { filename });
+    const result = await commands.downloadGetPath(filename);
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return result.data;
   }
 
   /**
@@ -540,8 +544,13 @@ export class StorageServiceManager {
    * 获取文件下载URL（直接可用的URL）
    */
   static async getDownloadUrl(path: string): Promise<string> {
-    const { invoke } = await import('@tauri-apps/api/core');
-    return await invoke<string>('storage_get_url', { path });
+    const result = await commands.storageGetUrl(path);
+
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+
+    return result.data;
   }
 
   /**

@@ -128,7 +128,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
     }
   };
 
-  const defaultHomeLabel = homeLabel || (compact ? t('archive.root') : t('home'));
+  const defaultHomeLabel = homeLabel || (compact ? t('archive.root') : 'Home');
 
   if (compact) {
     // 紧凑模式，用于ArchiveTreeList，暂不支持编辑功能
