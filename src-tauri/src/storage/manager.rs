@@ -79,10 +79,6 @@ impl StorageManager {
         Ok(())
     }
 
-    pub fn is_connected(&self) -> bool {
-        self.active_client.is_some()
-    }
-
     pub async fn request(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
         // 获取并发许可
         let _permit = self.request_semaphore.acquire().await.map_err(|_| {
@@ -144,11 +140,6 @@ impl StorageManager {
 
         client.get_download_url(path)
     }
-    pub fn supported_protocols(&self) -> Vec<&str> {
-        vec!["webdav", "local", "oss", "huggingface"]
-    }
-
-
 }
 
 // 全局存储管理器

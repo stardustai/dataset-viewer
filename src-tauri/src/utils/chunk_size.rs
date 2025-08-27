@@ -44,27 +44,3 @@ pub fn calculate_local_read_chunk_size(file_size: u64) -> usize {
         2 * 1024 * 1024
     }
 }
-
-/// 针对压缩文件的块大小计算
-/// 压缩文件需要考虑压缩类型的特性
-pub fn calculate_archive_chunk_size(file_size: u64, is_random_access: bool) -> usize {
-    let base_size = if is_random_access {
-        // ZIP等支持随机访问的格式使用较小的块
-        8 * 1024 // 8KB
-    } else {
-        // TAR.GZ等顺序访问的格式使用较大的块
-        32 * 1024 // 32KB
-    };
-
-    // 根据文件大小调整
-    const MB_10: u64 = 10 * 1024 * 1024; // 10MB
-    const MB_100: u64 = 100 * 1024 * 1024; // 100MB
-
-    if file_size <= MB_10 {
-        base_size
-    } else if file_size <= MB_100 {
-        base_size * 2
-    } else {
-        base_size * 4
-    }
-}

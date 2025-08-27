@@ -59,17 +59,6 @@ impl CompressionType {
         }
     }
 
-    pub fn supports_streaming(&self) -> bool {
-        matches!(
-            self,
-            CompressionType::Zip |
-            CompressionType::TarGz |
-            CompressionType::Tar |
-            CompressionType::Gzip
-        )
-        // 7z 和 RAR 不支持流式处理，需要完整文件下载
-    }
-
     #[allow(dead_code)] // API 保留方法，可能在未来版本使用
     pub fn supports_random_access(&self) -> bool {
         matches!(self, CompressionType::Zip)
