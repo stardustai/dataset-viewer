@@ -720,8 +720,9 @@ impl ZipHandler {
                 ).await
             }
             8 => {
-                // Deflate compression: streaming decompression
-                Self::read_deflate_content(
+                // Deflate compression: 智能分块策略
+                // 根据目标输出大小和文件类型估算所需压缩数据量，减少不必要的读取
+                Self::read_deflate_content_optimized(
                     client, file_path, data_offset, file_info.compressed_size,
                     offset_val, max_size, progress_callback, cancel_rx
                 ).await
@@ -777,93 +778,178 @@ impl ZipHandler {
             .build())
     }
 
-    /// Read Deflate compressed content (smart chunked approach)
-    async fn read_deflate_content(
+    /// Read Deflate compressed content with optimized strategy
+    async fn read_deflate_content_optimized(
         client: Arc<dyn StorageClient>,
         file_path: &str,
         data_offset: u64,
         compressed_size: u64,
         offset_val: u64,
         max_size: usize,
-        progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
-        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+        _progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
+        _cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        let progress_cb = progress_callback.map(|cb| {
-            Arc::new(move |current: u64, total: u64| cb(current, total)) as crate::storage::traits::ProgressCallback
-        });
 
-        use flate2::read::DeflateDecoder;
-        use std::io::{Read, Cursor};
+        // 智能估算初始读取大小
+        let estimated_compressed_needed = Self::estimate_compressed_size_needed(max_size, offset_val);
+        let initial_read_size = estimated_compressed_needed.min(compressed_size);
 
-        // For large files or later chunks, use smart size limit
-        let chunk_limit = if offset_val > 0 && compressed_size > 5 * 1024 * 1024 {
-            // For offset requests on large files, limit compressed data read
-            (compressed_size / 4).min(2 * 1024 * 1024) // Max 2MB or 1/4 of file
-        } else {
-            compressed_size // Read all for small files or first chunk
-        };
+        println!("优化Deflate策略: 目标输出{}字节, 偏移{}, 估算需要压缩数据{}字节",
+                max_size, offset_val, initial_read_size);
 
-        // Read limited compressed data
-        let compressed_data = client.read_file_range_with_progress(
-            file_path,
-            data_offset,
-            chunk_limit,
-            progress_cb,
-            cancel_rx.take(),
-        ).await.map_err(|e| format!("Failed to read compressed data: {}", e))?;
+        // 尝试智能分块读取
+        let chunk_sizes = vec![
+            initial_read_size,
+            initial_read_size * 2,
+            initial_read_size * 4,
+            compressed_size, // 最后的fallback
+        ];
 
-        // Decompress with size limit
-        let mut decoder = DeflateDecoder::new(Cursor::new(compressed_data));
-        let mut decompressed = Vec::new();
+        let mut best_result = None;
+        let mut best_size = 0;
 
-        // Read in chunks to avoid excessive memory usage
-        let mut buffer = [0u8; 8192];
-        let mut total_decompressed = 0;
-        let decompression_limit = (max_size * 3).max(1024 * 1024); // Allow some overshoot
+        for (attempt, &target_size) in chunk_sizes.iter().enumerate() {
+            let target_size = target_size.min(compressed_size);
 
-        loop {
-            match decoder.read(&mut buffer) {
-                Ok(0) => break, // EOF
-                Ok(n) => {
-                    decompressed.extend_from_slice(&buffer[..n]);
-                    total_decompressed += n;
+            // 读取压缩数据
+            let compressed_data = client.read_file_range(
+                file_path,
+                data_offset,
+                target_size,
+            ).await.map_err(|e| format!("Failed to read compressed data: {}", e))?;
 
-                    // Stop if we have enough data
-                    if total_decompressed >= decompression_limit {
-                        break;
+            println!("第{}次尝试: 读取{}字节压缩数据", attempt + 1, compressed_data.len());
+
+            // 尝试流式解压，监控输出大小
+            match Self::try_decompress_with_limit(&compressed_data, offset_val, max_size) {
+                Ok(result) => {
+                    println!("解压成功: {}字节压缩数据 -> {}字节输出",
+                            compressed_data.len(), result.len());
+
+                    // 如果获得了足够的数据，直接返回
+                    if result.len() >= max_size || compressed_data.len() >= compressed_size as usize {
+                        let is_truncated = offset_val > 0 || result.len() >= max_size;
+
+                        return Ok(PreviewBuilder::new()
+                            .content(result)
+                            .with_truncated(is_truncated)
+                            .total_size(0) // 无法确定总大小，设为0
+                            .build());
+                    }
+
+                    // 保存最好的结果，继续尝试获取更多数据
+                    if result.len() > best_size {
+                        best_size = result.len();
+                        best_result = Some(result);
                     }
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                    // Partial decompression is ok for chunked reading
-                    break;
+                Err(e) if compressed_data.len() < compressed_size as usize => {
+                    println!("第{}次尝试失败: {}, 尝试更大的块", attempt + 1, e);
+                    continue;
                 }
-                Err(e) => return Err(format!("Deflate decompression failed: {}", e)),
+                Err(e) => {
+                    if let Some(result) = best_result {
+                        // 即使最后失败了，如果有部分成功的结果，也返回
+                        println!("使用之前的最佳结果: {}字节", result.len());
+                        let is_truncated = true; // 标记为截断，因为不是完整解压
+
+                        return Ok(PreviewBuilder::new()
+                            .content(result)
+                            .with_truncated(is_truncated)
+                            .total_size(0)
+                            .build());
+                    }
+                    return Err(format!("Deflate decompression failed: {}", e));
+                }
             }
         }
 
-        if decompressed.is_empty() {
-            return Err("No data could be decompressed".to_string());
+        // 如果所有尝试都没有获得足够数据，返回最佳结果
+        if let Some(result) = best_result {
+            println!("返回最佳部分结果: {}字节", result.len());
+            return Ok(PreviewBuilder::new()
+                .content(result)
+                .with_truncated(true)
+                .total_size(0)
+                .build());
         }
 
-        // Apply offset and size limit
-        let start_pos = offset_val as usize;
-        let result_data = if start_pos >= decompressed.len() {
-            Vec::new()
-        } else {
-            let end_pos = (start_pos + max_size).min(decompressed.len());
-            decompressed[start_pos..end_pos].to_vec()
-        };
-
-        let is_truncated = chunk_limit < compressed_size ||
-                          total_decompressed >= decompression_limit ||
-                          result_data.len() == max_size;
-
-        Ok(PreviewBuilder::new()
-            .content(result_data)
-            .with_truncated(is_truncated)
-            .total_size(total_decompressed as u64)
-            .build())
+        Err("Failed to decompress deflate data with optimized strategy".to_string())
     }
+
+    /// 估算获取指定大小输出所需的压缩数据量
+    fn estimate_compressed_size_needed(target_output_size: usize, offset: u64) -> u64 {
+        // 需要考虑偏移量，因为我们需要解压到偏移位置
+        let total_needed = target_output_size as u64 + offset;
+
+        // 根据不同类型文件的压缩率估算
+        // 对于图片文件，压缩率通常不高（30-70%），因为已经压缩过
+        // 对于文本文件，压缩率较高（10-30%）
+        // 这里使用保守估计：假设需要50%的压缩数据量
+        let estimated = (total_needed as f64 * 0.6) as u64;
+
+        // 添加一些缓冲，但不要太大
+        let with_buffer = estimated + 32 * 1024; // 32KB缓冲
+
+        // 最小64KB，避免太小的块
+        with_buffer.max(64 * 1024)
+    }
+
+    /// 尝试解压数据，限制输出大小
+    fn try_decompress_with_limit(
+        compressed_data: &[u8],
+        offset: u64,
+        max_output_size: usize,
+    ) -> Result<Vec<u8>, String> {
+        use flate2::read::DeflateDecoder;
+        use std::io::{Read, Cursor};
+
+        let mut decoder = DeflateDecoder::new(Cursor::new(compressed_data));
+        let mut output = Vec::new();
+
+        // 如果有偏移量，需要先跳过对应的字节
+        if offset > 0 {
+            let mut skip_buffer = vec![0u8; std::cmp::min(offset as usize, 8192)];
+            let mut remaining_skip = offset as usize;
+
+            while remaining_skip > 0 {
+                let to_read = std::cmp::min(remaining_skip, skip_buffer.len());
+                match decoder.read(&mut skip_buffer[..to_read]) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => remaining_skip -= n,
+                    Err(e) => return Err(format!("Error skipping bytes: {}", e)),
+                }
+            }
+        }
+
+        // 读取实际需要的数据，确保获取足够的数据
+        let mut buffer = vec![0u8; std::cmp::min(max_output_size, 8192)];
+        while output.len() < max_output_size {
+            let to_read = std::cmp::min(max_output_size - output.len(), buffer.len());
+            match decoder.read(&mut buffer[..to_read]) {
+                Ok(0) => {
+                    // EOF - 检查是否真的读取完了所有可用数据
+                    println!("解压完成，实际输出{}字节（请求{}字节）", output.len(), max_output_size);
+                    break;
+                }
+                Ok(n) => {
+                    output.extend_from_slice(&buffer[..n]);
+                    println!("解压进度: 已输出{}字节，目标{}字节", output.len(), max_output_size);
+                }
+                Err(e) => return Err(format!("Decompression error: {}", e)),
+            }
+        }
+
+        // 如果没有达到请求的大小，可能是压缩数据不完整
+        if output.len() < max_output_size && offset == 0 {
+            println!("警告: 解压输出{}字节，少于请求的{}字节，可能需要更多压缩数据",
+                    output.len(), max_output_size);
+        }
+
+        Ok(output)
+    }
+
+    /// 获取总的未压缩大小（从EOCD读取或通过中央目录计算）
 
     /// Get local file header size
     async fn get_local_header_size(
