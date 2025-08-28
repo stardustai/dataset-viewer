@@ -45,15 +45,17 @@ class StreamingAsyncBuffer implements AsyncBuffer {
    * 实现 AsyncBuffer.slice 接口，返回 ArrayBuffer
    */
   async slice(start: number, end?: number): Promise<ArrayBuffer> {
-    const actualEnd = end ?? this._byteLength;
-    const length = actualEnd - start;
+    // 边界校验和裁剪
+    const from = Math.max(0, Math.min(start, this._byteLength));
+    const to = Math.min(end ?? this._byteLength, this._byteLength);
+    const length = to - from;
 
     if (length <= 0) {
       return new ArrayBuffer(0);
     }
 
     // 生成缓存键
-    const cacheKey = `${start}-${actualEnd}`;
+    const cacheKey = `${from}-${to}`;
 
     // 检查缓存
     if (this.chunks.has(cacheKey)) {
@@ -64,12 +66,12 @@ class StreamingAsyncBuffer implements AsyncBuffer {
       // 使用后端的分块读取 API
       const result = await commands.storageGetFileContent(
         this.filePath,
-        start.toString(),
+        from.toString(),
         length.toString()
       );
 
       if (result.status === 'error') {
-        throw new Error(`Failed to read file range ${start}-${actualEnd}: ${result.error}`);
+        throw new Error(`Failed to read file range ${from}-${to}: ${result.error}`);
       }
 
       const uint8Array = new Uint8Array(result.data);
@@ -85,7 +87,7 @@ class StreamingAsyncBuffer implements AsyncBuffer {
 
       return arrayBuffer;
     } catch (error) {
-      console.error(`Failed to read file range ${start}-${actualEnd}:`, error);
+      console.error(`Failed to read file range ${from}-${to}:`, error);
       throw error;
     }
   }
@@ -107,7 +109,7 @@ export class ParquetDataProvider implements DataProvider {
   private fileSize: number;
   private streamingBuffer: StreamingAsyncBuffer | null = null;
   private metadata: DataMetadata | null = null;
-  private parquetMetadata: any = null;
+  private parquetMetadata: Awaited<ReturnType<typeof parquetMetadataAsync>> | null = null;
 
   constructor(filePath: string, fileSize: number) {
     this.filePath = filePath;
@@ -163,17 +165,26 @@ export class ParquetDataProvider implements DataProvider {
       await this.loadMetadata(); // 确保元数据已加载
     }
 
+    // 边界校验和裁剪
+    const totalRows = this.metadata?.numRows || 0;
+    const validOffset = Math.max(0, Math.min(offset, totalRows));
+    const validLimit = limit <= 0 ? 0 : Math.min(limit, totalRows - validOffset);
+
+    if (validLimit <= 0) {
+      return [];
+    }
+
     const buffer = await this.getStreamingBuffer();
 
     try {
       // 使用 hyparquet 的分块读取功能，利用流式缓冲区
       const result = await parquetReadObjects({
         file: buffer,
-        rowStart: offset,
-        rowEnd: offset + limit,
+        rowStart: validOffset,
+        rowEnd: validOffset + validLimit,
       });
 
-      console.log(`Streaming Parquet: Loaded ${result.length} rows (${offset}-${offset + limit}) using chunked buffer`);
+      console.debug(`Streaming Parquet: Loaded ${result.length} rows (${validOffset}-${validOffset + validLimit}) using chunked buffer`);
 
       return result as Record<string, unknown>[];
     } catch (error) {
