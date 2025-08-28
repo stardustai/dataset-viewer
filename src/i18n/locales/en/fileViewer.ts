@@ -72,6 +72,8 @@ export const fileViewer = {
   // Copy functionality
   'copy.full.path': 'Copy full path',
   'copy.line.content': 'Copy line content',
+  'copy.content': 'Copy content',
+  'copied': 'Copied',
   'copied.to.clipboard': 'Copied to clipboard',
   'copy.failed': 'Copy failed',
 
@@ -86,6 +88,7 @@ export const fileViewer = {
 	'formatted.json': 'Formatted',
 	'formatted.xml': 'Formatted',
   'original.content': 'Original Content',
+  'content.details': 'Content Details',
 
   // Loading status
   'loading.file': 'Loading file "{{filename}}"...',
@@ -136,10 +139,11 @@ export const fileViewer = {
   'data.table.cell.click.view': 'Click to view full content',
   'data.table.cell.double.click.view': 'Double click to view details',
   'data.table.cell.details': 'Cell Details',
-  'data.table.cell.location': 'Location: {{column}} column, row {{row}}',
+  'line.position': 'Line {{line}}',
+  'line.content.title': 'Line {{line}} Content',
+  'content.stats.chars': 'Characters: {{characters}}',
+  'cell.position': 'Location: {{column}} column, row {{row}}',
   'data.table.cell.copy': 'Copy cell content',
-  'data.table.modal.title': 'Full Content',
-  'data.table.modal.close': 'Close',
   'data.table.null.value': 'null',
   'data.table.items.count': '{{count}} items',
   'data.table.sheet.switch': 'Switch sheet',

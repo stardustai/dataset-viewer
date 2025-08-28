@@ -4,7 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { getLanguageFromFileName, isLanguageSupported, highlightLine } from '../../../utils/syntaxHighlighter';
 import { useTheme } from '../../../hooks/useTheme';
 import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
-import { LineContentModal } from './LineContentModal';
+import { UnifiedContentModal } from '../common/UnifiedContentModal';
 import { MarkdownPreviewModal } from './MarkdownPreviewModal';
 import { FoldingIndicator, useFoldingLogic } from './CodeFoldingControls';
 import type { FoldableRange } from '../../../utils/folding';
@@ -57,7 +57,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 简化状态管理
-  const [modalState, setModalState] = useState({ isOpen: false, lineNumber: 0, content: '' });
+  const [modalState, setModalState] = useState<{ isOpen: boolean; content?: string; title?: string; searchTerm?: string; fileName?: string; description?: React.ReactNode }>({ isOpen: false });
   const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [expandedLongLines, setExpandedLongLines] = useState<Set<number>>(new Set());
@@ -469,10 +469,19 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
   }, [searchRegex, searchResultsMap, searchResults, currentSearchIndex, startLineNumber, shouldHighlight, highlightedLines, expandedLongLines, setExpandedLongLines, foldableRanges, collapsedRanges, toggleFoldingRange, t, supportsFolding, getFoldableRangeAtLine]);
 
   const handleLineClick = (originalLineIndex: number) => {
+    const content = lines[originalLineIndex] || '';
+    const lineNumber = startLineNumber + originalLineIndex;
+
+    // 计算内容统计信息
+    const characters = content.length;
+
     setModalState({
       isOpen: true,
-      lineNumber: startLineNumber + originalLineIndex,
-      content: lines[originalLineIndex] || ''
+      content,
+      title: t('line.content.title', { line: lineNumber }),
+      description: <span>{t('content.stats.chars', { characters })}</span>,
+      searchTerm,
+      fileName
     });
   };
 
@@ -484,7 +493,7 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
     handleLineClick(originalLineIndex);
   };
 
-  const closeModal = () => setModalState(prev => ({ ...prev, isOpen: false }));
+  const closeModal = () => setModalState({ isOpen: false });
 
   // 记录临时展开的行（用于自动收起）
   const tempExpandedLineRef = useRef<number | null>(null);
@@ -750,12 +759,14 @@ export const VirtualizedTextViewer = forwardRef<VirtualizedTextViewerRef, Virtua
         </div>
       </div>
 
-      <LineContentModal
+      <UnifiedContentModal
         isOpen={modalState.isOpen}
         onClose={closeModal}
-        lineNumber={modalState.lineNumber}
-        content={modalState.content}
-        searchTerm={searchTerm}
+        content={modalState.content || ''}
+        title={modalState.title || ''}
+        searchTerm={modalState.searchTerm}
+        fileName={modalState.fileName}
+        description={modalState.description}
       />
 
       {isMarkdown && setIsMarkdownPreviewOpen && (

@@ -1,4 +1,3 @@
-import { fetch } from '@tauri-apps/plugin-http';
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import * as semver from 'semver';

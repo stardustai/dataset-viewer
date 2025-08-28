@@ -14,7 +14,7 @@ import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { UniversalDataTableViewer } from './UniversalDataTableViewer';
 import { LoadingDisplay, ErrorDisplay, StatusDisplay, UnsupportedFormatDisplay } from '../../common';
-import { ManualLoadButton } from '../ManualLoadButton';
+import { ManualLoadButton } from '../common';
 import { useTranslation } from 'react-i18next';
 
 // 错误信息翻译辅助函数

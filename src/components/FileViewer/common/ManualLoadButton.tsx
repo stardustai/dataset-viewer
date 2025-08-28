@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Image, Database, AlertTriangle, Loader2 } from 'lucide-react';
-import { ArchiveEntry } from '../../types';
-import { formatFileSize } from '../../utils/fileUtils';
-import { StatusDisplay } from '../common';
+import { ArchiveEntry } from '../../../types';
+import { formatFileSize } from '../../../utils/fileUtils';
+import { StatusDisplay } from '../../common';
 
 interface ManualLoadButtonProps {
   entry: ArchiveEntry;

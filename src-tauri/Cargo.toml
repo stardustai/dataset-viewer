@@ -32,7 +32,6 @@ tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
-tauri-plugin-http = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"

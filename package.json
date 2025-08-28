@@ -25,7 +25,6 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.12",
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-http": "^2.5.1",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-os": "^2.3.0",
     "@tauri-apps/plugin-process": "^2.3.0",

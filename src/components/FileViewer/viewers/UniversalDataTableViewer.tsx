@@ -25,9 +25,11 @@ import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-
 import {
   DataTableControls,
   DataTableColumnPanel,
-  DataTableCell,
-  CellDetailModal
+  DataTableCell
 } from '../table-components';
+import {
+  UnifiedContentModal
+} from '../common';
 
 interface DataColumn {
   id: string;
@@ -49,7 +51,7 @@ const MAX_INITIAL_ROWS = 1000;
 const CHUNK_SIZE = 500;
 
 // Provider 工厂函数
-const createDataProvider = (fileType: string, filePath: string, fileSize: number, previewContent?: Uint8Array): DataProvider => {
+function createProvider(filePath: string, fileSize: number, fileType: 'parquet' | 'xlsx' | 'csv' | 'ods', previewContent?: Uint8Array): DataProvider {
   switch (fileType) {
     case 'parquet':
       return new ParquetDataProvider(filePath, fileSize);
@@ -61,7 +63,7 @@ const createDataProvider = (fileType: string, filePath: string, fileSize: number
     default:
       throw new Error(`Unsupported file type: ${fileType}`);
   }
-};
+}
 
 export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> = ({
   filePath,
@@ -94,21 +96,22 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   // UI state
   const [showColumnPanel, setShowColumnPanel] = useState(false);
-  const [showCellModal, setShowCellModal] = useState(false);
-  const [modalCellData, setModalCellData] = useState<{
-    value: unknown;
-    column: string;
-    row: number;
-  } | null>(null);
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [modalContentData, setModalContentData] = useState<{ content: string; title: string; description?: React.ReactNode } | null>(null);
 
   // Refs
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const dataProviderRef = useRef<DataProvider | null>(null);
 
-  // 打开单元格详情弹窗
-  const openCellModal = (value: unknown, column: string, rowIndex: number) => {
-    setModalCellData({ value, column, row: rowIndex });
-    setShowCellModal(true);
+  // 打开内容详情弹窗
+  const openContentModal = (value: unknown, column: string, rowIndex: number) => {
+    const content = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    setModalContentData({
+      content,
+      title: t('data.table.cell.details'),
+      description: <span>{t('cell.position', { column, row: rowIndex + 1 })}</span>
+    });
+    setShowContentModal(true);
   };
 
   // 加载数据文件
@@ -118,7 +121,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
     try {
       // 创建数据提供器
-      const provider = createDataProvider(fileType, filePath, fileSize, previewContent);
+      const provider = createProvider(filePath, fileSize, fileType, previewContent);
       dataProviderRef.current = provider;
 
       // 初始化并获取元数据
@@ -271,7 +274,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
             value={getValue()}
             column={col.header}
             rowIndex={row.index}
-            onOpenModal={openCellModal}
+            onOpenModal={openContentModal}
           />
         ),
         size: getColumnWidth(col),
@@ -493,11 +496,14 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
         </div>
       </div>
 
-      {/* Cell Detail Modal */}
-      {showCellModal && modalCellData && (
-        <CellDetailModal
-          data={modalCellData}
-          onClose={() => setShowCellModal(false)}
+      {/* Unified Content Modal */}
+      {showContentModal && modalContentData && (
+        <UnifiedContentModal
+          isOpen={showContentModal}
+          onClose={() => setShowContentModal(false)}
+          content={modalContentData.content}
+          title={modalContentData.title}
+          description={modalContentData.description}
         />
       )}
     </div>
