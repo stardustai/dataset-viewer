@@ -191,16 +191,21 @@ export class StorageServiceManager {
    */
   private static getConnectionUrl(config: ConnectionConfig): string {
     switch (config.type) {
-      case 'webdav':
+      case 'webdav': {
         return config.url!;
-      case 'local':
+      }
+      case 'local': {
         return `file:///${config.rootPath || config.url}`;
-      case 'oss':
+      }
+      case 'oss': {
         return `oss://${config.bucket}`;
-      case 'huggingface':
+      }
+      case 'huggingface': {
         return `huggingface://${config.organization || 'hub'}`;
-      default:
+      }
+      default: {
         return config.url || '';
+      }
     }
   }
 
@@ -362,17 +367,30 @@ export class StorageServiceManager {
 
       if (connection.url.startsWith('file:///')) {
         baseConfig.rootPath = connection.url.replace('file:///', '/');
+        if (!baseConfig.rootPath) {
+          console.warn('Local storage missing rootPath');
+          return null;
+        }
       } else if (connection.url.startsWith('oss://')) {
         baseConfig.bucket = connection.url.replace('oss://', '');
+        if (!baseConfig.bucket) {
+          console.warn('OSS storage missing bucket');
+          return null;
+        }
         baseConfig.region = connection.metadata?.region;
       } else if (connection.url.startsWith('huggingface://')) {
         baseConfig.organization = connection.metadata?.organization;
       } else {
         baseConfig.url = connection.url;
+        if (!baseConfig.url) {
+          console.warn('WebDAV storage missing URL');
+          return null;
+        }
       }
 
       return baseConfig;
-    } catch {
+    } catch (error) {
+      console.warn('Failed to convert stored connection:', error);
       return null;
     }
   }

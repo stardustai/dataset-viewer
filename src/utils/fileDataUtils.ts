@@ -43,21 +43,9 @@ export const getMimeType = (filename: string): string => {
  * @returns Promise<ArrayBuffer> 文件数据
  */
 export async function getFileArrayBuffer(filePath: string): Promise<ArrayBuffer> {
-  // 获取文件的下载 URL
-  const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
-  
-  if (fileUrl.startsWith('file://')) {
-    // 对于本地文件，使用 StorageServiceManager.downloadFile
-    const fileBlob = await StorageServiceManager.downloadFile(filePath);
-    return await fileBlob.arrayBuffer();
-  } else {
-    // 对于远程文件，使用 fetch
-    const response = await fetch(fileUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.statusText}`);
-    }
-    return await response.arrayBuffer();
-  }
+  // 统一走 Rust 后端命令，无论本地还是远程
+  const fileBlob = await StorageServiceManager.downloadFile(filePath);
+  return await fileBlob.arrayBuffer();
 }
 
 /**
@@ -86,7 +74,7 @@ export async function getFileText(filePath: string, encoding: string = 'utf-8'):
 export async function getFileHeader(filePath: string, maxBytes: number = 2048): Promise<Uint8Array> {
   // 获取文件的下载 URL
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
-  
+
   if (fileUrl.startsWith('file://')) {
     // 对于本地文件，使用 StorageServiceManager.downloadFile
     const fileBlob = await StorageServiceManager.downloadFile(filePath);
@@ -100,11 +88,11 @@ export async function getFileHeader(filePath: string, maxBytes: number = 2048): 
         'Range': `bytes=0-${maxBytes - 1}`
       }
     });
-    
+
     if (!response.ok && response.status !== 206) {
       throw new Error(`Failed to fetch file header: ${response.statusText}`);
     }
-    
+
     const arrayBuffer = await response.arrayBuffer();
     return new Uint8Array(arrayBuffer);
   }
@@ -113,7 +101,7 @@ export async function getFileHeader(filePath: string, maxBytes: number = 2048): 
 export async function getFileUrl(filePath: string): Promise<string> {
   // 获取文件的下载 URL
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
-  
+
   if (fileUrl.startsWith('file://')) {
     // 对于本地文件，获取数据并创建 Blob URL
     const fileBlob = await StorageServiceManager.downloadFile(filePath);

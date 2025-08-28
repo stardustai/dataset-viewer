@@ -20,13 +20,14 @@ export const webdavStorageAdapter: StorageAdapter = {
     }
 
     const connectionUrl = new URL(connection.url);
+    const scheme = connectionUrl.protocol === 'https:' ? 'webdavs' : 'webdav';
     const cleanPath = path.replace(/^\/+/, '');
     const basePath = connectionUrl.pathname.replace(/\/+$/, '');
 
     if (cleanPath) {
-      return `webdav://${connectionUrl.host}${basePath}/${cleanPath}`;
+      return `${scheme}://${connectionUrl.host}${basePath}/${cleanPath}`;
     } else {
-      return `webdav://${connectionUrl.host}${basePath}`;
+      return `${scheme}://${connectionUrl.host}${basePath}`;
     }
   },
 

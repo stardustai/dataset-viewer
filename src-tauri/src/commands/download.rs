@@ -28,18 +28,25 @@ pub async fn download_start(
         // 通过存储客户端获取正确的下载 URL
         // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
         let processed_url = match manager.get_download_url(&url).await {
-            Ok(processed_url) => {
-                processed_url
-            },
-            Err(_e) => {
-                url.clone()
+            Ok(u) => u,
+            Err(e) => {
+                if url.starts_with("http://") || url.starts_with("https://") {
+                    url.clone()
+                } else {
+                    return Err(format!("无法解析协议URL（需连接存储或不受支持）: {}", e));
+                }
             }
         };
 
         // 获取存储客户端提供的认证头（WebDAV 需要）
         let headers = match manager.get_download_headers().await {
-            Ok(headers) => headers,
-            Err(_) => HashMap::new(), // 如果获取失败，使用空的头部
+            Ok(h) => h,
+            Err(e) => {
+                if url.starts_with("webdav://") || url.starts_with("webdavs://") {
+                    return Err(format!("需要认证头但当前未连接存储: {}", e));
+                }
+                HashMap::new()
+            }
         };
 
         (processed_url, headers)

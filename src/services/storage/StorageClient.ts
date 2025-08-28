@@ -42,6 +42,8 @@ export interface StorageAdapter {
   /** 是否支持自定义根路径展示 */
   supportsCustomRootDisplay: boolean;
 
+  /** 路径预处理逻辑 */
+  preprocessPath?: (path: string, connection: any, config?: ConnectionConfig) => string;
   /** 连接配置预处理 */
   preprocessConnection?: (config: ConnectionConfig) => any;
   /** URL 构建逻辑 */
@@ -180,10 +182,10 @@ export class StorageClient implements IStorageClient {
     }
 
     try {
-      // 特殊处理：HuggingFace 的组织过滤
+      // 使用适配器的路径预处理逻辑
       let actualPath = path;
-      if (this.storageType === 'huggingface') {
-        actualPath = this.preprocessHuggingFacePath(path);
+      if (this.adapter.preprocessPath) {
+        actualPath = this.adapter.preprocessPath(path, this.connection, this.connectionConfig || undefined);
       }
 
       return await this.invokeListDirectory(
@@ -556,18 +558,6 @@ export class StorageClient implements IStorageClient {
       extraOptions: null,
     };
   }
-
-  /**
-   * HuggingFace 路径预处理
-   */
-  private preprocessHuggingFacePath(path: string): string {
-    const org = this.connectionConfig?.organization;
-    if (org && (!path || path === '' || path === '/')) {
-      return org;
-    }
-    return path;
-  }
-
 
 }
 

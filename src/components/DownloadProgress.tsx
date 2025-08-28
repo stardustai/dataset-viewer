@@ -221,8 +221,8 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
         const newMap = new Map(prev);
         const existing = newMap.get(filename);
         if (existing) {
-          // 如果错误信息包含"cancelled"，则标记为stopped而不是error
-          const isCancelled = error.includes('cancelled');
+          // 如果错误信息包含 "canceled/cancelled"（忽略大小写），则标记为 stopped 而不是 error
+          const isCancelled = /cancell?ed/i.test(error);
           newMap.set(filename, {
             ...existing,
             status: isCancelled ? 'stopped' : 'error',
@@ -302,7 +302,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
     try {
       // 先获取当前正在下载的文件名列表
       const activeDownloads = Array.from(downloads.values())
-        .filter(d => d.status === 'downloading')
+        .filter(d => d.status === 'downloading' || d.status === 'preparing')
         .map(d => d.filename);
 
       await FolderDownloadService.stopAllDownloads();

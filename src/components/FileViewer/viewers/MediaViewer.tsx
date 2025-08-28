@@ -19,7 +19,7 @@ const AV1VideoPlayerWrapper: React.FC<{
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载视频数据
+  // 加载视频数据（AV1 确定需要 WASM 解码，直接获取完整数据）
   const loadVideoData = useCallback(async () => {
     if (videoData || isLoading) return;
 
@@ -127,10 +127,42 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [mediaUrl, setMediaUrl] = useState<string>('');
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false); // 是否显示进度条
+  const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null); // 进度条模拟定时器
 
   const [isAV1Video, setIsAV1Video] = useState(false);
   const [useWasmDecoder, setUseWasmDecoder] = useState(false);
   const [videoPlaybackFailed, setVideoPlaybackFailed] = useState(false);
+
+  // 启动缓慢的进度模拟 (从当前进度到目标进度)
+  const startSlowProgress = useCallback((startProgress: number, targetProgress: number, durationMs: number = 5000) => {
+    // 清除之前的定时器
+    if (progressInterval) {
+      clearInterval(progressInterval);
+    }
+
+    const increment = (targetProgress - startProgress) / (durationMs / 100); // 每100ms的增量
+    let currentProgress = startProgress;
+
+    const interval = setInterval(() => {
+      currentProgress += increment;
+      if (currentProgress >= targetProgress) {
+        currentProgress = targetProgress;
+        clearInterval(interval);
+        setProgressInterval(null);
+      }
+      setLoadingProgress(Math.min(currentProgress, targetProgress));
+    }, 100);
+
+    setProgressInterval(interval);
+  }, [progressInterval]);
+
+  // 清除进度定时器
+  const clearProgressInterval = useCallback(() => {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      setProgressInterval(null);
+    }
+  }, [progressInterval]);
 
   const loadMediaContent = useCallback(async () => {
     setLoading(true);
@@ -153,6 +185,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
     const cleanup = () => {
       clearTimeout(showProgressTimer);
+      // 不要在cleanup中重置showProgress，因为可能还在使用
     };
 
     try {
@@ -160,8 +193,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
       // 如果有预览内容，使用二进制数据创建 blob URL
       if (previewContent) {
-        clearTimeout(showProgressTimer);
+        // 立即显示进度条并设置为100%
+        setShowProgress(true);
         setLoadingProgress(100);
+        clearTimeout(showProgressTimer);
 
         // 检测是否为 AV1 视频
         const isAV1 = detectAV1Video(fileName, previewContent);
@@ -172,16 +207,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           setUseWasmDecoder(needsWasmDecoder);
 
           if (!needsWasmDecoder) {
-            const blob = new Blob([previewContent], { type: 'video/mp4' });
+            const blob = new Blob([new Uint8Array(previewContent)], { type: 'video/mp4' });
             mediaUrl = URL.createObjectURL(blob);
           } else {
             mediaUrl = '';
           }
         } else {
-          const blob = new Blob([previewContent], { type: getMimeType(fileName) });
+          const blob = new Blob([new Uint8Array(previewContent)], { type: getMimeType(fileName) });
           mediaUrl = URL.createObjectURL(blob);
         }
       } else {
+        // 显示进度条并开始加载
+        setShowProgress(true);
+        setLoadingProgress(25);
+
         // 重置视频播放失败状态
         setVideoPlaybackFailed(false);
 
@@ -189,10 +228,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
          if (fileType === 'video') {
            try {
              // 只获取文件头部数据进行高效 AV1 检测（2KB）
+             setLoadingProgress(50);
              const headerData = await getFileHeader(filePath, 2048);
 
              const isAV1 = detectAV1Video(fileName, headerData);
              setIsAV1Video(isAV1);
+
+             setLoadingProgress(75);
 
              if (isAV1) {
                const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
@@ -219,13 +261,21 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
            }
         } else {
           // 非视频文件，使用普通的文件 URL
+          setLoadingProgress(50);
           setIsAV1Video(false);
           setUseWasmDecoder(false);
           mediaUrl = await getFileUrl(filePath);
         }
 
         cleanup();
-        setLoadingProgress(100);
+        // 对于视频和音频，获取URL后只到90%，然后开始缓慢增长等待媒体可播放
+        if (fileType === 'video' || fileType === 'audio') {
+          setLoadingProgress(90);
+          // 启动从90%到98%的缓慢进度，让用户知道还在加载
+          startSlowProgress(90, 98, 8000); // 8秒内从90%缓慢到98%
+        } else {
+          setLoadingProgress(100);
+        }
       }
 
       setMediaUrl(mediaUrl);
@@ -234,33 +284,66 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       setError(t('viewer.load.error'));
       setLoadingProgress(0);
       setShowProgress(false);
+      clearProgressInterval(); // 清理进度定时器
       cleanup();
     } finally {
       setLoading(false);
+      // 对于非媒体文件，延迟隐藏进度条
+      if (fileType !== 'video' && fileType !== 'audio') {
+        setTimeout(() => {
+          setShowProgress(false);
+        }, 200);
+      }
+      // 视频和音频的进度条将在onCanPlay时处理
     }
-  }, [filePath, fileName, previewContent, t]);
+  }, [filePath, fileName, previewContent, fileType, t]);
 
-  // 处理视频播放失败的回调函数
+  // 处理视频播放失败的回调函数 - 优先URL播放，失败后用完整数据播放
   const handleVideoPlaybackError = useCallback(async () => {
     if (fileType === 'video' && !videoPlaybackFailed) {
       setVideoPlaybackFailed(true);
 
       try {
-        // 获取视频数据用于检测 AV1 编码
+        // 先尝试检测是否为AV1视频
+        let isAV1 = false;
+        let needsWasmDecoder = false;
+
+        try {
+          const headerData = await getFileHeader(filePath, 2048);
+          isAV1 = detectAV1Video(fileName, headerData);
+        } catch (headerErr) {
+          console.warn('Failed to get file header for AV1 detection:', headerErr);
+        }
+
+        if (isAV1) {
+          needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
+          setIsAV1Video(true);
+          setUseWasmDecoder(needsWasmDecoder);
+
+          if (needsWasmDecoder) {
+            // AV1需要WASM解码器，会通过AV1VideoPlayerWrapper处理
+            return;
+          }
+        }
+
+        // 对于非AV1视频或原生支持的AV1，尝试用完整文件数据创建blob URL
+        console.log('Video URL playback failed, trying with full file data...');
         const arrayBuffer = await getFileArrayBuffer(filePath);
         const videoData = new Uint8Array(arrayBuffer);
 
-        // 检测是否为 AV1 视频
-        const isAV1 = detectAV1Video(fileName, videoData);
-        setIsAV1Video(isAV1);
+        // 清理之前的mediaUrl
+        setMediaUrl(prevUrl => {
+          if (prevUrl && prevUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(prevUrl);
+          }
+          return '';
+        });
 
-        if (isAV1) {
-          const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
-          setUseWasmDecoder(needsWasmDecoder);
-        } else {
-          // 不是 AV1 视频，显示通用错误
-          setError(t('viewer.video.playback.error'));
-        }
+        // 创建新的blob URL用于播放
+        const blob = new Blob([videoData], { type: getMimeType(fileName) });
+        const blobUrl = URL.createObjectURL(blob);
+        setMediaUrl(blobUrl);
+
       } catch (err) {
         console.error('Failed to handle video playback error:', err);
         setError(t('viewer.video.playback.error'));
@@ -297,9 +380,17 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     };
   }, [mediaUrl]);
 
+  // 组件卸载时清理进度定时器
+  useEffect(() => {
+    return () => {
+      clearProgressInterval();
+    };
+  }, [clearProgressInterval]);
+
   if (loading) {
     return (
       <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">
+        {/* Progress bar - 加载时显示 */}
         {showProgress && (
           <div className="w-full bg-gray-200 dark:bg-gray-700 h-1">
             <div
@@ -389,6 +480,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 handleVideoPlaybackError();
               }}
               onCanPlay={(e) => {
+                // 视频可以播放时，清除缓慢进度定时器，直接到达100%并隐藏
+                clearProgressInterval();
+                setLoadingProgress(100);
+                setTimeout(() => {
+                  setShowProgress(false);
+                }, 300);
+
                 // 视频有足够数据可以播放时自动开始播放
                 const videoElement = e.target as HTMLVideoElement;
                 videoElement.play().catch((err) => {
@@ -432,6 +530,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 autoPlay
                 className="w-full"
                 onCanPlay={(e) => {
+                  // 音频可以播放时，清除缓慢进度定时器，直接到达100%并隐藏
+                  clearProgressInterval();
+                  setLoadingProgress(100);
+                  setTimeout(() => {
+                    setShowProgress(false);
+                  }, 300);
+
                   // 音频有足够数据可以播放时自动开始播放
                   const audioElement = e.target as HTMLAudioElement;
                   audioElement.play().catch((err) => {
@@ -471,6 +576,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   // 对于其他类型，使用原有的布局
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">
+      {/* Progress bar - 显示进度时就显示 */}
+      {showProgress && (
+        <div className="w-full bg-gray-200 dark:bg-gray-700 h-1">
+          <div
+            className="bg-indigo-600 h-1 transition-all duration-300"
+            style={{ width: `${loadingProgress}%` }}
+          />
+        </div>
+      )}
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {renderContent()}

@@ -13,6 +13,14 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
   supportsSearch: true,
   supportsCustomRootDisplay: true,
 
+  preprocessPath: (path: string, _connection: any, config?: ConnectionConfig) => {
+    const org = config?.organization;
+    if (org && (!path || path === '' || path === '/')) {
+      return org;
+    }
+    return path;
+  },
+
   buildProtocolUrl: (path: string, _connection: any, config?: ConnectionConfig) => {
     const org = config?.organization;
 

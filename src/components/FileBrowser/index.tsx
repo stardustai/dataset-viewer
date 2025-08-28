@@ -19,7 +19,7 @@ import { compareFileSize } from '../../utils/typeUtils';
 import { StorageServiceManager } from '../../services/storage';
 import { ListOptions } from '../../services/storage/types';
 import { cleanPath } from '../../utils/pathUtils';
-import { StorageClient } from '../../services/storage/StorageClient';
+import type { StorageClient as IStorageClient } from '../../services/storage/types';
 import { navigationHistoryService } from '../../services/navigationHistory';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
@@ -31,7 +31,7 @@ import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clip
 import { FolderDownloadService } from '../../services/folderDownloadService';
 
 interface FileBrowserProps {
-  onFileSelect: (file: StorageFile, path: string, storageClient?: StorageClient, files?: StorageFile[]) => void;
+  onFileSelect: (file: StorageFile, path: string, storageClient?: IStorageClient, files?: StorageFile[]) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
