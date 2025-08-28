@@ -1,6 +1,6 @@
-import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
 import { getFileText } from '../../../utils/fileDataUtils';
+import type { DataColumn, DataMetadata, DataProvider } from './ParquetDataProvider';
 
 export class CsvDataProvider implements DataProvider {
   private filePath: string;
@@ -90,7 +90,7 @@ export class CsvDataProvider implements DataProvider {
       if (!value) continue;
 
       // 检查是否为数字
-      if (!isNaN(Number(value)) && value.trim() !== '') {
+      if (!Number.isNaN(Number(value)) && value.trim() !== '') {
         numberCount++;
       }
 
@@ -148,7 +148,7 @@ export class CsvDataProvider implements DataProvider {
     if (lowerValue === 'false') return false;
 
     // 数字处理
-    if (!isNaN(Number(trimmedValue)) && trimmedValue !== '') {
+    if (!Number.isNaN(Number(trimmedValue)) && trimmedValue !== '') {
       return Number(trimmedValue);
     }
 

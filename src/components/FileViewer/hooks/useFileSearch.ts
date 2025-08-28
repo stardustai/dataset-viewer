@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { SearchResult, FullFileSearchResult } from '../../../types';
+import type { FullFileSearchResult, SearchResult } from '../../../types';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -245,6 +245,8 @@ export const useFileSearch = ({
       setLoadedContentSize,
       setBaselineStartLineNumber,
       setError,
+      currentFilePosition,
+      loadedContentSize,
     ]
   );
 
@@ -344,7 +346,17 @@ export const useFileSearch = ({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchTerm, performSearch]);
+  }, [
+    searchTerm,
+    performSearch,
+    setCurrentSearchIndex,
+    setFullFileSearchLimited,
+    setFullFileSearchLoading,
+    setFullFileSearchResults,
+    setSearchLoading,
+    setSearchResults,
+    setSearchResultsLimited,
+  ]);
 
   // 搜索模式切换时立即重新搜索
   useEffect(() => {
@@ -356,7 +368,7 @@ export const useFileSearch = ({
     if (searchTerm.trim() && searchTerm.trim().length >= 2) {
       performSearch(searchTerm, true); // 强制搜索
     }
-  }, [fullFileSearchMode, performSearch]); // 移除 searchTerm 依赖，避免重复触发
+  }, [performSearch, searchTerm]); // 移除 searchTerm 依赖，避免重复触发
 
   return {
     handleSearchResults,

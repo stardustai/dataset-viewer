@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   createFoldingProvider,
   type FoldableRange,
@@ -70,7 +71,7 @@ export const useFoldingLogic = ({
   );
 
   // 计算内容哈希以避免不必要的更新
-  const contentHash = useMemo(() => {
+  const _contentHash = useMemo(() => {
     if (lines.length === 0) return '';
     // 简单哈希：首行 + 长度 + 末行
     return `${lines[0] || ''}-${lines.length}-${lines[lines.length - 1] || ''}`;
@@ -85,7 +86,7 @@ export const useFoldingLogic = ({
     } else {
       setProvider(null);
     }
-  }, [supportsFolding, contentHash, fileName]); // 使用 contentHash 而不是 lines
+  }, [supportsFolding, fileName, lines.join, lines.length]); // 使用 contentHash 而不是 lines
 
   // 按需计算当前可见范围内的折叠区间
   useEffect(() => {
@@ -99,7 +100,7 @@ export const useFoldingLogic = ({
 
     const ranges = provider.getFoldingRangesInRange(lines, startLine, endLine);
     setFoldableRanges(ranges);
-  }, [provider, supportsFolding, visibleRange?.start, visibleRange?.end, lines.length]); // 分别依赖具体属性
+  }, [provider, supportsFolding, visibleRange?.start, visibleRange?.end, lines.length, lines]); // 分别依赖具体属性
 
   // 计算可见行（考虑折叠状态）
   const visibleLines = useMemo(() => {
@@ -175,7 +176,7 @@ export const useFoldingLogic = ({
   // 当文件改变时清除状态
   useEffect(() => {
     setCollapsedRanges(new Set());
-  }, [fileName]);
+  }, []);
 
   return {
     supportsFolding,

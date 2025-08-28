@@ -1,6 +1,6 @@
-import { StorageAdapter } from '../StorageClient';
-import { ConnectionConfig } from '../types';
 import { getHostnameFromUrl } from '../../../utils/urlUtils';
+import type { StorageAdapter } from '../StorageClient';
+import type { ConnectionConfig } from '../types';
 
 /**
  * WebDAV 存储适配器

@@ -1,12 +1,12 @@
-import React from 'react';
+import { ArrowLeft, Copy, Download } from 'lucide-react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Download, Copy } from 'lucide-react';
-import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
-import { LanguageSwitcher } from '../LanguageSwitcher';
-import { FileIcon } from '../../utils/fileIcons';
+import type { StorageFile } from '../../types';
 import { copyToClipboard, showCopyToast, showToast } from '../../utils/clipboard';
+import { FileIcon } from '../../utils/fileIcons';
 import { formatFileSize } from '../../utils/fileUtils';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 
 interface FileViewerHeaderProps {
   file: StorageFile;
@@ -164,7 +164,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
                 {formatFileSize(file.size)} •{' '}
                 {
                   // 检查是否有扩展字段中的点云信息
-                  dataMetadata && dataMetadata.extensions && 'pointCount' in dataMetadata.extensions
+                  dataMetadata?.extensions && 'pointCount' in dataMetadata.extensions
                     ? `${(dataMetadata.extensions as any).pointCount.toLocaleString()} points • ${(dataMetadata.extensions as any).hasColor ? 'RGB' : 'XYZ'}${(dataMetadata.extensions as any).hasIntensity ? '+I' : ''}`
                     : // 通用数据文件（表格、CSV等）
                       (fileInfo.isData || fileInfo.isSpreadsheet) && dataMetadata

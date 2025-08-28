@@ -1,4 +1,4 @@
-import { ArchiveEntry, StorageFile } from '../types';
+import type { ArchiveEntry, StorageFile } from '../types';
 import { getMimeType } from './fileTypes';
 
 /**
@@ -77,7 +77,7 @@ export function buildArchiveFileTree(entries: ArchiveEntry[]): Map<string, Stora
         tree.set(parentPath, []);
       }
 
-      tree.get(parentPath)!.push(archiveEntryToStorageFile(entry));
+      tree.get(parentPath)?.push(archiveEntryToStorageFile(entry));
     }
   });
 

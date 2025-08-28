@@ -13,7 +13,7 @@ export const formatModifiedTime = (timeString: string | undefined): string | nul
 
   try {
     const date = new Date(timeString);
-    if (isNaN(date.getTime())) return null;
+    if (Number.isNaN(date.getTime())) return null;
 
     return new Intl.DateTimeFormat('zh-CN', {
       year: 'numeric',

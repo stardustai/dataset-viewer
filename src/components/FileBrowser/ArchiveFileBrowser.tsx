@@ -1,19 +1,20 @@
-import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import type React from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronUp, ChevronDown, Search, X } from 'lucide-react';
-import { StorageFile, ArchiveInfo } from '../../types';
-import { VirtualizedFileList } from './VirtualizedFileList';
+import type { ArchiveInfo, StorageFile } from '../../types';
+import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
+import { cleanPath } from '../../utils/pathUtils';
+import { compareFileSize } from '../../utils/typeUtils';
 import {
-  LoadingDisplay,
-  HiddenFilesDisplay,
-  NoSearchResultsDisplay,
+  BreadcrumbNavigation,
   EmptyDisplay,
   ErrorDisplay,
-  BreadcrumbNavigation,
+  HiddenFilesDisplay,
+  LoadingDisplay,
+  NoSearchResultsDisplay,
 } from '../common';
-import { cleanPath } from '../../utils/pathUtils';
-import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
-import { compareFileSize } from '../../utils/typeUtils';
+import { VirtualizedFileList } from './VirtualizedFileList';
 
 interface ArchiveFileBrowserProps {
   archiveInfo: ArchiveInfo;
@@ -252,8 +253,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
 
           {/* 文件列表或空状态 */}
           {currentFiles.length > 0 ? (
-            !showHidden &&
-            currentFiles.every(file => file.basename && file.basename.startsWith('.')) ? (
+            !showHidden && currentFiles.every(file => file.basename?.startsWith('.')) ? (
               <HiddenFilesDisplay onShowHidden={() => onShowHiddenChange?.(true)} />
             ) : filteredAndSortedFiles.length === 0 ? (
               <NoSearchResultsDisplay

@@ -1,7 +1,7 @@
-import React from 'react';
+import type React from 'react';
 import { LanguageSwitcher } from '../LanguageSwitcher';
-import { FeatureShowcase } from './FeatureShowcase';
 import { ConnectionFormContainer } from './ConnectionFormContainer';
+import { FeatureShowcase } from './FeatureShowcase';
 import { useConnectionLogic } from './useConnectionLogic';
 
 interface ConnectionPanelProps {

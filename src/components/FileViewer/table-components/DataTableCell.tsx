@@ -1,6 +1,7 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Maximize2 } from 'lucide-react';
+import type React from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableCellProps {
   value: any;

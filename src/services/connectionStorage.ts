@@ -1,4 +1,4 @@
-import { StorageConnection } from '../types';
+import type { StorageConnection } from '../types';
 
 export interface StoredConnection {
   id: string;
@@ -29,7 +29,7 @@ class ConnectionStorageService {
   private normalizeUrl(url: string): string {
     try {
       // 移除尾部的多个斜杠，然后统一添加单个斜杠
-      return url.replace(/\/+$/, '') + '/';
+      return `${url.replace(/\/+$/, '')}/`;
     } catch (error) {
       console.warn('Failed to normalize URL:', url, error);
       return url;

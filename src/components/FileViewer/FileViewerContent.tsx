@@ -1,19 +1,19 @@
+import { Loader2 } from 'lucide-react';
 import { forwardRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
-import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
+import type { FullFileSearchResult, SearchResult, StorageFile } from '../../types';
+import { UnsupportedFormatDisplay } from '../common';
 import { LazyComponentWrapper } from './common';
 import {
+  ArchiveViewer,
+  MediaViewer,
+  PointCloudViewer,
+  PresentationViewer,
+  UniversalDataTableViewer,
   VirtualizedTextViewer,
   WordViewer,
-  PresentationViewer,
-  MediaViewer,
-  UniversalDataTableViewer,
-  ArchiveViewer,
-  PointCloudViewer,
 } from './viewers';
-import { UnsupportedFormatDisplay } from '../common';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;

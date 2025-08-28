@@ -1,22 +1,22 @@
-import React from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
-  Folder,
-  FileText,
+  Archive,
+  BookOpen,
+  Box,
+  Database,
   File,
-  Image,
-  Film,
-  Music,
   FileImage,
   FileSpreadsheet,
-  Archive,
-  Database,
+  FileText,
   FileType2,
-  BookOpen,
+  Film,
+  Folder,
+  Image,
+  Music,
   Presentation,
-  Box,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { FileType } from './fileTypes';
+import type React from 'react';
+import type { FileType } from './fileTypes';
 
 interface FileIconConfig {
   icon: LucideIcon;

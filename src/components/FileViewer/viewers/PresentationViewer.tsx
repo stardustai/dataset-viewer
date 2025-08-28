@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Presentation, AlertCircle } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
-import { StorageServiceManager } from '../../../services/storage';
-import { parse } from 'pptxtojson';
 import DOMPurify from 'dompurify';
+import { AlertCircle, Presentation } from 'lucide-react';
+import { parse } from 'pptxtojson';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { StorageServiceManager } from '../../../services/storage';
+import { ErrorDisplay, LoadingDisplay } from '../../common/StatusDisplay';
 
 interface PresentationMetadata {
   slideCount: number;

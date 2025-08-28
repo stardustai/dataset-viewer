@@ -14,7 +14,7 @@ export const safeParseInt = (value: string | number, defaultValue: number = 0): 
   if (typeof value !== 'string') return defaultValue;
 
   const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
+  return Number.isNaN(parsed) ? defaultValue : parsed;
 };
 
 /**
@@ -28,7 +28,7 @@ export const safeParseFloat = (value: string | number, defaultValue: number = 0)
   if (typeof value !== 'string') return defaultValue;
 
   const parsed = parseFloat(value);
-  return isNaN(parsed) ? defaultValue : parsed;
+  return Number.isNaN(parsed) ? defaultValue : parsed;
 };
 
 /**
@@ -86,5 +86,5 @@ export const formatFileSize = (bytes: number | string): string => {
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.min(Math.floor(Math.log(numBytes) / Math.log(k)), sizes.length - 1);
-  return parseFloat((numBytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return `${parseFloat((numBytes / k ** i).toFixed(2))} ${sizes[i]}`;
 };

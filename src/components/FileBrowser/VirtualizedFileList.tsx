@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { StorageFile } from '../../types';
-import { getFileType } from '../../utils/fileTypes';
-import { FileIcon } from '../../utils/fileIcons';
+import React, { useEffect } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import type { StorageFile } from '../../types';
+import { FileIcon } from '../../utils/fileIcons';
+import { getFileType } from '../../utils/fileTypes';
 import { formatFileSize } from '../../utils/fileUtils';
 
 interface VirtualizedFileListProps {
@@ -121,7 +121,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     const date = new Date(dateString);
 
     // 如果日期无效，返回横杠
-    if (isNaN(date.getTime())) {
+    if (Number.isNaN(date.getTime())) {
       return '—';
     }
 

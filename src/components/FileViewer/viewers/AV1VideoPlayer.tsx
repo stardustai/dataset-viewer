@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dav1dDecoderService } from '../../../services/dav1dDecoder';
 import { ErrorDisplay } from '../../common/StatusDisplay';
+
 interface AV1VideoPlayerProps {
   videoData: Uint8Array;
   fileName?: string;
@@ -34,7 +36,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
   });
 
   // 用于触发UI更新的状态
-  const [uiUpdateTrigger, setUiUpdateTrigger] = useState(0);
+  const [_uiUpdateTrigger, setUiUpdateTrigger] = useState(0);
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoPlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -180,7 +182,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
         console.error(t('av1.player.error.decode'), error);
       }
     },
-    [videoDimensions, canvasSize, calculateCanvasSize]
+    [videoDimensions, calculateCanvasSize, t]
   );
 
   // 停止播放
@@ -211,7 +213,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
       setError(errorMsg);
       throw error;
     }
-  }, [videoData]);
+  }, [videoData, t]);
 
   // 播放控制
   const togglePlayback = useCallback(async () => {
@@ -285,7 +287,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
             // 没有更多帧，播放结束
             stopPlayback();
           }
-        } catch (error) {
+        } catch (_error) {
           stopPlayback();
           setError(t('av1.player.error.decode'));
         }
@@ -293,10 +295,10 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
 
       const frameInterval = 1000 / playStateRef.current.frameRate;
       playIntervalRef.current = setTimeout(playLoop, frameInterval);
-    } catch (error) {
+    } catch (_error) {
       setError(t('av1.player.error.decode'));
     }
-  }, [stopPlayback, initializeDecoder, renderFrame, triggerUIUpdate]);
+  }, [stopPlayback, initializeDecoder, renderFrame, triggerUIUpdate, t]);
 
   // 重置播放器
   const resetPlayer = useCallback(async () => {
@@ -325,7 +327,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
     } catch (error) {
       console.error(t('av1.player.error.decode'), error);
     }
-  }, [stopPlayback, triggerUIUpdate]);
+  }, [stopPlayback, triggerUIUpdate, t]);
 
   // 进度条点击跳转
   const handleProgressClick = useCallback(
@@ -351,11 +353,11 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
 
           triggerUIUpdate();
         }
-      } catch (error) {
+      } catch (_error) {
         setError(t('av1.player.error.seek'));
       }
     },
-    [triggerUIUpdate]
+    [triggerUIUpdate, t]
   );
 
   // 获取总帧数
@@ -366,7 +368,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
         return 0; // 数据未准备时返回0
       }
       return dav1dDecoderService.getTotalFrames();
-    } catch (error) {
+    } catch (_error) {
       return 0;
     }
   }, []);
@@ -399,7 +401,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
       const errorMsg = error instanceof Error ? error.message : t('av1.player.error.decode');
       setError(errorMsg);
     }
-  }, [initializeDecoder, renderFrame, getTotalFrames, triggerUIUpdate, togglePlayback]);
+  }, [initializeDecoder, renderFrame, getTotalFrames, triggerUIUpdate, togglePlayback, t]);
 
   // 组件初始化
   useEffect(() => {
@@ -423,10 +425,13 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
       }
       dav1dDecoderService.cleanup();
     };
-  }, [videoData]);
+  }, [
+    // 自动渲染第一帧
+    renderFirstFrame,
+  ]);
 
   // 触发UI更新的依赖
-  useEffect(() => {}, [uiUpdateTrigger]);
+  useEffect(() => {}, []);
 
   if (error) {
     return (

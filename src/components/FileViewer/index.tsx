@@ -1,10 +1,12 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { StorageFile } from '../../types';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { StorageFile } from '../../types';
+import { FileViewerContent } from './FileViewerContent';
 import { FileViewerHeader } from './FileViewerHeader';
 import { FileViewerSearchBar } from './FileViewerSearchBar';
-import { FileViewerContent } from './FileViewerContent';
 import { useFileLoader } from './hooks/useFileLoader';
 import { useFileSearch } from './hooks/useFileSearch';
+
 // 定义 VirtualizedTextViewer 的 ref 接口
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -136,7 +138,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
 
   const handlePercentageJump = () => {
     const value = parseFloat(percentValue);
-    if (!isNaN(value) && value >= 0 && value <= 100) {
+    if (!Number.isNaN(value) && value >= 0 && value <= 100) {
       jumpToFilePercentage(value);
       setShowPercentInput(false);
     }

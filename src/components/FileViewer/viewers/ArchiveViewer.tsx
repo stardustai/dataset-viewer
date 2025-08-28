@@ -1,34 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Archive, Copy, Folder, Download, Loader2 } from 'lucide-react';
-import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
+import { Archive, Copy, Download, Folder, Loader2 } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { configManager } from '../../../config';
 import { CompressionService } from '../../../services/compression';
 import { StorageServiceManager } from '../../../services/storage/StorageManager';
+import type { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
 import {
   getFileType,
-  isMediaFile,
   isDataFile,
+  isMediaFile,
+  isPointCloudFile,
   isSpreadsheetFile,
   isTextLikeFile,
-  isPointCloudFile,
 } from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
 import { safeParseInt } from '../../../utils/typeUtils';
-import { configManager } from '../../../config';
-
-import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
-import { VirtualizedTextViewer } from './VirtualizedTextViewer';
-import { MediaViewer } from './MediaViewer';
-import { UniversalDataTableViewer } from './UniversalDataTableViewer';
-import { PointCloudViewer } from './PointCloudViewer';
 import {
-  LoadingDisplay,
   ErrorDisplay,
+  LoadingDisplay,
   StatusDisplay,
   UnsupportedFormatDisplay,
 } from '../../common';
+import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
 import { ManualLoadButton } from '../common';
-import { useTranslation } from 'react-i18next';
+import { MediaViewer } from './MediaViewer';
+import { PointCloudViewer } from './PointCloudViewer';
+import { UniversalDataTableViewer } from './UniversalDataTableViewer';
+import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 
 // 错误信息翻译辅助函数
 const translateError = (error: string, t: (key: string) => string): string => {
@@ -112,7 +112,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
   useEffect(() => {
     loadArchiveInfo();
-  }, [url, filename]);
+  }, [loadArchiveInfo]);
 
   const loadArchiveInfo = async () => {
     try {
@@ -122,7 +122,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       let info: ArchiveInfo;
 
       // 检查是否有存储客户端，如果有则优先使用存储客户端接口
-      if (storageClient && storageClient.analyzeArchive) {
+      if (storageClient?.analyzeArchive) {
         // 使用存储客户端的统一接口
         const maxSize = 1024 * 1024; // 1MB
         info = await storageClient.analyzeArchive(url, filename, maxSize);
@@ -152,7 +152,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       let detailedInfo: ArchiveInfo;
 
-      if (storageClient && storageClient.analyzeArchive) {
+      if (storageClient?.analyzeArchive) {
         // 使用存储客户端的统一接口，不限制大小以获取详细信息
         detailedInfo = await storageClient.analyzeArchive(url, filename);
       } else {
@@ -253,7 +253,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
         const loadSize = fileSize;
         let preview: FilePreview;
 
-        if (storageClient && storageClient.getArchiveFilePreview) {
+        if (storageClient?.getArchiveFilePreview) {
           preview = await storageClient.getArchiveFilePreview(url, filename, entry.path, loadSize);
         } else {
           preview = await CompressionService.extractFilePreview(
@@ -277,7 +277,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       let preview: FilePreview;
 
-      if (storageClient && storageClient.getArchiveFilePreview) {
+      if (storageClient?.getArchiveFilePreview) {
         preview = await storageClient.getArchiveFilePreview(
           url,
           filename,
@@ -357,8 +357,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
         let additionalPreview: FilePreview;
         if (
-          storageClient &&
-          storageClient.getArchiveFilePreview &&
+          storageClient?.getArchiveFilePreview &&
           typeof storageClient.getArchiveFilePreview === 'function'
         ) {
           // 检查storageClient是否支持偏移量参数
@@ -391,7 +390,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
               setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
               setFileLoadState(prev => ({
                 ...prev,
-                loadedContentSize: fullPreview.content!.length,
+                loadedContentSize: fullPreview.content?.length,
                 loadedChunks: prev.loadedChunks + 1,
                 loadingMore: false,
               }));
@@ -418,7 +417,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
             setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
             setFileLoadState(prev => ({
               ...prev,
-              loadedContentSize: fullPreview.content!.length,
+              loadedContentSize: fullPreview.content?.length,
               loadedChunks: prev.loadedChunks + 1,
               loadingMore: false,
             }));
@@ -443,14 +442,14 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
                     ? new Uint8Array([...prev.content, ...additionalPreview.content!])
                     : additionalPreview.content!,
                   is_truncated: additionalPreview.is_truncated,
-                  preview_size: (prev.preview_size || 0) + additionalPreview.content!.length,
+                  preview_size: (prev.preview_size || 0) + additionalPreview.content?.length,
                 }
               : additionalPreview
           );
 
           setFileLoadState(prev => ({
             ...prev,
-            loadedContentSize: prev.loadedContentSize + additionalPreview.content!.length,
+            loadedContentSize: prev.loadedContentSize + additionalPreview.content?.length,
             loadedChunks: prev.loadedChunks + 1,
           }));
         }
@@ -513,7 +512,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       setFileLoadState(prev => ({ ...prev, manualLoading: true }));
       try {
         let fullPreview: FilePreview;
-        if (storageClient && storageClient.getArchiveFilePreview) {
+        if (storageClient?.getArchiveFilePreview) {
           fullPreview = await storageClient.getArchiveFilePreview(
             url,
             filename,
@@ -539,7 +538,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
               fullPreview.content
             );
             setFileContent(textContent);
-            setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
+            setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content?.length }));
           } catch (decodeError) {
             console.error('Failed to decode text content:', decodeError);
           }
@@ -562,7 +561,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       setFileLoadState(prev => ({ ...prev, manualLoading: true }));
       try {
         let fullPreview: FilePreview;
-        if (storageClient && storageClient.getArchiveFilePreview) {
+        if (storageClient?.getArchiveFilePreview) {
           fullPreview = await storageClient.getArchiveFilePreview(
             url,
             filename,
@@ -588,7 +587,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
               fullPreview.content
             );
             setFileContent(textContent);
-            setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
+            setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content?.length }));
             setForceTextView(true); // 标记为强制文本查看
           } catch (decodeError) {
             console.error('Failed to decode text content:', decodeError);

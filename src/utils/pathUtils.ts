@@ -77,7 +77,7 @@ export function parseUserInput(input: string, currentPath: string = ''): string 
   if (path === input.trim()) {
     // 如果路径不以 / 开头，认为是相对于当前路径
     if (!path.startsWith('/') && currentPath) {
-      path = currentPath + '/' + path;
+      path = `${currentPath}/${path}`;
     }
   }
 

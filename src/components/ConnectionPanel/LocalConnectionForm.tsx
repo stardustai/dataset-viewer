@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Folder, FolderOpen, FolderSearch } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { commands } from '../../types/tauri-commands';
 
 interface LocalConnectionFormProps {

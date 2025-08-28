@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
-import { formatFileSize } from '../../../utils/fileUtils';
+import { Dav1dDecoderService } from '../../../services/dav1dDecoder';
 import {
-  getFileUrl,
   getFileArrayBuffer,
   getFileHeader,
+  getFileUrl,
   getMimeType,
 } from '../../../utils/fileDataUtils';
+import { formatFileSize } from '../../../utils/fileUtils';
+import { ErrorDisplay, LoadingDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 import { AV1VideoPlayer } from './AV1VideoPlayer';
-import { Dav1dDecoderService } from '../../../services/dav1dDecoder';
 import { ImageRenderer } from './ImageRenderer';
 
 // AV1 视频播放器包装组件，处理按需加载
@@ -167,7 +168,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
     // 清理之前的 mediaUrl
     setMediaUrl(prevUrl => {
-      if (prevUrl && prevUrl.startsWith('blob:')) {
+      if (prevUrl?.startsWith('blob:')) {
         URL.revokeObjectURL(prevUrl);
       }
       return '';
@@ -291,7 +292,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       }
       // 视频和音频的进度条将在onCanPlay时处理
     }
-  }, [filePath, fileName, previewContent, fileType, t]);
+  }, [
+    filePath,
+    fileName,
+    previewContent,
+    fileType,
+    t,
+    clearProgressInterval, // 启动从90%到98%的缓慢进度，让用户知道还在加载
+    startSlowProgress,
+  ]);
 
   // 处理视频播放失败的回调函数 - 优先URL播放，失败后用完整数据播放
   const handleVideoPlaybackError = useCallback(async () => {
@@ -328,7 +337,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
         // 清理之前的mediaUrl
         setMediaUrl(prevUrl => {
-          if (prevUrl && prevUrl.startsWith('blob:')) {
+          if (prevUrl?.startsWith('blob:')) {
             URL.revokeObjectURL(prevUrl);
           }
           return '';

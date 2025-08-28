@@ -1,9 +1,9 @@
-import React from 'react';
+import { ChevronDown, ChevronUp, Code, Eye, Loader2, Move, Percent, Search, X } from 'lucide-react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Loader2, ChevronUp, ChevronDown, X, Move, Percent, Eye, Code } from 'lucide-react';
-import { SearchResult, FullFileSearchResult } from '../../types';
-import { getLanguageFromFileName, isLanguageSupported } from '../../utils/syntaxHighlighter';
 import { useSyntaxHighlighting } from '../../hooks/useSyntaxHighlighting';
+import type { FullFileSearchResult, SearchResult } from '../../types';
+import { getLanguageFromFileName, isLanguageSupported } from '../../utils/syntaxHighlighter';
 
 interface FileViewerSearchBarProps {
   searchTerm: string;
@@ -191,7 +191,6 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
                 onKeyDown={onPercentKeyPress}
                 placeholder="0-100"
                 className="w-16 lg:w-20 px-2 lg:px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                autoFocus
               />
               <span className="text-sm text-gray-500 dark:text-gray-400">%</span>
               <button
@@ -226,8 +225,8 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
               }`}
               title={
                 syntaxHighlightingEnabled
-                  ? t('syntax.highlighting.disable') + ` (${detectedLanguage})`
-                  : t('syntax.highlighting.enable') + ` (${detectedLanguage})`
+                  ? `${t('syntax.highlighting.disable')} (${detectedLanguage})`
+                  : `${t('syntax.highlighting.enable')} (${detectedLanguage})`
               }
             >
               <Code className="w-4 h-4" />
