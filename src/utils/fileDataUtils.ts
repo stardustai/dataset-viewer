@@ -75,14 +75,15 @@ export async function getFileHeader(filePath: string, maxBytes: number = 2048): 
   // 获取文件的下载 URL
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
 
-  if (fileUrl.startsWith('file://')) {
-    // 对于本地文件，使用 StorageServiceManager.downloadFile
+  if (fileUrl.startsWith('file://') || fileUrl.startsWith('webdav://') || fileUrl.startsWith('webdavs://')) {
+    // 对于本地文件和需要认证的 WebDAV 文件，使用 StorageServiceManager.downloadFile
+    // 浏览器的 fetch 无法处理 WebDAV 认证头，所以需要通过后端下载
     const fileBlob = await StorageServiceManager.downloadFile(filePath);
     const arrayBuffer = await fileBlob.arrayBuffer();
     const actualBytes = Math.min(maxBytes, arrayBuffer.byteLength);
     return new Uint8Array(arrayBuffer.slice(0, actualBytes));
   } else {
-    // 对于远程文件，使用 Range 请求只获取头部数据
+    // 对于其他远程文件（如公开的 HTTP/HTTPS URL），使用 Range 请求只获取头部数据
     const response = await fetch(fileUrl, {
       headers: {
         'Range': `bytes=0-${maxBytes - 1}`
@@ -102,8 +103,9 @@ export async function getFileUrl(filePath: string): Promise<string> {
   // 获取文件的下载 URL
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
 
-  if (fileUrl.startsWith('file://')) {
-    // 对于本地文件，获取数据并创建 Blob URL
+  if (fileUrl.startsWith('file://') || fileUrl.startsWith('webdav://') || fileUrl.startsWith('webdavs://')) {
+    // 对于本地文件和需要认证的 WebDAV 文件，获取数据并创建 Blob URL
+    // 浏览器的 iframe 无法处理 WebDAV 认证头，所以需要通过后端下载
     const fileBlob = await StorageServiceManager.downloadFile(filePath);
     // 获取文件名以确定 MIME 类型
     const fileName = filePath.split('/').pop() || '';
@@ -112,7 +114,7 @@ export async function getFileUrl(filePath: string): Promise<string> {
     const typedBlob = new Blob([fileBlob], { type: mimeType });
     return URL.createObjectURL(typedBlob);
   } else {
-    // 对于远程文件，直接返回 URL
+    // 对于其他远程文件（如公开的 HTTP/HTTPS URL），直接返回 URL
     return fileUrl;
   }
 }

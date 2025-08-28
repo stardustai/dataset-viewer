@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageServiceManager } from '../../../services/storage';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 import { formatFileSize } from '../../../utils/fileUtils';
 import { getFileUrl, getFileArrayBuffer, getFileHeader, getMimeType } from '../../../utils/fileDataUtils';
@@ -351,22 +350,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     }
   }, [fileType, videoPlaybackFailed, fileName, filePath, t]);
 
-  const downloadFile = useCallback(async () => {
-    try {
-      const downloadUrl = await StorageServiceManager.getDownloadUrl(filePath);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (err) {
-      console.error('Failed to download file:', err);
-    }
-  }, [filePath, fileName]);
-
-
-
   useEffect(() => {
     loadMediaContent();
   }, [loadMediaContent]);
@@ -389,7 +372,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">
+      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-800">
         {/* Progress bar - 加载时显示 */}
         {showProgress && (
           <div className="w-full bg-gray-200 dark:bg-gray-700 h-1">
@@ -433,23 +416,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 setError(t('viewer.pdf.not.supported'));
               }}
             />
-            {/* 如果 iframe 失败，显示下载选项 */}
-            {error && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-red-600 dark:text-red-400 text-2xl">📄</span>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{t('viewer.pdf.not.supported')}</p>
-                  <button
-                    onClick={downloadFile}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                  >
-                    {t('viewer.download')}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         );
 
@@ -494,16 +460,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 });
               }}
             >
-              <p className="text-white text-center">
-                {t('viewer.video.not.supported')}
-                <br />
-                <button
-                  onClick={downloadFile}
-                  className="mt-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                >
-                  {t('viewer.download')}
-                </button>
-              </p>
+              {t('viewer.video.not.supported')}
             </video>
           </div>
         );
@@ -575,7 +532,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   // 对于其他类型，使用原有的布局
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-800">
+    <div className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-800">
       {/* Progress bar - 显示进度时就显示 */}
       {showProgress && (
         <div className="w-full bg-gray-200 dark:bg-gray-700 h-1">
@@ -586,9 +543,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         </div>
       )}
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {renderContent()}
-      </div>
+			{renderContent()}
     </div>
   );
 };
