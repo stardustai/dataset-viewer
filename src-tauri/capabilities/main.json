@@ -5,21 +5,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "http:default",
     "fs:default",
     "dialog:default",
     "opener:default",
-    {
-      "identifier": "http:allow-fetch",
-      "allow": [
-        {
-          "url": "http://**"
-        },
-        {
-          "url": "https://**"
-        }
-      ]
-    },
     {
       "identifier": "fs:allow-write-file",
       "allow": [

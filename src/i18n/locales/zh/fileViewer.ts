@@ -67,8 +67,11 @@ export const fileViewer = {
   'viewer.reset': '重置视图',
 
   // 复制功能
+  // Copy functionality
   'copy.full.path': '复制完整路径',
   'copy.line.content': '复制行内容',
+  'copy.content': '复制内容',
+  'copied': '已复制',
   'copied.to.clipboard': '已复制到剪贴板',
   'copy.failed': '复制失败',
 
@@ -83,6 +86,7 @@ export const fileViewer = {
 	'formatted.json': '已格式化',
 	'formatted.xml': '已格式化',
   'original.content': '原始内容',
+  'content.details': '内容详情',
 
   // 加载状态
   'loading.file': '正在加载文件 "{{filename}}"...',
@@ -129,7 +133,10 @@ export const fileViewer = {
   'data.table.cell.view.full': '查看完整内容',
   'data.table.cell.double.click.view': '双击查看详情',
   'data.table.cell.details': '单元格详情',
-  'data.table.cell.location': '位置: {{column}} 列, 第 {{row}} 行',
+  'line.position': '第 {{line}} 行',
+  'line.content.title': '第 {{line}} 行内容',
+  'content.stats': '字符数: {{characters}}, 行数: {{lines}}',
+  'cell.position': '位置: {{column}} 列, 第 {{row}} 行',
   'data.table.cell.copy': '复制内容',
 
   // 分块加载相关

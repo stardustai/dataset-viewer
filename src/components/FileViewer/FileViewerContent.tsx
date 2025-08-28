@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
-import { LazyComponentWrapper } from './LazyComponentWrapper';
+import { LazyComponentWrapper } from './common';
 import {
   VirtualizedTextViewer,
   WordViewer,
