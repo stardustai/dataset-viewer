@@ -28,8 +28,7 @@ import {
   DataTableCell
 } from '../table-components';
 import {
-  UnifiedContentModal,
-  type UnifiedContentModalData
+  UnifiedContentModal
 } from '../common';
 
 interface DataColumn {
@@ -98,7 +97,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   // UI state
   const [showColumnPanel, setShowColumnPanel] = useState(false);
   const [showContentModal, setShowContentModal] = useState(false);
-  const [modalContentData, setModalContentData] = useState<UnifiedContentModalData | null>(null);
+  const [modalContentData, setModalContentData] = useState<{ content: string; title: string; description?: React.ReactNode } | null>(null);
 
   // Refs
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -501,8 +500,10 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
       {showContentModal && modalContentData && (
         <UnifiedContentModal
           isOpen={showContentModal}
-          data={modalContentData}
           onClose={() => setShowContentModal(false)}
+          content={modalContentData.content}
+          title={modalContentData.title}
+          description={modalContentData.description}
         />
       )}
     </div>

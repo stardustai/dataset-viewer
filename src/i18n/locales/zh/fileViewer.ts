@@ -135,7 +135,7 @@ export const fileViewer = {
   'data.table.cell.details': '单元格详情',
   'line.position': '第 {{line}} 行',
   'line.content.title': '第 {{line}} 行内容',
-  'content.stats': '字符数: {{characters}}, 行数: {{lines}}',
+  'content.stats.chars': '字符数: {{characters}}',
   'cell.position': '位置: {{column}} 列, 第 {{row}} 行',
   'data.table.cell.copy': '复制内容',
 

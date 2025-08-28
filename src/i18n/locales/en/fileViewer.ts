@@ -141,7 +141,7 @@ export const fileViewer = {
   'data.table.cell.details': 'Cell Details',
   'line.position': 'Line {{line}}',
   'line.content.title': 'Line {{line}} Content',
-  'content.stats': 'Characters: {{characters}}, Lines: {{lines}}',
+  'content.stats.chars': 'Characters: {{characters}}',
   'cell.position': 'Location: {{column}} column, row {{row}}',
   'data.table.cell.copy': 'Copy cell content',
   'data.table.null.value': 'null',

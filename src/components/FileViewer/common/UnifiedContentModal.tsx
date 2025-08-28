@@ -90,28 +90,41 @@ export interface UnifiedContentModalData {
 
   // 自定义描述区域
   description?: React.ReactNode;
-}interface UnifiedContentModalProps {
+}
+
+interface UnifiedContentModalProps {
   isOpen: boolean;
-  data: UnifiedContentModalData;
   onClose: () => void;
+
+  // 核心内容
+  content: string;
+  title: string;
+
+  // 可选配置
+  searchTerm?: string;
+  fileName?: string;
+
+  // 自定义描述区域
+  description?: React.ReactNode;
 }
 
 export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
   isOpen,
-  data,
-  onClose
+  onClose,
+  content,
+  title,
+  searchTerm,
+  fileName,
+  description
 }) => {
   const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
 
-  // 确定内容字符串
-  const contentString = data.content;
-
   // 检测逻辑 - 优先级：图片 > 结构化数据格式化 > 原始文本
-  const imageInfo = isBase64Image(contentString);
-  const isJSONContent = !imageInfo.isImage && contentString.trim().match(/^[\[\{].*[\]\}]$/s);
-  const isXMLContent = !imageInfo.isImage && !isJSONContent && contentString.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
+  const imageInfo = isBase64Image(content);
+  const isJSONContent = !imageInfo.isImage && content.trim().match(/^[\[\{].*[\]\}]$/s);
+  const isXMLContent = !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
 
   const shouldDefaultFormat = Boolean(isJSONContent || isXMLContent);
   const [manualFormatState, setManualFormatState] = useState<boolean | null>(null);
@@ -120,36 +133,35 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
   // 当内容改变时，重置手动格式化状态，让新内容使用默认格式化
   useEffect(() => {
     setManualFormatState(null);
-  }, [contentString]);
+  }, [content]);
 
   // 确定显示内容
   const displayContent = (() => {
-    if (imageInfo.isImage) return contentString; // 图片直接返回原始内容
+    if (imageInfo.isImage) return content; // 图片直接返回原始内容
 
     if (isJSONContent && isFormatted) {
       try {
-        const parsed = JSON.parse(contentString);
+        const parsed = JSON.parse(content);
         return JSON.stringify(parsed, null, 2);
       } catch {
-        return contentString;
+        return content;
       }
     }
 
     if (isXMLContent && isFormatted) {
       try {
-        return formatXML(contentString.trim());
+        return formatXML(content.trim());
       } catch (error) {
         // 如果格式化失败，返回原始内容
         console.warn('XML formatting failed:', error);
-        return contentString;
+        return content;
       }
     }
 
-    return contentString;
+    return content;
   })();
 
-  // 使用外部传入的标题
-  const modalTitle = data.title;  const toggleFormatView = () => {
+  const toggleFormatView = () => {
     setManualFormatState(!isFormatted);
   };
 
@@ -192,14 +204,14 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div
         ref={modalRef}
-        className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl max-h-[85vh] w-full flex flex-col shadow-xl"
+        className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl h-[85vh] w-full flex flex-col shadow-xl"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex-1">
             <div className="flex items-center space-x-3">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {modalTitle}
+                {title}
               </h3>
 
               {/* Content Type Indicators - 紧贴标题右侧 */}
@@ -221,9 +233,9 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
             </div>
 
             {/* 描述区域 - 使用自定义描述或默认统计信息 */}
-            {data.description && (
+            {description && (
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {data.description}
+                {description}
               </div>
             )}
           </div>
@@ -277,8 +289,8 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
           {imageInfo.isImage ? (
             // 使用 ImageRenderer 展示 base64 图片
             <ImageRenderer
-              mediaUrl={imageInfo.dataUrl || contentString}
-              fileName={data.fileName || `content-${imageInfo.format?.toLowerCase() || 'image'}`}
+              mediaUrl={imageInfo.dataUrl || content}
+              fileName={fileName || `content-${imageInfo.format?.toLowerCase() || 'image'}`}
               filePath="data://content"
               hasAssociatedFiles={false}
             />
@@ -286,8 +298,8 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
             // 格式化的JSON/XML使用虚拟文本查看器，支持语法高亮
             <VirtualizedTextViewer
               content={displayContent}
-              searchTerm={data.searchTerm}
-              fileName={data.fileName || (isJSONContent ? "formatted.json" : "formatted.xml")}
+              searchTerm={searchTerm}
+              fileName={fileName || (isJSONContent ? "formatted.json" : "formatted.xml")}
               className="h-full"
               key="unified-modal-formatted-viewer"
             />
@@ -295,9 +307,9 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
             // 原始内容或简单文本
             <div className="flex-1 overflow-auto p-4">
               <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 font-mono text-sm whitespace-pre-wrap break-words">
-                {data.searchTerm && data.searchTerm.length >= 2 ? (
-                  displayContent.split(new RegExp(`(${data.searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, index: number) => {
-                    const regex = new RegExp(data.searchTerm!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                {searchTerm && searchTerm.length >= 2 ? (
+                  displayContent.split(new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, index: number) => {
+                    const regex = new RegExp(searchTerm!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
                     if (regex.test(part)) {
                       return (
                         <mark key={index} className="bg-yellow-200 dark:bg-yellow-800">
