@@ -208,14 +208,15 @@ export class StorageServiceManager {
       }
 
       case 'huggingface': {
-        const hfUrl = `huggingface://${config.organization || 'hub'}`;
+        const organization = config.organization || 'hub';
+        const hfUrl = `huggingface://${organization}`;
         connectionData = {
           url: hfUrl,
           username: '', // 不再使用 username 存储组织信息
           password: '', // 不再使用 password 存储 API token
           connected: true,
           metadata: {
-            organization: config.organization,
+            organization: organization === 'hub' ? undefined : organization,
             apiToken: config.apiToken
           }
         };

@@ -88,12 +88,16 @@ class ConnectionStorageService {
     const normalizedUrl = this.normalizeUrl(cleanedConnection.url);
 
     // 检查是否已存在相同的连接（基于标准化的 URL 和用户名）
-    const existingConnection = this.findConnection(normalizedUrl, cleanedConnection.username);
+    const existingConnection = this.findConnection(normalizedUrl, cleanedConnection.username, cleanedConnection.metadata);
     if (existingConnection) {
       // 如果连接已存在，更新最后连接时间和密码（如果需要）
       this.updateLastConnected(existingConnection.id);
       if (savePassword && cleanedConnection.password) {
         this.updatePassword(existingConnection.id, cleanedConnection.password);
+      }
+      // 更新 metadata 信息（如果有变化）
+      if (cleanedConnection.metadata) {
+        this.updateMetadata(existingConnection.id, cleanedConnection.metadata);
       }
       return existingConnection.id;
     }
@@ -173,6 +177,16 @@ class ConnectionStorageService {
     }
   }
 
+  // 更新连接的 metadata
+  updateMetadata(id: string, metadata: { [key: string]: any }): void {
+    const connections = this.getStoredConnections();
+    const connection = connections.find(c => c.id === id);
+    if (connection) {
+      connection.metadata = { ...connection.metadata, ...metadata };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
+    }
+  }
+
   // 删除连接
   deleteConnection(id: string): void {
     const connections = this.getStoredConnections();
@@ -208,12 +222,23 @@ class ConnectionStorageService {
   }
 
   // 查找连接 - 使用标准化的 URL 进行比较
-  findConnection(url: string, username: string): StoredConnection | null {
+  findConnection(url: string, username: string, metadata?: { [key: string]: any }): StoredConnection | null {
     const connections = this.getStoredConnections();
     const normalizedUrl = this.normalizeUrl(url);
-    return connections.find(c =>
-      this.normalizeUrl(c.url) === normalizedUrl && c.username === username
-    ) || null;
+
+    return connections.find(c => {
+      const urlMatch = this.normalizeUrl(c.url) === normalizedUrl;
+      const usernameMatch = c.username === username;
+
+      // 对于 HuggingFace 连接，额外检查组织名
+      if (normalizedUrl.startsWith('huggingface://')) {
+        const storedOrg = c.metadata?.organization;
+        const inputOrg = metadata?.organization;
+        return urlMatch && usernameMatch && storedOrg === inputOrg;
+      }
+
+      return urlMatch && usernameMatch;
+    }) || null;
   }
 
   // 重命名连接
