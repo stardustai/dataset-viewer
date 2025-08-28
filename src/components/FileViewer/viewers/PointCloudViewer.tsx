@@ -48,6 +48,7 @@ interface RenderSettings {
 interface PointCloudViewerProps {
   filePath: string;
   onMetadataLoaded?: (metadata: any) => void;
+  previewContent?: Uint8Array; // 可选的预加载内容，用于压缩包内文件
 }
 
 // 高性能 LOD（Level of Detail）优化函数
@@ -455,7 +456,8 @@ const extractPointCloudStats = (points: THREE.Points): PCDStats => {
 
 export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
   filePath,
-  onMetadataLoaded
+  onMetadataLoaded,
+  previewContent
 }) => {
   const { t } = useTranslation();
   const mountRef = useRef<HTMLDivElement>(null);
@@ -492,9 +494,21 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
 
       console.log('开始加载点云文件:', filePath);
 
-      // 获取存储服务并读取整个点云文件
-      const arrayBuffer = await StorageServiceManager.getFileArrayBuffer(filePath);
-      console.log('点云文件大小:', arrayBuffer.byteLength);
+      // 优先使用预加载的内容（用于压缩包内文件）
+      let arrayBuffer: ArrayBuffer;
+      if (previewContent) {
+        console.log('使用预加载内容，大小:', previewContent.byteLength);
+        arrayBuffer = previewContent.buffer instanceof ArrayBuffer 
+          ? previewContent.buffer.slice(previewContent.byteOffset, previewContent.byteOffset + previewContent.byteLength)
+          : new ArrayBuffer(previewContent.byteLength);
+        if (!(previewContent.buffer instanceof ArrayBuffer)) {
+          new Uint8Array(arrayBuffer).set(previewContent);
+        }
+      } else {
+        // 获取存储服务并读取整个点云文件
+        arrayBuffer = await StorageServiceManager.getFileArrayBuffer(filePath);
+        console.log('从存储服务加载文件，大小:', arrayBuffer.byteLength);
+      }
 
       // 根据文件扩展名选择合适的加载器
       const fileExtension = filePath.split('.').pop()?.toLowerCase();
@@ -652,7 +666,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [filePath, extractPointCloudStats, settings.colorMode, t, onMetadataLoaded]);
+  }, [filePath, previewContent, extractPointCloudStats, settings.colorMode, t, onMetadataLoaded]);
 
   // 初始化Three.js场景
   const initializeThreeJS = useCallback(() => {

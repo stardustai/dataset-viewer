@@ -161,8 +161,9 @@ export const fileViewer = {
   'file.not.loaded': 'File not loaded',
   'load.full.content': 'Load Full Content',
   'error.load.full.content': 'Failed to load full content',
-  'media.large.file.manual.load': 'Large media files require manual loading',
-  'data.large.file.manual.load': 'Large data files require manual loading',
+  'media.large.file.manual.load': 'Large media file, click to load',
+  'data.large.file.manual.load': 'Large data file, click to load',
+  'pointcloud.file.manual.load': 'Point cloud file, click to load',
 
   // AV1 video player
   'av1.player.loading': 'Loading AV1 decoder...',
@@ -185,6 +186,12 @@ export const fileViewer = {
   'word.doc.unsupported': 'This is an old version Word document format',
   'word.doc.suggestion': 'Please download and open with Microsoft Word, or convert to .docx format',
   'word.preview.limitation': 'This is a simplified document preview. For the best viewing experience, please download and open with dedicated Word processing software.',
+  'word.doc.legacy.title': 'Legacy Word Document',
+  'word.doc.legacy.message': 'This file is a legacy Word document format (.doc) that requires specialized parser.\n\nRecommendations:\n1. Download and open with Microsoft Word\n2. Convert to .docx format for better support',
+  'word.rtf.extract.failed': 'Unable to extract RTF document content. Please download the file to view complete content.',
+  'word.rtf.parse.error': 'Error parsing RTF document. Please download the file to view complete content.',
+  'word.unsupported.format': 'Unsupported file format',
+  'word.load.failed': 'Failed to load document. Please try downloading the file to view content.',
 
   // Presentation viewer
   'presentation.viewer': 'Presentation Viewer',

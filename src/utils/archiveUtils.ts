@@ -1,4 +1,5 @@
 import { ArchiveEntry, StorageFile } from '../types';
+import { getMimeType } from './fileTypes';
 
 /**
  * 将压缩文件条目转换为StorageFile格式
@@ -13,56 +14,9 @@ function archiveEntryToStorageFile(entry: ArchiveEntry): StorageFile {
     lastmod: entry.modified_time || new Date().toISOString(),
     size: entry.size,
     type: entry.is_dir ? 'directory' : 'file',
-    mime: entry.is_dir ? null : getMimeTypeFromPath(entry.path),
+    mime: entry.is_dir ? null : getMimeType(entry.path),
     etag: null
   };
-}
-
-/**
- * 从文件路径推断MIME类型
- */
-function getMimeTypeFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase();
-
-  const mimeTypes: Record<string, string> = {
-    'txt': 'text/plain',
-    'md': 'text/markdown',
-    'json': 'application/json',
-    'js': 'text/javascript',
-    'ts': 'text/typescript',
-    'html': 'text/html',
-    'css': 'text/css',
-    'xml': 'text/xml',
-    'csv': 'text/csv',
-    'py': 'text/x-python',
-    'java': 'text/x-java-source',
-    'cpp': 'text/x-c++src',
-    'c': 'text/x-csrc',
-    'h': 'text/x-chdr',
-    'php': 'text/x-php',
-    'rb': 'text/x-ruby',
-    'go': 'text/x-go',
-    'rs': 'text/x-rust',
-    'sh': 'text/x-shellscript',
-    'sql': 'text/x-sql',
-    'yaml': 'text/yaml',
-    'yml': 'text/yaml',
-    'toml': 'text/x-toml',
-    'ini': 'text/plain',
-    'conf': 'text/plain',
-    'log': 'text/plain',
-    'png': 'image/png',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'gif': 'image/gif',
-    'svg': 'image/svg+xml',
-    'pdf': 'application/pdf',
-    'zip': 'application/zip',
-    'tar': 'application/x-tar',
-    'gz': 'application/gzip'
-  };
-
-  return mimeTypes[ext || ''] || 'application/octet-stream';
 }
 
 /**

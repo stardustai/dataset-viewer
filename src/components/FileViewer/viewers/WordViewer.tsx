@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText } from 'lucide-react';
 import mammoth from 'mammoth';
-import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
+import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 import { StorageServiceManager } from '../../../services/storage';
 import DOMPurify from 'dompurify';
 
@@ -39,7 +38,7 @@ const extractTextFromRtf = (content: string, t: (key: string) => string): string
       .replace(/\\'/g, "'") // 处理转义的单引号
       .replace(/\s+/g, ' ') // 合并多个空格
       .trim();
-    
+
     return text || t('word.rtf.extract.failed');
   } catch (error) {
     console.error('Error extracting text from RTF:', error);
@@ -72,7 +71,7 @@ export const WordViewer: React.FC<WordViewerProps> = ({
     const loadDocument = async () => {
       setLoading(true);
       setError('');
-      
+
       try {
         if (isDocx) {
           // 对于 DOCX 文件，需要获取二进制数据
@@ -127,21 +126,15 @@ export const WordViewer: React.FC<WordViewerProps> = ({
   return (
     <div className={`h-full overflow-auto bg-white dark:bg-gray-900 ${className}`}>
       {isDoc ? (
-        // DOC 文件的特殊提示
-        <div className="p-6 text-center">
-          <div className="max-w-md mx-auto">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-              {t('word.doc.legacy.title')}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-              {textContent}
-            </p>
-          </div>
-        </div>
+        // DOC 文件使用公共的不支持格式组件
+        <UnsupportedFormatDisplay
+          message={t('word.doc.legacy.title')}
+          secondaryMessage={textContent}
+          className="h-full"
+        />
       ) : htmlContent ? (
         // 渲染的 HTML 内容（DOCX）
-        <div 
+        <div
           className="prose prose-gray dark:prose-invert max-w-none p-6"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
         />

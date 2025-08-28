@@ -146,8 +146,9 @@ export const fileViewer = {
   'file.not.loaded': '文件未加载',
   'load.full.content': '加载完整内容',
   'error.load.full.content': '加载完整内容失败',
-  'media.large.file.manual.load': '大型媒体文件需要手动加载',
-  'data.large.file.manual.load': '大型数据文件需要手动加载',
+  'media.large.file.manual.load': '大型媒体文件，点击加载',
+  'data.large.file.manual.load': '大型数据文件，点击加载',
+  'pointcloud.file.manual.load': '点云文件，点击加载',
 
   // AV1 视频播放器
   'av1.player.loading': '正在加载 AV1 解码器...',

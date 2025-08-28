@@ -83,7 +83,7 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
         <IconComponent className={iconClassName} />
         <p className="text-gray-500 dark:text-gray-400">{message}</p>
         {secondaryMessage && (
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-2 whitespace-pre-line">
             {secondaryMessage}
           </p>
         )}
@@ -147,7 +147,7 @@ const translateErrorMessage = (error: string, t: (key: string) => string): strin
   if (error.match(/^[a-zA-Z][a-zA-Z0-9.]+$/)) {
     return t(error);
   }
-  
+
   // 否则返回原始错误信息
   return error;
 };

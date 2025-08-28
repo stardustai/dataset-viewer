@@ -4,7 +4,7 @@ import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { CompressionService } from '../../../services/compression';
 import { StorageServiceManager } from '../../../services/storage/StorageManager';
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
-import { getFileType, isMediaFile, isDataFile, isSpreadsheetFile, isTextLikeFile } from '../../../utils/fileTypes';
+import { getFileType, isMediaFile, isDataFile, isSpreadsheetFile, isTextLikeFile, isPointCloudFile } from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
 import { safeParseInt } from '../../../utils/typeUtils';
 import { configManager } from '../../../config';
@@ -13,6 +13,7 @@ import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { UniversalDataTableViewer } from './UniversalDataTableViewer';
+import { PointCloudViewer } from './PointCloudViewer';
 import { LoadingDisplay, ErrorDisplay, StatusDisplay, UnsupportedFormatDisplay } from '../../common';
 import { ManualLoadButton } from '../common';
 import { useTranslation } from 'react-i18next';
@@ -222,7 +223,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         const shouldAutoLoadMedia = isMediaFileType && fileSize < 10 * 1024 * 1024; // 10MB
         const shouldAutoLoadData = isDataFileType && fileSize < 10 * 1024 * 1024; // 10MB
 
-        // 小于10MB的媒体文件和数据文件自动加载，其他非文本文件不加载
+        // 小于10MB的媒体文件和数据文件自动加载，点云文件和其他非文本文件不加载
         if (!shouldAutoLoadMedia && !shouldAutoLoadData) {
           // 创建一个空的预览对象，只包含文件信息
           const emptyPreview: FilePreview = {
@@ -319,7 +320,8 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       isText: isTextLikeFile(entry.path),
       isMedia: isMediaFile(entry.path),
       isData: isDataFile(entry.path),
-      isSpreadsheet: isSpreadsheetFile(entry.path)
+      isSpreadsheet: isSpreadsheetFile(entry.path),
+      isPointCloud: isPointCloudFile(entry.path)
     };
   };
 
@@ -686,7 +688,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 								/>
 							) : selectedEntry && filePreview ? (
 								(() => {
-									const { isText, isMedia, isData, isSpreadsheet, fileType } = getFileTypeInfo(selectedEntry);
+									const { isText, isMedia, isData, isSpreadsheet, isPointCloud, fileType } = getFileTypeInfo(selectedEntry);
 									const virtualFilePath = createVirtualFilePath(selectedEntry);
 
 									// 检查是否强制以文本方式查看或本身就是文本文件
@@ -773,6 +775,25 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 													(selectedEntry.path.toLowerCase().endsWith('.xlsx') || selectedEntry.path.toLowerCase().endsWith('.xls') ? 'xlsx' : 'ods') :
 													(selectedEntry.path.toLowerCase().endsWith('.parquet') || selectedEntry.path.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv')
 												}
+												previewContent={filePreview.content}
+											/>
+										);
+									} else if (isPointCloud) {
+										// 点云文件：需要手动加载
+										if (!fileLoadState.manualLoadRequested) {
+											return (
+												<ManualLoadButton
+													entry={selectedEntry}
+													onLoad={loadFullContent}
+													isLoading={fileLoadState.manualLoading}
+													loadType="pointCloud"
+												/>
+											);
+										}
+										return (
+											<PointCloudViewer
+												filePath={virtualFilePath}
+												onMetadataLoaded={() => {}}
 												previewContent={filePreview.content}
 											/>
 										);

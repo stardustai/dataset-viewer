@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Image, Database, AlertTriangle, Loader2 } from 'lucide-react';
+import { FileText, Image, Database, Zap, AlertTriangle, Loader2 } from 'lucide-react';
 import { ArchiveEntry } from '../../../types';
 import { formatFileSize } from '../../../utils/fileUtils';
 import { StatusDisplay } from '../../common';
@@ -9,7 +9,7 @@ interface ManualLoadButtonProps {
   entry: ArchiveEntry;
   onLoad: (entry: ArchiveEntry) => void;
   isLoading: boolean;
-  loadType: 'media' | 'data' | 'unsupported';
+  loadType: 'media' | 'data' | 'pointCloud' | 'unsupported';
 }
 
 export const ManualLoadButton: React.FC<ManualLoadButtonProps> = ({
@@ -26,6 +26,8 @@ export const ManualLoadButton: React.FC<ManualLoadButtonProps> = ({
         return t('media.large.file.manual.load');
       case 'data':
         return t('data.large.file.manual.load');
+      case 'pointCloud':
+        return t('pointcloud.file.manual.load');
       case 'unsupported':
         return t('viewer.unsupported.format');
       default:
@@ -41,6 +43,8 @@ export const ManualLoadButton: React.FC<ManualLoadButtonProps> = ({
         return Image;
       case 'data':
         return Database;
+      case 'pointCloud':
+        return Zap;
       case 'unsupported':
         return AlertTriangle;
       default:
