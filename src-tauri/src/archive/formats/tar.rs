@@ -1,11 +1,9 @@
+use crate::archive::formats::{common::*, CompressionHandlerDispatcher};
 /// TAR 格式处理器
 use crate::archive::types::*;
-use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
 use crate::storage::traits::StorageClient;
 use std::collections::HashMap;
 use std::sync::Arc;
-
-
 pub struct TarHandler;
 
 #[async_trait::async_trait]
@@ -30,7 +28,16 @@ impl CompressionHandlerDispatcher for TarHandler {
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_tar_preview_with_progress(client, file_path, entry_path, max_size, offset, progress_callback, cancel_rx).await
+        Self::extract_tar_preview_with_progress(
+            client,
+            file_path,
+            entry_path,
+            max_size,
+            offset,
+            progress_callback,
+            cancel_rx,
+        )
+        .await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -56,7 +63,9 @@ impl TarHandler {
         log::debug!("TAR流式分析开始: {}", file_path);
 
         // 获取文件大小
-        let file_size = client.get_file_size(file_path).await
+        let file_size = client
+            .get_file_size(file_path)
+            .await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
 
         log::debug!("TAR文件大小: {} 字节", file_size);
@@ -91,9 +100,15 @@ impl TarHandler {
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        log::debug!("开始流式提取TAR文件预览（带进度）: {} -> {}", file_path, entry_path);
+        log::debug!(
+            "开始流式提取TAR文件预览（带进度）: {} -> {}",
+            file_path,
+            entry_path
+        );
 
-        let file_size = client.get_file_size(file_path).await
+        let file_size = client
+            .get_file_size(file_path)
+            .await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
 
         let mut current_offset = 0u64;
@@ -116,13 +131,16 @@ impl TarHandler {
             }
 
             // 读取TAR头部（512字节）
-            let header_data = match client.read_file_range(file_path, current_offset, BLOCK_SIZE).await {
+            let header_data = match client
+                .read_file_range(file_path, current_offset, BLOCK_SIZE)
+                .await
+            {
                 Ok(data) => {
                     if data.len() < BLOCK_SIZE as usize {
                         break;
                     }
                     data
-                },
+                }
                 Err(e) => {
                     log::warn!("流式读取TAR头部失败，位置 {}: {}", current_offset, e);
                     break;
@@ -171,14 +189,22 @@ impl TarHandler {
 
                         while read_offset_in_chunk < preview_size as u64 {
                             // 检查取消信号
-                             if let Some(ref mut cancel_rx) = cancel_rx {
-                                 if let Ok(_) = cancel_rx.try_recv() {
-                                     return Err("download.cancelled".to_string());
-                                 }
-                             }
+                            if let Some(ref mut cancel_rx) = cancel_rx {
+                                if let Ok(_) = cancel_rx.try_recv() {
+                                    return Err("download.cancelled".to_string());
+                                }
+                            }
 
-                            let current_chunk_size = std::cmp::min(chunk_size, preview_size as u64 - read_offset_in_chunk);
-                            let chunk = client.read_file_range(file_path, actual_file_offset + read_offset_in_chunk, current_chunk_size)
+                            let current_chunk_size = std::cmp::min(
+                                chunk_size,
+                                preview_size as u64 - read_offset_in_chunk,
+                            );
+                            let chunk = client
+                                .read_file_range(
+                                    file_path,
+                                    actual_file_offset + read_offset_in_chunk,
+                                    current_chunk_size,
+                                )
                                 .await
                                 .map_err(|e| format!("Failed to read file content chunk: {}", e))?;
 
@@ -186,21 +212,25 @@ impl TarHandler {
                             read_offset_in_chunk += chunk.len() as u64;
 
                             // 更新进度（基于文件内容读取）
-                            let total_progress = current_offset + BLOCK_SIZE + read_offset + read_offset_in_chunk;
+                            let total_progress =
+                                current_offset + BLOCK_SIZE + read_offset + read_offset_in_chunk;
                             callback(total_progress, file_size);
                         }
 
                         all_data
                     } else {
                         // 直接读取全部内容
-                        client.read_file_range(file_path, actual_file_offset, preview_size as u64).await
+                        client
+                            .read_file_range(file_path, actual_file_offset, preview_size as u64)
+                            .await
                             .map_err(|e| format!("Failed to read file content: {}", e))?
                     };
 
                     let _mime_type = detect_mime_type(&content_data);
 
                     let data_len = content_data.len();
-                    let is_truncated = data_len >= max_size || (read_offset + data_len as u64) < file_size;
+                    let is_truncated =
+                        data_len >= max_size || (read_offset + data_len as u64) < file_size;
 
                     return Ok(PreviewBuilder::new()
                         .content(content_data)
@@ -256,14 +286,17 @@ impl TarHandler {
 
         while current_offset < file_size {
             // 读取TAR头部（512字节）
-            let header_data = match client.read_file_range(file_path, current_offset, BLOCK_SIZE).await {
+            let header_data = match client
+                .read_file_range(file_path, current_offset, BLOCK_SIZE)
+                .await
+            {
                 Ok(data) => {
                     if data.len() < BLOCK_SIZE as usize {
                         // 文件结束或不完整的块
                         break;
                     }
                     data
-                },
+                }
                 Err(e) => {
                     log::warn!("流式读取TAR头部失败，位置 {}: {}", current_offset, e);
                     break;
@@ -311,7 +344,9 @@ impl TarHandler {
             .supports_streaming(true)
             .supports_random_access(false)
             .analysis_status(if entry_count >= 10000 {
-                AnalysisStatus::Partial { analyzed_entries: entry_count as u32 }
+                AnalysisStatus::Partial {
+                    analyzed_entries: entry_count as u32,
+                }
             } else {
                 AnalysisStatus::Complete
             })
@@ -351,8 +386,8 @@ impl TarHandler {
         let is_directory = type_flag == b'5' || name.ends_with('/');
 
         let last_modified = if mtime > 0 {
-            use std::time::{Duration, UNIX_EPOCH};
             use chrono::{DateTime, Utc};
+            use std::time::{Duration, UNIX_EPOCH};
             let duration = Duration::from_secs(mtime);
             let datetime = UNIX_EPOCH + duration;
             let datetime: DateTime<Utc> = datetime.into();

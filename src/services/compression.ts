@@ -18,7 +18,7 @@ export class CompressionService {
         setTimeout(() => {
           reject(new Error(`压缩文件分析超时 (${timeoutMs}ms)`));
         }, timeoutMs);
-      })
+      }),
     ]);
 
     if (result.status === 'error') {
@@ -45,7 +45,7 @@ export class CompressionService {
         setTimeout(() => {
           reject(new Error(`文件预览提取超时 (${timeoutMs}ms)`));
         }, timeoutMs);
-      })
+      }),
     ]);
 
     if (response.status === 'error') {
@@ -60,7 +60,7 @@ export class CompressionService {
       content,
       is_truncated: result.is_truncated,
       total_size: result.total_size.toString(),
-      preview_size: result.preview_size
+      preview_size: result.preview_size,
     } as FilePreview;
   }
 }

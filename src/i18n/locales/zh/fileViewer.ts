@@ -25,14 +25,15 @@ export const fileViewer = {
   'search.sampling': '（采样）',
   'line.number': '行 {{line}}',
   'line.content': '第 {{line}} 行内容',
-  'image': '图片',
+  image: '图片',
   'truncated.image': '截断的图片',
   'image.truncated.title': '图片数据被截断',
-  'image.truncated.description': '此行包含图片数据，但由于长度限制被截断显示。请展开完整行内容查看图片。',
+  'image.truncated.description':
+    '此行包含图片数据，但由于长度限制被截断显示。请展开完整行内容查看图片。',
 
   // 加载控制
   'load.more': '加载更多内容',
-  'loaded': '已加载',
+  loaded: '已加载',
   'viewer.load.all': '加载全部内容',
   'viewer.fully.loaded': '文件已完全加载',
   'viewer.position.info': '已查看 {{current}} / {{total}} ({{percent}}%)',
@@ -71,7 +72,7 @@ export const fileViewer = {
   'copy.full.path': '复制完整路径',
   'copy.line.content': '复制行内容',
   'copy.content': '复制内容',
-  'copied': '已复制',
+  copied: '已复制',
   'copied.to.clipboard': '已复制到剪贴板',
   'copy.failed': '复制失败',
 
@@ -83,8 +84,8 @@ export const fileViewer = {
   'format.xml.success': 'XML格式化成功',
   'format.xml.failed': 'XML格式化失败：内容不是有效的XML',
   'formatted.content': '格式化内容',
-	'formatted.json': '已格式化',
-	'formatted.xml': '已格式化',
+  'formatted.json': '已格式化',
+  'formatted.xml': '已格式化',
   'original.content': '原始内容',
   'content.details': '内容详情',
 
@@ -105,7 +106,8 @@ export const fileViewer = {
   // 压缩文件
   'archive.empty': '压缩文件为空',
   'folder.selected': '已选择文件夹',
-  'folder.info.message': '这是一个文件夹。压缩文件中的文件夹仅用于组织文件结构，无法进入或预览内容。',
+  'folder.info.message':
+    '这是一个文件夹。压缩文件中的文件夹仅用于组织文件结构，无法进入或预览内容。',
   'archive.root': 'Home',
   'archive.back': '返回上级',
 
@@ -169,9 +171,11 @@ export const fileViewer = {
   'word.viewer': 'Word 文档查看器',
   'word.extracted.text': '提取的文本',
   'word.raw.content': '原始内容',
-  'word.preview.limitation': '这是一个简化的文档预览。为了获得最佳的查看体验，建议下载文件并使用专门的 Word 处理软件打开。',
+  'word.preview.limitation':
+    '这是一个简化的文档预览。为了获得最佳的查看体验，建议下载文件并使用专门的 Word 处理软件打开。',
   'word.doc.legacy.title': '旧版 Word 文档',
-  'word.doc.legacy.message': '此文件是旧版本的 Word 文档格式 (.doc)，需要专门的解析器。\n\n建议：\n1. 下载文件并使用 Microsoft Word 打开\n2. 将文件转换为 .docx 格式以获得更好的支持',
+  'word.doc.legacy.message':
+    '此文件是旧版本的 Word 文档格式 (.doc)，需要专门的解析器。\n\n建议：\n1. 下载文件并使用 Microsoft Word 打开\n2. 将文件转换为 .docx 格式以获得更好的支持',
   'word.rtf.extract.failed': '无法提取 RTF 文档内容。请下载文件以查看完整内容。',
   'word.rtf.parse.error': '解析 RTF 文档时出错。请下载文件以查看完整内容。',
   'word.unsupported.format': '不支持的文件格式',
@@ -182,9 +186,11 @@ export const fileViewer = {
   'presentation.fileSize': '文件大小: {{size}} MB',
   'presentation.slideCount': '{{count}} 张幻灯片',
   'presentation.preview.title': 'PowerPoint 演示文稿预览',
-  'presentation.preview.description': '此文件是 PowerPoint 演示文稿格式，包含幻灯片、动画和多媒体内容。',
+  'presentation.preview.description':
+    '此文件是 PowerPoint 演示文稿格式，包含幻灯片、动画和多媒体内容。',
   'presentation.preview.limitation.title': '预览限制',
-  'presentation.preview.limitation.description': '由于演示文稿的复杂性，无法在浏览器中完整显示所有内容和效果。建议下载文件并使用 PowerPoint 或兼容软件打开以获得最佳体验。',
+  'presentation.preview.limitation.description':
+    '由于演示文稿的复杂性，无法在浏览器中完整显示所有内容和效果。建议下载文件并使用 PowerPoint 或兼容软件打开以获得最佳体验。',
   'presentation.download.to.view': '下载文件以查看完整演示文稿',
   'presentation.load.error': '加载演示文稿失败。请尝试下载文件以查看内容。',
   'loading.presentation': '正在加载演示文稿 "{{filename}}"...',
@@ -207,10 +213,10 @@ export const fileViewer = {
   // 长行优化
   'expand.long.line': '展开',
   'collapse.long.line': '收起',
-  'characters': '字符数',
-  'lines': '行数',
+  characters: '字符数',
+  lines: '行数',
 
-    // View modes
+  // View modes
   'virtual.viewer': '虚拟查看器',
   'virtual.view': '虚拟查看',
   'simple.view': '简单查看',

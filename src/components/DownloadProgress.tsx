@@ -1,7 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
-import { X, Download, Check, AlertCircle, StopCircle, FolderOpen, Square, Pause } from 'lucide-react';
+import {
+  X,
+  Download,
+  Check,
+  AlertCircle,
+  StopCircle,
+  FolderOpen,
+  Square,
+  Pause,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { formatFileSize } from '../utils/fileUtils';
@@ -45,7 +54,7 @@ const DownloadItem = ({
   onCancel,
   onRemove,
   onOpenLocation,
-  t
+  t,
 }: {
   download: DownloadState;
   onCancel: (filename: string) => void;
@@ -141,7 +150,9 @@ const DownloadItem = ({
         </button>
       )}
 
-      {(download.status === 'completed' || download.status === 'error' || download.status === 'stopped') && (
+      {(download.status === 'completed' ||
+        download.status === 'error' ||
+        download.status === 'stopped') && (
         <button
           onClick={() => onRemove(download.filename)}
           className="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -163,18 +174,23 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
   useEffect(() => {
     if (!isVisible) return;
 
-    const unlistenStart = listen('download-started', (event) => {
+    const unlistenStart = listen('download-started', event => {
       const { filename, total_size } = event.payload as { filename: string; total_size: number };
-      setDownloads(prev => new Map(prev.set(filename, {
-        filename,
-        progress: 0,
-        downloaded: 0,
-        totalSize: total_size,
-        status: 'downloading'
-      })));
+      setDownloads(
+        prev =>
+          new Map(
+            prev.set(filename, {
+              filename,
+              progress: 0,
+              downloaded: 0,
+              totalSize: total_size,
+              status: 'downloading',
+            })
+          )
+      );
     });
 
-    const unlistenProgress = listen('download-progress', (event) => {
+    const unlistenProgress = listen('download-progress', event => {
       const { filename, downloaded, total_size, progress } = event.payload as {
         filename: string;
         downloaded: number;
@@ -190,14 +206,14 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
             ...existing,
             progress,
             downloaded,
-            totalSize: total_size
+            totalSize: total_size,
           });
         }
         return newMap;
       });
     });
 
-    const unlistenCompleted = listen('download-completed', (event) => {
+    const unlistenCompleted = listen('download-completed', event => {
       const { filename, file_path } = event.payload as { filename: string; file_path: string };
       setDownloads(prev => {
         const newMap = new Map(prev);
@@ -207,14 +223,14 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
             ...existing,
             status: 'completed',
             filePath: file_path,
-            progress: 100
+            progress: 100,
           });
         }
         return newMap;
       });
     });
 
-    const unlistenError = listen('download-error', (event) => {
+    const unlistenError = listen('download-error', event => {
       const { filename, error } = event.payload as { filename: string; error: string };
 
       setDownloads(prev => {
@@ -226,7 +242,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
           newMap.set(filename, {
             ...existing,
             status: isCancelled ? 'stopped' : 'error',
-            error: isCancelled ? undefined : error
+            error: isCancelled ? undefined : error,
           });
         }
         return newMap;
@@ -251,20 +267,20 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
           setTimeout(() => {
             reject(new Error(`取消下载超时 (${timeoutMs}ms)`));
           }, timeoutMs);
-        })
+        }),
       ]);
       // 立即更新为stopped状态，与全部取消保持一致
-        setDownloads(prev => {
-          const newMap = new Map(prev);
-          const existing = newMap.get(filename);
-          if (existing && existing.status === 'downloading') {
-            newMap.set(filename, {
-              ...existing,
-              status: 'stopped'
-            });
-          }
-          return newMap;
-        });
+      setDownloads(prev => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(filename);
+        if (existing && existing.status === 'downloading') {
+          newMap.set(filename, {
+            ...existing,
+            status: 'stopped',
+          });
+        }
+        return newMap;
+      });
     } catch (error) {
       console.error('Failed to cancel download:', error);
     }
@@ -318,7 +334,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
             if (existing && existing.status === 'downloading') {
               newMap.set(filename, {
                 ...existing,
-                status: 'stopped'
+                status: 'stopped',
               });
             }
           });
@@ -370,11 +386,16 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
   if (!isVisible || downloads.size === 0) return null;
 
   const hasCompleted = downloadList.some(d => d.status === 'completed');
-  const hasActiveDownloads = downloadList.some(d => d.status === 'downloading' || d.status === 'preparing');
-  const activeDownloadCount = downloadList.filter(d => d.status === 'downloading' || d.status === 'preparing').length;
-  const totalProgress = downloadList.length > 0
-    ? Math.round(downloadList.reduce((sum, d) => sum + d.progress, 0) / downloadList.length)
-    : 0;
+  const hasActiveDownloads = downloadList.some(
+    d => d.status === 'downloading' || d.status === 'preparing'
+  );
+  const activeDownloadCount = downloadList.filter(
+    d => d.status === 'downloading' || d.status === 'preparing'
+  ).length;
+  const totalProgress =
+    downloadList.length > 0
+      ? Math.round(downloadList.reduce((sum, d) => sum + d.progress, 0) / downloadList.length)
+      : 0;
 
   // 最小化模式：显示小的悬浮窗
   if (isMinimized) {
@@ -388,12 +409,10 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
           <span className="text-sm text-gray-900 dark:text-gray-100">
             {activeDownloadCount} {t('download.active')}
           </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {totalProgress}%
-          </span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{totalProgress}%</span>
           {!hasActiveDownloads && (
             <button
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 forceClose();
               }}
@@ -415,7 +434,9 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-2">
           <Download className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('download.progress.title')}</h3>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {t('download.progress.title')}
+          </h3>
           <span className="text-xs text-gray-500 dark:text-gray-400">({downloads.size})</span>
         </div>
         <div className="flex items-center space-x-2">
@@ -460,7 +481,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
               position: 'relative',
             }}
           >
-            {virtualizer.getVirtualItems().map((virtualItem) => (
+            {virtualizer.getVirtualItems().map(virtualItem => (
               <div
                 key={virtualItem.key}
                 style={{
@@ -483,7 +504,7 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
             ))}
           </div>
         ) : (
-          downloadList.map((download) => (
+          downloadList.map(download => (
             <DownloadItem
               key={download.filename}
               download={download}
@@ -497,4 +518,4 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
       </div>
     </div>
   );
-};
+}

@@ -5,8 +5,6 @@ import { FileViewerSearchBar } from './FileViewerSearchBar';
 import { FileViewerContent } from './FileViewerContent';
 import { useFileLoader } from './hooks/useFileLoader';
 import { useFileSearch } from './hooks/useFileSearch';
-
-
 // 定义 VirtualizedTextViewer 的 ref 接口
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -23,7 +21,14 @@ interface FileViewerProps {
   hideBackButton?: boolean; // 新增属性，用于隐藏返回按钮
 }
 
-export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageClient, hasAssociatedFiles, onBack, hideBackButton }) => {
+export const FileViewer: React.FC<FileViewerProps> = ({
+  file,
+  filePath,
+  storageClient,
+  hasAssociatedFiles,
+  onBack,
+  hideBackButton,
+}) => {
   const fileLoader = useFileLoader(file, filePath);
 
   // 创建需要的refs
@@ -38,8 +43,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
 
   // Markdown 预览状态
   const [isMarkdownPreviewOpen, setIsMarkdownPreviewOpen] = useState(false);
-
-
 
   useEffect(() => {
     const updateHeight = () => {
@@ -98,10 +101,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     fullFileSearchLoading,
     searchResultsLimited,
     fullFileSearchLimited,
-    loadFileContent
+    loadFileContent,
   } = fileLoader;
-
-
 
   const fileSearch = useFileSearch({
     searchTerm,
@@ -128,14 +129,10 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     setCurrentFilePosition: fileLoader.setCurrentFilePosition,
     setLoadedContentSize: fileLoader.setLoadedContentSize,
     setLoading: fileLoader.setLoading,
-    setError: fileLoader.setError
+    setError: fileLoader.setError,
   });
 
-  const {
-    handleSearchResults,
-    nextResult,
-    prevResult
-  } = fileSearch;
+  const { handleSearchResults, nextResult, prevResult } = fileSearch;
 
   const handlePercentageJump = () => {
     const value = parseFloat(percentValue);
@@ -154,51 +151,49 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, filePath, storageC
     }
   };
 
-
-
   return (
     <div ref={mainDivRef} className="h-full bg-gray-50 dark:bg-gray-900 flex flex-col">
       <FileViewerHeader
-          file={file}
-          filePath={filePath}
-          fileType={fileType}
-          onBack={onBack}
-          hideBackButton={hideBackButton}
-          fileInfo={fileInfo}
-          isLargeFile={isLargeFile}
-          dataMetadata={dataMetadata}
-          presentationMetadata={presentationMetadata}
-          currentFilePosition={currentFilePosition}
-          totalSize={totalSize}
-        />
+        file={file}
+        filePath={filePath}
+        fileType={fileType}
+        onBack={onBack}
+        hideBackButton={hideBackButton}
+        fileInfo={fileInfo}
+        isLargeFile={isLargeFile}
+        dataMetadata={dataMetadata}
+        presentationMetadata={presentationMetadata}
+        currentFilePosition={currentFilePosition}
+        totalSize={totalSize}
+      />
 
       {fileInfo.isTextBased && (
-          <FileViewerSearchBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            fullFileSearchMode={fullFileSearchMode}
-            setFullFileSearchMode={setFullFileSearchMode}
-            searchLoading={searchLoading}
-            fullFileSearchLoading={fullFileSearchLoading}
-            searchResults={searchResults}
-            fullFileSearchResults={fullFileSearchResults}
-            currentSearchIndex={currentSearchIndex}
-            searchResultsLimited={searchResultsLimited}
-            fullFileSearchLimited={fullFileSearchLimited}
-            isLargeFile={isLargeFile}
-            showPercentInput={showPercentInput}
-            setShowPercentInput={setShowPercentInput}
-            percentValue={percentValue}
-            setPercentValue={setPercentValue}
-            onNextResult={nextResult}
-            onPrevResult={prevResult}
-            onPercentageJump={handlePercentageJump}
-            onPercentKeyPress={handlePercentKeyPress}
-            isMarkdown={fileInfo.isMarkdown}
-            onMarkdownPreview={() => setIsMarkdownPreviewOpen(true)}
-            fileName={file.filename}
-          />
-        )}
+        <FileViewerSearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          fullFileSearchMode={fullFileSearchMode}
+          setFullFileSearchMode={setFullFileSearchMode}
+          searchLoading={searchLoading}
+          fullFileSearchLoading={fullFileSearchLoading}
+          searchResults={searchResults}
+          fullFileSearchResults={fullFileSearchResults}
+          currentSearchIndex={currentSearchIndex}
+          searchResultsLimited={searchResultsLimited}
+          fullFileSearchLimited={fullFileSearchLimited}
+          isLargeFile={isLargeFile}
+          showPercentInput={showPercentInput}
+          setShowPercentInput={setShowPercentInput}
+          percentValue={percentValue}
+          setPercentValue={setPercentValue}
+          onNextResult={nextResult}
+          onPrevResult={prevResult}
+          onPercentageJump={handlePercentageJump}
+          onPercentKeyPress={handlePercentKeyPress}
+          isMarkdown={fileInfo.isMarkdown}
+          onMarkdownPreview={() => setIsMarkdownPreviewOpen(true)}
+          fileName={file.filename}
+        />
+      )}
 
       <FileViewerContent
         ref={textViewerRef}

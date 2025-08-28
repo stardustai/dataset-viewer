@@ -1,6 +1,6 @@
+use crate::archive::formats::{common::*, CompressionHandlerDispatcher};
 /// 7z 格式处理器
 use crate::archive::types::*;
-use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
 use std::collections::HashMap;
 use std::io::Cursor;
 
@@ -75,7 +75,8 @@ impl SevenZipHandler {
         }
 
         let cursor = Cursor::new(data);
-        let mut archive = SevenZReader::new(cursor, data.len() as u64).map_err(|e| e.to_string())?;
+        let mut archive =
+            SevenZReader::new(cursor, data.len() as u64).map_err(|e| e.to_string())?;
         let mut entries = Vec::new();
         let mut total_uncompressed_size = 0;
 
@@ -89,8 +90,8 @@ impl SevenZipHandler {
 
             // 处理修改时间
             let modified_time = entry.last_write_time().and_then(|timestamp| {
-                use std::time::{UNIX_EPOCH, Duration};
                 use chrono::{DateTime, Utc};
+                use std::time::{Duration, UNIX_EPOCH};
 
                 // Windows FILETIME 转换为 Unix 时间戳
                 let unix_timestamp = (timestamp - 116444736000000000) / 10000000;
@@ -129,7 +130,10 @@ impl SevenZipHandler {
         filename: &str,
         file_size: u64,
     ) -> Result<ArchiveInfo, String> {
-        println!("开始下载7z文件进行分析: {} (大小: {} 字节)", filename, file_size);
+        println!(
+            "开始下载7z文件进行分析: {} (大小: {} 字节)",
+            filename, file_size
+        );
 
         let data = HttpClient::download_file(url, headers).await?;
         Self::analyze_7z_complete(&data)
@@ -166,9 +170,9 @@ impl SevenZipHandler {
         for entry in archive.entries() {
             if entry.name() == entry_path && !entry.is_directory() {
                 let mut output = Vec::new();
-                archive.extract_to_writer(entry, &mut output).map_err(|e| e.to_string())?;
-
-
+                archive
+                    .extract_to_writer(entry, &mut output)
+                    .map_err(|e| e.to_string())?;
                 let total_size = entry.size();
                 let preview_size = max_size.min(output.len());
 
@@ -190,7 +194,6 @@ impl SevenZipHandler {
                     .content(content)
                     .with_truncated(preview_size < total_size as usize)
                     .total_size(total_size)
-
                     .build());
             }
         }
@@ -205,7 +208,11 @@ impl SevenZipHandler {
         }
 
         // 7z 文件签名: "7z\xbc\xaf\x27\x1c"
-        data[0] == 0x37 && data[1] == 0x7a && data[2] == 0xbc &&
-        data[3] == 0xaf && data[4] == 0x27 && data[5] == 0x1c
+        data[0] == 0x37
+            && data[1] == 0x7a
+            && data[2] == 0xbc
+            && data[3] == 0xaf
+            && data[4] == 0x27
+            && data[5] == 0x1c
     }
 }

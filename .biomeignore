@@ -1,0 +1,6 @@
+src-tauri/**
+node_modules/**
+dist/**
+target/**
+.git/**
+*.d.ts

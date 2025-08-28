@@ -9,7 +9,7 @@ export const localStorageAdapter: StorageAdapter = {
   protocol: 'local',
   displayName: 'Local Files',
   defaultSortOptions: null, // 使用前端排序
-  defaultPageSize: null,    // 不分页
+  defaultPageSize: null, // 不分页
   supportsSearch: true,
   supportsCustomRootDisplay: false,
 
@@ -51,7 +51,7 @@ export const localStorageAdapter: StorageAdapter = {
     return {
       rootPath,
       connected: true,
-      displayPath: rootPath.split('/').pop() || rootPath
+      displayPath: rootPath.split('/').pop() || rootPath,
     };
-  }
+  },
 };

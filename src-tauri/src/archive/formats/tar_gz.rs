@@ -1,14 +1,12 @@
+use crate::archive::formats::{common::*, CompressionHandlerDispatcher};
 /// TAR.GZ 格式处理器（组合GZIP和TAR）
 use crate::archive::types::*;
-use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
-use crate::storage::traits::{StorageClient, ProgressCallback};
+use crate::storage::traits::{ProgressCallback, StorageClient};
+use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::io::{Cursor, Read};
 use std::sync::Arc;
-use flate2::read::GzDecoder;
 use tar::Archive;
-
-
 pub struct TarGzHandler;
 
 #[async_trait::async_trait]
@@ -33,7 +31,16 @@ impl CompressionHandlerDispatcher for TarGzHandler {
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        Self::extract_tar_gz_preview_with_progress(client, file_path, entry_path, max_size, offset, progress_callback, cancel_rx).await
+        Self::extract_tar_gz_preview_with_progress(
+            client,
+            file_path,
+            entry_path,
+            max_size,
+            offset,
+            progress_callback,
+            cancel_rx,
+        )
+        .await
     }
 
     fn compression_type(&self) -> CompressionType {
@@ -56,8 +63,6 @@ impl TarGzHandler {
         Self::analyze_tar_gz_streaming(client, file_path).await
     }
 
-
-
     /// 流式分析TAR.GZ文件
     async fn analyze_tar_gz_streaming(
         client: Arc<dyn StorageClient>,
@@ -65,18 +70,23 @@ impl TarGzHandler {
     ) -> Result<ArchiveInfo, String> {
         log::debug!("开始流式分析TAR.GZ文件: {}", file_path);
 
-        let file_size = client.get_file_size(file_path).await
+        let file_size = client
+            .get_file_size(file_path)
+            .await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
 
-        log::info!("TAR.GZ文件大小: {:.2} MB", file_size as f64 / (1024.0 * 1024.0));
+        log::info!(
+            "TAR.GZ文件大小: {:.2} MB",
+            file_size as f64 / (1024.0 * 1024.0)
+        );
 
-        let data = client.read_full_file(file_path).await
+        let data = client
+            .read_full_file(file_path)
+            .await
             .map_err(|e| format!("Failed to read file: {}", e))?;
 
         Self::analyze_tar_gz_complete(&data)
     }
-
-
 
     /// 流式提取TAR.GZ文件预览（支持进度回调和取消信号）
     async fn extract_tar_gz_preview_with_progress(
@@ -88,12 +98,21 @@ impl TarGzHandler {
         progress_callback: Option<Box<dyn Fn(u64, u64) + Send + Sync>>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<FilePreview, String> {
-        log::debug!("开始流式提取TAR.GZ预览（带进度）: {} -> {}", file_path, entry_path);
+        log::debug!(
+            "开始流式提取TAR.GZ预览（带进度）: {} -> {}",
+            file_path,
+            entry_path
+        );
 
-        let file_size = client.get_file_size(file_path).await
+        let file_size = client
+            .get_file_size(file_path)
+            .await
             .map_err(|e| format!("Failed to get file size: {}", e))?;
 
-        log::info!("TAR.GZ文件大小: {:.2} MB", file_size as f64 / (1024.0 * 1024.0));
+        log::info!(
+            "TAR.GZ文件大小: {:.2} MB",
+            file_size as f64 / (1024.0 * 1024.0)
+        );
 
         // 直接读取全部数据，避免人为分块导致的性能问题
         let progress_cb = progress_callback.map(|cb| {
@@ -102,7 +121,9 @@ impl TarGzHandler {
             }) as ProgressCallback
         });
 
-        let data = client.read_full_file_with_progress(file_path, progress_cb, cancel_rx).await
+        let data = client
+            .read_full_file_with_progress(file_path, progress_cb, cancel_rx)
+            .await
             .map_err(|e| format!("Failed to read file: {}", e))?;
 
         Self::extract_tar_gz_preview_from_data(&data, entry_path, max_size)
@@ -123,7 +144,11 @@ impl TarGzHandler {
         let mut entries = Vec::new();
         let mut total_uncompressed_size = 0;
 
-        for (index, entry_result) in tar_archive.entries().map_err(|e| e.to_string())?.enumerate() {
+        for (index, entry_result) in tar_archive
+            .entries()
+            .map_err(|e| e.to_string())?
+            .enumerate()
+        {
             match entry_result {
                 Ok(entry) => {
                     let header = entry.header();
@@ -139,8 +164,8 @@ impl TarGzHandler {
                         compressed_size: None,
                         is_dir,
                         modified_time: header.mtime().ok().map(|timestamp| {
-                            use std::time::{UNIX_EPOCH, Duration};
                             use chrono::{DateTime, Utc};
+                            use std::time::{Duration, UNIX_EPOCH};
 
                             let duration = Duration::from_secs(timestamp);
                             let datetime = UNIX_EPOCH + duration;
@@ -170,7 +195,11 @@ impl TarGzHandler {
     }
 
     /// 从TAR.GZ数据中提取文件预览（用于小文件）
-    fn extract_tar_gz_preview_from_data(data: &[u8], entry_path: &str, max_size: usize) -> Result<FilePreview, String> {
+    fn extract_tar_gz_preview_from_data(
+        data: &[u8],
+        entry_path: &str,
+        max_size: usize,
+    ) -> Result<FilePreview, String> {
         let gz_decoder = GzDecoder::new(Cursor::new(data));
         let mut tar_archive = Archive::new(gz_decoder);
 
@@ -183,7 +212,9 @@ impl TarGzHandler {
 
                         // 读取完整文件内容，然后截取预览部分（参考ZIP格式的处理方式）
                         let mut full_content = Vec::new();
-                        entry.read_to_end(&mut full_content).map_err(|e| e.to_string())?;
+                        entry
+                            .read_to_end(&mut full_content)
+                            .map_err(|e| e.to_string())?;
 
                         // 保存完整内容长度
                         let full_content_len = full_content.len();

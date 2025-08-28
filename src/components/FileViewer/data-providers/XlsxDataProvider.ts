@@ -32,7 +32,6 @@ export class XlsxDataProvider implements DataProvider {
       }
       try {
         this.workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
       } catch (error) {
         console.error('XLSX parsing error:', error);
         throw error;
@@ -46,7 +45,10 @@ export class XlsxDataProvider implements DataProvider {
       const workbook = await this.getWorkbook();
       const sheetName = workbook.SheetNames[this.currentSheetIndex];
       const worksheet = workbook.Sheets[sheetName];
-      this.currentSheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+      this.currentSheetData = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
+        defval: '',
+      }) as any[][];
     }
     return this.currentSheetData;
   }

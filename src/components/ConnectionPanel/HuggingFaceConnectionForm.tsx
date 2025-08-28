@@ -13,12 +13,12 @@ interface HuggingFaceConnectionFormProps {
 export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps> = ({
   onConnect,
   isConnecting,
-  selectedConnection
+  selectedConnection,
 }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     apiToken: '',
-    organization: ''
+    organization: '',
   });
 
   // 当选中连接变化时，更新表单
@@ -30,13 +30,13 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
 
       setFormData({
         organization: organization,
-        apiToken: apiToken ? '••••••••' : '' // 显示占位符表示已保存的 token
+        apiToken: apiToken ? '••••••••' : '', // 显示占位符表示已保存的 token
       });
     } else if (!selectedConnection) {
       // 清空表单
       setFormData({
         apiToken: '',
-        organization: ''
+        organization: '',
       });
     }
   }, [selectedConnection]);
@@ -45,9 +45,10 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
     e.preventDefault();
 
     // 如果 API token 是占位符且有选中的连接，使用真实的 token
-    const actualApiToken = (formData.apiToken === '••••••••' && selectedConnection)
-      ? (selectedConnection.metadata?.apiToken || '')
-      : formData.apiToken;
+    const actualApiToken =
+      formData.apiToken === '••••••••' && selectedConnection
+        ? selectedConnection.metadata?.apiToken || ''
+        : formData.apiToken;
 
     // 检查组织名是否发生变化
     const originalOrg = selectedConnection?.metadata?.organization || '';
@@ -59,20 +60,19 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
       apiToken: actualApiToken || undefined,
       organization: formData.organization || undefined,
       url: 'https://huggingface.co', // 固定URL
-      name: orgChanged ? undefined : selectedConnection?.name // 如果组织名变化，清除名称让系统重新生成
+      name: orgChanged ? undefined : selectedConnection?.name, // 如果组织名变化，清除名称让系统重新生成
     };
 
     await onConnect(config);
   };
 
-  const handleInputChange = (field: keyof typeof formData) => (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: e.target.value.trim()
-    }));
-  };
+  const handleInputChange =
+    (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData(prev => ({
+        ...prev,
+        [field]: e.target.value.trim(),
+      }));
+    };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -139,9 +139,7 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
 
       {/* 帮助信息 */}
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-        <p>
-          {t('huggingface.help.token.title')}
-        </p>
+        <p>{t('huggingface.help.token.title')}</p>
         <p>
           1. {t('huggingface.help.token.step1')}
           <a
@@ -153,12 +151,8 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
             huggingface.co/settings/tokens
           </a>
         </p>
-        <p>
-          2. {t('huggingface.help.token.step2')}
-        </p>
-        <p>
-          3. {t('huggingface.help.token.step3')}
-        </p>
+        <p>2. {t('huggingface.help.token.step2')}</p>
+        <p>3. {t('huggingface.help.token.step3')}</p>
       </div>
     </form>
   );

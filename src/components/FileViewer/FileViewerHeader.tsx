@@ -1,10 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowLeft,
-  Download,
-  Copy
-} from 'lucide-react';
+import { ArrowLeft, Download, Copy } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { LanguageSwitcher } from '../LanguageSwitcher';
@@ -55,7 +51,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
   dataMetadata,
   presentationMetadata,
   currentFilePosition = 0,
-  totalSize = 0
+  totalSize = 0,
 }) => {
   const { t } = useTranslation();
 
@@ -65,25 +61,25 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
 
   const getLanguageFromExtension = (ext: string): string => {
     const languageMap: { [key: string]: string } = {
-      'js': 'javascript',
-      'ts': 'typescript',
-      'jsx': 'javascript',
-      'tsx': 'typescript',
-      'json': 'json',
-      'html': 'html',
-      'css': 'css',
-      'py': 'python',
-      'java': 'java',
-      'cpp': 'cpp',
-      'c': 'c',
-      'php': 'php',
-      'rb': 'ruby',
-      'go': 'go',
-      'rs': 'rust',
-      'xml': 'xml',
-      'yaml': 'yaml',
-      'yml': 'yaml',
-      'md': 'markdown',
+      js: 'javascript',
+      ts: 'typescript',
+      jsx: 'javascript',
+      tsx: 'typescript',
+      json: 'json',
+      html: 'html',
+      css: 'css',
+      py: 'python',
+      java: 'java',
+      cpp: 'cpp',
+      c: 'c',
+      php: 'php',
+      rb: 'ruby',
+      go: 'go',
+      rs: 'rust',
+      xml: 'xml',
+      yaml: 'yaml',
+      yml: 'yaml',
+      md: 'markdown',
     };
     return languageMap[ext] || 'text';
   };
@@ -98,13 +94,13 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
 
       // 下载进度将通过事件系统处理，这里不需要显示 alert
       // 用户可以在下载进度组件中看到状态
-
     } catch (err) {
       console.error('Failed to start download:', err);
       // 如果是用户取消操作，不显示错误弹窗
-      const errorMessage = err instanceof Error ? err.message : (typeof err === 'string' ? err : t('error.unknown'));
+      const errorMessage =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : t('error.unknown');
       if (errorMessage !== 'download.cancelled') {
-				showToast(`${t('download.failed')}: ${errorMessage}`, 'error');
+        showToast(`${t('download.failed')}: ${errorMessage}`, 'error');
       }
     }
   };
@@ -165,18 +161,21 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
                 </button>
               </div>
               <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">
-                {formatFileSize(file.size)} • {
+                {formatFileSize(file.size)} •{' '}
+                {
                   // 检查是否有扩展字段中的点云信息
-                  dataMetadata && dataMetadata.extensions && 'pointCount' in dataMetadata.extensions ?
-                    `${(dataMetadata.extensions as any).pointCount.toLocaleString()} points • ${(dataMetadata.extensions as any).hasColor ? 'RGB' : 'XYZ'}${(dataMetadata.extensions as any).hasIntensity ? '+I' : ''}` :
-                  // 通用数据文件（表格、CSV等）
-                  (fileInfo.isData || fileInfo.isSpreadsheet) && dataMetadata ?
-                    `${dataMetadata.numRows.toLocaleString()} rows • ${dataMetadata.numColumns} columns` :
-                  // 演示文件
-                  fileInfo.isPresentation && presentationMetadata ?
-                    `${presentationMetadata.slideCount} slides • ${presentationMetadata.size.width} × ${presentationMetadata.size.height} pt` :
-                  // 文本文件
-                  fileInfo.isText ? getLanguageFromExtension(getFileExtension(file.basename)) : fileType
+                  dataMetadata && dataMetadata.extensions && 'pointCount' in dataMetadata.extensions
+                    ? `${(dataMetadata.extensions as any).pointCount.toLocaleString()} points • ${(dataMetadata.extensions as any).hasColor ? 'RGB' : 'XYZ'}${(dataMetadata.extensions as any).hasIntensity ? '+I' : ''}`
+                    : // 通用数据文件（表格、CSV等）
+                      (fileInfo.isData || fileInfo.isSpreadsheet) && dataMetadata
+                      ? `${dataMetadata.numRows.toLocaleString()} rows • ${dataMetadata.numColumns} columns`
+                      : // 演示文件
+                        fileInfo.isPresentation && presentationMetadata
+                        ? `${presentationMetadata.slideCount} slides • ${presentationMetadata.size.width} × ${presentationMetadata.size.height} pt`
+                        : // 文本文件
+                          fileInfo.isText
+                          ? getLanguageFromExtension(getFileExtension(file.basename))
+                          : fileType
                 }
                 {isLargeFile && (
                   <span className="hidden sm:inline">
@@ -184,7 +183,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
                     {t('viewer.position.info', {
                       current: formatFileSize(currentFilePosition),
                       total: formatFileSize(totalSize),
-                      percent: ((currentFilePosition / totalSize) * 100).toFixed(1)
+                      percent: ((currentFilePosition / totalSize) * 100).toFixed(1),
                     })}
                   </span>
                 )}

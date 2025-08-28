@@ -42,16 +42,22 @@ export const errors = {
   'preview.render.error': 'Preview rendering failed',
 
   // Archive format errors
-  'archive.format.7z.not.supported': '7Z format is not supported for online preview. 7Z file structure is located at the end of the file, making streaming impossible. Full file download is required for analysis. Please use dedicated extraction tools.',
-  'archive.format.rar.not.supported': 'RAR format is not supported for online preview. RAR is a proprietary format with file headers at the end and complex compression algorithms that prevent streaming. Please use WinRAR or similar tools.',
-  'archive.format.brotli.not.supported': 'Brotli format is not supported yet. Supported formats: ZIP, TAR, TAR.GZ, GZIP',
-  'archive.format.lz4.not.supported': 'LZ4 format is not supported yet. Supported formats: ZIP, TAR, TAR.GZ, GZIP',
-  'archive.format.zstd.not.supported': 'Zstd format is not supported yet. Supported formats: ZIP, TAR, TAR.GZ, GZIP',
+  'archive.format.7z.not.supported':
+    '7Z format is not supported for online preview. 7Z file structure is located at the end of the file, making streaming impossible. Full file download is required for analysis. Please use dedicated extraction tools.',
+  'archive.format.rar.not.supported':
+    'RAR format is not supported for online preview. RAR is a proprietary format with file headers at the end and complex compression algorithms that prevent streaming. Please use WinRAR or similar tools.',
+  'archive.format.brotli.not.supported':
+    'Brotli format is not supported yet. Supported formats: ZIP, TAR, TAR.GZ, GZIP',
+  'archive.format.lz4.not.supported':
+    'LZ4 format is not supported yet. Supported formats: ZIP, TAR, TAR.GZ, GZIP',
+  'archive.format.zstd.not.supported':
+    'Zstd format is not supported yet. Supported formats: ZIP, TAR, TAR.GZ, GZIP',
   'archive.format.unsupported': 'Unsupported archive format',
 
   // Error boundary
   'error.boundary.title': 'Application Error',
-  'error.boundary.description': 'Sorry, the application encountered an unexpected error. You can try refreshing the page or returning to the home page.',
+  'error.boundary.description':
+    'Sorry, the application encountered an unexpected error. You can try refreshing the page or returning to the home page.',
   'error.boundary.details': 'Error Details',
   'error.boundary.retry': 'Retry',
   'error.boundary.home': 'Go Home',

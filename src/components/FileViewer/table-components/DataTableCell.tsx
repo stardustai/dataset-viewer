@@ -14,7 +14,7 @@ export const DataTableCell: React.FC<DataTableCellProps> = ({
   value,
   column,
   rowIndex,
-  onOpenModal
+  onOpenModal,
 }) => {
   const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -30,8 +30,9 @@ export const DataTableCell: React.FC<DataTableCellProps> = ({
     if (!textElement) return;
 
     // 快速检测：比较 scrollWidth 和 clientWidth
-    const needsExpand = textElement.scrollWidth > textElement.clientWidth ||
-                       textElement.scrollHeight > textElement.clientHeight;
+    const needsExpand =
+      textElement.scrollWidth > textElement.clientWidth ||
+      textElement.scrollHeight > textElement.clientHeight;
 
     setShowExpandButton(needsExpand);
   });
@@ -45,24 +46,24 @@ export const DataTableCell: React.FC<DataTableCellProps> = ({
     if (Array.isArray(value)) {
       return {
         content: JSON.stringify(value),
-        className: "text-xs font-mono text-blue-600 dark:text-blue-400",
-        isComplex: true
+        className: 'text-xs font-mono text-blue-600 dark:text-blue-400',
+        isComplex: true,
       };
     }
 
     if (typeof value === 'object') {
       return {
         content: JSON.stringify(value),
-        className: "text-xs font-mono text-blue-600 dark:text-blue-400",
-        isComplex: true
+        className: 'text-xs font-mono text-blue-600 dark:text-blue-400',
+        isComplex: true,
       };
     }
 
     if (typeof value === 'boolean') {
       return {
         content: value.toString(),
-        className: "font-mono text-purple-600 dark:text-purple-400",
-        isComplex: false
+        className: 'font-mono text-purple-600 dark:text-purple-400',
+        isComplex: false,
       };
     }
 
@@ -73,46 +74,47 @@ export const DataTableCell: React.FC<DataTableCellProps> = ({
 
       return {
         content: displayValue,
-        className: "font-mono text-gray-900 dark:text-gray-100",
-        isComplex: false
+        className: 'font-mono text-gray-900 dark:text-gray-100',
+        isComplex: false,
       };
     }
 
     if (value instanceof Date) {
       return {
         content: value.toISOString(),
-        className: "font-mono text-green-600 dark:text-green-400",
-        isComplex: false
+        className: 'font-mono text-green-600 dark:text-green-400',
+        isComplex: false,
       };
     }
 
     // 字符串或其他类型
     return {
       content: String(value),
-      className: "text-gray-900 dark:text-gray-100",
-      isComplex: /[\n\r\t]/.test(String(value)) || String(value).length > 200
+      className: 'text-gray-900 dark:text-gray-100',
+      isComplex: /[\n\r\t]/.test(String(value)) || String(value).length > 200,
     };
   };
 
   const { content, className, isComplex } = getDisplayContent();
 
   return (
-    <div
-      ref={contentRef}
-      className="flex items-center w-full min-w-0"
-    >
+    <div ref={contentRef} className="flex items-center w-full min-w-0">
       <div
         data-text-content
         className={`${className} text-sm flex-1 min-w-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5 transition-colors`}
         onClick={() => onOpenModal(value, column, rowIndex)}
-        title={showExpandButton ? t('data.table.cell.click.view') : t('data.table.cell.double.click.view')}
+        title={
+          showExpandButton
+            ? t('data.table.cell.click.view')
+            : t('data.table.cell.double.click.view')
+        }
         style={{
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           wordBreak: 'break-all',
-          lineHeight: '1.3'
+          lineHeight: '1.3',
         }}
       >
         {content}
@@ -120,7 +122,7 @@ export const DataTableCell: React.FC<DataTableCellProps> = ({
 
       {(showExpandButton || isComplex) && (
         <button
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onOpenModal(value, column, rowIndex);
           }}

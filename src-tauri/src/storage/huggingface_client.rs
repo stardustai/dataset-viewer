@@ -2,12 +2,12 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use futures_util::StreamExt;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::storage::traits::{
-    StorageClient, StorageError, ConnectionConfig,
-    DirectoryResult, StorageFile, ListOptions, ProgressCallback,
+    ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
+    StorageFile,
 };
 
 /// HuggingFace 数据集信息
@@ -23,9 +23,9 @@ struct DatasetInfo {
 pub struct DatasetFile {
     #[serde(rename = "type")]
     pub file_type: String, // "file" 或 "directory"
-    pub oid: String,       // Git 对象 ID
-    pub size: u64,         // 文件大小
-    pub path: String,      // 文件路径
+    pub oid: String,  // Git 对象 ID
+    pub size: u64,    // 文件大小
+    pub path: String, // 文件路径
 }
 
 // HuggingFace API 直接返回数组，不需要包装结构体
@@ -55,7 +55,10 @@ impl HuggingFaceClient {
     }
 
     /// 获取热门数据集
-    async fn list_popular_datasets(&self, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_popular_datasets(
+        &self,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         let page_size = options.and_then(|o| o.page_size).unwrap_or(20);
 
         // 构建基础 URL
@@ -68,7 +71,8 @@ impl HuggingFaceClient {
             }
         }
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .headers(self.get_reqwest_headers())
             .send()
@@ -76,9 +80,10 @@ impl HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("Failed to fetch datasets: {}", response.status())
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "Failed to fetch datasets: {}",
+                response.status()
+            )));
         }
 
         // 提取 Link header 信息以及下一页的 cursor（在消耗 response 之前）
@@ -89,11 +94,13 @@ impl HuggingFaceClient {
                 // 从 Link header 中提取 cursor 参数
                 let next_cursor = if has_more {
                     // 提取形如 <https://huggingface.co/api/datasets?cursor=xxx&limit=20>; rel="next" 的链接
-                    link_str.split(',')
+                    link_str
+                        .split(',')
                         .find(|part| part.contains("rel=\"next\""))
                         .and_then(|next_part| {
                             // 提取 URL 部分
-                            next_part.trim()
+                            next_part
+                                .trim()
                                 .strip_prefix('<')
                                 .and_then(|s| s.split('>').next())
                         })
@@ -102,7 +109,9 @@ impl HuggingFaceClient {
                             url.split('&')
                                 .find(|param| param.starts_with("cursor="))
                                 .and_then(|cursor_param| cursor_param.strip_prefix("cursor="))
-                                .map(|cursor| urlencoding::decode(cursor).unwrap_or_default().into_owned())
+                                .map(|cursor| {
+                                    urlencoding::decode(cursor).unwrap_or_default().into_owned()
+                                })
                         })
                 } else {
                     None
@@ -126,7 +135,9 @@ impl HuggingFaceClient {
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 使用 : 替代 / 来避免路径解析问题
                 basename: dataset.id.replace('/', ":"), // 统一使用 : 分隔符格式
-                lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
+                lastmod: dataset
+                    .last_modified
+                    .unwrap_or_else(|| "unknown".to_string()),
                 size: "0".to_string(),
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
@@ -152,11 +163,16 @@ impl HuggingFaceClient {
     }
 
     /// 搜索数据集
-    async fn search_datasets(&self, query: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn search_datasets(
+        &self,
+        query: &str,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         let page_size = options.and_then(|o| o.page_size).unwrap_or(20);
 
         // 构建基础 URL
-        let mut url = format!("{}/datasets?search={}&limit={}",
+        let mut url = format!(
+            "{}/datasets?search={}&limit={}",
             self.api_url,
             urlencoding::encode(query),
             page_size
@@ -169,7 +185,8 @@ impl HuggingFaceClient {
             }
         }
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .headers(self.get_reqwest_headers())
             .send()
@@ -177,9 +194,10 @@ impl HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("Failed to search datasets: {}", response.status())
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "Failed to search datasets: {}",
+                response.status()
+            )));
         }
 
         // 提取 Link header 信息以及下一页的 cursor（在消耗 response 之前）
@@ -190,11 +208,13 @@ impl HuggingFaceClient {
                 // 从 Link header 中提取 cursor 参数
                 let next_cursor = if has_more {
                     // 提取形如 <https://huggingface.co/api/datasets?cursor=xxx&limit=20>; rel="next" 的链接
-                    link_str.split(',')
+                    link_str
+                        .split(',')
                         .find(|part| part.contains("rel=\"next\""))
                         .and_then(|next_part| {
                             // 提取 URL 部分
-                            next_part.trim()
+                            next_part
+                                .trim()
                                 .strip_prefix('<')
                                 .and_then(|s| s.split('>').next())
                         })
@@ -203,7 +223,9 @@ impl HuggingFaceClient {
                             url.split('&')
                                 .find(|param| param.starts_with("cursor="))
                                 .and_then(|cursor_param| cursor_param.strip_prefix("cursor="))
-                                .map(|cursor| urlencoding::decode(cursor).unwrap_or_default().into_owned())
+                                .map(|cursor| {
+                                    urlencoding::decode(cursor).unwrap_or_default().into_owned()
+                                })
                         })
                 } else {
                     None
@@ -227,7 +249,9 @@ impl HuggingFaceClient {
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
                 basename: dataset.id.replace('/', ":"), // 统一使用 : 分隔符格式
-                lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
+                lastmod: dataset
+                    .last_modified
+                    .unwrap_or_else(|| "unknown".to_string()),
                 size: "0".to_string(),
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
@@ -253,11 +277,16 @@ impl HuggingFaceClient {
     }
 
     /// 根据组织名称搜索数据集
-    async fn list_organization_datasets(&self, org_name: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_organization_datasets(
+        &self,
+        org_name: &str,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         let page_size = options.and_then(|o| o.page_size).unwrap_or(20);
 
         // 构建基础 URL
-        let mut url = format!("{}/datasets?author={}&limit={}",
+        let mut url = format!(
+            "{}/datasets?author={}&limit={}",
             self.api_url,
             urlencoding::encode(org_name),
             page_size
@@ -270,7 +299,8 @@ impl HuggingFaceClient {
             }
         }
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .headers(self.get_reqwest_headers())
             .send()
@@ -278,9 +308,10 @@ impl HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("Failed to fetch organization datasets: {}", response.status())
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "Failed to fetch organization datasets: {}",
+                response.status()
+            )));
         }
 
         // 提取 Link header 信息以及下一页的 cursor（在消耗 response 之前）
@@ -291,11 +322,13 @@ impl HuggingFaceClient {
                 // 从 Link header 中提取 cursor 参数
                 let next_cursor = if has_more {
                     // 提取形如 <https://huggingface.co/api/datasets?cursor=xxx&limit=20>; rel="next" 的链接
-                    link_str.split(',')
+                    link_str
+                        .split(',')
                         .find(|part| part.contains("rel=\"next\""))
                         .and_then(|next_part| {
                             // 提取 URL 部分
-                            next_part.trim()
+                            next_part
+                                .trim()
                                 .strip_prefix('<')
                                 .and_then(|s| s.split('>').next())
                         })
@@ -304,7 +337,9 @@ impl HuggingFaceClient {
                             url.split('&')
                                 .find(|param| param.starts_with("cursor="))
                                 .and_then(|cursor_param| cursor_param.strip_prefix("cursor="))
-                                .map(|cursor| urlencoding::decode(cursor).unwrap_or_default().into_owned())
+                                .map(|cursor| {
+                                    urlencoding::decode(cursor).unwrap_or_default().into_owned()
+                                })
                         })
                 } else {
                     None
@@ -328,7 +363,9 @@ impl HuggingFaceClient {
             .map(|dataset| StorageFile {
                 filename: dataset.id.replace('/', ":"), // 用于前端路径导航
                 basename: dataset.id.replace('/', ":"), // 统一使用 : 分隔符格式
-                lastmod: dataset.last_modified.unwrap_or_else(|| "unknown".to_string()),
+                lastmod: dataset
+                    .last_modified
+                    .unwrap_or_else(|| "unknown".to_string()),
                 size: "0".to_string(),
                 file_type: "directory".to_string(),
                 mime: Some("application/x-directory".to_string()),
@@ -346,16 +383,26 @@ impl HuggingFaceClient {
     }
 
     /// 列出数据集文件
-    async fn list_dataset_files(&self, owner: &str, dataset: &str, subpath: &str, _options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_dataset_files(
+        &self,
+        owner: &str,
+        dataset: &str,
+        subpath: &str,
+        _options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         let dataset_id = format!("{}/{}", owner, dataset);
         // 使用 tree API 获取完整的文件信息
         let url = if subpath.is_empty() {
             format!("{}/datasets/{}/tree/main", self.api_url, dataset_id)
         } else {
-            format!("{}/datasets/{}/tree/main/{}", self.api_url, dataset_id, subpath)
+            format!(
+                "{}/datasets/{}/tree/main/{}",
+                self.api_url, dataset_id, subpath
+            )
         };
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .headers(self.get_reqwest_headers())
             .send()
@@ -410,7 +457,12 @@ impl HuggingFaceClient {
                         basename: relative_path.clone(),
                         lastmod: "unknown".to_string(),
                         size: file.size.to_string(),
-                        file_type: if file.file_type == "directory" { "directory" } else { "file" }.to_string(),
+                        file_type: if file.file_type == "directory" {
+                            "directory"
+                        } else {
+                            "file"
+                        }
+                        .to_string(),
                         mime: if file.file_type == "directory" {
                             Some("application/x-directory".to_string())
                         } else {
@@ -465,13 +517,18 @@ impl HuggingFaceClient {
 
     /// 构建文件下载 URL
     fn build_download_url(&self, dataset_id: &str, file_path: &str) -> String {
-        format!("{}/datasets/{}/resolve/main/{}", self.base_url, dataset_id, file_path)
+        format!(
+            "{}/datasets/{}/resolve/main/{}",
+            self.base_url, dataset_id, file_path
+        )
     }
 
     /// 解析路径 - 处理前端传来的协议URL或简单路径格式
     fn parse_path(&self, path: &str) -> Result<(String, String), StorageError> {
         if path == "/" || path.is_empty() {
-            return Err(StorageError::InvalidConfig("Root path not supported".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "Root path not supported".to_string(),
+            ));
         }
 
         // 处理协议URL格式：huggingface://owner:dataset/file_path
@@ -483,7 +540,9 @@ impl HuggingFaceClient {
 
         // 处理搜索路径
         if path_to_parse.starts_with("search/") {
-            return Err(StorageError::InvalidConfig("Search paths should be handled separately".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "Search paths should be handled separately".to_string(),
+            ));
         }
 
         // 路径格式：{owner}:{dataset}/{file_path}
@@ -497,19 +556,27 @@ impl HuggingFaceClient {
 
         // 必须包含 : 分隔符
         if !dataset_id_part.contains(':') {
-            return Err(StorageError::InvalidConfig(format!("Dataset identifier must use : separator, got: {}", dataset_id_part)));
+            return Err(StorageError::InvalidConfig(format!(
+                "Dataset identifier must use : separator, got: {}",
+                dataset_id_part
+            )));
         }
 
         let dataset_parts: Vec<&str> = dataset_id_part.split(':').collect();
         if dataset_parts.len() != 2 {
-            return Err(StorageError::InvalidConfig(format!("Invalid dataset identifier format: {}", dataset_id_part)));
+            return Err(StorageError::InvalidConfig(format!(
+                "Invalid dataset identifier format: {}",
+                dataset_id_part
+            )));
         }
 
         let owner = dataset_parts[0];
         let dataset = dataset_parts[1];
 
         if owner.is_empty() || dataset.is_empty() {
-            return Err(StorageError::InvalidConfig("Owner and dataset name cannot be empty".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "Owner and dataset name cannot be empty".to_string(),
+            ));
         }
 
         let dataset_id = format!("{}/{}", owner, dataset);
@@ -528,13 +595,15 @@ impl HuggingFaceClient {
 
         headers.insert(
             reqwest::header::CONTENT_TYPE,
-            reqwest::header::HeaderValue::from_static("application/json")
+            reqwest::header::HeaderValue::from_static("application/json"),
         );
 
         // 只在有非空 token 时才添加 Authorization 头
         if let Some(token) = &self.api_token {
             if !token.trim().is_empty() {
-                if let Ok(auth_value) = reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token)) {
+                if let Ok(auth_value) =
+                    reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token))
+                {
                     headers.insert(reqwest::header::AUTHORIZATION, auth_value);
                 }
             }
@@ -542,7 +611,6 @@ impl HuggingFaceClient {
 
         headers
     }
-
 }
 
 #[async_trait]
@@ -558,7 +626,11 @@ impl StorageClient for HuggingFaceClient {
         self.connected.load(Ordering::Relaxed)
     }
 
-    async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_directory(
+        &self,
+        path: &str,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         if !self.is_connected().await {
             return Err(StorageError::NotConnected);
         }
@@ -588,10 +660,14 @@ impl StorageClient for HuggingFaceClient {
                 // 分解 dataset_id (owner/dataset) 为 owner 和 dataset
                 let parts: Vec<&str> = dataset_id.split('/').collect();
                 if parts.len() != 2 {
-                    return Err(StorageError::InvalidConfig(format!("Invalid dataset ID format, expected 'owner/dataset': {}", dataset_id)));
+                    return Err(StorageError::InvalidConfig(format!(
+                        "Invalid dataset ID format, expected 'owner/dataset': {}",
+                        dataset_id
+                    )));
                 }
                 let (owner, dataset) = (parts[0], parts[1]);
-                self.list_dataset_files(owner, dataset, &file_path, options).await
+                self.list_dataset_files(owner, dataset, &file_path, options)
+                    .await
             }
             Err(_) => {
                 // 如果路径解析失败，尝试将其视为组织名称
@@ -600,8 +676,14 @@ impl StorageClient for HuggingFaceClient {
         }
     }
 
-    async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None, None).await
+    async fn read_file_range(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+    ) -> Result<Vec<u8>, StorageError> {
+        self.read_file_range_with_progress(path, start, length, None, None)
+            .await
     }
 
     async fn read_file_range_with_progress(
@@ -625,13 +707,23 @@ impl StorageClient for HuggingFaceClient {
         // 直接使用 HTTP 客户端，不通过 request_binary
         let mut req_builder = self.client.get(&download_url);
         req_builder = req_builder.headers(self.get_reqwest_headers());
-        req_builder = req_builder.header("Range", format!("bytes={}-{}", start, start + length - 1));
+        req_builder =
+            req_builder.header("Range", format!("bytes={}-{}", start, start + length - 1));
 
-        let response = req_builder.send().await
+        let response = req_builder
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("error.unknown"))));
+            return Err(StorageError::RequestFailed(format!(
+                "HTTP {}: {}",
+                response.status(),
+                response
+                    .status()
+                    .canonical_reason()
+                    .unwrap_or("error.unknown")
+            )));
         }
 
         // 使用流式读取以支持进度回调
@@ -643,7 +735,9 @@ impl StorageClient for HuggingFaceClient {
             // 检查取消信号
             if let Some(ref mut cancel_rx) = cancel_rx {
                 if cancel_rx.try_recv().is_ok() {
-                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
                 }
             }
 
@@ -670,15 +764,25 @@ impl StorageClient for HuggingFaceClient {
         let mut req_builder = self.client.get(&download_url);
         req_builder = req_builder.headers(self.get_reqwest_headers());
 
-        let response = req_builder.send().await
+        let response = req_builder
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("error.unknown"))));
+            return Err(StorageError::RequestFailed(format!(
+                "HTTP {}: {}",
+                response.status(),
+                response
+                    .status()
+                    .canonical_reason()
+                    .unwrap_or("error.unknown")
+            )));
         }
 
-        let bytes = response.bytes().await
-            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+        let bytes = response.bytes().await.map_err(|e| {
+            StorageError::NetworkError(format!("Failed to read response body: {}", e))
+        })?;
 
         Ok(bytes.to_vec())
     }
@@ -709,7 +813,8 @@ impl StorageClient for HuggingFaceClient {
 
         println!("[DEBUG] - tree API URL: {}", url);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .headers(self.get_reqwest_headers())
             .send()
@@ -717,9 +822,10 @@ impl StorageClient for HuggingFaceClient {
             .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("Failed to fetch file info: {}", response.status())
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "Failed to fetch file info: {}",
+                response.status()
+            )));
         }
 
         let files: Vec<DatasetFile> = response
@@ -728,7 +834,10 @@ impl StorageClient for HuggingFaceClient {
             .map_err(|e| StorageError::RequestFailed(e.to_string()))?;
 
         // 找到目标文件
-        if let Some(file) = files.iter().find(|f| f.path == file_path && f.file_type == "file") {
+        if let Some(file) = files
+            .iter()
+            .find(|f| f.path == file_path && f.file_type == "file")
+        {
             Ok(file.size)
         } else {
             // 降级到 HEAD 请求
@@ -736,7 +845,8 @@ impl StorageClient for HuggingFaceClient {
 
             println!("[DEBUG] - fallback to HEAD request: {}", download_url);
 
-            let response = self.client
+            let response = self
+                .client
                 .head(&download_url)
                 .headers(self.get_reqwest_headers())
                 .send()
@@ -744,18 +854,22 @@ impl StorageClient for HuggingFaceClient {
                 .map_err(|e| StorageError::NetworkError(e.to_string()))?;
 
             if !response.status().is_success() {
-                return Err(StorageError::RequestFailed(
-                    format!("HEAD request failed: {}", response.status())
-                ));
+                return Err(StorageError::RequestFailed(format!(
+                    "HEAD request failed: {}",
+                    response.status()
+                )));
             }
 
             if let Some(content_length) = response.headers().get("content-length") {
-                content_length.to_str()
+                content_length
+                    .to_str()
                     .map_err(|e| StorageError::RequestFailed(e.to_string()))?
                     .parse::<u64>()
                     .map_err(|e| StorageError::RequestFailed(e.to_string()))
             } else {
-                Err(StorageError::RequestFailed("Content-Length header not found".to_string()))
+                Err(StorageError::RequestFailed(
+                    "Content-Length header not found".to_string(),
+                ))
             }
         }
     }
@@ -771,11 +885,11 @@ impl StorageClient for HuggingFaceClient {
 
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.protocol != "huggingface" {
-            return Err(StorageError::InvalidConfig("Invalid protocol for HuggingFace client".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "Invalid protocol for HuggingFace client".to_string(),
+            ));
         }
         // API token 是可选的
         Ok(())
     }
-
-
 }

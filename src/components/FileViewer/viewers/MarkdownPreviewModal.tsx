@@ -17,7 +17,7 @@ export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
   isOpen,
   onClose,
   content,
-  fileName
+  fileName,
 }) => {
   const { t } = useTranslation();
   const [parsedContent, setParsedContent] = useState('');
@@ -32,7 +32,7 @@ export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
         const highlightedContent = await highlightMarkdownCode(content);
         const html = micromark(highlightedContent, {
           extensions: [gfm()],
-          htmlExtensions: [gfmHtml()]
+          htmlExtensions: [gfmHtml()],
         });
         setParsedContent(html);
       } catch (error) {
@@ -67,9 +67,7 @@ export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
         <div className="flex-1 overflow-auto p-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-gray-600 dark:text-gray-400">
-                {t('markdown.parsing')}
-              </div>
+              <div className="text-gray-600 dark:text-gray-400">{t('markdown.parsing')}</div>
             </div>
           ) : (
             <div

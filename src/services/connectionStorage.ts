@@ -74,21 +74,29 @@ class ConnectionStorageService {
   }
 
   // 保存连接配置（可选择保存密码）
-  async saveConnection(connection: StorageConnection, name?: string, savePassword: boolean = false): Promise<string> {
+  async saveConnection(
+    connection: StorageConnection,
+    name?: string,
+    savePassword: boolean = false
+  ): Promise<string> {
     const connections = this.getStoredConnections();
 
     // 清理输入数据：去除首尾空格
     const cleanedConnection = {
       ...connection,
       url: connection.url.trim(),
-      username: connection.username.trim()
+      username: connection.username.trim(),
     };
 
     // 标准化 URL 格式
     const normalizedUrl = this.normalizeUrl(cleanedConnection.url);
 
     // 检查是否已存在相同的连接（基于标准化的 URL 和用户名）
-    const existingConnection = this.findConnection(normalizedUrl, cleanedConnection.username, cleanedConnection.metadata);
+    const existingConnection = this.findConnection(
+      normalizedUrl,
+      cleanedConnection.username,
+      cleanedConnection.metadata
+    );
     if (existingConnection) {
       // 如果连接已存在，更新最后连接时间和密码（如果需要）
       this.updateLastConnected(existingConnection.id);
@@ -127,7 +135,7 @@ class ConnectionStorageService {
         });
       } catch (error) {
         console.warn('Failed to generate connection name with client, using fallback:', error);
-				connectionName = normalizedUrl
+        connectionName = normalizedUrl;
       }
     }
 
@@ -157,7 +165,7 @@ class ConnectionStorageService {
     connections.push(storedConnection);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
     return id;
-  }  // 更新最后连接时间
+  } // 更新最后连接时间
   updateLastConnected(id: string): void {
     const connections = this.getStoredConnections();
     const connection = connections.find(c => c.id === id);
@@ -222,23 +230,29 @@ class ConnectionStorageService {
   }
 
   // 查找连接 - 使用标准化的 URL 进行比较
-  findConnection(url: string, username: string, metadata?: { [key: string]: any }): StoredConnection | null {
+  findConnection(
+    url: string,
+    username: string,
+    metadata?: { [key: string]: any }
+  ): StoredConnection | null {
     const connections = this.getStoredConnections();
     const normalizedUrl = this.normalizeUrl(url);
 
-    return connections.find(c => {
-      const urlMatch = this.normalizeUrl(c.url) === normalizedUrl;
-      const usernameMatch = c.username === username;
+    return (
+      connections.find(c => {
+        const urlMatch = this.normalizeUrl(c.url) === normalizedUrl;
+        const usernameMatch = c.username === username;
 
-      // 对于 HuggingFace 连接，额外检查组织名
-      if (normalizedUrl.startsWith('huggingface://')) {
-        const storedOrg = c.metadata?.organization;
-        const inputOrg = metadata?.organization;
-        return urlMatch && usernameMatch && storedOrg === inputOrg;
-      }
+        // 对于 HuggingFace 连接，额外检查组织名
+        if (normalizedUrl.startsWith('huggingface://')) {
+          const storedOrg = c.metadata?.organization;
+          const inputOrg = metadata?.organization;
+          return urlMatch && usernameMatch && storedOrg === inputOrg;
+        }
 
-      return urlMatch && usernameMatch;
-    }) || null;
+        return urlMatch && usernameMatch;
+      }) || null
+    );
   }
 
   // 重命名连接
@@ -267,7 +281,9 @@ class ConnectionStorageService {
     try {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname;
-      return hostname.includes('.oss') || hostname.includes('.s3.') || hostname.includes('amazonaws.com');
+      return (
+        hostname.includes('.oss') || hostname.includes('.s3.') || hostname.includes('amazonaws.com')
+      );
     } catch {
       return false;
     }

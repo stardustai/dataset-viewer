@@ -2,7 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 import { formatFileSize } from '../../../utils/fileUtils';
-import { getFileUrl, getFileArrayBuffer, getFileHeader, getMimeType } from '../../../utils/fileDataUtils';
+import {
+  getFileUrl,
+  getFileArrayBuffer,
+  getFileHeader,
+  getMimeType,
+} from '../../../utils/fileDataUtils';
 import { AV1VideoPlayer } from './AV1VideoPlayer';
 import { Dav1dDecoderService } from '../../../services/dav1dDecoder';
 import { ImageRenderer } from './ImageRenderer';
@@ -46,31 +51,16 @@ const AV1VideoPlayerWrapper: React.FC<{
   if (error) {
     return (
       <div className="h-full">
-        <ErrorDisplay
-          message={error}
-          onRetry={loadVideoData}
-          className="h-full"
-        />
+        <ErrorDisplay message={error} onRetry={loadVideoData} className="h-full" />
       </div>
     );
   }
 
   if (isLoading || !videoData) {
-    return (
-      <LoadingDisplay
-        message={t('av1.player.loading')}
-        className="h-full"
-      />
-    );
+    return <LoadingDisplay message={t('av1.player.loading')} className="h-full" />;
   }
 
-  return (
-    <AV1VideoPlayer
-      videoData={videoData}
-      fileName={fileName}
-      onError={onError}
-    />
-  );
+  return <AV1VideoPlayer videoData={videoData} fileName={fileName} onError={onError} />;
 };
 
 // 检测是否为 AV1 视频文件
@@ -91,7 +81,10 @@ const detectAV1Video = (fileName: string, data?: Uint8Array): boolean => {
     }
 
     // 检查 MP4 文件中的 AV1 编码
-    if (header === 'ftyp' || (data[4] === 0x66 && data[5] === 0x74 && data[6] === 0x79 && data[7] === 0x70)) {
+    if (
+      header === 'ftyp' ||
+      (data[4] === 0x66 && data[5] === 0x74 && data[6] === 0x79 && data[7] === 0x70)
+    ) {
       const searchLength = Math.min(data.length, 1024);
       const searchData = new TextDecoder('latin1').decode(data.slice(0, searchLength));
 
@@ -118,7 +111,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   fileType,
   fileSize,
   hasAssociatedFiles,
-  previewContent
+  previewContent,
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -133,27 +126,30 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [videoPlaybackFailed, setVideoPlaybackFailed] = useState(false);
 
   // 启动缓慢的进度模拟 (从当前进度到目标进度)
-  const startSlowProgress = useCallback((startProgress: number, targetProgress: number, durationMs: number = 5000) => {
-    // 清除之前的定时器
-    if (progressInterval) {
-      clearInterval(progressInterval);
-    }
-
-    const increment = (targetProgress - startProgress) / (durationMs / 100); // 每100ms的增量
-    let currentProgress = startProgress;
-
-    const interval = setInterval(() => {
-      currentProgress += increment;
-      if (currentProgress >= targetProgress) {
-        currentProgress = targetProgress;
-        clearInterval(interval);
-        setProgressInterval(null);
+  const startSlowProgress = useCallback(
+    (startProgress: number, targetProgress: number, durationMs: number = 5000) => {
+      // 清除之前的定时器
+      if (progressInterval) {
+        clearInterval(progressInterval);
       }
-      setLoadingProgress(Math.min(currentProgress, targetProgress));
-    }, 100);
 
-    setProgressInterval(interval);
-  }, [progressInterval]);
+      const increment = (targetProgress - startProgress) / (durationMs / 100); // 每100ms的增量
+      let currentProgress = startProgress;
+
+      const interval = setInterval(() => {
+        currentProgress += increment;
+        if (currentProgress >= targetProgress) {
+          currentProgress = targetProgress;
+          clearInterval(interval);
+          setProgressInterval(null);
+        }
+        setLoadingProgress(Math.min(currentProgress, targetProgress));
+      }, 100);
+
+      setProgressInterval(interval);
+    },
+    [progressInterval]
+  );
 
   // 清除进度定时器
   const clearProgressInterval = useCallback(() => {
@@ -224,40 +220,40 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         setVideoPlaybackFailed(false);
 
         // 对于视频文件，预先检测是否为 AV1 格式
-         if (fileType === 'video') {
-           try {
-             // 只获取文件头部数据进行高效 AV1 检测（2KB）
-             setLoadingProgress(50);
-             const headerData = await getFileHeader(filePath, 2048);
+        if (fileType === 'video') {
+          try {
+            // 只获取文件头部数据进行高效 AV1 检测（2KB）
+            setLoadingProgress(50);
+            const headerData = await getFileHeader(filePath, 2048);
 
-             const isAV1 = detectAV1Video(fileName, headerData);
-             setIsAV1Video(isAV1);
+            const isAV1 = detectAV1Video(fileName, headerData);
+            setIsAV1Video(isAV1);
 
-             setLoadingProgress(75);
+            setLoadingProgress(75);
 
-             if (isAV1) {
-               const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
-               setUseWasmDecoder(needsWasmDecoder);
+            if (isAV1) {
+              const needsWasmDecoder = !Dav1dDecoderService.supportsNativeAV1();
+              setUseWasmDecoder(needsWasmDecoder);
 
-               if (needsWasmDecoder) {
-                  // 对于需要 WASM 解码器的 AV1 视频，不需要 mediaUrl
-                  mediaUrl = '';
-                } else {
-                  // 对于原生支持的 AV1 视频，使用普通的文件 URL
-                  mediaUrl = await getFileUrl(filePath);
-                }
+              if (needsWasmDecoder) {
+                // 对于需要 WASM 解码器的 AV1 视频，不需要 mediaUrl
+                mediaUrl = '';
               } else {
-                // 不是 AV1 视频，使用普通的文件 URL
-                setUseWasmDecoder(false);
+                // 对于原生支持的 AV1 视频，使用普通的文件 URL
                 mediaUrl = await getFileUrl(filePath);
               }
-           } catch (err) {
-             console.warn('Failed to pre-detect AV1 video, falling back to normal loading:', err);
-             // 检测失败时回退到普通加载方式
-              setIsAV1Video(false);
+            } else {
+              // 不是 AV1 视频，使用普通的文件 URL
               setUseWasmDecoder(false);
               mediaUrl = await getFileUrl(filePath);
-           }
+            }
+          } catch (err) {
+            console.warn('Failed to pre-detect AV1 video, falling back to normal loading:', err);
+            // 检测失败时回退到普通加载方式
+            setIsAV1Video(false);
+            setUseWasmDecoder(false);
+            mediaUrl = await getFileUrl(filePath);
+          }
         } else {
           // 非视频文件，使用普通的文件 URL
           setLoadingProgress(50);
@@ -342,7 +338,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         const blob = new Blob([videoData], { type: getMimeType(fileName) });
         const blobUrl = URL.createObjectURL(blob);
         setMediaUrl(blobUrl);
-
       } catch (err) {
         console.error('Failed to handle video playback error:', err);
         setError(t('viewer.video.playback.error'));
@@ -383,9 +378,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           </div>
         )}
         <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800">
-          <LoadingDisplay
-            message={`${t('loading')} ${fileName}`}
-          />
+          <LoadingDisplay message={`${t('loading')} ${fileName}`} />
         </div>
       </div>
     );
@@ -401,7 +394,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   const renderContent = () => {
     switch (fileType) {
-
       case 'pdf':
         return (
           <div className="h-full w-full bg-gray-100 dark:bg-gray-800">
@@ -426,7 +418,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             <AV1VideoPlayerWrapper
               filePath={filePath}
               fileName={fileName}
-              onError={(error) => setError(error)}
+              onError={error => setError(error)}
             />
           );
         }
@@ -441,11 +433,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               preload="metadata"
               className="max-w-full max-h-full rounded-lg shadow-lg"
               style={{ maxWidth: '100%', maxHeight: '100%' }}
-              onError={(e) => {
+              onError={e => {
                 console.error('Video playback error:', e);
                 handleVideoPlaybackError();
               }}
-              onCanPlay={(e) => {
+              onCanPlay={e => {
                 // 视频可以播放时，清除缓慢进度定时器，直接到达100%并隐藏
                 clearProgressInterval();
                 setLoadingProgress(100);
@@ -455,7 +447,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
                 // 视频有足够数据可以播放时自动开始播放
                 const videoElement = e.target as HTMLVideoElement;
-                videoElement.play().catch((err) => {
+                videoElement.play().catch(err => {
                   console.warn('Auto-play was prevented by browser policy:', err);
                 });
               }}
@@ -479,14 +471,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 >
                   {fileName}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{formatFileSize(fileSize)}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {formatFileSize(fileSize)}
+                </p>
               </div>
               <audio
                 src={mediaUrl}
                 controls
                 autoPlay
                 className="w-full"
-                onCanPlay={(e) => {
+                onCanPlay={e => {
                   // 音频可以播放时，清除缓慢进度定时器，直接到达100%并隐藏
                   clearProgressInterval();
                   setLoadingProgress(100);
@@ -496,7 +490,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
                   // 音频有足够数据可以播放时自动开始播放
                   const audioElement = e.target as HTMLAudioElement;
-                  audioElement.play().catch((err) => {
+                  audioElement.play().catch(err => {
                     console.warn('Auto-play was prevented by browser policy:', err);
                   });
                 }}
@@ -506,8 +500,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             </div>
           </div>
         );
-
-
 
       default:
         return (
@@ -520,15 +512,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
   // 对于图片类型，直接返回ImageRenderer
   if (fileType === 'image') {
-      return (
-        <ImageRenderer
-          mediaUrl={mediaUrl}
-          fileName={fileName}
-          filePath={filePath}
-          hasAssociatedFiles={hasAssociatedFiles}
-        />
-      );
-    }
+    return (
+      <ImageRenderer
+        mediaUrl={mediaUrl}
+        fileName={fileName}
+        filePath={filePath}
+        hasAssociatedFiles={hasAssociatedFiles}
+      />
+    );
+  }
 
   // 对于其他类型，使用原有的布局
   return (
@@ -543,7 +535,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         </div>
       )}
       {/* Content */}
-			{renderContent()}
+      {renderContent()}
     </div>
   );
 };

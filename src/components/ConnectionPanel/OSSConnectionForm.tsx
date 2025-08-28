@@ -19,14 +19,15 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   onConnect,
   connecting,
   error: externalError,
-  selectedConnection
+  selectedConnection,
 }) => {
   const { t } = useTranslation();
 
   // 获取默认平台和端点
   const defaultPlatform = OSS_PLATFORMS.find(p => p.id === 'aliyun');
   const defaultRegion = 'cn-hangzhou';
-  const defaultEndpoint = defaultPlatform?.regions.find(r => r.id === defaultRegion)?.endpoint || '';
+  const defaultEndpoint =
+    defaultPlatform?.regions.find(r => r.id === defaultRegion)?.endpoint || '';
 
   const [config, setConfig] = useState({
     endpoint: defaultEndpoint,
@@ -55,17 +56,18 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
         setCustomEndpoint('');
       } else {
         // 预设平台，设置默认区域
-        const defaultRegion = platform.defaultRegion || (platform.regions[0]?.id || '');
+        const defaultRegion = platform.defaultRegion || platform.regions[0]?.id || '';
         setSelectedRegion(defaultRegion);
 
         // 更新端点和区域
         const regionData = platform.regions.find(r => r.id === defaultRegion);
-        const endpoint = regionData?.endpoint || platform.endpoint.replace('{region}', defaultRegion);
+        const endpoint =
+          regionData?.endpoint || platform.endpoint.replace('{region}', defaultRegion);
 
         setConfig(prev => ({
           ...prev,
           endpoint: endpoint,
-          region: defaultRegion
+          region: defaultRegion,
         }));
       }
     }
@@ -83,7 +85,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       setConfig(prev => ({
         ...prev,
         endpoint: endpoint,
-        region: regionId
+        region: regionId,
       }));
     }
   };
@@ -115,10 +117,11 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           for (const platform of OSS_PLATFORMS) {
             if (platform.id === 'custom') continue;
 
-            const regionMatch = platform.regions.find(r =>
-              r.endpoint === endpoint ||
-              endpoint.includes(r.id) ||
-              (platform.endpoint.includes('{region}') && endpoint.includes(r.id))
+            const regionMatch = platform.regions.find(
+              r =>
+                r.endpoint === endpoint ||
+                endpoint.includes(r.id) ||
+                (platform.endpoint.includes('{region}') && endpoint.includes(r.id))
             );
 
             if (regionMatch) {
@@ -169,7 +172,8 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
       // 设置默认端点
       const defaultPlatform = OSS_PLATFORMS.find(p => p.id === 'aliyun');
-      const defaultEndpoint = defaultPlatform?.regions.find(r => r.id === 'cn-hangzhou')?.endpoint || '';
+      const defaultEndpoint =
+        defaultPlatform?.regions.find(r => r.id === 'cn-hangzhou')?.endpoint || '';
 
       setConfig({
         endpoint: defaultEndpoint,
@@ -229,7 +233,11 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       hostWithPort = url.host; // e.g., localhost:9000 或 oss-cn-hangzhou.aliyuncs.com
 
       // 检查主机名格式是否有效
-      if (url.hostname.includes('/') || !url.hostname.includes('.') || url.hostname.split('.').length < 2) {
+      if (
+        url.hostname.includes('/') ||
+        !url.hostname.includes('.') ||
+        url.hostname.split('.').length < 2
+      ) {
         // 主机名格式无效，使用默认的阿里云 OSS 端点
         const region = config.region || selectedRegion || 'cn-hangzhou';
         hostWithPort = `oss-${region}.aliyuncs.com`;
@@ -243,14 +251,19 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     // 生成默认连接名称
     const hostname = hostWithPort;
     const platformName = OSS_PLATFORMS.find(p => p.id === selectedPlatform)?.name || 'OSS';
-    const defaultName = selectedPlatform === 'custom'
-      ? t('connection.name.oss', 'OSS({{host}}-{{bucket}})', { host: hostname, bucket: config.bucket })
-      : `${platformName}(${config.bucket})`;
+    const defaultName =
+      selectedPlatform === 'custom'
+        ? t('connection.name.oss', 'OSS({{host}}-{{bucket}})', {
+            host: hostname,
+            bucket: config.bucket,
+          })
+        : `${platformName}(${config.bucket})`;
 
     // 如果密码是占位符（来自已保存的连接），使用真实密码
-    const actualSecretKey = config.secretKey === '••••••••' && selectedConnection?.password
-      ? selectedConnection.password
-      : config.secretKey;
+    const actualSecretKey =
+      config.secretKey === '••••••••' && selectedConnection?.password
+        ? selectedConnection.password
+        : config.secretKey;
 
     // 处理bucket路径：移除尾部无意义的斜杠
     const cleanBucket = config.bucket.trim();
@@ -259,14 +272,12 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     const connectionConfig: ConnectionConfig = {
       type: 'oss',
       name: selectedConnection?.name || defaultName,
-      url: bucketWithPath
-        ? `oss://${hostWithPort}/${bucketWithPath}`
-        : `oss://${hostWithPort}`, // 没有路径时不加斜杠
+      url: bucketWithPath ? `oss://${hostWithPort}/${bucketWithPath}` : `oss://${hostWithPort}`, // 没有路径时不加斜杠
       username: config.accessKey, // 使用 username 字段存储 accessKey
-      password: actualSecretKey,  // 使用 password 字段存储 secretKey
-      bucket: bucketWithPath,     // 添加 bucket 字段（清理后的）
+      password: actualSecretKey, // 使用 password 字段存储 secretKey
+      bucket: bucketWithPath, // 添加 bucket 字段（清理后的）
       region: config.region || selectedRegion, // 使用选中的区域
-      endpoint: finalEndpoint,    // 添加 endpoint 字段
+      endpoint: finalEndpoint, // 添加 endpoint 字段
       platform: selectedPlatform, // 直接保存用户选择的平台信息
     };
 
@@ -333,14 +344,17 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="accessKey" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="accessKey"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               {t('oss.access.key')}
             </label>
             <input
               type="text"
               id="accessKey"
               value={config.accessKey}
-              onChange={(e) => handleInputChange('accessKey', e.target.value)}
+              onChange={e => handleInputChange('accessKey', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.accessKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
               }`}
@@ -353,14 +367,17 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           </div>
 
           <div>
-            <label htmlFor="secretKey" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="secretKey"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               {t('oss.secret.key')}
             </label>
             <input
               type="password"
               id="secretKey"
               value={config.secretKey}
-              onChange={(e) => handleInputChange('secretKey', e.target.value)}
+              onChange={e => handleInputChange('secretKey', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.secretKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
               }`}
@@ -377,14 +394,17 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
         {selectedPlatform === 'custom' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="bucket" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="bucket"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 {t('oss.bucket')}
               </label>
               <input
                 type="text"
                 id="bucket"
                 value={config.bucket}
-                onChange={(e) => handleInputChange('bucket', e.target.value)}
+                onChange={e => handleInputChange('bucket', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                   errors.bucket ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
                 }`}
@@ -398,14 +418,17 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
             {/* 区域信息显示 - 仅在自定义平台时允许手动输入 */}
             <div>
-              <label htmlFor="region" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="region"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 {t('oss.region')}
               </label>
               <input
                 type="text"
                 id="region"
                 value={config.region}
-                onChange={(e) => handleInputChange('region', e.target.value)}
+                onChange={e => handleInputChange('region', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder={t('oss.region.placeholder')}
                 disabled={connecting}
@@ -414,14 +437,17 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           </div>
         ) : (
           <div>
-            <label htmlFor="bucket" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="bucket"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               {t('oss.bucket')}
             </label>
             <input
               type="text"
               id="bucket"
               value={config.bucket}
-              onChange={(e) => handleInputChange('bucket', e.target.value)}
+              onChange={e => handleInputChange('bucket', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.bucket ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
               }`}
@@ -434,8 +460,6 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           </div>
         )}
 
-
-
         <button
           type="submit"
           disabled={connecting}
@@ -446,9 +470,24 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
         >
           {connecting ? (
             <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
               </svg>
               {t('connecting')}
             </>
@@ -459,21 +498,11 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
         {/* 帮助信息 */}
         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-          <p>
-            {t('oss.help.credentials.title')}
-          </p>
-          <p>
-            1. {t('oss.help.step1')}
-          </p>
-          <p>
-            2. {t('oss.help.step2')}
-          </p>
-          <p>
-            3. {t('oss.help.step3')}
-          </p>
-          <p>
-            4. {t('oss.help.step4')}
-          </p>
+          <p>{t('oss.help.credentials.title')}</p>
+          <p>1. {t('oss.help.step1')}</p>
+          <p>2. {t('oss.help.step2')}</p>
+          <p>3. {t('oss.help.step3')}</p>
+          <p>4. {t('oss.help.step4')}</p>
         </div>
       </form>
     </>

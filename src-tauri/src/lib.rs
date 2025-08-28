@@ -1,20 +1,18 @@
-mod storage;
-mod archive;  // 压缩包处理功能
+mod archive; // 压缩包处理功能
+pub mod commands;
 mod download; // 下载管理功能
-mod utils;    // 通用工具模块
-pub mod commands; // Tauri 命令模块 - 公开以便外部访问
+mod storage;
+mod utils; // 通用工具模块 // Tauri 命令模块 - 公开以便外部访问
 
-use commands::*;  // 导入所有命令
+use commands::*; // 导入所有命令
 use tauri::{Emitter, Listener};
 use tauri_specta::{collect_commands, Builder};
 
 // 前端状态管理 - 用于文件关联处理
-static FRONTEND_STATE: std::sync::Mutex<FrontendState> = std::sync::Mutex::new(
-    FrontendState {
-        is_ready: false,
-        pending_files: Vec::new(),
-    }
-);
+static FRONTEND_STATE: std::sync::Mutex<FrontendState> = std::sync::Mutex::new(FrontendState {
+    is_ready: false,
+    pending_files: Vec::new(),
+});
 
 #[derive(Debug)]
 struct FrontendState {
@@ -23,14 +21,20 @@ struct FrontendState {
 }
 
 // 创建文件查看窗口的内部函数
-async fn create_file_viewer_window(app: tauri::AppHandle, file_path: String) -> Result<String, String> {
-    use tauri::{WebviewWindowBuilder, WebviewUrl};
+async fn create_file_viewer_window(
+    app: tauri::AppHandle,
+    file_path: String,
+) -> Result<String, String> {
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
 
     // 为每个文件创建唯一的窗口标签
-    let window_label = format!("file-viewer-{}", std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis());
+    let window_label = format!(
+        "file-viewer-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+    );
 
     // 获取文件名作为窗口标题
     let file_name = std::path::Path::new(&file_path)
@@ -43,16 +47,16 @@ async fn create_file_viewer_window(app: tauri::AppHandle, file_path: String) -> 
     let window_url = format!("/?mode=file-viewer&file={}", encoded_path);
 
     match WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::App(window_url.into()))
-        .title(file_name)  // 只显示文件名
-        .inner_size(1200.0, 800.0)  // 与主窗口保持一致
-        .min_inner_size(400.0, 600.0)  // 与主窗口保持一致
+        .title(file_name) // 只显示文件名
+        .inner_size(1200.0, 800.0) // 与主窗口保持一致
+        .min_inner_size(400.0, 600.0) // 与主窗口保持一致
         .build()
     {
         Ok(_window) => {
             // 窗口创建成功，文件路径已通过 URL 传递
             Ok(window_label)
-        },
-        Err(e) => Err(format!("Failed to create window: {}", e))
+        }
+        Err(e) => Err(format!("Failed to create window: {}", e)),
     }
 }
 
@@ -98,30 +102,29 @@ fn handle_frontend_ready(app: &tauri::AppHandle) {
 /// 创建统一的 tauri-specta Builder
 /// 用于命令注册和类型导出
 pub fn create_specta_builder() -> Builder<tauri::Wry> {
-    Builder::<tauri::Wry>::new()
-        .commands(collect_commands![
-            // 统一存储接口命令
-            storage_get_file_content,
-            storage_get_file_info,
-            storage_connect,
-            storage_disconnect,
-            storage_list,
-            storage_get_url,
-            // 下载管理命令
-            download_start,
-            download_cancel,
-            download_cancel_all,
-            download_extract_file,
-            // 系统对话框命令
-            system_select_folder,
-            // 压缩包处理命令（统一接口）
-            archive_get_file_info,
-            archive_get_file_content,
-            // 文件关联注册命令
-            system_register_files,
-            // 窗口主题设置命令
-            system_set_theme
-        ])
+    Builder::<tauri::Wry>::new().commands(collect_commands![
+        // 统一存储接口命令
+        storage_get_file_content,
+        storage_get_file_info,
+        storage_connect,
+        storage_disconnect,
+        storage_list,
+        storage_get_url,
+        // 下载管理命令
+        download_start,
+        download_cancel,
+        download_cancel_all,
+        download_extract_file,
+        // 系统对话框命令
+        system_select_folder,
+        // 压缩包处理命令（统一接口）
+        archive_get_file_info,
+        archive_get_file_content,
+        // 文件关联注册命令
+        system_register_files,
+        // 窗口主题设置命令
+        system_set_theme
+    ])
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

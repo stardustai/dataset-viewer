@@ -39,10 +39,13 @@ export function useSyntaxHighlighting() {
   const [enabled, setEnabled] = useState(isGlobalSyntaxHighlightingEnabled);
 
   // 提供切换功能的回调
-  const toggleSyntaxHighlighting = useCallback((newEnabled?: boolean) => {
-    const targetState = newEnabled !== undefined ? newEnabled : !enabled;
-    setGlobalSyntaxHighlighting(targetState);
-  }, [enabled]);
+  const toggleSyntaxHighlighting = useCallback(
+    (newEnabled?: boolean) => {
+      const targetState = newEnabled !== undefined ? newEnabled : !enabled;
+      setGlobalSyntaxHighlighting(targetState);
+    },
+    [enabled]
+  );
 
   useEffect(() => {
     // 监听storage事件，当其他标签页或组件改变设置时同步更新

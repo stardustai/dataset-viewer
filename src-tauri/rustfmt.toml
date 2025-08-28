@@ -1,0 +1,9 @@
+edition = "2021"
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+fn_params_layout = "Tall"
+use_try_shorthand = false
+use_field_init_shorthand = false
+force_explicit_abi = true

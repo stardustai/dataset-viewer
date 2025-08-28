@@ -12,7 +12,7 @@ pub struct StorageFile {
     pub filename: String,
     pub basename: String,
     pub lastmod: String,
-    pub size: String,  // 使用字符串表示大数字
+    pub size: String, // 使用字符串表示大数字
     #[serde(rename = "type")]
     pub file_type: String, // "file" or "directory"
     pub mime: Option<String>,
@@ -26,7 +26,7 @@ pub struct DirectoryResult {
     pub files: Vec<StorageFile>,
     pub has_more: bool,
     pub next_marker: Option<String>,
-    pub total_count: Option<String>,  // 使用字符串表示大数字
+    pub total_count: Option<String>, // 使用字符串表示大数字
     pub path: String,
 }
 
@@ -38,7 +38,7 @@ pub struct ListOptions {
     pub marker: Option<String>,
     pub prefix: Option<String>,
     pub recursive: Option<bool>,
-    pub sort_by: Option<String>, // "name", "size", "modified"
+    pub sort_by: Option<String>,    // "name", "size", "modified"
     pub sort_order: Option<String>, // "asc", "desc"
 }
 
@@ -114,10 +114,19 @@ pub trait StorageClient: Send + Sync {
     async fn is_connected(&self) -> bool;
 
     /// 列出目录内容
-    async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError>;
+    async fn list_directory(
+        &self,
+        path: &str,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError>;
 
     /// 读取文件的指定范围（用于压缩包等需要随机访问的场景）
-    async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError>;
+    async fn read_file_range(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+    ) -> Result<Vec<u8>, StorageError>;
 
     /// 读取文件的指定范围，支持进度回调和取消信号
     async fn read_file_range_with_progress(
@@ -178,6 +187,4 @@ pub trait StorageClient: Send + Sync {
     /// 验证配置是否有效
     #[allow(dead_code)] // API 保留方法
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError>;
-
-
 }

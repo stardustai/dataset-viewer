@@ -21,7 +21,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [autoCheck, setAutoCheck] = useState(() => settingsStorage.getSetting('autoCheckUpdates'));
-  const [usePureBlackBg, setUsePureBlackBg] = useState(() => settingsStorage.getSetting('usePureBlackBg'));
+  const [usePureBlackBg, setUsePureBlackBg] = useState(() =>
+    settingsStorage.getSetting('usePureBlackBg')
+  );
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [isRegisteringFileAssociations, setIsRegisteringFileAssociations] = useState(false);
   // 切换纯黑色背景
@@ -141,12 +143,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {/* Theme Settings */}
           <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.theme')}</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              {t('settings.theme')}
+            </h3>
             <div className="grid grid-cols-3 gap-2 mb-2">
               {[
                 { value: 'light', labelKey: 'theme.light', icon: Sun },
                 { value: 'dark', labelKey: 'theme.dark', icon: Moon },
-                { value: 'system', labelKey: 'theme.system', icon: Settings }
+                { value: 'system', labelKey: 'theme.system', icon: Settings },
               ].map(({ value, labelKey, icon: Icon }) => (
                 <button
                   key={value}
@@ -182,11 +186,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
           {/* Update Settings */}
           <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.update')}</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              {t('settings.update')}
+            </h3>
 
             {/* Auto Check Toggle */}
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-gray-600 dark:text-gray-300">{t('auto.check.updates')}</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                {t('auto.check.updates')}
+              </span>
               <button
                 onClick={handleAutoCheckToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -209,7 +217,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-                <span className="text-sm">{isChecking ? t('checking.updates') : t('check.updates')}</span>
+                <span className="text-sm">
+                  {isChecking ? t('checking.updates') : t('check.updates')}
+                </span>
               </button>
 
               {/* Update Info */}
@@ -259,25 +269,29 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
           {/* Cache Management */}
           <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.cache')}</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              {t('settings.cache')}
+            </h3>
             <div className="space-y-3">
-              <p className="text-xs text-gray-600 dark:text-gray-300">
-                {t('cache.description')}
-              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-300">{t('cache.description')}</p>
               <button
                 onClick={handleClearCache}
                 disabled={isClearingCache}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50"
               >
                 <Trash2 className={`w-4 h-4 ${isClearingCache ? 'animate-pulse' : ''}`} />
-                <span className="text-sm">{isClearingCache ? t('clearing.cache') : t('clear.cache')}</span>
+                <span className="text-sm">
+                  {isClearingCache ? t('clearing.cache') : t('clear.cache')}
+                </span>
               </button>
             </div>
           </div>
 
           {/* File Associations */}
           <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('settings.file.association')}</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              {t('settings.file.association')}
+            </h3>
             <div className="space-y-3">
               <p className="text-xs text-gray-600 dark:text-gray-300">
                 {t('file.association.description')}
@@ -287,8 +301,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 disabled={isRegisteringFileAssociations}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors disabled:opacity-50"
               >
-                <Link className={`w-4 h-4 ${isRegisteringFileAssociations ? 'animate-pulse' : ''}`} />
-                <span className="text-sm">{isRegisteringFileAssociations ? t('registering.file.associations') : t('register.file.associations')}</span>
+                <Link
+                  className={`w-4 h-4 ${isRegisteringFileAssociations ? 'animate-pulse' : ''}`}
+                />
+                <span className="text-sm">
+                  {isRegisteringFileAssociations
+                    ? t('registering.file.associations')
+                    : t('register.file.associations')}
+                </span>
               </button>
             </div>
           </div>

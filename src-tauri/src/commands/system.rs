@@ -15,8 +15,8 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
 
     #[cfg(desktop)]
     {
-        use tauri_plugin_dialog::DialogExt;
         use std::sync::mpsc;
+        use tauri_plugin_dialog::DialogExt;
 
         let (tx, rx) = mpsc::channel();
 
@@ -29,7 +29,8 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
 
         match rx.recv() {
             Ok(Some(folder)) => {
-                let path_buf = folder.into_path()
+                let path_buf = folder
+                    .into_path()
                     .map_err(|e| format!("Failed to get path: {}", e))?;
 
                 // 确保返回正确的绝对路径
@@ -47,7 +48,7 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
 
                 println!("Selected folder path: {}", path_str);
                 Ok(Some(path_str))
-            },
+            }
             Ok(None) => Ok(None),
             Err(e) => Err(format!("Failed to receive folder selection: {}", e)),
         }
@@ -98,10 +99,10 @@ pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<St
                     "dark" => "Dark",
                     "light" => "Light",
                     "system" => "System default",
-                    _ => "Unknown"
+                    _ => "Unknown",
                 };
                 Ok(format!("Window theme set to {}", theme_description))
-            },
+            }
             Err(e) => Err(format!("Failed to set window theme: {}", e)),
         }
     } else {
@@ -115,17 +116,17 @@ pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<St
 #[cfg(target_os = "windows")]
 async fn register_windows_file_associations() -> Result<String, String> {
     // 获取当前可执行文件路径
-    let exe_path = std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+    let exe_path =
+        std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
 
     // 定义支持的文件扩展名
     let extensions = vec![
-        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz",
-        "bz2", "xz", "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json",
-        "jsonl", "js", "ts", "jsx", "tsx", "html", "css", "scss", "less", "py",
-        "java", "cpp", "c", "php", "rb", "go", "rs", "xml", "yaml", "yml",
-        "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md",
-        "markdown", "mdown", "mkd", "mdx"
+        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", "bz2", "xz",
+        "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", "jsonl", "js", "ts", "jsx", "tsx",
+        "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml",
+        "yaml", "yml", "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md", "markdown",
+        "mdown", "mkd", "mdx",
     ];
 
     let mut registered_count = 0;
@@ -136,9 +137,11 @@ async fn register_windows_file_associations() -> Result<String, String> {
             .args([
                 "add",
                 &format!("HKCU\\Software\\Classes\\.{}", ext),
-                "/v", "",
-                "/d", "DatasetViewer.File",
-                "/f"
+                "/v",
+                "",
+                "/d",
+                "DatasetViewer.File",
+                "/f",
             ])
             .output();
 
@@ -152,13 +155,18 @@ async fn register_windows_file_associations() -> Result<String, String> {
         .args([
             "add",
             "HKCU\\Software\\Classes\\DatasetViewer.File\\shell\\open\\command",
-            "/v", "",
-            "/d", &format!("\"{}\" \"%1\"", exe_path_str),
-            "/f"
+            "/v",
+            "",
+            "/d",
+            &format!("\"{}\" \"%1\"", exe_path_str),
+            "/f",
         ])
         .output();
 
-    Ok(format!("Successfully registered {} file associations on Windows", registered_count))
+    Ok(format!(
+        "Successfully registered {} file associations on Windows",
+        registered_count
+    ))
 }
 
 /// macOS 平台文件关联注册
@@ -173,7 +181,10 @@ async fn register_macos_file_associations() -> Result<String, String> {
 
     match output {
         Ok(_) => Ok("File associations refreshed successfully on macOS".to_string()),
-        Err(e) => Err(format!("Failed to refresh file associations on macOS: {}", e))
+        Err(e) => Err(format!(
+            "Failed to refresh file associations on macOS: {}",
+            e
+        )),
     }
 }
 
@@ -184,7 +195,8 @@ async fn register_linux_file_associations() -> Result<String, String> {
     use std::path::Path;
 
     // 获取当前可执行文件路径
-    let exe_path = std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+    let exe_path =
+        std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
 
     // 创建 .desktop 文件

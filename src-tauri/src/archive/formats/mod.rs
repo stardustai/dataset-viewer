@@ -1,12 +1,12 @@
+pub mod common;
+pub mod gzip;
+pub mod tar;
+pub mod tar_gz;
 /// 压缩格式处理模块
 ///
 /// 此模块将不同压缩格式的处理逻辑分离到独立的子模块中，
 /// 提供统一的接口和共享的工具函数。
 pub mod zip;
-pub mod gzip;
-pub mod tar;
-pub mod tar_gz;
-pub mod common;
 
 use crate::archive::types::*;
 use crate::storage::traits::StorageClient;
@@ -45,17 +45,19 @@ pub trait CompressionHandlerDispatcher: Send + Sync {
 }
 
 /// 获取压缩格式处理器
-pub fn get_handler(compression_type: &CompressionType) -> Option<Box<dyn CompressionHandlerDispatcher>> {
+pub fn get_handler(
+    compression_type: &CompressionType,
+) -> Option<Box<dyn CompressionHandlerDispatcher>> {
     match compression_type {
         CompressionType::Zip => Some(Box::new(zip::ZipHandler)),
         CompressionType::Gzip => Some(Box::new(gzip::GzipHandler)),
         CompressionType::Tar => Some(Box::new(tar::TarHandler)),
         CompressionType::TarGz => Some(Box::new(tar_gz::TarGzHandler)),
         CompressionType::SevenZip => None, // 7Z 格式不支持流式处理
-        CompressionType::Rar => None, // RAR 格式不支持流式处理
-        CompressionType::Brotli => None, // Brotli 格式暂不支持
-        CompressionType::Lz4 => None, // LZ4 格式暂不支持
-        CompressionType::Zstd => None, // Zstd 格式暂不支持
+        CompressionType::Rar => None,      // RAR 格式不支持流式处理
+        CompressionType::Brotli => None,   // Brotli 格式暂不支持
+        CompressionType::Lz4 => None,      // LZ4 格式暂不支持
+        CompressionType::Zstd => None,     // Zstd 格式暂不支持
         CompressionType::Unknown => None,
     }
 }
@@ -69,5 +71,7 @@ pub fn detect_format_and_get_handler(data: &[u8]) -> Option<Box<dyn CompressionH
         Box::new(tar::TarHandler),
     ];
 
-    handlers.into_iter().find(|handler| handler.validate_format(data))
+    handlers
+        .into_iter()
+        .find(|handler| handler.validate_format(data))
 }

@@ -32,13 +32,13 @@ export function formatConnectionDisplayName(url: string, username?: string): str
       return `${displayScheme}: ${content}`;
     }
   }
-  
+
   // For regular URLs, try to format with username@hostname
   if (username) {
     const hostname = getHostnameFromUrl(url);
     return hostname !== url ? `${username}@${hostname}` : url;
   }
-  
+
   // Fallback to hostname only or original URL
   return getHostnameFromUrl(url);
 }

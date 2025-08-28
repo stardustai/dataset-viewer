@@ -8,19 +8,19 @@ export const common = {
   'saved.connections': 'Saved Connections',
 
   // Basic operations
-  'save': 'Save',
-  'cancel': 'Cancel',
-  'close': 'Close',
-  'delete': 'Delete',
-  'rename': 'Rename',
-  'connect': 'Connect',
-  'disconnect': 'Disconnect',
-  'download': 'Download',
-  'ok': 'OK',
-  'retry': 'Retry',
-  'loading': 'Loading...',
+  save: 'Save',
+  cancel: 'Cancel',
+  close: 'Close',
+  delete: 'Delete',
+  rename: 'Rename',
+  connect: 'Connect',
+  disconnect: 'Disconnect',
+  download: 'Download',
+  ok: 'OK',
+  retry: 'Retry',
+  loading: 'Loading...',
   'loading.pointCloud': 'Loading point cloud renderer...',
-  'optional': '(Optional)',
+  optional: '(Optional)',
 
   // Time related
   'time.today': 'Today',
@@ -34,17 +34,17 @@ export const common = {
   'theme.system': 'System',
 
   // Language
-  'language': 'Language',
+  language: 'Language',
   'language.chinese': '中文',
   'language.english': 'English',
 
   // File basic info
-  'name': 'Name',
-  'size': 'Size',
-  'modified': 'Modified',
+  name: 'Name',
+  size: 'Size',
+  modified: 'Modified',
   'file.size.label': 'Size',
   'file.modified.time': 'Modified time',
-  'characters': 'Characters',
+  characters: 'Characters',
 
   // Storage types
   'storage.type.select': 'Select Data Source Type',
@@ -64,8 +64,10 @@ export const common = {
   'local.connect': 'Connect to Local Files',
   'local.select.directory': 'Select Directory',
   'local.permission.notice': 'Permission Notice',
-  'local.permission.description': 'The app can only access directories you explicitly select and their subdirectories. It\'s recommended to choose common directories like Documents, Downloads, etc.',
-  'local.error.access': 'Cannot access the specified path. Please check if the path exists and you have permission to access it.',
+  'local.permission.description':
+    "The app can only access directories you explicitly select and their subdirectories. It's recommended to choose common directories like Documents, Downloads, etc.",
+  'local.error.access':
+    'Cannot access the specified path. Please check if the path exists and you have permission to access it.',
   'local.error.connection': 'Failed to connect to local file system',
 
   // Status related

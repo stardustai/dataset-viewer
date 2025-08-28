@@ -9,7 +9,7 @@ export const ossStorageAdapter: StorageAdapter = {
   protocol: 'oss',
   displayName: 'Object Storage Service',
   defaultSortOptions: null, // 使用前端排序
-  defaultPageSize: 100,     // 大分页提高效率
+  defaultPageSize: 100, // 大分页提高效率
   supportsSearch: false,
   supportsCustomRootDisplay: false,
 
@@ -56,9 +56,10 @@ export const ossStorageAdapter: StorageAdapter = {
     } else if (hostname.includes('amazonaws.com')) {
       // AWS S3
       region = region || 'us-east-1'; // AWS 默认区域
-      endpoint = region === 'us-east-1'
-        ? `https://${bucket}.s3.amazonaws.com`
-        : `https://${bucket}.s3.${region}.amazonaws.com`;
+      endpoint =
+        region === 'us-east-1'
+          ? `https://${bucket}.s3.amazonaws.com`
+          : `https://${bucket}.s3.${region}.amazonaws.com`;
     } else if (hostname.includes('myqcloud.com')) {
       // 腾讯云 COS
       region = region || 'ap-beijing'; // 腾讯云默认区域
@@ -73,13 +74,13 @@ export const ossStorageAdapter: StorageAdapter = {
     }
 
     return {
-      url: endpoint,  // 标准化后的正确 URL
+      url: endpoint, // 标准化后的正确 URL
       endpoint,
       bucket,
       pathPrefix,
       accessKey: config.username,
       secretKey: config.password,
-      region
+      region,
     };
   },
 
@@ -111,7 +112,5 @@ export const ossStorageAdapter: StorageAdapter = {
     const bucket = config.bucket || 'Unknown';
     const cleanBucket = bucket.split('/')[0]; // 只显示 bucket 名称，不包含路径
     return `OSS (${cleanBucket})`;
-  }
+  },
 };
-
-

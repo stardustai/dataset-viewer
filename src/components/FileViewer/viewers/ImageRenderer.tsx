@@ -22,7 +22,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
   mediaUrl,
   fileName,
   filePath,
-  hasAssociatedFiles
+  hasAssociatedFiles,
 }) => {
   const { t } = useTranslation();
   const [zoom, setZoom] = useState(100);
@@ -74,7 +74,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
               x: parseFloat(parts[1]),
               y: parseFloat(parts[2]),
               width: parseFloat(parts[3]),
-              height: parseFloat(parts[4])
+              height: parseFloat(parts[4]),
             };
           }
           return null;
@@ -93,14 +93,39 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
     const colors = [
       { border: 'border-red-500', bg: 'bg-red-500', label: 'bg-red-500', center: 'bg-red-600' },
       { border: 'border-blue-500', bg: 'bg-blue-500', label: 'bg-blue-500', center: 'bg-blue-600' },
-      { border: 'border-green-500', bg: 'bg-green-500', label: 'bg-green-500', center: 'bg-green-600' },
-      { border: 'border-yellow-500', bg: 'bg-yellow-500', label: 'bg-yellow-500', center: 'bg-yellow-600' },
-      { border: 'border-purple-500', bg: 'bg-purple-500', label: 'bg-purple-500', center: 'bg-purple-600' },
+      {
+        border: 'border-green-500',
+        bg: 'bg-green-500',
+        label: 'bg-green-500',
+        center: 'bg-green-600',
+      },
+      {
+        border: 'border-yellow-500',
+        bg: 'bg-yellow-500',
+        label: 'bg-yellow-500',
+        center: 'bg-yellow-600',
+      },
+      {
+        border: 'border-purple-500',
+        bg: 'bg-purple-500',
+        label: 'bg-purple-500',
+        center: 'bg-purple-600',
+      },
       { border: 'border-pink-500', bg: 'bg-pink-500', label: 'bg-pink-500', center: 'bg-pink-600' },
-      { border: 'border-indigo-500', bg: 'bg-indigo-500', label: 'bg-indigo-500', center: 'bg-indigo-600' },
-      { border: 'border-orange-500', bg: 'bg-orange-500', label: 'bg-orange-500', center: 'bg-orange-600' },
+      {
+        border: 'border-indigo-500',
+        bg: 'bg-indigo-500',
+        label: 'bg-indigo-500',
+        center: 'bg-indigo-600',
+      },
+      {
+        border: 'border-orange-500',
+        bg: 'bg-orange-500',
+        label: 'bg-orange-500',
+        center: 'bg-orange-600',
+      },
       { border: 'border-teal-500', bg: 'bg-teal-500', label: 'bg-teal-500', center: 'bg-teal-600' },
-      { border: 'border-cyan-500', bg: 'bg-cyan-500', label: 'bg-cyan-500', center: 'bg-cyan-600' }
+      { border: 'border-cyan-500', bg: 'bg-cyan-500', label: 'bg-cyan-500', center: 'bg-cyan-600' },
     ];
     return colors[classId % colors.length];
   };
@@ -109,7 +134,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
     if (imageRef.current) {
       setImageSize({
         width: imageRef.current.naturalWidth,
-        height: imageRef.current.naturalHeight
+        height: imageRef.current.naturalHeight,
       });
     }
   };
@@ -134,7 +159,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
         width: displayWidth,
         height: displayHeight,
         left: 0,
-        top: (containerHeight - displayHeight) / 2
+        top: (containerHeight - displayHeight) / 2,
       };
     } else {
       // Image is taller than container, fit by height
@@ -144,10 +169,11 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
         width: displayWidth,
         height: displayHeight,
         left: (containerWidth - displayWidth) / 2,
-        top: 0
+        top: 0,
       };
     }
-  };  useEffect(() => {
+  };
+  useEffect(() => {
     loadYoloAnnotations();
   }, [loadYoloAnnotations]);
 
@@ -221,80 +247,85 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
           className="relative w-full h-full transition-transform duration-200"
           style={{
             transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-            transformOrigin: 'center'
+            transformOrigin: 'center',
           }}
         >
-					<img
-						ref={imageRef}
-						src={mediaUrl}
-						alt={fileName}
-						className="w-full h-full object-contain"
-						onLoad={handleImageLoad}
-					/>
+          <img
+            ref={imageRef}
+            src={mediaUrl}
+            alt={fileName}
+            className="w-full h-full object-contain"
+            onLoad={handleImageLoad}
+          />
 
           {/* YOLO Annotations */}
-          {showYolo && yoloAnnotations.length > 0 && imageSize.width > 0 && (() => {
-            const imageDisplaySize = getImageDisplaySize();
-            if (imageDisplaySize.width === 0) return null;
+          {showYolo &&
+            yoloAnnotations.length > 0 &&
+            imageSize.width > 0 &&
+            (() => {
+              const imageDisplaySize = getImageDisplaySize();
+              if (imageDisplaySize.width === 0) return null;
 
-            return (
-              <div
-                className="absolute pointer-events-none"
-                style={{
-                  left: `${imageDisplaySize.left}px`,
-                  top: `${imageDisplaySize.top}px`,
-                  width: `${imageDisplaySize.width}px`,
-                  height: `${imageDisplaySize.height}px`
-                }}
-              >
-                {yoloAnnotations.map((annotation, index) => {
-                  // YOLO format: x,y are center coordinates, width,height are relative to image size
-                  // All values are normalized (0-1), convert to percentage for CSS
-                  const centerXPercent = annotation.x * 100;
-                  const centerYPercent = annotation.y * 100;
-                  const widthPercent = annotation.width * 100;
-                  const heightPercent = annotation.height * 100;
+              return (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: `${imageDisplaySize.left}px`,
+                    top: `${imageDisplaySize.top}px`,
+                    width: `${imageDisplaySize.width}px`,
+                    height: `${imageDisplaySize.height}px`,
+                  }}
+                >
+                  {yoloAnnotations.map((annotation, index) => {
+                    // YOLO format: x,y are center coordinates, width,height are relative to image size
+                    // All values are normalized (0-1), convert to percentage for CSS
+                    const centerXPercent = annotation.x * 100;
+                    const centerYPercent = annotation.y * 100;
+                    const widthPercent = annotation.width * 100;
+                    const heightPercent = annotation.height * 100;
 
-                  // Calculate top-left corner position from center coordinates
-                  const leftPercent = centerXPercent - (widthPercent / 2);
-                  const topPercent = centerYPercent - (heightPercent / 2);
+                    // Calculate top-left corner position from center coordinates
+                    const leftPercent = centerXPercent - widthPercent / 2;
+                    const topPercent = centerYPercent - heightPercent / 2;
 
-                  // Get color scheme for this class
-                  const colorScheme = getClassColor(annotation.classId);
+                    // Get color scheme for this class
+                    const colorScheme = getClassColor(annotation.classId);
 
-                  return (
-                    <div
-                      key={index}
-                      className={`absolute border-2 ${colorScheme.border} ${colorScheme.bg}/20 hover:${colorScheme.bg}/30 transition-colors`}
-                      style={{
-                        left: `${leftPercent}%`,
-                        top: `${topPercent}%`,
-                        width: `${widthPercent}%`,
-                        height: `${heightPercent}%`,
-                        minWidth: '2px',
-                        minHeight: '2px'
-                      }}
-                    >
-                      {/* Class label */}
-                      <div className={`absolute -top-7 left-0 ${colorScheme.label} text-white text-xs px-2 py-1 rounded-sm shadow-md whitespace-nowrap z-10`}>
-                        Class {annotation.classId}
-                      </div>
-
-                      {/* Center point indicator */}
+                    return (
                       <div
-                        className={`absolute w-1 h-1 ${colorScheme.center} rounded-full`}
+                        key={index}
+                        className={`absolute border-2 ${colorScheme.border} ${colorScheme.bg}/20 hover:${colorScheme.bg}/30 transition-colors`}
                         style={{
-                          left: '50%',
-                          top: '50%',
-                          transform: 'translate(-50%, -50%)'
+                          left: `${leftPercent}%`,
+                          top: `${topPercent}%`,
+                          width: `${widthPercent}%`,
+                          height: `${heightPercent}%`,
+                          minWidth: '2px',
+                          minHeight: '2px',
                         }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
+                      >
+                        {/* Class label */}
+                        <div
+                          className={`absolute -top-7 left-0 ${colorScheme.label} text-white text-xs px-2 py-1 rounded-sm shadow-md whitespace-nowrap z-10`}
+                        >
+                          Class {annotation.classId}
+                        </div>
+
+                        {/* Center point indicator */}
+                        <div
+                          className={`absolute w-1 h-1 ${colorScheme.center} rounded-full`}
+                          style={{
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
         </div>
       </div>
     </>

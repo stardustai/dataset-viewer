@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-use tokio::sync::{RwLock, Semaphore};
-use std::sync::Arc;
-use super::traits::{StorageClient, StorageError, ConnectionConfig, DirectoryResult, ListOptions};
-use super::webdav_client::WebDAVClient;
+use super::huggingface_client::HuggingFaceClient;
 use super::local_client::LocalFileSystemClient;
 use super::oss_client::OSSClient;
-use super::huggingface_client::HuggingFaceClient;
+use super::traits::{ConnectionConfig, DirectoryResult, ListOptions, StorageClient, StorageError};
+use super::webdav_client::WebDAVClient;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::{RwLock, Semaphore};
 
 pub struct StorageManager {
     clients: HashMap<String, Arc<dyn StorageClient + Send + Sync>>,
@@ -32,22 +32,22 @@ impl StorageManager {
                 let mut client = WebDAVClient::new(config.clone())?;
                 client.connect(config).await?;
                 Arc::new(client)
-            },
+            }
             "local" => {
                 let mut client = LocalFileSystemClient::new();
                 client.connect(config).await?;
                 Arc::new(client)
-            },
+            }
             "oss" => {
                 let mut client = OSSClient::new(config.clone())?;
                 client.connect(config).await?;
                 Arc::new(client)
-            },
+            }
             "huggingface" => {
                 let mut client = HuggingFaceClient::new(config.clone())?;
                 client.connect(config).await?;
                 Arc::new(client)
-            },
+            }
             _ => return Err(StorageError::UnsupportedProtocol(config.protocol.clone())),
         };
 
@@ -79,9 +79,11 @@ impl StorageManager {
         Ok(())
     }
 
-
-
-    pub async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    pub async fn list_directory(
+        &self,
+        path: &str,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         // 获取并发许可
         let _permit = self.request_semaphore.acquire().await.map_err(|_| {
             StorageError::ConnectionFailed("Request semaphore acquisition failed".to_string())
@@ -103,14 +105,18 @@ impl StorageManager {
     }
 
     pub async fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        let client = self.cached_client.as_ref()
+        let client = self
+            .cached_client
+            .as_ref()
             .ok_or(StorageError::NotConnected)?;
 
         client.get_download_url(path)
     }
 
     pub async fn get_download_headers(&self) -> Result<HashMap<String, String>, StorageError> {
-        let client = self.cached_client.as_ref()
+        let client = self
+            .cached_client
+            .as_ref()
             .ok_or(StorageError::NotConnected)?;
 
         Ok(client.get_download_headers())
@@ -118,12 +124,16 @@ impl StorageManager {
 }
 
 // 全局存储管理器
-static STORAGE_MANAGER: tokio::sync::OnceCell<Arc<RwLock<StorageManager>>> = tokio::sync::OnceCell::const_new();
+static STORAGE_MANAGER: tokio::sync::OnceCell<Arc<RwLock<StorageManager>>> =
+    tokio::sync::OnceCell::const_new();
 
 pub async fn get_storage_manager() -> Arc<RwLock<StorageManager>> {
-    let result = STORAGE_MANAGER.get_or_init(|| async {
-        let manager = StorageManager::new();
-        Arc::new(RwLock::new(manager))
-    }).await.clone();
+    let result = STORAGE_MANAGER
+        .get_or_init(|| async {
+            let manager = StorageManager::new();
+            Arc::new(RwLock::new(manager))
+        })
+        .await
+        .clone();
     result
 }

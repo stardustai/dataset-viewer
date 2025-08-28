@@ -10,7 +10,8 @@ const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; form
   const trimmed = text.trim();
 
   // 匹配 "key": "data:image/format;base64,..." 格式
-  const base64ImageRegex = /["']?\w*["']?\s*:\s*["']data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/=]+)["']?/i;
+  const base64ImageRegex =
+    /["']?\w*["']?\s*:\s*["']data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/=]+)["']?/i;
   const match = trimmed.match(base64ImageRegex);
 
   if (match) {
@@ -19,12 +20,13 @@ const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; form
     return {
       isImage: true,
       dataUrl: `data:image/${format};base64,${base64Data}`,
-      format: format.toUpperCase()
+      format: format.toUpperCase(),
     };
   }
 
   // 也支持直接的 data URL 格式
-  const directDataUrlRegex = /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/=]+)$/i;
+  const directDataUrlRegex =
+    /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/=]+)$/i;
   const directMatch = trimmed.match(directDataUrlRegex);
 
   if (directMatch) {
@@ -32,7 +34,7 @@ const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; form
     return {
       isImage: true,
       dataUrl: trimmed,
-      format: format.toUpperCase()
+      format: format.toUpperCase(),
     };
   }
 
@@ -51,7 +53,7 @@ const formatXML = (xml: string): string => {
   // 分割成行并处理每一行
   const nodes = xml.split('\n');
 
-  nodes.forEach((node) => {
+  nodes.forEach(node => {
     let indent = 0;
     const trimmedNode = node.trim();
 
@@ -62,8 +64,10 @@ const formatXML = (xml: string): string => {
       pad = Math.max(0, pad - 1);
     }
     // 处理自闭合标签或者单行完整标签
-    else if (trimmedNode.match(/^<\w[^>]*\/>\s*$/) ||
-             trimmedNode.match(/^<\w[^>]*>.*<\/\w[^>]*>\s*$/)) {
+    else if (
+      trimmedNode.match(/^<\w[^>]*\/>\s*$/) ||
+      trimmedNode.match(/^<\w[^>]*>.*<\/\w[^>]*>\s*$/)
+    ) {
       indent = 0;
     }
     // 处理开始标签
@@ -115,7 +119,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
   title,
   searchTerm,
   fileName,
-  description
+  description,
 }) => {
   const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -124,7 +128,8 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
   // 检测逻辑 - 优先级：图片 > 结构化数据格式化 > 原始文本
   const imageInfo = isBase64Image(content);
   const isJSONContent = !imageInfo.isImage && content.trim().match(/^[\[\{].*[\]\}]$/s);
-  const isXMLContent = !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
+  const isXMLContent =
+    !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
 
   const shouldDefaultFormat = Boolean(isJSONContent || isXMLContent);
   const [manualFormatState, setManualFormatState] = useState<boolean | null>(null);
@@ -210,9 +215,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex-1">
             <div className="flex items-center space-x-3">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {title}
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
 
               {/* Content Type Indicators - 紧贴标题右侧 */}
               {isFormatted && isJSONContent && (
@@ -234,9 +237,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
 
             {/* 描述区域 - 使用自定义描述或默认统计信息 */}
             {description && (
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {description}
-              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</div>
             )}
           </div>
 
@@ -250,13 +251,21 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
                     ? 'bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
-                title={isFormatted ? t('original.content') : (isJSONContent ? t('format.json') : t('format.xml'))}
-              >
-                <Braces className={`w-4 h-4 ${
+                title={
                   isFormatted
-                    ? 'text-purple-700 dark:text-purple-400'
-                    : 'text-gray-600 dark:text-gray-300'
-                }`} />
+                    ? t('original.content')
+                    : isJSONContent
+                      ? t('format.json')
+                      : t('format.xml')
+                }
+              >
+                <Braces
+                  className={`w-4 h-4 ${
+                    isFormatted
+                      ? 'text-purple-700 dark:text-purple-400'
+                      : 'text-gray-600 dark:text-gray-300'
+                  }`}
+                />
               </button>
             )}
 
@@ -299,7 +308,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
             <VirtualizedTextViewer
               content={displayContent}
               searchTerm={searchTerm}
-              fileName={fileName || (isJSONContent ? "formatted.json" : "formatted.xml")}
+              fileName={fileName || (isJSONContent ? 'formatted.json' : 'formatted.xml')}
               className="h-full"
               key="unified-modal-formatted-viewer"
             />
@@ -307,21 +316,26 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
             // 原始内容或简单文本
             <div className="flex-1 overflow-auto p-4">
               <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 font-mono text-sm whitespace-pre-wrap break-words">
-                {searchTerm && searchTerm.length >= 2 ? (
-                  displayContent.split(new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, index: number) => {
-                    const regex = new RegExp(searchTerm!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-                    if (regex.test(part)) {
-                      return (
-                        <mark key={index} className="bg-yellow-200 dark:bg-yellow-800">
-                          {part}
-                        </mark>
-                      );
-                    }
-                    return part;
-                  })
-                ) : (
-                  displayContent
-                )}
+                {searchTerm && searchTerm.length >= 2
+                  ? displayContent
+                      .split(
+                        new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+                      )
+                      .map((part: string, index: number) => {
+                        const regex = new RegExp(
+                          searchTerm!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                          'gi'
+                        );
+                        if (regex.test(part)) {
+                          return (
+                            <mark key={index} className="bg-yellow-200 dark:bg-yellow-800">
+                              {part}
+                            </mark>
+                          );
+                        }
+                        return part;
+                      })
+                  : displayContent}
               </div>
             </div>
           )}

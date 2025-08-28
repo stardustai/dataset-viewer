@@ -112,7 +112,9 @@ const applyLODOptimization = (points: THREE.Points): THREE.Points => {
 
   // 性能提示
   if (process.env.NODE_ENV === 'development') {
-    console.info(`LOD optimization: ${pointCount} → ${targetCount} points (${(samplingRate * 100).toFixed(1)}%)`);
+    console.info(
+      `LOD optimization: ${pointCount} → ${targetCount} points (${(samplingRate * 100).toFixed(1)}%)`
+    );
   }
 
   return new THREE.Points(optimizedGeometry, points.material);
@@ -128,7 +130,7 @@ const createPointCloudMaterial = (
     sizeAttenuation: false, // 固定为 false，保持点大小不随距离变化
     vertexColors: hasVertexColors,
     transparent: false, // 关闭透明以提升性能
-    alphaTest: 0.1 // 设置alpha测试阈值
+    alphaTest: 0.1, // 设置alpha测试阈值
   });
 };
 
@@ -159,9 +161,9 @@ const validateAndCleanPointCloud = (points: THREE.Points): THREE.Points => {
     const z = positions[idx3 + 2];
 
     // 使用位运算和快速异常检测
-    const hasNaN = (x !== x) || (y !== y) || (z !== z); // NaN检测：NaN !== NaN
+    const hasNaN = x !== x || y !== y || z !== z; // NaN检测：NaN !== NaN
     const hasInfinity = !isFinite(x) || !isFinite(y) || !isFinite(z);
-    const hasExtreme = (Math.abs(x) > 1e6) || (Math.abs(y) > 1e6) || (Math.abs(z) > 1e6);
+    const hasExtreme = Math.abs(x) > 1e6 || Math.abs(y) > 1e6 || Math.abs(z) > 1e6;
 
     if (hasNaN || hasInfinity || hasExtreme) {
       validMask[i] = 0;
@@ -180,7 +182,9 @@ const validateAndCleanPointCloud = (points: THREE.Points): THREE.Points => {
   // 如果异常值比例过高，可能是数据格式问题，返回原始数据
   const anomalyRate = (pointCount - validCount) / pointCount;
   if (anomalyRate > 0.5) {
-    console.warn(`High anomaly rate detected: ${(anomalyRate * 100).toFixed(1)}%, skipping cleaning`);
+    console.warn(
+      `High anomaly rate detected: ${(anomalyRate * 100).toFixed(1)}%, skipping cleaning`
+    );
     return points;
   }
 
@@ -207,9 +211,9 @@ const validateAndCleanPointCloud = (points: THREE.Points): THREE.Points => {
         const b = colors[readPos + 2];
 
         // 使用三元运算符优化颜色验证
-        validColors[writePos] = (r === r && isFinite(r)) ? Math.max(0, Math.min(1, r)) : 1;
-        validColors[writePos + 1] = (g === g && isFinite(g)) ? Math.max(0, Math.min(1, g)) : 1;
-        validColors[writePos + 2] = (b === b && isFinite(b)) ? Math.max(0, Math.min(1, b)) : 1;
+        validColors[writePos] = r === r && isFinite(r) ? Math.max(0, Math.min(1, r)) : 1;
+        validColors[writePos + 1] = g === g && isFinite(g) ? Math.max(0, Math.min(1, g)) : 1;
+        validColors[writePos + 2] = b === b && isFinite(b) ? Math.max(0, Math.min(1, b)) : 1;
       }
 
       writeIdx++;
@@ -231,7 +235,7 @@ const validateAndCleanPointCloud = (points: THREE.Points): THREE.Points => {
       original: pointCount,
       valid: validCount,
       removed: removedCount,
-      rate: `${(removedCount / pointCount * 100).toFixed(1)}%`
+      rate: `${((removedCount / pointCount) * 100).toFixed(1)}%`,
     });
   }
 
@@ -264,10 +268,17 @@ const parsePtsFile = (text: string): THREE.BufferGeometry => {
     const z = +parts[2];
 
     // 快速异常值检测
-    if ((x === x) && (y === y) && (z === z) && // NaN检测
-        isFinite(x) && isFinite(y) && isFinite(z) &&
-        Math.abs(x) < 1e6 && Math.abs(y) < 1e6 && Math.abs(z) < 1e6) {
-
+    if (
+      x === x &&
+      y === y &&
+      z === z && // NaN检测
+      isFinite(x) &&
+      isFinite(y) &&
+      isFinite(z) &&
+      Math.abs(x) < 1e6 &&
+      Math.abs(y) < 1e6 &&
+      Math.abs(z) < 1e6
+    ) {
       const idx3 = validCount * 3;
       positions[idx3] = x;
       positions[idx3 + 1] = y;
@@ -280,7 +291,7 @@ const parsePtsFile = (text: string): THREE.BufferGeometry => {
         let b = +parts[5];
 
         // 快速颜色验证和归一化
-        if ((r === r) && (g === g) && (b === b) && isFinite(r) && isFinite(g) && isFinite(b)) {
+        if (r === r && g === g && b === b && isFinite(r) && isFinite(g) && isFinite(b)) {
           // 自动检测颜色范围并归一化
           if (r > 1 || g > 1 || b > 1) {
             r *= 0.003921569; // 1/255，比除法更快
@@ -307,7 +318,9 @@ const parsePtsFile = (text: string): THREE.BufferGeometry => {
 
   // 仅在开发模式和存在无效点时输出警告
   if (process.env.NODE_ENV === 'development' && invalidCount > 0) {
-    console.warn(`PTS parsing: ${validCount} valid, ${invalidCount} invalid points (${(invalidCount / (validCount + invalidCount) * 100).toFixed(1)}% filtered)`);
+    console.warn(
+      `PTS parsing: ${validCount} valid, ${invalidCount} invalid points (${((invalidCount / (validCount + invalidCount)) * 100).toFixed(1)}% filtered)`
+    );
   }
 
   // 创建正确大小的数组
@@ -328,7 +341,9 @@ const calculatePointColor = (
   uniformColor: string,
   stats: PCDStats
 ): { r: number; g: number; b: number } => {
-  let r = 1, g = 1, b = 1;
+  let r = 1,
+    g = 1,
+    b = 1;
 
   switch (colorMode) {
     case 'rgb':
@@ -353,7 +368,8 @@ const calculatePointColor = (
       break;
 
     case 'height':
-      const normalizedHeight = (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
+      const normalizedHeight =
+        (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
       // 使用更自然的渐变色：蓝色(低) -> 绿色(中) -> 红色(高)
       if (normalizedHeight < 0.5) {
         // 从蓝色到绿色
@@ -394,7 +410,7 @@ const extractPointCloudStats = (points: THREE.Points): PCDStats => {
       hasIntensity: false,
       bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
       center: { x: 0, y: 0, z: 0 },
-      scale: 1
+      scale: 1,
     };
   }
 
@@ -424,7 +440,7 @@ const extractPointCloudStats = (points: THREE.Points): PCDStats => {
     const upperIndex = Math.floor(len * 0.975);
     return {
       min: sorted[lowerIndex],
-      max: sorted[upperIndex]
+      max: sorted[upperIndex],
     };
   };
 
@@ -447,17 +463,17 @@ const extractPointCloudStats = (points: THREE.Points): PCDStats => {
     hasIntensity: false, // PCDLoader doesn't expose intensity directly
     bounds: {
       min: { x: xBounds.min, y: yBounds.min, z: zBounds.min },
-      max: { x: xBounds.max, y: yBounds.max, z: zBounds.max }
+      max: { x: xBounds.max, y: yBounds.max, z: zBounds.max },
     },
     center: { x: centerX, y: centerY, z: centerZ },
-    scale
+    scale,
   };
 };
 
 export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
   filePath,
   onMetadataLoaded,
-  previewContent
+  previewContent,
 }) => {
   const { t } = useTranslation();
   const mountRef = useRef<HTMLDivElement>(null);
@@ -483,7 +499,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     backgroundColor: '#1a1a1a',
     maxPointsToRender: Infinity, // 渲染所有点，无限制
     autoRotate: false,
-    rotationSpeed: 0.5
+    rotationSpeed: 0.5,
   });
 
   // 加载点云文件（支持多种格式）
@@ -498,9 +514,13 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       let arrayBuffer: ArrayBuffer;
       if (previewContent) {
         console.log('使用预加载内容，大小:', previewContent.byteLength);
-        arrayBuffer = previewContent.buffer instanceof ArrayBuffer 
-          ? previewContent.buffer.slice(previewContent.byteOffset, previewContent.byteOffset + previewContent.byteLength)
-          : new ArrayBuffer(previewContent.byteLength);
+        arrayBuffer =
+          previewContent.buffer instanceof ArrayBuffer
+            ? previewContent.buffer.slice(
+                previewContent.byteOffset,
+                previewContent.byteOffset + previewContent.byteLength
+              )
+            : new ArrayBuffer(previewContent.byteLength);
         if (!(previewContent.buffer instanceof ArrayBuffer)) {
           new Uint8Array(arrayBuffer).set(previewContent);
         }
@@ -608,7 +628,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
             const point: PCDPoint = {
               x: positions[i * 3],
               y: positions[i * 3 + 1],
-              z: positions[i * 3 + 2]
+              z: positions[i * 3 + 2],
             };
 
             if (colors) {
@@ -628,7 +648,13 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
         onMetadataLoaded?.({
           // 通用字段
           numRows: pointStats.pointCount, // 点数作为行数
-          numColumns: pointStats.hasColor ? (pointStats.hasIntensity ? 7 : 6) : (pointStats.hasIntensity ? 4 : 3), // x,y,z + 可选的r,g,b + 可选的intensity
+          numColumns: pointStats.hasColor
+            ? pointStats.hasIntensity
+              ? 7
+              : 6
+            : pointStats.hasIntensity
+              ? 4
+              : 3, // x,y,z + 可选的r,g,b + 可选的intensity
           fileType: fileExtension?.toUpperCase() || 'Point Cloud',
           // 扩展信息 - 任何格式都可以添加自己的扩展字段
           extensions: {
@@ -637,8 +663,8 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
             hasIntensity: pointStats.hasIntensity,
             bounds: pointStats.bounds,
             center: pointStats.center,
-            scale: pointStats.scale
-          }
+            scale: pointStats.scale,
+          },
         });
 
         // 根据数据特性选择最佳的默认颜色模式
@@ -709,8 +735,8 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     const renderer = new THREE.WebGLRenderer({
       antialias: pcdData.length < 100000, // 大数据集关闭抗锯齿以提升性能
       alpha: true,
-      powerPreference: "high-performance",
-      logarithmicDepthBuffer: pcdData.length > 1000000 // 大数据集启用深度缓冲优化
+      powerPreference: 'high-performance',
+      logarithmicDepthBuffer: pcdData.length > 1000000, // 大数据集启用深度缓冲优化
     });
 
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
@@ -750,7 +776,12 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       positions[idx3 + 2] = point.z;
 
       // 颜色数据 - 内联计算避免函数调用开销
-      const { r, g, b } = calculatePointColor(point, settings.colorMode, settings.uniformColor, stats);
+      const { r, g, b } = calculatePointColor(
+        point,
+        settings.colorMode,
+        settings.uniformColor,
+        stats
+      );
       colors[idx3] = r;
       colors[idx3 + 1] = g;
       colors[idx3 + 2] = b;
@@ -793,7 +824,6 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     camera.up.set(0, 0, 1);
     controls.update();
     controlsRef.current = controls;
-
   }, [pcdData, stats, settings]);
 
   // 高性能渲染循环
@@ -819,7 +849,8 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       rendererRef.current.render(sceneRef.current, cameraRef.current);
 
       // 定期重置渲染器统计信息
-      if (Math.random() < 0.01) { // 1% 概率重置
+      if (Math.random() < 0.01) {
+        // 1% 概率重置
         rendererRef.current.info.reset();
       }
     }
@@ -838,7 +869,12 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     // 批量处理，减少函数调用开销
     for (let index = 0; index < pcdData.length; index++) {
       const point = pcdData[index];
-      const { r, g, b } = calculatePointColor(point, settings.colorMode, settings.uniformColor, stats);
+      const { r, g, b } = calculatePointColor(
+        point,
+        settings.colorMode,
+        settings.uniformColor,
+        stats
+      );
       const idx3 = index * 3;
 
       colorArray[idx3] = r;
@@ -879,7 +915,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     // 创建GUI并将其定位在画布容器内部
     const gui = new dat.GUI({
       width: 280,
-      autoPlace: false // 禁用自动定位
+      autoPlace: false, // 禁用自动定位
     });
 
     // 将GUI添加到画布容器内部
@@ -896,12 +932,15 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
 
     // 渲染设置文件夹
     const renderFolder = gui.addFolder('Render Settings');
-    renderFolder.add(settings, 'pointSize', 0.5, 20, 0.5).name('Point Size').onChange(() => {
-      if (pointsRef.current && pointsRef.current.material) {
-        (pointsRef.current.material as THREE.PointsMaterial).size = settings.pointSize;
-        (pointsRef.current.material as THREE.PointsMaterial).needsUpdate = true;
-      }
-    });
+    renderFolder
+      .add(settings, 'pointSize', 0.5, 20, 0.5)
+      .name('Point Size')
+      .onChange(() => {
+        if (pointsRef.current && pointsRef.current.material) {
+          (pointsRef.current.material as THREE.PointsMaterial).size = settings.pointSize;
+          (pointsRef.current.material as THREE.PointsMaterial).needsUpdate = true;
+        }
+      });
 
     // 根据数据特性动态生成支持的颜色模式列表
     const supportedColorModes = ['height', 'uniform']; // 基础模式
@@ -914,41 +953,59 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       supportedColorModes.splice(-1, 0, 'intensity'); // intensity在uniform前
     }
 
-    renderFolder.add(settings, 'colorMode', supportedColorModes).name('Color Mode').onChange(() => {
-      // 使用优化的颜色更新函数，避免完全重新渲染
-      updatePointColors();
-    });
-
-    renderFolder.addColor(settings, 'uniformColor').name('Uniform Color').onChange(() => {
-      if (settings.colorMode === 'uniform') {
+    renderFolder
+      .add(settings, 'colorMode', supportedColorModes)
+      .name('Color Mode')
+      .onChange(() => {
+        // 使用优化的颜色更新函数，避免完全重新渲染
         updatePointColors();
-      }
-    });
+      });
 
-    renderFolder.add(settings, 'showAxes').name('Show Axes').onChange(() => {
-      updateAxes();
-    });
+    renderFolder
+      .addColor(settings, 'uniformColor')
+      .name('Uniform Color')
+      .onChange(() => {
+        if (settings.colorMode === 'uniform') {
+          updatePointColors();
+        }
+      });
 
-    renderFolder.addColor(settings, 'backgroundColor').name('Background').onChange(() => {
-      if (sceneRef.current) {
-        sceneRef.current.background = new THREE.Color(settings.backgroundColor);
-      }
-    });
+    renderFolder
+      .add(settings, 'showAxes')
+      .name('Show Axes')
+      .onChange(() => {
+        updateAxes();
+      });
+
+    renderFolder
+      .addColor(settings, 'backgroundColor')
+      .name('Background')
+      .onChange(() => {
+        if (sceneRef.current) {
+          sceneRef.current.background = new THREE.Color(settings.backgroundColor);
+        }
+      });
 
     // 动画设置文件夹
     const animationFolder = gui.addFolder('Animation');
-    animationFolder.add(settings, 'autoRotate').name('Auto Rotate').onChange(() => {
-      if (controlsRef.current) {
-        controlsRef.current.autoRotate = settings.autoRotate;
-        controlsRef.current.autoRotateSpeed = settings.rotationSpeed;
-      }
-    });
+    animationFolder
+      .add(settings, 'autoRotate')
+      .name('Auto Rotate')
+      .onChange(() => {
+        if (controlsRef.current) {
+          controlsRef.current.autoRotate = settings.autoRotate;
+          controlsRef.current.autoRotateSpeed = settings.rotationSpeed;
+        }
+      });
 
-    animationFolder.add(settings, 'rotationSpeed', 0.1, 2.0, 0.1).name('Rotation Speed').onChange(() => {
-      if (controlsRef.current) {
-        controlsRef.current.autoRotateSpeed = settings.rotationSpeed;
-      }
-    });
+    animationFolder
+      .add(settings, 'rotationSpeed', 0.1, 2.0, 0.1)
+      .name('Rotation Speed')
+      .onChange(() => {
+        if (controlsRef.current) {
+          controlsRef.current.autoRotateSpeed = settings.rotationSpeed;
+        }
+      });
 
     // 默认展开所有调试面板文件夹
     renderFolder.open();
@@ -991,7 +1048,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
 
     // 清理场景中的所有对象
     if (sceneRef.current) {
-      sceneRef.current.traverse((object) => {
+      sceneRef.current.traverse(object => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
           if (object.geometry) {
             object.geometry.dispose();
@@ -1071,11 +1128,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       {/* 3D视图区域 - 全屏显示 */}
-      <div
-        ref={mountRef}
-        className="flex-1 relative bg-gray-900"
-        style={{ minHeight: '400px' }}
-      >
+      <div ref={mountRef} className="flex-1 relative bg-gray-900" style={{ minHeight: '400px' }}>
         {/* 鼠标操作提示 */}
         <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded pointer-events-none z-10">
           {t('pcd.mouseHint')}

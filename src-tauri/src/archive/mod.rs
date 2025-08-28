@@ -1,3 +1,3 @@
-pub mod types;
-pub mod handlers;
 pub mod formats;
+pub mod handlers;
+pub mod types;

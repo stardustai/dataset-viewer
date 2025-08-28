@@ -3,32 +3,32 @@ import { StorageServiceManager } from '../services/storage';
 // MIME 类型映射
 const MIME_TYPES: { [key: string]: string } = {
   // Images
-  'jpg': 'image/jpeg',
-  'jpeg': 'image/jpeg',
-  'png': 'image/png',
-  'gif': 'image/gif',
-  'webp': 'image/webp',
-  'svg': 'image/svg+xml',
-  'bmp': 'image/bmp',
-  'ico': 'image/x-icon',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
   // Documents
-  'pdf': 'application/pdf',
+  pdf: 'application/pdf',
   // Videos
-  'mp4': 'video/mp4',
-  'webm': 'video/webm',
-  'ogv': 'video/ogg',
-  'avi': 'video/x-msvideo',
-  'mov': 'video/quicktime',
-  'wmv': 'video/x-ms-wmv',
-  'flv': 'video/x-flv',
-  'mkv': 'video/x-matroska',
-  'm4v': 'video/mp4',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  avi: 'video/x-msvideo',
+  mov: 'video/quicktime',
+  wmv: 'video/x-ms-wmv',
+  flv: 'video/x-flv',
+  mkv: 'video/x-matroska',
+  m4v: 'video/mp4',
   // Audio
-  'mp3': 'audio/mpeg',
-  'wav': 'audio/wav',
-  'oga': 'audio/ogg',
-  'aac': 'audio/aac',
-  'flac': 'audio/flac'
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  oga: 'audio/ogg',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
 };
 
 export const getMimeType = (filename: string): string => {
@@ -71,11 +71,18 @@ export async function getFileText(filePath: string, encoding: string = 'utf-8'):
  * @param maxBytes 最大读取字节数，默认 2KB
  * @returns Promise<Uint8Array> 文件头部数据
  */
-export async function getFileHeader(filePath: string, maxBytes: number = 2048): Promise<Uint8Array> {
+export async function getFileHeader(
+  filePath: string,
+  maxBytes: number = 2048
+): Promise<Uint8Array> {
   // 获取文件的下载 URL
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
 
-  if (fileUrl.startsWith('file://') || fileUrl.startsWith('webdav://') || fileUrl.startsWith('webdavs://')) {
+  if (
+    fileUrl.startsWith('file://') ||
+    fileUrl.startsWith('webdav://') ||
+    fileUrl.startsWith('webdavs://')
+  ) {
     // 对于本地文件和需要认证的 WebDAV 文件，使用 StorageServiceManager.downloadFile
     // 浏览器的 fetch 无法处理 WebDAV 认证头，所以需要通过后端下载
     const fileBlob = await StorageServiceManager.downloadFile(filePath);
@@ -86,8 +93,8 @@ export async function getFileHeader(filePath: string, maxBytes: number = 2048): 
     // 对于其他远程文件（如公开的 HTTP/HTTPS URL），使用 Range 请求只获取头部数据
     const response = await fetch(fileUrl, {
       headers: {
-        'Range': `bytes=0-${maxBytes - 1}`
-      }
+        Range: `bytes=0-${maxBytes - 1}`,
+      },
     });
 
     if (!response.ok && response.status !== 206) {
@@ -103,7 +110,11 @@ export async function getFileUrl(filePath: string): Promise<string> {
   // 获取文件的下载 URL
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
 
-  if (fileUrl.startsWith('file://') || fileUrl.startsWith('webdav://') || fileUrl.startsWith('webdavs://')) {
+  if (
+    fileUrl.startsWith('file://') ||
+    fileUrl.startsWith('webdav://') ||
+    fileUrl.startsWith('webdavs://')
+  ) {
     // 对于本地文件和需要认证的 WebDAV 文件，获取数据并创建 Blob URL
     // 浏览器的 iframe 无法处理 WebDAV 认证头，所以需要通过后端下载
     const fileBlob = await StorageServiceManager.downloadFile(filePath);

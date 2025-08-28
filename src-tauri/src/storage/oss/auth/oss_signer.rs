@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use chrono::Utc;
 use crate::utils::crypto::hmac_sha1_base64;
+use chrono::Utc;
+use std::collections::HashMap;
 
 /// 生成 OSS 签名（适用于阿里云OSS、华为OBS、MinIO等）
 pub fn generate_oss_signature(
@@ -15,10 +15,16 @@ pub fn generate_oss_signature(
     let mut string_to_sign = format!("{}\n", method);
 
     // Content-MD5
-    string_to_sign.push_str(&format!("{}\n", headers.get("Content-MD5").unwrap_or(&String::new())));
+    string_to_sign.push_str(&format!(
+        "{}\n",
+        headers.get("Content-MD5").unwrap_or(&String::new())
+    ));
 
     // Content-Type
-    string_to_sign.push_str(&format!("{}\n", headers.get("Content-Type").unwrap_or(&String::new())));
+    string_to_sign.push_str(&format!(
+        "{}\n",
+        headers.get("Content-Type").unwrap_or(&String::new())
+    ));
 
     // Date
     string_to_sign.push_str(&format!("{}\n", date));
@@ -119,8 +125,11 @@ pub fn generate_oss_presigned_url(
     let expires = now + expires_in_seconds;
 
     // 构建对象 URL
-    let object_url = format!("{}/{}", endpoint.trim_end_matches('/'),
-        urlencoding::encode(object_key));
+    let object_url = format!(
+        "{}/{}",
+        endpoint.trim_end_matches('/'),
+        urlencoding::encode(object_key)
+    );
 
     // 构建查询参数 - 使用OSS格式
     let mut query_params = HashMap::new();
@@ -137,15 +146,18 @@ pub fn generate_oss_presigned_url(
     let canonicalized_resource = format!("/{}{}", bucket, uri);
 
     // 构建签名字符串
-    let string_to_sign = format!("{}\n{}\n{}\n{}\n{}",
-        method, content_md5, content_type, expires, canonicalized_resource);
+    let string_to_sign = format!(
+        "{}\n{}\n{}\n{}\n{}",
+        method, content_md5, content_type, expires, canonicalized_resource
+    );
 
     // 生成签名
     let signature = hmac_sha1_base64(secret_key, &string_to_sign);
     query_params.insert("Signature".to_string(), signature);
 
     // 构建最终 URL
-    let query_string: String = query_params.iter()
+    let query_string: String = query_params
+        .iter()
         .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
         .collect::<Vec<_>>()
         .join("&");

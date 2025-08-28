@@ -16,7 +16,7 @@ export const ManualLoadButton: React.FC<ManualLoadButtonProps> = ({
   entry,
   onLoad,
   isLoading,
-  loadType
+  loadType,
 }) => {
   const { t } = useTranslation();
 
@@ -61,15 +61,19 @@ export const ManualLoadButton: React.FC<ManualLoadButtonProps> = ({
 
   return (
     <StatusDisplay
-      type={isLoading ? "loading" : "unsupported"}
+      type={isLoading ? 'loading' : 'unsupported'}
       message={getMessage()}
       secondaryMessage={isLoading ? undefined : getLoadTypeMessage()}
       icon={getIcon()}
-      action={isLoading ? undefined : {
-        label: t('load.full.content'),
-        onClick: () => onLoad(entry),
-        variant: 'primary'
-      }}
+      action={
+        isLoading
+          ? undefined
+          : {
+              label: t('load.full.content'),
+              onClick: () => onLoad(entry),
+              variant: 'primary',
+            }
+      }
       className="h-full"
     />
   );

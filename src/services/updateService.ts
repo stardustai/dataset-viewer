@@ -31,7 +31,7 @@ class UpdateService {
     const now = Date.now();
 
     // 如果不是强制检查且在检查间隔内，返回缓存结果
-    if (!force && this.cachedResult && (now - this.lastCheckTime) < this.checkInterval) {
+    if (!force && this.cachedResult && now - this.lastCheckTime < this.checkInterval) {
       return this.cachedResult;
     }
 
@@ -130,14 +130,15 @@ class UpdateService {
 
       // 查找匹配的 asset
       for (const pattern of platformPatterns) {
-        const asset = assets.find(asset =>
-          asset.name.toLowerCase().includes(pattern.toLowerCase()) &&
-          (asset.name.endsWith('.dmg') ||
-           asset.name.endsWith('.exe') ||
-           asset.name.endsWith('.AppImage') ||
-           asset.name.endsWith('.deb') ||
-           asset.name.endsWith('.rpm') ||
-           asset.name.endsWith('.tar.gz'))
+        const asset = assets.find(
+          asset =>
+            asset.name.toLowerCase().includes(pattern.toLowerCase()) &&
+            (asset.name.endsWith('.dmg') ||
+              asset.name.endsWith('.exe') ||
+              asset.name.endsWith('.AppImage') ||
+              asset.name.endsWith('.deb') ||
+              asset.name.endsWith('.rpm') ||
+              asset.name.endsWith('.tar.gz'))
         );
 
         if (asset) {
@@ -150,13 +151,14 @@ class UpdateService {
       }
 
       // 如果没有找到匹配的，返回第一个可执行文件
-      const fallbackAsset = assets.find(asset =>
-        asset.name.endsWith('.dmg') ||
-        asset.name.endsWith('.exe') ||
-        asset.name.endsWith('.AppImage') ||
-        asset.name.endsWith('.deb') ||
-        asset.name.endsWith('.rpm') ||
-        asset.name.endsWith('.tar.gz')
+      const fallbackAsset = assets.find(
+        asset =>
+          asset.name.endsWith('.dmg') ||
+          asset.name.endsWith('.exe') ||
+          asset.name.endsWith('.AppImage') ||
+          asset.name.endsWith('.deb') ||
+          asset.name.endsWith('.rpm') ||
+          asset.name.endsWith('.tar.gz')
       );
 
       if (fallbackAsset) {

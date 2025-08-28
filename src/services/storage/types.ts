@@ -27,8 +27,8 @@ export interface ConnectionConfig {
   // 本机文件系统特定配置
   rootPath?: string; // 本机文件系统的根目录路径
   // OSS 特定配置
-  bucket?: string;  // OSS bucket 名称
-  region?: string;  // OSS 区域
+  bucket?: string; // OSS bucket 名称
+  region?: string; // OSS 区域
   endpoint?: string; // OSS 端点地址（可选，通常从 url 解析）
   platform?: string; // OSS 平台类型 (aws, aliyun, tencent, huawei, minio, custom)
   // HuggingFace 特定配置
@@ -52,8 +52,6 @@ export interface ReadOptions {
   length?: number;
   end?: number; // 结束位置 (包含)
 }
-
-
 // 后端响应
 export interface StorageResponse {
   status: number;
@@ -63,4 +61,3 @@ export interface StorageResponse {
 }
 
 // 服务器能力检测
-

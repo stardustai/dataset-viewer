@@ -13,13 +13,15 @@ interface WordViewerProps {
 }
 
 // 使用 mammoth 提取 DOCX 文档内容
-const extractTextFromDocx = async (arrayBuffer: ArrayBuffer): Promise<{ html: string; text: string }> => {
+const extractTextFromDocx = async (
+  arrayBuffer: ArrayBuffer
+): Promise<{ html: string; text: string }> => {
   try {
     const result = await mammoth.convertToHtml({ arrayBuffer });
     const textResult = await mammoth.extractRawText({ arrayBuffer });
     return {
       html: result.value,
-      text: textResult.value
+      text: textResult.value,
     };
   } catch (error) {
     console.error('Error extracting content from DOCX:', error);
@@ -46,11 +48,7 @@ const extractTextFromRtf = (content: string, t: (key: string) => string): string
   }
 };
 
-export const WordViewer: React.FC<WordViewerProps> = ({
-  filePath,
-  fileName,
-  className = ''
-}) => {
+export const WordViewer: React.FC<WordViewerProps> = ({ filePath, fileName, className = '' }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -63,7 +61,7 @@ export const WordViewer: React.FC<WordViewerProps> = ({
     return {
       isDocx: ext === 'docx',
       isDoc: ext === 'doc',
-      isRtf: ext === 'rtf'
+      isRtf: ext === 'rtf',
     };
   }, [fileName]);
 
@@ -103,24 +101,14 @@ export const WordViewer: React.FC<WordViewerProps> = ({
     loadDocument();
   }, [filePath, isDocx, isDoc, isRtf]);
 
-
-
   if (loading) {
     return (
-      <LoadingDisplay
-        message={t('loading.file', { filename: fileName })}
-        className={className}
-      />
+      <LoadingDisplay message={t('loading.file', { filename: fileName })} className={className} />
     );
   }
 
   if (error) {
-    return (
-      <ErrorDisplay
-        message={error}
-        className={className}
-      />
-    );
+    return <ErrorDisplay message={error} className={className} />;
   }
 
   return (

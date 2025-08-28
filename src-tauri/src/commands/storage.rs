@@ -1,7 +1,7 @@
 // 统一存储接口命令
 // 提供多协议存储连接和文件操作能力
 
-use crate::storage::{ConnectionConfig, get_storage_manager, ListOptions, DirectoryResult};
+use crate::storage::{get_storage_manager, ConnectionConfig, DirectoryResult, ListOptions};
 use serde::{Deserialize, Serialize};
 
 /// 文件信息结构
@@ -13,8 +13,6 @@ pub struct FileInfo {
     /// 最后修改时间（ISO 8601 格式）
     pub modified_time: Option<String>,
 }
-
-
 
 /// 获取文件内容接口
 /// 支持完整读取和区间读取，统一返回二进制数据
@@ -29,20 +27,27 @@ pub async fn storage_get_file_content(
     let manager = manager_arc.read().await;
 
     // 获取当前客户端
-    let client = manager.get_current_client()
+    let client = manager
+        .get_current_client()
         .ok_or_else(|| "No storage client connected".to_string())?;
 
     // 解析字符串参数为数字
     let start_u64 = if let Some(start_str) = start {
-        Some(start_str.parse::<u64>()
-            .map_err(|e| format!("Invalid start parameter: {}", e))?)
+        Some(
+            start_str
+                .parse::<u64>()
+                .map_err(|e| format!("Invalid start parameter: {}", e))?,
+        )
     } else {
         None
     };
 
     let length_u64 = if let Some(length_str) = length {
-        Some(length_str.parse::<u64>()
-            .map_err(|e| format!("Invalid length parameter: {}", e))?)
+        Some(
+            length_str
+                .parse::<u64>()
+                .map_err(|e| format!("Invalid length parameter: {}", e))?,
+        )
     } else {
         None
     };
@@ -54,7 +59,9 @@ pub async fn storage_get_file_content(
             client.read_file_range(&path, start_pos, read_length).await
         } else {
             // 从指定位置读取到文件末尾
-            let total_size = client.get_file_size(&path).await
+            let total_size = client
+                .get_file_size(&path)
+                .await
                 .map_err(|e| format!("Failed to get file size: {}", e))?;
             let read_length = total_size.saturating_sub(start_pos);
             client.read_file_range(&path, start_pos, read_length).await
@@ -75,7 +82,8 @@ pub async fn storage_get_file_info(path: String) -> Result<FileInfo, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    let client = manager.get_current_client()
+    let client = manager
+        .get_current_client()
         .ok_or_else(|| "No storage client connected".to_string())?;
 
     // 首先尝试获取文件大小来检查文件是否存在
@@ -86,7 +94,7 @@ pub async fn storage_get_file_info(path: String) -> Result<FileInfo, String> {
                 size: size.to_string(),
                 modified_time: None, // TODO: 从存储客户端获取修改时间
             })
-        },
+        }
         Err(_) => {
             // 文件不存在或无法访问，尝试检查是否为目录
             match manager.list_directory(&path, None).await {
@@ -96,7 +104,7 @@ pub async fn storage_get_file_info(path: String) -> Result<FileInfo, String> {
                         size: "0".to_string(),
                         modified_time: None,
                     })
-                },
+                }
                 Err(e) => {
                     // 不存在
                     Err(format!("File not found: {}", e))
@@ -105,8 +113,6 @@ pub async fn storage_get_file_info(path: String) -> Result<FileInfo, String> {
         }
     }
 }
-
-
 
 /// 连接到存储服务
 /// 支持本地文件系统、WebDAV、OSS、HuggingFace 等多种协议
@@ -118,7 +124,7 @@ pub async fn storage_connect(config: ConnectionConfig) -> Result<bool, String> {
 
     match manager.connect(&config).await {
         Ok(_) => Ok(true),
-        Err(e) => Err(format!("Connection failed: {}", e))
+        Err(e) => Err(format!("Connection failed: {}", e)),
     }
 }
 
@@ -131,7 +137,7 @@ pub async fn storage_disconnect() -> Result<bool, String> {
 
     match manager.disconnect().await {
         Ok(_) => Ok(true),
-        Err(e) => Err(format!("Disconnect failed: {}", e))
+        Err(e) => Err(format!("Disconnect failed: {}", e)),
     }
 }
 
@@ -148,7 +154,7 @@ pub async fn storage_list(
 
     match manager.list_directory(&path, options.as_ref()).await {
         Ok(result) => Ok(result),
-        Err(e) => Err(format!("List directory failed: {}", e))
+        Err(e) => Err(format!("List directory failed: {}", e)),
     }
 }
 
@@ -160,6 +166,8 @@ pub async fn storage_get_url(path: String) -> Result<String, String> {
     let manager_arc = get_storage_manager().await;
     let manager = manager_arc.read().await;
 
-    manager.get_download_url(&path).await
+    manager
+        .get_download_url(&path)
+        .await
         .map_err(|e| format!("Failed to get download URL: {}", e))
 }

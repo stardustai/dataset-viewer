@@ -1,19 +1,18 @@
 use async_trait::async_trait;
+use futures_util::StreamExt;
 use reqwest::Client;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use url::Url;
 use urlencoding;
-use futures_util::StreamExt;
 
-use crate::storage::traits::{
-    StorageClient, StorageError,
-    ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback
-};
 use crate::storage::oss::{
-    build_oss_auth_headers, build_aws_auth_headers, generate_oss_presigned_url, generate_aws_presigned_url,
-    extract_object_key, build_full_path, build_object_url,
-    normalize_uri_for_signing, parse_list_objects_response
+    build_aws_auth_headers, build_full_path, build_object_url, build_oss_auth_headers,
+    extract_object_key, generate_aws_presigned_url, generate_oss_presigned_url,
+    normalize_uri_for_signing, parse_list_objects_response,
+};
+use crate::storage::traits::{
+    ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,23 +40,38 @@ pub struct OSSClient {
 
 impl OSSClient {
     pub fn new(config: ConnectionConfig) -> Result<Self, StorageError> {
-        let endpoint = config.url.clone()
+        let endpoint = config
+            .url
+            .clone()
             .ok_or_else(|| StorageError::InvalidConfig("OSS endpoint is required".to_string()))?;
 
-        let access_key = config.access_key.clone()
+        let access_key = config
+            .access_key
+            .clone()
             .ok_or_else(|| StorageError::InvalidConfig("OSS access key is required".to_string()))?;
 
-        let secret_key = config.secret_key.clone()
+        let secret_key = config
+            .secret_key
+            .clone()
             .ok_or_else(|| StorageError::InvalidConfig("OSS secret key is required".to_string()))?;
 
-        let bucket_input = config.bucket.clone()
+        let bucket_input = config
+            .bucket
+            .clone()
             .ok_or_else(|| StorageError::InvalidConfig("OSS bucket is required".to_string()))?;
 
         // 解析 bucket 字段，支持 "bucket/path/prefix" 格式
         let (bucket, prefix) = if let Some(slash_pos) = bucket_input.find('/') {
             let bucket = bucket_input[..slash_pos].to_string();
             let prefix = bucket_input[slash_pos + 1..].to_string();
-            (bucket, if prefix.ends_with('/') { prefix } else { format!("{}/", prefix) })
+            (
+                bucket,
+                if prefix.ends_with('/') {
+                    prefix
+                } else {
+                    format!("{}/", prefix)
+                },
+            )
         } else {
             (bucket_input, String::new())
         };
@@ -98,17 +112,23 @@ impl OSSClient {
         }
     }
 
-
-
-
-
     /// 构建认证头
-    fn build_auth_headers(&self, method: &str, uri: &str, extra_headers: &HashMap<String, String>, query_string: Option<&str>) -> HashMap<String, String> {
+    fn build_auth_headers(
+        &self,
+        method: &str,
+        uri: &str,
+        extra_headers: &HashMap<String, String>,
+        query_string: Option<&str>,
+    ) -> HashMap<String, String> {
         let host = self.get_host();
 
         match self.platform {
             OSSPlatform::AwsS3 => {
-                let region = self.region.as_ref().unwrap_or(&"us-east-1".to_string()).clone();
+                let region = self
+                    .region
+                    .as_ref()
+                    .unwrap_or(&"us-east-1".to_string())
+                    .clone();
                 build_aws_auth_headers(
                     method,
                     uri,
@@ -117,31 +137,21 @@ impl OSSClient {
                     &self.access_key,
                     &self.secret_key,
                     &region,
-                    &host
-                )
-            },
-            // 让腾讯云COS也使用统一的OSS签名机制
-            _ => {
-                build_oss_auth_headers(
-                    method,
-                    uri,
-                    extra_headers,
-                    &self.access_key,
-                    &self.secret_key,
-                    &self.bucket,
-                    &host
+                    &host,
                 )
             }
+            // 让腾讯云COS也使用统一的OSS签名机制
+            _ => build_oss_auth_headers(
+                method,
+                uri,
+                extra_headers,
+                &self.access_key,
+                &self.secret_key,
+                &self.bucket,
+                &host,
+            ),
         }
     }
-
-
-
-
-
-
-
-
 
     /// 从 endpoint 提取 region（仅用于AWS S3）
     fn extract_region_from_endpoint(&self) -> Option<String> {
@@ -171,7 +181,11 @@ impl OSSClient {
     }
 
     /// 生成预签名下载 URL
-    fn generate_download_url(&self, object_key: &str, expires_in_seconds: i64) -> Result<String, StorageError> {
+    fn generate_download_url(
+        &self,
+        object_key: &str,
+        expires_in_seconds: i64,
+    ) -> Result<String, StorageError> {
         if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
@@ -194,7 +208,8 @@ impl OSSClient {
                 &self.secret_key,
                 &region,
                 &self.bucket,
-            ).map_err(|e| StorageError::RequestFailed(e))
+            )
+            .map_err(|e| StorageError::RequestFailed(e))
         } else {
             // 其他OSS平台使用标准OSS预签名URL
             generate_oss_presigned_url(
@@ -204,15 +219,10 @@ impl OSSClient {
                 &self.access_key,
                 &self.secret_key,
                 &self.bucket,
-            ).map_err(|e| StorageError::RequestFailed(e))
+            )
+            .map_err(|e| StorageError::RequestFailed(e))
         }
     }
-
-
-
-
-
-
 
     /// 使用 HTTP 请求列出目录内容
     async fn list_directory_with_http(
@@ -220,9 +230,7 @@ impl OSSClient {
         prefix: &str,
         options: &ListOptions,
     ) -> Result<DirectoryResult, StorageError> {
-        let mut query_params = vec![
-            ("delimiter".to_string(), "/".to_string()),
-        ];
+        let mut query_params = vec![("delimiter".to_string(), "/".to_string())];
 
         // 只对 AWS S3 使用 list-type=2
         if self.platform == OSSPlatform::AwsS3 {
@@ -253,7 +261,8 @@ impl OSSClient {
             .join("&");
 
         // 获取实际的 bucket 名称（不包含路径前缀）
-        let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/') {
+        let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/')
+        {
             &self.config.bucket.as_ref().unwrap()[..slash_pos]
         } else {
             &self.bucket
@@ -262,9 +271,9 @@ impl OSSClient {
         // 检查是否为虚拟主机风格：端点的主机名应该以 bucket 名称开头
         let is_virtual_hosted = if let Ok(parsed_url) = Url::parse(&self.endpoint) {
             if let Some(host) = parsed_url.host_str() {
-                host.starts_with(&format!("{}.oss-", actual_bucket)) ||
-                host.starts_with(&format!("{}.s3", actual_bucket)) ||
-                host.starts_with(&format!("{}.cos.", actual_bucket))
+                host.starts_with(&format!("{}.oss-", actual_bucket))
+                    || host.starts_with(&format!("{}.s3", actual_bucket))
+                    || host.starts_with(&format!("{}.cos.", actual_bucket))
             } else {
                 false
             }
@@ -284,19 +293,26 @@ impl OSSClient {
             } else {
                 "/".to_string()
             };
-            let list_url = format!("{}/{}?{}", self.endpoint.trim_end_matches('/'), actual_bucket, query_string);
+            let list_url = format!(
+                "{}/{}?{}",
+                self.endpoint.trim_end_matches('/'),
+                actual_bucket,
+                query_string
+            );
             (signing_uri, list_url)
         };
 
-        let headers = self.build_auth_headers("GET", &signing_uri, &HashMap::new(), Some(&query_string));
+        let headers =
+            self.build_auth_headers("GET", &signing_uri, &HashMap::new(), Some(&query_string));
         let mut req_builder = self.client.get(&url);
 
         for (key, value) in headers {
             req_builder = req_builder.header(&key, &value);
         }
 
-        let response = req_builder.send().await
-            .map_err(|e| StorageError::NetworkError(format!("List directory request failed: {}", e)))?;
+        let response = req_builder.send().await.map_err(|e| {
+            StorageError::NetworkError(format!("List directory request failed: {}", e))
+        })?;
 
         let status = response.status();
         if !status.is_success() {
@@ -307,13 +323,12 @@ impl OSSClient {
             )));
         }
 
-        let xml_content = response.text().await
-            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+        let xml_content = response.text().await.map_err(|e| {
+            StorageError::NetworkError(format!("Failed to read response body: {}", e))
+        })?;
 
         parse_list_objects_response(&xml_content, prefix)
     }
-
-
 }
 
 #[async_trait]
@@ -337,7 +352,14 @@ impl StorageClient for OSSClient {
             let (bucket, prefix) = if let Some(slash_pos) = bucket_input.find('/') {
                 let bucket = bucket_input[..slash_pos].to_string();
                 let prefix = bucket_input[slash_pos + 1..].to_string();
-                (bucket, if prefix.ends_with('/') { prefix } else { format!("{}/", prefix) })
+                (
+                    bucket,
+                    if prefix.ends_with('/') {
+                        prefix
+                    } else {
+                        format!("{}/", prefix)
+                    },
+                )
             } else {
                 (bucket_input.clone(), String::new())
             };
@@ -362,7 +384,8 @@ impl StorageClient for OSSClient {
         println!("  test_object: {}", test_object);
 
         // 获取实际的 bucket 名称（不包含路径前缀）
-        let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/') {
+        let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/')
+        {
             &self.config.bucket.as_ref().unwrap()[..slash_pos]
         } else {
             &self.bucket
@@ -377,8 +400,8 @@ impl StorageClient for OSSClient {
                 if self.platform == OSSPlatform::AwsS3 {
                     host.starts_with(&format!("{}.s3", actual_bucket))
                 } else {
-                    host.starts_with(&format!("{}.oss-", actual_bucket)) ||
-                    host.starts_with(&format!("{}.cos.", actual_bucket))
+                    host.starts_with(&format!("{}.oss-", actual_bucket))
+                        || host.starts_with(&format!("{}.cos.", actual_bucket))
                 }
             } else {
                 false
@@ -397,7 +420,12 @@ impl StorageClient for OSSClient {
         } else {
             // 路径风格
             let test_uri = format!("/{}/{}", actual_bucket, test_object);
-            let test_url = format!("{}/{}/{}", self.endpoint.trim_end_matches('/'), actual_bucket, test_object);
+            let test_url = format!(
+                "{}/{}/{}",
+                self.endpoint.trim_end_matches('/'),
+                actual_bucket,
+                test_object
+            );
             (test_uri, test_url)
         };
 
@@ -412,11 +440,10 @@ impl StorageClient for OSSClient {
         }
 
         println!("发送连接测试请求...");
-        let response = req_builder.send().await
-            .map_err(|e| {
-                println!("连接测试失败: {}", e);
-                StorageError::NetworkError(format!("OSS connection test failed: {}", e))
-            })?;
+        let response = req_builder.send().await.map_err(|e| {
+            println!("连接测试失败: {}", e);
+            StorageError::NetworkError(format!("OSS connection test failed: {}", e))
+        })?;
 
         let status = response.status();
         println!("连接测试响应状态: {}", status);
@@ -441,8 +468,14 @@ impl StorageClient for OSSClient {
         self.connected.load(Ordering::Relaxed)
     }
 
-    async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None, None).await
+    async fn read_file_range(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+    ) -> Result<Vec<u8>, StorageError> {
+        self.read_file_range_with_progress(path, start, length, None, None)
+            .await
     }
 
     async fn read_file_range_with_progress(
@@ -457,10 +490,18 @@ impl StorageClient for OSSClient {
             return Err(StorageError::NotConnected);
         }
 
-        println!("OSS读取文件范围: path={}, start={}, length={}", path, start, length);
+        println!(
+            "OSS读取文件范围: path={}, start={}, length={}",
+            path, start, length
+        );
 
         // 处理 oss:// 协议 URL
-        let object_key = extract_object_key(path, &self.endpoint, &self.config.bucket.as_ref().unwrap_or(&String::new()), &self.prefix)?;
+        let object_key = extract_object_key(
+            path,
+            &self.endpoint,
+            &self.config.bucket.as_ref().unwrap_or(&String::new()),
+            &self.prefix,
+        )?;
 
         let url = build_object_url(&self.endpoint, &object_key);
 
@@ -491,7 +532,9 @@ impl StorageClient for OSSClient {
             req_builder = req_builder.header(&key, &value);
         }
 
-        let response = req_builder.send().await
+        let response = req_builder
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Range request failed: {}", e)))?;
 
         let status = response.status();
@@ -506,13 +549,17 @@ impl StorageClient for OSSClient {
             )));
         }
 
-        let content_length = response.headers()
+        let content_length = response
+            .headers()
             .get("content-length")
             .and_then(|v| v.to_str().ok())
             .and_then(|s| s.parse::<u64>().ok())
             .unwrap_or(0);
 
-        println!("预期接收 {} 字节，实际Content-Length: {}", length, content_length);
+        println!(
+            "预期接收 {} 字节，实际Content-Length: {}",
+            length, content_length
+        );
 
         // 使用流式读取以支持进度回调
         let mut result = Vec::with_capacity(length as usize);
@@ -523,7 +570,9 @@ impl StorageClient for OSSClient {
             // 检查取消信号
             if let Some(ref mut cancel_rx) = cancel_rx {
                 if cancel_rx.try_recv().is_ok() {
-                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
                 }
             }
 
@@ -544,7 +593,11 @@ impl StorageClient for OSSClient {
         Ok(result)
     }
 
-    async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_directory(
+        &self,
+        path: &str,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         if !self.is_connected().await {
             return Err(StorageError::NotConnected);
         }
@@ -561,7 +614,12 @@ impl StorageClient for OSSClient {
         // 处理路径：如果是协议URL，直接解析；如果是相对路径，则添加前缀
         let full_prefix = if path.starts_with("oss://") {
             // 协议URL包含完整路径，直接解析对象键
-            let object_key = extract_object_key(path, &self.endpoint, &self.config.bucket.as_ref().unwrap_or(&String::new()), &self.prefix)?;
+            let object_key = extract_object_key(
+                path,
+                &self.endpoint,
+                &self.config.bucket.as_ref().unwrap_or(&String::new()),
+                &self.prefix,
+            )?;
             // 对于目录列举，确保路径以斜杠结尾（除非是根目录）
             if object_key.is_empty() {
                 String::new()
@@ -595,7 +653,12 @@ impl StorageClient for OSSClient {
         }
 
         // 处理 oss:// 协议 URL
-        let object_key = extract_object_key(path, &self.endpoint, &self.config.bucket.as_ref().unwrap_or(&String::new()), &self.prefix)?;
+        let object_key = extract_object_key(
+            path,
+            &self.endpoint,
+            &self.config.bucket.as_ref().unwrap_or(&String::new()),
+            &self.prefix,
+        )?;
 
         let url = build_object_url(&self.endpoint, &object_key);
 
@@ -618,7 +681,9 @@ impl StorageClient for OSSClient {
             req_builder = req_builder.header(&key, &value);
         }
 
-        let response = req_builder.send().await
+        let response = req_builder
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Get file request failed: {}", e)))?;
 
         let status = response.status();
@@ -633,7 +698,8 @@ impl StorageClient for OSSClient {
             )));
         }
 
-        let content_length = response.headers()
+        let content_length = response
+            .headers()
             .get("content-length")
             .and_then(|v| v.to_str().ok())
             .and_then(|s| s.parse::<u64>().ok())
@@ -641,8 +707,9 @@ impl StorageClient for OSSClient {
 
         println!("Content-Length: {}", content_length);
 
-        let bytes = response.bytes().await
-            .map_err(|e| StorageError::RequestFailed(format!("Failed to read file content: {}", e)))?;
+        let bytes = response.bytes().await.map_err(|e| {
+            StorageError::RequestFailed(format!("Failed to read file content: {}", e))
+        })?;
 
         println!("实际接收到 {} 字节", bytes.len());
 
@@ -655,7 +722,12 @@ impl StorageClient for OSSClient {
         }
 
         // 处理 oss:// 协议 URL
-        let object_key = extract_object_key(path, &self.endpoint, &self.config.bucket.as_ref().unwrap_or(&String::new()), &self.prefix)?;
+        let object_key = extract_object_key(
+            path,
+            &self.endpoint,
+            &self.config.bucket.as_ref().unwrap_or(&String::new()),
+            &self.prefix,
+        )?;
 
         let url = build_object_url(&self.endpoint, &object_key);
         let uri = if let Ok(parsed_url) = Url::parse(&url) {
@@ -675,7 +747,9 @@ impl StorageClient for OSSClient {
             req_builder = req_builder.header(&key, &value);
         }
 
-        let response = req_builder.send().await
+        let response = req_builder
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Head request failed: {}", e)))?;
 
         if !response.status().is_success() {
@@ -699,27 +773,38 @@ impl StorageClient for OSSClient {
 
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.url.is_none() {
-            return Err(StorageError::InvalidConfig("OSS endpoint is required".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "OSS endpoint is required".to_string(),
+            ));
         }
         if config.access_key.is_none() {
-            return Err(StorageError::InvalidConfig("OSS access key is required".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "OSS access key is required".to_string(),
+            ));
         }
         if config.secret_key.is_none() {
-            return Err(StorageError::InvalidConfig("OSS secret key is required".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "OSS secret key is required".to_string(),
+            ));
         }
         if config.bucket.is_none() {
-            return Err(StorageError::InvalidConfig("OSS bucket is required".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "OSS bucket is required".to_string(),
+            ));
         }
         Ok(())
     }
 
     fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
         // 从传入的路径/URL 中提取对象键
-        let object_key = extract_object_key(path, &self.endpoint, &self.config.bucket.as_ref().unwrap_or(&String::new()), &self.prefix)?;
+        let object_key = extract_object_key(
+            path,
+            &self.endpoint,
+            &self.config.bucket.as_ref().unwrap_or(&String::new()),
+            &self.prefix,
+        )?;
 
         // 生成 1 小时有效期的预签名下载 URL
         self.generate_download_url(&object_key, 3600)
     }
-
-
 }

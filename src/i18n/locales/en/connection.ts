@@ -2,7 +2,8 @@ export const connection = {
   // Application description for connection page
   'connect.storage': 'Connect to data source or local file system',
   'app.tagline': 'Easily view and search your datasets',
-  'app.description': 'Cross-platform dataset viewer supporting WebDAV, object storage, and local file systems with powerful features like streaming and virtual scrolling, designed for large datasets.',
+  'app.description':
+    'Cross-platform dataset viewer supporting WebDAV, object storage, and local file systems with powerful features like streaming and virtual scrolling, designed for large datasets.',
 
   // Features
   'features.title': 'Core Features',
@@ -36,31 +37,32 @@ export const connection = {
   // Form fields
   'server.url': 'Server URL',
   'server.url.placeholder': 'https://your-webdav-server.com',
-  'username': 'Username',
+  username: 'Username',
   'username.placeholder': 'Your username',
-  'password': 'Password',
+  password: 'Password',
   'password.placeholder': 'Your password',
   'password.saved': 'Using saved password',
   'password.click.new': 'Click to enter new password',
-  'connecting': 'Connecting...',
-  'connect': 'Connect',
-  'optional': '(Optional)',
+  connecting: 'Connecting...',
+  connect: 'Connect',
+  optional: '(Optional)',
 
   // OSS specific fields
   'oss.platform.select': 'Select Platform',
   'oss.region.select': 'Select Region',
   'oss.endpoint': 'Endpoint',
   'oss.endpoint.placeholder': 'https://oss-cn-hangzhou.aliyuncs.com or https://s3.amazonaws.com',
-  'oss.endpoint.description': 'Support Alibaba Cloud OSS, AWS S3, MinIO and other S3 API compatible object storage services',
+  'oss.endpoint.description':
+    'Support Alibaba Cloud OSS, AWS S3, MinIO and other S3 API compatible object storage services',
   'oss.endpoint.custom': 'Custom Endpoint',
   'oss.endpoint.custom.description': 'Enter S3 API compatible object storage service endpoint',
   'oss.endpoint.current': 'Current Endpoint:',
-    'oss.platforms.aliyun': 'Alibaba Cloud OSS',
-    'oss.platforms.aws': 'AWS S3',
-    'oss.platforms.tencent': 'Tencent Cloud COS',
-    'oss.platforms.huawei': 'Huawei Cloud OBS',
-    'oss.platforms.minio': 'MinIO',
-    'oss.platforms.custom': 'Custom',
+  'oss.platforms.aliyun': 'Alibaba Cloud OSS',
+  'oss.platforms.aws': 'AWS S3',
+  'oss.platforms.tencent': 'Tencent Cloud COS',
+  'oss.platforms.huawei': 'Huawei Cloud OBS',
+  'oss.platforms.minio': 'MinIO',
+  'oss.platforms.custom': 'Custom',
   'oss.access.key': 'Access Key',
   'oss.access.key.placeholder': 'Access Key ID',
   'oss.secret.key': 'Secret Key',
@@ -81,20 +83,22 @@ export const connection = {
   // Connection management
   'saved.connections': 'Saved Connections',
   'no.saved.connections': 'No saved connections',
-  'save.connection.hint': 'Connection information can be automatically saved after successful connection',
+  'save.connection.hint':
+    'Connection information can be automatically saved after successful connection',
   'connection.select.saved': 'Select saved connection',
   'or.new.connection': 'Or create new connection',
   'save.connection': 'Save Connection',
   'save.password': 'Save Password',
-  'save.password.warning': 'Password will be saved in plain text in local storage, please use with caution',
+  'save.password.warning':
+    'Password will be saved in plain text in local storage, please use with caution',
   'connection.name.placeholder': 'Connection name (optional)',
   'connection.name.hint': 'Leave empty to auto-generate name',
   'last.connected': 'Last connected',
   'set.default': 'Set as default',
   'unset.default': 'Unset default',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
-  'deleted': 'Connection deleted',
-  'undo': 'Undo',
+  deleted: 'Connection deleted',
+  undo: 'Undo',
 
   // Local file system
   'local.root.path': 'Root Directory Path',
@@ -106,9 +110,11 @@ export const connection = {
   'local.path.desktop': 'Desktop',
   'local.path.home': 'Home',
   'local.permission.notice': 'Permission Notice',
-  'local.permission.description': 'The app can only access directories you explicitly select and their subdirectories. It is recommended to select common directories such as Documents and Downloads.',
+  'local.permission.description':
+    'The app can only access directories you explicitly select and their subdirectories. It is recommended to select common directories such as Documents and Downloads.',
   'local.connect': 'Connect to Local Files',
-  'local.error.access': 'Cannot access the specified path, please check if the path exists and you have permission to access it',
+  'local.error.access':
+    'Cannot access the specified path, please check if the path exists and you have permission to access it',
   'local.error.connection': 'Failed to connect to local file system',
 
   // OSS errors
@@ -137,7 +143,9 @@ export const connection = {
   // Connection switching
   'connection.switch.failed': 'Failed to switch connection',
   'connection.switch.error': 'Error occurred while switching connection: {{error}}',
-  'connection.switch.type_mismatch': 'Connection type mismatch: Cannot use {{connectionType}} client to connect to "{{connectionName}}"',
-  'connection.switch.missing_credentials': 'Connection "{{connectionName}}" is missing required credentials',
-  'dismiss': 'Dismiss',
+  'connection.switch.type_mismatch':
+    'Connection type mismatch: Cannot use {{connectionType}} client to connect to "{{connectionName}}"',
+  'connection.switch.missing_credentials':
+    'Connection "{{connectionName}}" is missing required credentials',
+  dismiss: 'Dismiss',
 };

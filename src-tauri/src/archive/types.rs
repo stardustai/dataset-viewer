@@ -75,8 +75,8 @@ impl fmt::Display for CompressionType {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ArchiveEntry {
     pub path: String,
-    pub size: String,  // 使用字符串表示大数字
-    pub compressed_size: Option<String>,  // 使用字符串表示大数字
+    pub size: String,                    // 使用字符串表示大数字
+    pub compressed_size: Option<String>, // 使用字符串表示大数字
     pub is_dir: bool,
     pub modified_time: Option<String>,
     pub crc32: Option<u32>,
@@ -92,8 +92,8 @@ pub struct ArchiveInfo {
     pub compression_type: CompressionType,
     pub entries: Vec<ArchiveEntry>,
     pub total_entries: u32,
-    pub total_uncompressed_size: String,  // 使用字符串表示大数字
-    pub total_compressed_size: String,  // 使用字符串表示大数字
+    pub total_uncompressed_size: String, // 使用字符串表示大数字
+    pub total_compressed_size: String,   // 使用字符串表示大数字
     /// 是否支持流式读取
     pub supports_streaming: bool,
     /// 是否支持随机访问
@@ -121,11 +121,9 @@ pub struct FilePreview {
     #[serde(with = "serde_bytes")]
     pub content: Vec<u8>,
     pub is_truncated: bool,
-    pub total_size: String,  // 使用字符串表示大数字
+    pub total_size: String, // 使用字符串表示大数字
     pub preview_size: u32,
 }
-
-
 
 /// 下载选项
 #[derive(Debug, Clone, Serialize, Deserialize)]

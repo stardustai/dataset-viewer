@@ -1,6 +1,6 @@
+use crate::archive::formats::{common::*, CompressionHandlerDispatcher};
 /// RAR 格式处理器
 use crate::archive::types::*;
-use crate::archive::formats::{CompressionHandlerDispatcher, common::*};
 use std::collections::HashMap;
 use unrar::Archive as RarArchive;
 
@@ -146,7 +146,10 @@ impl RarHandler {
         filename: &str,
         file_size: u64,
     ) -> Result<ArchiveInfo, String> {
-        println!("开始下载RAR文件进行分析: {} (大小: {} 字节)", filename, file_size);
+        println!(
+            "开始下载RAR文件进行分析: {} (大小: {} 字节)",
+            filename, file_size
+        );
 
         let data = HttpClient::download_file(url, headers).await?;
         Self::analyze_rar_complete(&data)
@@ -203,9 +206,9 @@ impl RarHandler {
                     if entry.filename == entry_path && !entry.is_directory() {
                         // 提取文件到内存
                         let mut output = Vec::new();
-                        entry.extract_to_writer(&mut output).map_err(|e| e.to_string())?;
-
-
+                        entry
+                            .extract_to_writer(&mut output)
+                            .map_err(|e| e.to_string())?;
                         let total_size = entry.unpacked_size;
                         let preview_size = max_size.min(output.len());
 
@@ -227,7 +230,6 @@ impl RarHandler {
                             .content(content)
                             .with_truncated(preview_size < total_size as usize)
                             .total_size(total_size)
-
                             .build());
                     }
                 }
@@ -248,14 +250,26 @@ impl RarHandler {
         }
 
         // RAR 4.x 签名: "Rar!\x1a\x07\x00"
-        if data[0] == 0x52 && data[1] == 0x61 && data[2] == 0x72 &&
-           data[3] == 0x21 && data[4] == 0x1a && data[5] == 0x07 && data[6] == 0x00 {
+        if data[0] == 0x52
+            && data[1] == 0x61
+            && data[2] == 0x72
+            && data[3] == 0x21
+            && data[4] == 0x1a
+            && data[5] == 0x07
+            && data[6] == 0x00
+        {
             return true;
         }
 
         // RAR 5.x 签名: "Rar!\x1a\x07\x01"
-        if data[0] == 0x52 && data[1] == 0x61 && data[2] == 0x72 &&
-           data[3] == 0x21 && data[4] == 0x1a && data[5] == 0x07 && data[6] == 0x01 {
+        if data[0] == 0x52
+            && data[1] == 0x61
+            && data[2] == 0x72
+            && data[3] == 0x21
+            && data[4] == 0x1a
+            && data[5] == 0x07
+            && data[6] == 0x01
+        {
             return true;
         }
 

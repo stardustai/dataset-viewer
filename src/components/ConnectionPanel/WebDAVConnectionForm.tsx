@@ -27,21 +27,24 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
   onUsernameChange,
   onPasswordChange,
   onPasswordFocus,
-  onSubmit
+  onSubmit,
 }) => {
   const { t } = useTranslation();
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <label htmlFor="url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label
+          htmlFor="url"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
           {t('server.url')}
         </label>
         <input
           id="url"
           type="url"
           value={url}
-          onChange={(e) => onUrlChange(e.target.value)}
+          onChange={e => onUrlChange(e.target.value)}
           placeholder={t('server.url.placeholder')}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           required
@@ -49,7 +52,10 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
       </div>
 
       <div>
-        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label
+          htmlFor="username"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
           {t('username')}
         </label>
         <div className="relative">
@@ -58,7 +64,7 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
             id="username"
             type="text"
             value={username}
-            onChange={(e) => onUsernameChange(e.target.value)}
+            onChange={e => onUsernameChange(e.target.value)}
             placeholder={t('username.placeholder')}
             className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             required
@@ -67,10 +73,15 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
       </div>
 
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label
+          htmlFor="password"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
           {t('password')}
           {isPasswordFromStorage && (
-            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({t('password.saved')})</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+              ({t('password.saved')})
+            </span>
           )}
         </label>
         <div className="relative">
@@ -79,13 +90,15 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
             id="password"
             type="password"
             value={password}
-            onChange={(e) => {
+            onChange={e => {
               if (!isPasswordFromStorage) {
                 onPasswordChange(e.target.value);
               }
             }}
             onFocus={onPasswordFocus}
-            placeholder={isPasswordFromStorage ? t('password.click.new') : t('password.placeholder')}
+            placeholder={
+              isPasswordFromStorage ? t('password.click.new') : t('password.placeholder')
+            }
             className={`w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
               isPasswordFromStorage
                 ? 'bg-gray-50 dark:bg-gray-600 text-gray-600 dark:text-gray-300'

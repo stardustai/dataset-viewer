@@ -36,9 +36,7 @@ const ErrorDisplay: React.FC<{
         </h1>
 
         {/* 错误描述 */}
-        <p className="text-gray-600 dark:text-gray-300 mb-4">
-          {t('error.boundary.description')}
-        </p>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">{t('error.boundary.description')}</p>
 
         {/* 错误详情 */}
         {error && (
@@ -89,7 +87,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -97,17 +95,17 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     // 更新状态以显示错误UI
     return {
       hasError: true,
-      error
+      error,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // 记录错误信息
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
 
     // 调用外部错误处理函数
@@ -121,7 +119,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     });
   };
 

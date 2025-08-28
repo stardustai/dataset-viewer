@@ -15,7 +15,7 @@ function archiveEntryToStorageFile(entry: ArchiveEntry): StorageFile {
     size: entry.size,
     type: entry.is_dir ? 'directory' : 'file',
     mime: entry.is_dir ? null : getMimeType(entry.path),
-    etag: null
+    etag: null,
   };
 }
 
@@ -50,7 +50,9 @@ export function buildArchiveFileTree(entries: ArchiveEntry[]): Map<string, Stora
 
     // 检查是否已经存在该目录条目
     const existingFiles = tree.get(parentPath)!;
-    const exists = existingFiles.some(file => file.filename === dirPath && file.type === 'directory');
+    const exists = existingFiles.some(
+      file => file.filename === dirPath && file.type === 'directory'
+    );
 
     if (!exists) {
       existingFiles.push({
@@ -60,7 +62,7 @@ export function buildArchiveFileTree(entries: ArchiveEntry[]): Map<string, Stora
         size: '0',
         type: 'directory',
         mime: null,
-        etag: null
+        etag: null,
       });
     }
   });

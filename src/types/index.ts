@@ -4,13 +4,17 @@ import type { StorageFile } from './tauri-commands';
 export type { StorageFile };
 
 // 类型保护函数，帮助检查文件类型
-export const isFileType = (file: Pick<StorageFile, 'type'>): file is StorageFile & { type: 'file' } => {
-	return file.type === 'file';
-}
+export const isFileType = (
+  file: Pick<StorageFile, 'type'>
+): file is StorageFile & { type: 'file' } => {
+  return file.type === 'file';
+};
 
-export const isDirectoryType = (file: Pick<StorageFile, 'type'>): file is StorageFile & { type: 'directory' } => {
-	return file.type === 'directory';
-}
+export const isDirectoryType = (
+  file: Pick<StorageFile, 'type'>
+): file is StorageFile & { type: 'directory' } => {
+  return file.type === 'directory';
+};
 
 export interface StorageConnection {
   url: string;
@@ -30,8 +34,6 @@ export interface StorageConnection {
     [key: string]: any;
   };
 }
-
-
 export interface SearchResult {
   line: number;
   column: number;
@@ -67,4 +69,3 @@ export interface FilePreview {
   total_size: string; // 改为字符串类型，与后端保持一致
   preview_size: number;
 }
-

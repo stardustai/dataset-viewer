@@ -23,7 +23,7 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
   totalLoadedCount,
   sheetNames = [],
   activeSheet = 0,
-  onSheetChange
+  onSheetChange,
 }) => {
   const { t } = useTranslation();
 
@@ -40,9 +40,10 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
                   onClick={() => onSheetChange(index)}
                   className={`
                     px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-md border
-                    ${activeSheet === index
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 border-transparent'
+                    ${
+                      activeSheet === index
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 border-transparent'
                     }
                   `}
                 >
@@ -64,7 +65,7 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
                 type="text"
                 placeholder={t('data.table.search.placeholder')}
                 value={globalFilter}
-                onChange={(e) => onGlobalFilterChange(e.target.value)}
+                onChange={e => onGlobalFilterChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               />
               {globalFilter && (
@@ -83,7 +84,7 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
                 <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
                   {t('data.table.showing.filtered', {
                     showing: filteredCount,
-                    total: totalLoadedCount
+                    total: totalLoadedCount,
                   })}
                 </div>
               )}
@@ -95,7 +96,9 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
             <button
               onClick={onToggleColumnPanel}
               className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
-                showColumnPanel ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'
+                showColumnPanel
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-300'
               }`}
               title={t('data.table.columns.toggle')}
             >

@@ -17,7 +17,9 @@ export const useConnectionLogic = (onConnect: () => void) => {
   const [password, setPassword] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
-  const [selectedStoredConnection, setSelectedStoredConnection] = useState<StoredConnection | null>(null);
+  const [selectedStoredConnection, setSelectedStoredConnection] = useState<StoredConnection | null>(
+    null
+  );
   const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false);
 
   // 本地文件系统连接状态
@@ -96,20 +98,21 @@ export const useConnectionLogic = (onConnect: () => void) => {
   const handleWebDAVConnect = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const connectionName = selectedStoredConnection ?
-      selectedStoredConnection.name :
-      t('connection.name.webdav', 'WebDAV({{host}})', { host: getHostnameFromUrl(url) });
+    const connectionName = selectedStoredConnection
+      ? selectedStoredConnection.name
+      : t('connection.name.webdav', 'WebDAV({{host}})', { host: getHostnameFromUrl(url) });
 
-    const actualPassword = isPasswordFromStorage && selectedStoredConnection?.password
-      ? selectedStoredConnection.password
-      : password;
+    const actualPassword =
+      isPasswordFromStorage && selectedStoredConnection?.password
+        ? selectedStoredConnection.password
+        : password;
 
     const config: ConnectionConfig = {
       type: 'webdav',
       url,
       username,
       password: actualPassword,
-      name: connectionName
+      name: connectionName,
     };
 
     await handleConnect(config);
@@ -120,7 +123,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
       type: 'local',
       rootPath,
       url: rootPath, // 兼容性
-      name: t('connection.name.local', '本机文件({{path}})', { path: rootPath })
+      name: t('connection.name.local', '本机文件({{path}})', { path: rootPath }),
     };
 
     await handleConnect(config);
@@ -159,7 +162,12 @@ export const useConnectionLogic = (onConnect: () => void) => {
     setError('');
 
     if (type === 'webdav') {
-      if (selectedStoredConnection && !selectedStoredConnection.url.startsWith('file:///') && !selectedStoredConnection.url.startsWith('oss://') && !selectedStoredConnection.url.startsWith('huggingface://')) {
+      if (
+        selectedStoredConnection &&
+        !selectedStoredConnection.url.startsWith('file:///') &&
+        !selectedStoredConnection.url.startsWith('oss://') &&
+        !selectedStoredConnection.url.startsWith('huggingface://')
+      ) {
         // 保持 WebDAV 连接选择
       } else {
         setSelectedStoredConnection(null);
@@ -247,6 +255,6 @@ export const useConnectionLogic = (onConnect: () => void) => {
     handleUrlChange,
     handleUsernameChange,
     handlePasswordChange,
-    handlePasswordFocus
+    handlePasswordFocus,
   };
 };

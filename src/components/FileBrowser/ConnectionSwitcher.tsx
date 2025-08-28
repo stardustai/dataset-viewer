@@ -10,9 +10,7 @@ interface ConnectionSwitcherProps {
   onConnectionChange?: () => void;
 }
 
-export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
-  onConnectionChange
-}) => {
+export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnectionChange }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [connections, setConnections] = useState<StoredConnection[]>([]);
@@ -51,9 +49,9 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
 
   const handleConnectionSwitch = async (connection: StoredConnection) => {
     if (switchingConnection) return; // 防止重复点击
-    
+
     setSwitchingConnection(connection.id);
-    
+
     // 保存当前连接状态，以便失败时恢复
     let previousConnection: any = null;
     try {
@@ -61,20 +59,24 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
     } catch {
       // 如果没有当前连接，previousConnection保持为null
     }
-    
+
     // 根据StoredConnection推断连接类型（在try块外定义，以便在catch块中使用）
     const isLocal = connection.url?.startsWith('file:///');
     const isOSS = connection.url?.startsWith('oss://') || connection.metadata?.bucket;
-    const isHuggingFace = connection.url?.startsWith('huggingface://') || connection.metadata?.organization;
-    
+    const isHuggingFace =
+      connection.url?.startsWith('huggingface://') || connection.metadata?.organization;
+
     try {
       // 根据StoredConnection构建ConnectionConfig
-      
+
       const config = {
-        type: isLocal ? 'local' as const :
-              isOSS ? 'oss' as const :
-              isHuggingFace ? 'huggingface' as const :
-              'webdav' as const,
+        type: isLocal
+          ? ('local' as const)
+          : isOSS
+            ? ('oss' as const)
+            : isHuggingFace
+              ? ('huggingface' as const)
+              : ('webdav' as const),
         url: isLocal ? undefined : connection.url,
         username: connection.username,
         password: connection.password,
@@ -84,9 +86,9 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
         region: connection.metadata?.region,
         endpoint: connection.metadata?.endpoint,
         apiToken: connection.metadata?.apiToken,
-        organization: connection.metadata?.organization
+        organization: connection.metadata?.organization,
       };
-      
+
       const success = await StorageServiceManager.connectWithConfig(config);
       if (success) {
         updateCurrentConnection();
@@ -114,31 +116,31 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
         }
       }
       let errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // 提供更友好的错误信息
-       if (errorMessage.includes('WebDAV client cannot handle')) {
-         // 使用与上面相同的连接类型推断逻辑
-         let connectionType = 'unknown';
-         if (isLocal) {
-           connectionType = 'LOCAL';
-         } else if (isOSS) {
-           connectionType = 'OSS';
-         } else if (isHuggingFace) {
-           connectionType = 'HUGGINGFACE';
-         } else {
-           connectionType = 'WEBDAV';
-         }
-         
-         errorMessage = t('connection.switch.type_mismatch', { 
-           connectionType: connectionType,
-           connectionName: connection.name 
-         });
-       } else if (errorMessage.includes('requires URL, username, and password')) {
-         errorMessage = t('connection.switch.missing_credentials', { 
-           connectionName: connection.name 
-         });
-       }
-      
+      if (errorMessage.includes('WebDAV client cannot handle')) {
+        // 使用与上面相同的连接类型推断逻辑
+        let connectionType = 'unknown';
+        if (isLocal) {
+          connectionType = 'LOCAL';
+        } else if (isOSS) {
+          connectionType = 'OSS';
+        } else if (isHuggingFace) {
+          connectionType = 'HUGGINGFACE';
+        } else {
+          connectionType = 'WEBDAV';
+        }
+
+        errorMessage = t('connection.switch.type_mismatch', {
+          connectionType: connectionType,
+          connectionName: connection.name,
+        });
+      } else if (errorMessage.includes('requires URL, username, and password')) {
+        errorMessage = t('connection.switch.missing_credentials', {
+          connectionName: connection.name,
+        });
+      }
+
       showErrorToast(errorMessage);
     } finally {
       setSwitchingConnection(null);
@@ -149,12 +151,12 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
     try {
       const current = StorageServiceManager.getCurrentConnection();
       if (!current) return null;
-      
-      return connections.find(conn => 
-        conn &&
-        conn.url === current.url &&
-        conn.username === current.username
-      )?.id || null;
+
+      return (
+        connections.find(
+          conn => conn && conn.url === current.url && conn.username === current.username
+        )?.id || null
+      );
     } catch (error) {
       // 没有活动连接时返回null，避免抛出错误
       return null;
@@ -190,20 +192,20 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
 
   return (
     <div className="relative" ref={dropdownRef}>
-
-      
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors max-w-32 lg:max-w-48"
         title={`${t('connected.to')} ${currentConnection}`}
       >
         <span className="truncate">{currentConnection}</span>
-        <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`w-3 h-3 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 w-80 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto z-50">
-          {connections.map((connection) => {
+          {connections.map(connection => {
             const isActive = connection.id === currentConnectionId;
             const isSwitching = switchingConnection === connection.id;
             return (
@@ -217,9 +219,13 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <div className={`font-medium text-sm truncate ${
-                        isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'
-                      }`}>
+                      <div
+                        className={`font-medium text-sm truncate ${
+                          isActive
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
                         {connection.name}
                       </div>
                       {connection.isDefault && (
@@ -234,12 +240,13 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                       {connection.url?.startsWith('file:///')
-                  ? connection.url.replace('file:///', '')
+                        ? connection.url.replace('file:///', '')
                         : connection.url?.startsWith('oss://')
-                        ? `OSS: ${connection.username}`
-                        : connection.url?.startsWith('huggingface://')
-                        ? `HuggingFace: ${connection.url.replace('huggingface://', '')}`
-                        : formatConnectionDisplayName(connection.url, connection.username) || ''}
+                          ? `OSS: ${connection.username}`
+                          : connection.url?.startsWith('huggingface://')
+                            ? `HuggingFace: ${connection.url.replace('huggingface://', '')}`
+                            : formatConnectionDisplayName(connection.url, connection.username) ||
+                              ''}
                     </div>
                     {connection.lastConnected && (
                       <div className="text-xs text-gray-400 dark:text-gray-500">

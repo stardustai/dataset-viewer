@@ -1,5 +1,5 @@
-use tauri::Emitter;
 use crate::download::types::*;
+use tauri::Emitter;
 
 #[derive(Clone)]
 pub struct ProgressTracker {

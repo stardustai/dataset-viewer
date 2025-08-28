@@ -76,7 +76,7 @@ export class StorageClientFactory {
   static getActiveConnections(): Array<{ key: string; client: StorageClient }> {
     return Array.from(this.instances.entries()).map(([key, client]) => ({
       key,
-      client
+      client,
     }));
   }
 
@@ -153,10 +153,14 @@ export class StorageServiceManager {
           username: config.username || '',
           password: config.password || config.apiToken || '',
           connected: true,
-          metadata: this.getConnectionMetadata(config)
+          metadata: this.getConnectionMetadata(config),
         };
 
-        await connectionStorage.saveConnection(newConnection, this.currentClient!.generateConnectionName(config), true);
+        await connectionStorage.saveConnection(
+          newConnection,
+          this.currentClient!.generateConnectionName(config),
+          true
+        );
       }
     } catch (error) {
       console.warn('Failed to save connection info:', error);
@@ -167,13 +171,18 @@ export class StorageServiceManager {
   /**
    * 查找匹配的已保存连接
    */
-  private static findMatchingStoredConnection(connections: StoredConnection[], config: ConnectionConfig): StoredConnection | undefined {
+  private static findMatchingStoredConnection(
+    connections: StoredConnection[],
+    config: ConnectionConfig
+  ): StoredConnection | undefined {
     return connections.find(conn => {
       switch (config.type) {
         case 'webdav':
           return conn.url === config.url && conn.username === config.username;
         case 'local':
-          return conn.url.startsWith('file:///') && conn.url.includes(config.rootPath || config.url!);
+          return (
+            conn.url.startsWith('file:///') && conn.url.includes(config.rootPath || config.url!)
+          );
         case 'oss':
           return conn.url.startsWith('oss://') && conn.username === config.username;
         case 'huggingface':
@@ -324,8 +333,9 @@ export class StorageServiceManager {
       const connections = connectionStorage.getStoredConnections();
       if (connections.length > 0) {
         // 按最后连接时间排序
-        const recent = [...connections].sort((a, b) =>
-          new Date(b.lastConnected || 0).getTime() - new Date(a.lastConnected || 0).getTime()
+        const recent = [...connections].sort(
+          (a, b) =>
+            new Date(b.lastConnected || 0).getTime() - new Date(a.lastConnected || 0).getTime()
         )[0];
 
         const config = this.convertStoredConnectionToConfig(recent);
@@ -344,7 +354,9 @@ export class StorageServiceManager {
   /**
    * 将存储的连接转换为配置
    */
-  private static convertStoredConnectionToConfig(connection: StoredConnection): ConnectionConfig | null {
+  private static convertStoredConnectionToConfig(
+    connection: StoredConnection
+  ): ConnectionConfig | null {
     try {
       // 从 URL 推断存储类型
       let storageType: StorageClientType;
@@ -433,7 +445,11 @@ export class StorageServiceManager {
   /**
    * 带进度下载文件
    */
-  static async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {
+  static async downloadFileWithProgress(
+    path: string,
+    filename: string,
+    savePath?: string
+  ): Promise<string> {
     const client = this.getCurrentClient();
     if (client.downloadFileWithProgress) {
       return await client.downloadFileWithProgress(path, filename, savePath);
@@ -489,7 +505,7 @@ export class StorageServiceManager {
   /**
    * 连接到本地文件系统的便利方法
    */
-	static async connectToLocal(
+  static async connectToLocal(
     rootPath: string,
     connectionName?: string,
     isTemporary?: boolean
@@ -499,7 +515,7 @@ export class StorageServiceManager {
       rootPath,
       url: rootPath,
       name: connectionName || `Local Files(${rootPath})`,
-      isTemporary: isTemporary
+      isTemporary: isTemporary,
     };
     return await this.connectWithConfig(config);
   }

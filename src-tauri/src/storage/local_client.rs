@@ -4,7 +4,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
-use super::traits::{StorageClient, StorageError, DirectoryResult, StorageFile, ListOptions, ConnectionConfig, ProgressCallback};
+use super::traits::{
+    ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
+    StorageFile,
+};
 use crate::utils::chunk_size;
 
 /// 本机文件系统存储客户端
@@ -45,7 +48,7 @@ impl LocalFileSystemClient {
                 return Ok(expanded_path);
             } else {
                 return Err(StorageError::ConnectionFailed(
-                    "Cannot determine home directory".to_string()
+                    "Cannot determine home directory".to_string(),
                 ));
             }
         }
@@ -58,9 +61,7 @@ impl LocalFileSystemClient {
 
         // 获取根路径
         let root = match self.root_path.as_ref() {
-            Some(root) => {
-                root
-            }
+            Some(root) => root,
             None => {
                 return Err(StorageError::NotConnected);
             }
@@ -123,18 +124,20 @@ impl LocalFileSystemClient {
 
 #[async_trait]
 impl StorageClient for LocalFileSystemClient {
-    async fn connect(&mut self, config: &super::traits::ConnectionConfig) -> Result<(), StorageError> {
+    async fn connect(
+        &mut self,
+        config: &super::traits::ConnectionConfig,
+    ) -> Result<(), StorageError> {
         // 检查是否是本机文件系统协议
         if config.protocol != "local" {
             return Err(StorageError::ProtocolNotSupported(config.protocol.clone()));
         }
 
         // 检查根路径是否提供
-        let root_path = config.url
+        let root_path = config
+            .url
             .as_ref()
-            .ok_or_else(|| {
-                StorageError::InvalidConfig("Root path is required".to_string())
-            })?;
+            .ok_or_else(|| StorageError::InvalidConfig("Root path is required".to_string()))?;
 
         // 展开 ~ 为用户主目录
         let expanded_path = if root_path.starts_with('~') {
@@ -148,7 +151,7 @@ impl StorageClient for LocalFileSystemClient {
                 }
             } else {
                 return Err(StorageError::ConnectionFailed(
-                    "Cannot determine home directory".to_string()
+                    "Cannot determine home directory".to_string(),
                 ));
             }
         } else {
@@ -157,15 +160,17 @@ impl StorageClient for LocalFileSystemClient {
 
         // 验证路径是否存在
         if !expanded_path.exists() {
-            return Err(StorageError::ConnectionFailed(
-                format!("Path does not exist: {}", expanded_path.display())
-            ));
+            return Err(StorageError::ConnectionFailed(format!(
+                "Path does not exist: {}",
+                expanded_path.display()
+            )));
         }
 
         if !expanded_path.is_dir() {
-            return Err(StorageError::ConnectionFailed(
-                format!("Path is not a directory: {}", expanded_path.display())
-            ));
+            return Err(StorageError::ConnectionFailed(format!(
+                "Path is not a directory: {}",
+                expanded_path.display()
+            )));
         }
 
         self.root_path = Some(expanded_path);
@@ -178,25 +183,36 @@ impl StorageClient for LocalFileSystemClient {
         self.connected.load(Ordering::Relaxed)
     }
 
-    async fn list_directory(&self, path: &str, _options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_directory(
+        &self,
+        path: &str,
+        _options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         let dir_path = self.build_safe_path(path)?;
 
         if !dir_path.exists() {
-            return Err(StorageError::RequestFailed("Directory not found".to_string()));
+            return Err(StorageError::RequestFailed(
+                "Directory not found".to_string(),
+            ));
         }
 
         if !dir_path.is_dir() {
-            return Err(StorageError::RequestFailed("Path is not a directory".to_string()));
+            return Err(StorageError::RequestFailed(
+                "Path is not a directory".to_string(),
+            ));
         }
 
-        let mut entries = fs::read_dir(&dir_path).await
+        let mut entries = fs::read_dir(&dir_path)
+            .await
             .map_err(|e| StorageError::IoError(format!("Failed to read directory: {}", e)))?;
 
         let mut files = Vec::new();
 
-        while let Some(entry) = entries.next_entry().await
-            .map_err(|e| StorageError::IoError(format!("Failed to read directory entry: {}", e)))? {
-
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| StorageError::IoError(format!("Failed to read directory entry: {}", e)))?
+        {
             let file_path = entry.path();
             let file_name = file_path
                 .file_name()
@@ -204,11 +220,17 @@ impl StorageClient for LocalFileSystemClient {
                 .unwrap_or("Unknown")
                 .to_string();
 
-            let metadata = entry.metadata().await
+            let metadata = entry
+                .metadata()
+                .await
                 .map_err(|e| StorageError::IoError(format!("Failed to get metadata: {}", e)))?;
 
             let is_directory = metadata.is_dir();
-            let size = if is_directory { "0".to_string() } else { metadata.len().to_string() };
+            let size = if is_directory {
+                "0".to_string()
+            } else {
+                metadata.len().to_string()
+            };
             let mime_type = if is_directory {
                 None
             } else {
@@ -238,8 +260,14 @@ impl StorageClient for LocalFileSystemClient {
     }
 
     /// 读取文件的指定范围
-    async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None, None).await
+    async fn read_file_range(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+    ) -> Result<Vec<u8>, StorageError> {
+        self.read_file_range_with_progress(path, start, length, None, None)
+            .await
     }
 
     async fn read_file_range_with_progress(
@@ -254,7 +282,12 @@ impl StorageClient for LocalFileSystemClient {
             return Err(StorageError::NotConnected);
         }
 
-        log::debug!("本地文件读取范围: path={}, start={}, length={}", path, start, length);
+        log::debug!(
+            "本地文件读取范围: path={}, start={}, length={}",
+            path,
+            start,
+            length
+        );
 
         let file_path = self.build_safe_path(path)?;
 
@@ -262,13 +295,15 @@ impl StorageClient for LocalFileSystemClient {
             return Err(StorageError::RequestFailed("File not found".to_string()));
         }
 
-        let mut file = fs::File::open(&file_path).await
+        let mut file = fs::File::open(&file_path)
+            .await
             .map_err(|e| StorageError::IoError(format!("Failed to open file: {}", e)))?;
 
         use tokio::io::AsyncSeekExt;
 
         // 定位到起始位置
-        file.seek(std::io::SeekFrom::Start(start)).await
+        file.seek(std::io::SeekFrom::Start(start))
+            .await
             .map_err(|e| StorageError::IoError(format!("Failed to seek in file: {}", e)))?;
 
         // 使用分块读取来处理大文件，与其他存储客户端保持一致
@@ -281,14 +316,18 @@ impl StorageClient for LocalFileSystemClient {
             // 检查取消信号
             if let Some(ref mut cancel_rx) = cancel_rx {
                 if cancel_rx.try_recv().is_ok() {
-                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
                 }
             }
 
             let current_chunk_size = std::cmp::min(remaining, chunk_size as u64) as usize;
             let mut chunk = vec![0u8; current_chunk_size];
 
-            let bytes_read = file.read(&mut chunk).await
+            let bytes_read = file
+                .read(&mut chunk)
+                .await
                 .map_err(|e| StorageError::IoError(format!("Failed to read file: {}", e)))?;
 
             if bytes_read == 0 {
@@ -307,7 +346,11 @@ impl StorageClient for LocalFileSystemClient {
             }
         }
 
-        log::debug!("本地文件实际读取到 {} 字节，请求 {} 字节", result.len(), length);
+        log::debug!(
+            "本地文件实际读取到 {} 字节，请求 {} 字节",
+            result.len(),
+            length
+        );
         Ok(result)
     }
 
@@ -323,7 +366,8 @@ impl StorageClient for LocalFileSystemClient {
             return Err(StorageError::RequestFailed("File not found".to_string()));
         }
 
-        fs::read(&file_path).await
+        fs::read(&file_path)
+            .await
             .map_err(|e| StorageError::IoError(format!("Failed to read file: {}", e)))
     }
 
@@ -339,11 +383,14 @@ impl StorageClient for LocalFileSystemClient {
             return Err(StorageError::RequestFailed("File not found".to_string()));
         }
 
-        let metadata = fs::metadata(&file_path).await
+        let metadata = fs::metadata(&file_path)
+            .await
             .map_err(|e| StorageError::IoError(format!("Failed to get file metadata: {}", e)))?;
 
         if metadata.is_dir() {
-            return Err(StorageError::RequestFailed("Path is a directory, not a file".to_string()));
+            return Err(StorageError::RequestFailed(
+                "Path is a directory, not a file".to_string(),
+            ));
         }
 
         Ok(metadata.len())
@@ -355,13 +402,16 @@ impl StorageClient for LocalFileSystemClient {
 
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.protocol != "local" {
-            return Err(StorageError::InvalidConfig(
-                format!("Expected protocol 'local', got '{}'", config.protocol)
-            ));
+            return Err(StorageError::InvalidConfig(format!(
+                "Expected protocol 'local', got '{}'",
+                config.protocol
+            )));
         }
 
         if config.url.is_none() {
-            return Err(StorageError::InvalidConfig("Root path is required for local file system".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "Root path is required for local file system".to_string(),
+            ));
         }
 
         Ok(())
@@ -375,9 +425,7 @@ impl StorageClient for LocalFileSystemClient {
 
         // 否则，构建完整路径并转换为 file:/// URL
         let full_path = match self.build_safe_path(path) {
-            Ok(path) => {
-                path
-            }
+            Ok(path) => path,
             Err(e) => {
                 return Err(e);
             }

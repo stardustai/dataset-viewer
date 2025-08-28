@@ -1,16 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Search,
-  Loader2,
-  ChevronUp,
-  ChevronDown,
-  X,
-  Move,
-  Percent,
-  Eye,
-  Code
-} from 'lucide-react';
+import { Search, Loader2, ChevronUp, ChevronDown, X, Move, Percent, Eye, Code } from 'lucide-react';
 import { SearchResult, FullFileSearchResult } from '../../types';
 import { getLanguageFromFileName, isLanguageSupported } from '../../utils/syntaxHighlighter';
 import { useSyntaxHighlighting } from '../../hooks/useSyntaxHighlighting';
@@ -64,15 +54,19 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
   onPercentKeyPress,
   isMarkdown,
   onMarkdownPreview,
-  fileName
+  fileName,
 }) => {
   const { t } = useTranslation();
   const { enabled: syntaxHighlightingEnabled, toggleSyntaxHighlighting } = useSyntaxHighlighting();
 
   const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
   const isCurrentResultsLimited = fullFileSearchMode ? fullFileSearchLimited : searchResultsLimited;
-  const limitText = fullFileSearchMode ? t('search.results.limited.500') : t('search.results.limited.5000');
-  const limitDescription = fullFileSearchMode ? t('search.sampling.description') : t('search.too.many.results');
+  const limitText = fullFileSearchMode
+    ? t('search.results.limited.500')
+    : t('search.results.limited.5000');
+  const limitDescription = fullFileSearchMode
+    ? t('search.sampling.description')
+    : t('search.too.many.results');
 
   // 检查是否支持语法高亮
   const detectedLanguage = getLanguageFromFileName(fileName || '');
@@ -85,10 +79,13 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
         <input
           type="text"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder={fullFileSearchMode ?
-            (isLargeFile ? t('search.entire.file.large') : t('search.entire.file')) :
-            t('search.loaded.content')
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder={
+            fullFileSearchMode
+              ? isLargeFile
+                ? t('search.entire.file.large')
+                : t('search.entire.file')
+              : t('search.loaded.content')
           }
           className="w-full pl-10 pr-4 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
         />
@@ -112,7 +109,7 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
               <input
                 type="checkbox"
                 checked={fullFileSearchMode}
-                onChange={(e) => setFullFileSearchMode(e.target.checked)}
+                onChange={e => setFullFileSearchMode(e.target.checked)}
                 className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
               />
               <span className="whitespace-nowrap">{t('search.entire.file')}</span>
@@ -127,7 +124,7 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
                 <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                   {t('viewer.search.results', {
                     current: currentSearchIndex + 1,
-                    total: currentResults.length
+                    total: currentResults.length,
                   })}
                 </span>
                 {currentSearchIndex >= 0 && currentResults[currentSearchIndex] && (
@@ -136,10 +133,14 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
                   </span>
                 )}
                 {fullFileSearchMode && isLargeFile && (
-                  <span className="hidden sm:inline text-orange-600 dark:text-orange-400 text-xs">{t('search.sampling')}</span>
+                  <span className="hidden sm:inline text-orange-600 dark:text-orange-400 text-xs">
+                    {t('search.sampling')}
+                  </span>
                 )}
                 {isCurrentResultsLimited && (
-                  <span className="hidden sm:block text-xs text-orange-500 dark:text-orange-400 mt-1">{limitText}</span>
+                  <span className="hidden sm:block text-xs text-orange-500 dark:text-orange-400 mt-1">
+                    {limitText}
+                  </span>
                 )}
               </div>
               {isCurrentResultsLimited && (
@@ -186,7 +187,7 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
                 min="0"
                 max="100"
                 value={percentValue}
-                onChange={(e) => setPercentValue(e.target.value)}
+                onChange={e => setPercentValue(e.target.value)}
                 onKeyDown={onPercentKeyPress}
                 placeholder="0-100"
                 className="w-16 lg:w-20 px-2 lg:px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -223,9 +224,10 @@ export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                   : 'bg-white dark:bg-gray-800'
               }`}
-              title={syntaxHighlightingEnabled ?
-                t('syntax.highlighting.disable') + ` (${detectedLanguage})` :
-                t('syntax.highlighting.enable') + ` (${detectedLanguage})`
+              title={
+                syntaxHighlightingEnabled
+                  ? t('syntax.highlighting.disable') + ` (${detectedLanguage})`
+                  : t('syntax.highlighting.enable') + ` (${detectedLanguage})`
               }
             >
               <Code className="w-4 h-4" />

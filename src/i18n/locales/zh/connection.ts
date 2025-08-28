@@ -2,7 +2,8 @@ export const connection = {
   // 连接页面应用描述
   'connect.storage': '连接到数据源或本地文件系统',
   'app.tagline': '轻松查看和搜索您的数据集',
-  'app.description': '跨平台数据集查看工具，支持 WebDAV、对象存储和本地文件系统，提供流式传输和虚拟滚动等强大功能，专为大数据集设计。',
+  'app.description':
+    '跨平台数据集查看工具，支持 WebDAV、对象存储和本地文件系统，提供流式传输和虚拟滚动等强大功能，专为大数据集设计。',
 
   // 功能特性
   'features.title': '核心功能',
@@ -36,15 +37,15 @@ export const connection = {
   // 表单字段
   'server.url': '服务器地址',
   'server.url.placeholder': 'https://your-webdav-server.com',
-  'username': '用户名',
+  username: '用户名',
   'username.placeholder': '您的用户名',
-  'password': '密码',
+  password: '密码',
   'password.placeholder': '您的密码',
   'password.saved': '使用已保存的密码',
   'password.click.new': '点击输入新密码',
-  'connecting': '连接中...',
-  'connect': '连接',
-  'optional': '(可选)',
+  connecting: '连接中...',
+  connect: '连接',
+  optional: '(可选)',
 
   // OSS 特定字段
   'oss.platform.select': '选择平台',
@@ -93,8 +94,8 @@ export const connection = {
   'set.default': '设为默认',
   'unset.default': '取消默认',
   'confirm.delete.connection': '确定要删除这个连接吗？',
-  'deleted': '连接已删除',
-  'undo': '撤销',
+  deleted: '连接已删除',
+  undo: '撤销',
 
   // 本地文件系统
   'local.root.path': '根目录路径',
@@ -106,7 +107,8 @@ export const connection = {
   'local.path.desktop': '桌面',
   'local.path.home': '用户目录',
   'local.permission.notice': '权限说明',
-  'local.permission.description': '应用只能访问您明确选择的目录及其子目录。建议选择文档、下载等常用目录。',
+  'local.permission.description':
+    '应用只能访问您明确选择的目录及其子目录。建议选择文档、下载等常用目录。',
   'local.connect': '连接到本机文件',
   'local.error.access': '无法访问指定路径，请检查路径是否存在且有权限访问',
   'local.error.connection': '连接本机文件系统失败',
@@ -137,7 +139,8 @@ export const connection = {
   // 连接切换
   'connection.switch.failed': '切换连接失败',
   'connection.switch.error': '切换连接时发生错误：{{error}}',
-  'connection.switch.type_mismatch': '连接类型不匹配：无法使用 {{connectionType}} 客户端连接到 "{{connectionName}}"',
+  'connection.switch.type_mismatch':
+    '连接类型不匹配：无法使用 {{connectionType}} 客户端连接到 "{{connectionName}}"',
   'connection.switch.missing_credentials': '连接 "{{connectionName}}" 缺少必要的认证信息',
-  'dismiss': '关闭',
+  dismiss: '关闭',
 };

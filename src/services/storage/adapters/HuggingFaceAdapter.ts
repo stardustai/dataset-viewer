@@ -9,7 +9,7 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
   protocol: 'huggingface',
   displayName: 'Hugging Face Hub',
   defaultSortOptions: { sortBy: 'size', sortOrder: 'desc' }, // 按大小降序
-  defaultPageSize: 20,      // 小分页提高响应速度
+  defaultPageSize: 20, // 小分页提高响应速度
   supportsSearch: true,
   supportsCustomRootDisplay: true,
 
@@ -61,13 +61,13 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
     if (org) {
       return {
         showWelcome: true,
-        customMessage: `Browse datasets from ${org} organization on Hugging Face Hub`
+        customMessage: `Browse datasets from ${org} organization on Hugging Face Hub`,
       };
     }
 
     return {
       showWelcome: true,
-      customMessage: 'Browse popular datasets from Hugging Face Hub'
+      customMessage: 'Browse popular datasets from Hugging Face Hub',
     };
   },
 
@@ -75,9 +75,9 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
     return {
       organization: config.organization,
       apiToken: config.apiToken,
-      connected: true
+      connected: true,
     };
-  }
+  },
 };
 
 /**
@@ -132,6 +132,6 @@ function parseHuggingFacePath(path: string): HuggingFacePathInfo | null {
     owner,
     dataset,
     filePath,
-    fullDatasetId: `${owner}:${dataset}`
+    fullDatasetId: `${owner}:${dataset}`,
   };
 }

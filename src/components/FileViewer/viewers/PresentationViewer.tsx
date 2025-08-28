@@ -48,7 +48,11 @@ interface RenderableElement {
 }
 
 // 渲染单个幻灯片元素
-const renderSlideElement = (element: RenderableElement, key: string, t: (key: string) => string) => {
+const renderSlideElement = (
+  element: RenderableElement,
+  key: string,
+  t: (key: string) => string
+) => {
   const style: React.CSSProperties = {
     position: 'absolute',
     left: `${element.left}pt`,
@@ -98,11 +102,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
 
     case 'shape':
       return (
-        <div
-          key={key}
-          style={style}
-          className="flex items-center justify-center overflow-visible"
-        >
+        <div key={key} style={style} className="flex items-center justify-center overflow-visible">
           {element.content && (
             <div
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.content) }}
@@ -125,11 +125,7 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
         const decodedContent = decodeHtml(element.content);
 
         return (
-          <div
-            key={key}
-            style={style}
-            className="overflow-visible"
-          >
+          <div key={key} style={style} className="overflow-visible">
             <div
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(decodedContent) }}
               className="w-full [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-2 [&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-100 [&_th]:text-sm [&_td]:text-sm [&_*]:text-black"
@@ -141,46 +137,59 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
       // 如果有data属性，使用表格数据渲染
       if (element.data && Array.isArray(element.data)) {
         return (
-          <div
-            key={key}
-            style={style}
-            className="overflow-visible"
-          >
+          <div key={key} style={style} className="overflow-visible">
             <table className="w-full border-collapse border border-gray-200">
               <tbody>
                 {element.data.map((row, rowIndex) => (
                   <tr key={rowIndex}>
-                    {row.map((cell, cellIndex) => {
-                      // 检查各种可能的合并标识
-                      if (typeof cell === 'object' && (cell.merged || cell.isMerged || cell.skip || cell.hidden)) {
-                        return null;
-                      }
+                    {row
+                      .map((cell, cellIndex) => {
+                        // 检查各种可能的合并标识
+                        if (
+                          typeof cell === 'object' &&
+                          (cell.merged || cell.isMerged || cell.skip || cell.hidden)
+                        ) {
+                          return null;
+                        }
 
-                      const cellContent = typeof cell === 'object' ? cell.text || cell.content || '' : String(cell);
-                      const cellStyle: React.CSSProperties = {
-                        height: element.rowHeights?.[rowIndex] ? `${element.rowHeights[rowIndex]}pt` : 'auto',
-                        width: element.colWidths?.[cellIndex] ? `${element.colWidths[cellIndex]}pt` : 'auto',
-                        backgroundColor: (typeof cell === 'object' ? cell.fillColor : null) || 'transparent',
-                      };
+                        const cellContent =
+                          typeof cell === 'object' ? cell.text || cell.content || '' : String(cell);
+                        const cellStyle: React.CSSProperties = {
+                          height: element.rowHeights?.[rowIndex]
+                            ? `${element.rowHeights[rowIndex]}pt`
+                            : 'auto',
+                          width: element.colWidths?.[cellIndex]
+                            ? `${element.colWidths[cellIndex]}pt`
+                            : 'auto',
+                          backgroundColor:
+                            (typeof cell === 'object' ? cell.fillColor : null) || 'transparent',
+                        };
 
-                      // 获取合并属性 - 尝试多种可能的属性名
-                      const rowSpan = typeof cell === 'object' ?
-                        (cell.rowspan || cell.rowSpan || cell.rows || cell.mergeDown || 1) : 1;
-                      const colSpan = typeof cell === 'object' ?
-                        (cell.colspan || cell.colSpan || cell.cols || cell.mergeRight || 1) : 1;
+                        // 获取合并属性 - 尝试多种可能的属性名
+                        const rowSpan =
+                          typeof cell === 'object'
+                            ? cell.rowspan || cell.rowSpan || cell.rows || cell.mergeDown || 1
+                            : 1;
+                        const colSpan =
+                          typeof cell === 'object'
+                            ? cell.colspan || cell.colSpan || cell.cols || cell.mergeRight || 1
+                            : 1;
 
-                      return (
-                        <td
-                          key={cellIndex}
-                          className="border border-gray-200 p-2 text-sm text-black [&_*]:text-black"
-                          style={cellStyle}
-                          rowSpan={rowSpan}
-                          colSpan={colSpan}
-                        >
-                          <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(cellContent) }} />
-                        </td>
-                      );
-                    }).filter(Boolean)}
+                        return (
+                          <td
+                            key={cellIndex}
+                            className="border border-gray-200 p-2 text-sm text-black [&_*]:text-black"
+                            style={cellStyle}
+                            rowSpan={rowSpan}
+                            colSpan={colSpan}
+                          >
+                            <div
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(cellContent) }}
+                            />
+                          </td>
+                        );
+                      })
+                      .filter(Boolean)}
                   </tr>
                 ))}
               </tbody>
@@ -214,7 +223,11 @@ const renderSlideElement = (element: RenderableElement, key: string, t: (key: st
 };
 
 // 渲染单个幻灯片
-const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height: number }; t: (key: string) => string }> = ({ slide, slideSize, t }) => {
+const SlideRenderer: React.FC<{
+  slide: Slide;
+  slideSize: { width: number; height: number };
+  t: (key: string) => string;
+}> = ({ slide, slideSize, t }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5); // 设置一个合理的初始缩放值，避免初始渲染时的突然变化
 
@@ -278,11 +291,7 @@ const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height
   };
 
   return (
-    <div
-      ref={containerRef}
-      style={slideStyle}
-      className="mx-auto"
-    >
+    <div ref={containerRef} style={slideStyle} className="mx-auto">
       {/* 渲染布局元素 */}
       {slide.layoutElements?.map((element, index) =>
         renderSlideElement(element as RenderableElement, `layout-${index}`, t)
@@ -294,14 +303,14 @@ const SlideRenderer: React.FC<{ slide: Slide; slideSize: { width: number; height
       )}
     </div>
   );
-}
+};
 
 export const PresentationViewer: React.FC<PresentationViewerProps> = ({
   filePath,
   fileName,
   fileSize,
   className = '',
-  onMetadataLoaded
+  onMetadataLoaded,
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -326,7 +335,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
           onMetadataLoaded({
             slideCount: data.slides.length,
             size: data.size,
-            fileSize
+            fileSize,
           });
         }
       } catch (err) {
@@ -350,17 +359,14 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
   }
 
   if (error) {
-    return (
-      <ErrorDisplay
-        message={error}
-        className={className}
-      />
-    );
+    return <ErrorDisplay message={error} className={className} />;
   }
 
   if (!presentationData || presentationData.slides.length === 0) {
     return (
-      <div className={`flex flex-col flex-1 overflow-hidden bg-white dark:bg-gray-900 ${className}`}>
+      <div
+        className={`flex flex-col flex-1 overflow-hidden bg-white dark:bg-gray-900 ${className}`}
+      >
         <div className="flex items-center justify-center p-8 h-full">
           <div className="text-center max-w-md">
             <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
@@ -401,18 +407,12 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
             <div key={index} className="">
               {/* 幻灯片内容 */}
               <div className="flex justify-center mb-4">
-                <SlideRenderer
-                  slide={slide}
-                  slideSize={presentationData.size}
-                  t={t}
-                />
+                <SlideRenderer slide={slide} slideSize={presentationData.size} t={t} />
               </div>
 
               {/* 页码 */}
               <div className="text-center">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {index + 1}
-                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{index + 1}</span>
               </div>
 
               {/* 幻灯片备注 */}
@@ -422,9 +422,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
                     {t('presentation.speaker.notes')}
                   </h3>
                   <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <p className="text-gray-700 dark:text-gray-300 text-sm">
-                      {slide.note}
-                    </p>
+                    <p className="text-gray-700 dark:text-gray-300 text-sm">{slide.note}</p>
                   </div>
                 </div>
               )}

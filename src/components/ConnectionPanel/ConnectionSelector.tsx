@@ -70,7 +70,7 @@ interface ConnectionSelectorProps {
 
 export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   onSelect,
-  selectedConnection
+  selectedConnection,
 }) => {
   const { t } = useTranslation();
   const [connections, setConnections] = useState<StoredConnection[]>([]);
@@ -183,10 +183,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
 
         {/* 撤销删除提示 - 即使没有连接时也要显示 */}
         {deletedConnection && (
-          <UndoToast
-            deletedConnection={deletedConnection}
-            onUndo={handleUndoDelete}
-          />
+          <UndoToast deletedConnection={deletedConnection} onUndo={handleUndoDelete} />
         )}
       </>
     );
@@ -200,21 +197,18 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
         className="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         <span className="truncate">
-          {selectedConnection
-            ? selectedConnection.name
-            : t('connection.select.saved')
-          }
+          {selectedConnection ? selectedConnection.name : t('connection.select.saved')}
         </span>
         <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
       </button>
 
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
-          {connections.map((connection) => (
+          {connections.map(connection => (
             <div
               key={connection.id}
               className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0"
-              onClick={(e) => {
+              onClick={e => {
                 e.preventDefault(); // 防止触发表单提交
                 e.stopPropagation(); // 防止事件冒泡
                 onSelect(connection);
@@ -222,13 +216,13 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
               }}
             >
               {editingId === connection.id ? (
-                <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center space-x-2" onClick={e => e.stopPropagation()}>
                   <input
                     type="text"
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
+                    onChange={e => setEditName(e.target.value)}
                     className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded"
-                    onKeyDown={(e) => {
+                    onKeyDown={e => {
                       if (e.key === 'Enter') {
                         handleSaveEdit(connection.id);
                       } else if (e.key === 'Escape') {
@@ -267,8 +261,8 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                       {connection.url.startsWith('file:///')
                         ? connection.url.replace('file:///', '')
                         : connection.url.startsWith('oss://')
-                        ? `OSS: ${connection.username}`
-                        : formatConnectionDisplayName(connection.url, connection.username)}
+                          ? `OSS: ${connection.username}`
+                          : formatConnectionDisplayName(connection.url, connection.username)}
                     </div>
                     {connection.lastConnected && (
                       <div className="text-xs text-gray-400 dark:text-gray-500">
@@ -279,7 +273,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                   <div className="flex items-center space-x-1 ml-2">
                     <button
                       type="button"
-                      onClick={(e) => handleSetDefault(connection.id, e)}
+                      onClick={e => handleSetDefault(connection.id, e)}
                       className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                       title={connection.isDefault ? t('unset.default') : t('set.default')}
                     >
@@ -291,7 +285,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => handleEdit(connection, e)}
+                      onClick={e => handleEdit(connection, e)}
                       className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                       title={t('rename')}
                     >
@@ -299,7 +293,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => handleDelete(connection, e)}
+                      onClick={e => handleDelete(connection, e)}
                       className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                       title={t('delete')}
                     >
@@ -315,10 +309,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
 
       {/* 撤销删除提示 */}
       {deletedConnection && (
-        <UndoToast
-          deletedConnection={deletedConnection}
-          onUndo={handleUndoDelete}
-        />
+        <UndoToast deletedConnection={deletedConnection} onUndo={handleUndoDelete} />
       )}
     </div>
   );

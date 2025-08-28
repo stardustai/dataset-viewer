@@ -1,6 +1,6 @@
 export const settings = {
   // Settings interface
-  'settings': 'Settings',
+  settings: 'Settings',
   'settings.theme': 'Theme Settings',
   'settings.update': 'Update Settings',
   'settings.cache': 'Cache Management',
@@ -19,7 +19,8 @@ export const settings = {
   'update.download.failed': 'Failed to open download page',
 
   // Cache management
-  'cache.description': 'Clear local cache and saved connections to free up storage space and resolve display issues',
+  'cache.description':
+    'Clear local cache and saved connections to free up storage space and resolve display issues',
   'clear.cache': 'Clear Cache',
   'clearing.cache': 'Clearing...',
   'cache.cleared.success': 'Cache and connections cleared successfully',
@@ -27,14 +28,15 @@ export const settings = {
 
   // File associations
   'settings.file.association': 'File Associations',
-  'file.association.description': 'Register supported file type associations so the system knows these files can be opened with this app',
+  'file.association.description':
+    'Register supported file type associations so the system knows these files can be opened with this app',
   'register.file.associations': 'Register File Associations',
   'registering.file.associations': 'Registering...',
   'file.associations.success': 'File associations registered successfully',
   'file.associations.failed': 'Failed to register file associations',
 
   // About
-  'about': 'About',
+  about: 'About',
   'app.description': 'Modern dataset viewer tool',
   'app.features': 'Supports large file viewing and fast search',
 };

@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   createFoldingProvider,
   type FoldableRange,
-  type FoldingProvider
+  type FoldingProvider,
 } from '../../../utils/folding';
 
 // 折叠指示器组件
@@ -15,10 +15,7 @@ interface FoldingIndicatorProps {
   onToggle: () => void;
 }
 
-export const FoldingIndicator: React.FC<FoldingIndicatorProps> = ({
-  isCollapsed,
-  onToggle
-}) => {
+export const FoldingIndicator: React.FC<FoldingIndicatorProps> = ({ isCollapsed, onToggle }) => {
   const { t } = useTranslation();
 
   const handleClick = (e: React.MouseEvent) => {
@@ -32,11 +29,7 @@ export const FoldingIndicator: React.FC<FoldingIndicatorProps> = ({
       className="inline-flex items-center justify-center w-4 h-4 ml-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
       title={isCollapsed ? t('unfold.range') : t('fold.range')}
     >
-      {isCollapsed ? (
-        <ChevronRight className="w-3 h-3" />
-      ) : (
-        <ChevronDown className="w-3 h-3" />
-      )}
+      {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
     </button>
   );
 };
@@ -61,7 +54,7 @@ export interface UseFoldingLogicResult {
 export const useFoldingLogic = ({
   lines,
   fileName,
-  visibleRange
+  visibleRange,
 }: UseFoldingLogicProps): UseFoldingLogicResult => {
   // 只保存已折叠的区间ID
   const [collapsedRanges, setCollapsedRanges] = useState<Set<string>>(new Set());
@@ -69,8 +62,12 @@ export const useFoldingLogic = ({
   const [foldableRanges, setFoldableRanges] = useState<FoldableRange[]>([]);
 
   // 支持折叠检测
-  const supportsFolding = Boolean(fileName && ['json', 'jsonl', 'xml', 'svg', 'html', 'htm', 'yaml', 'yml']
-    .includes(fileName.split('.').pop()?.toLowerCase() || ''));
+  const supportsFolding = Boolean(
+    fileName &&
+      ['json', 'jsonl', 'xml', 'svg', 'html', 'htm', 'yaml', 'yml'].includes(
+        fileName.split('.').pop()?.toLowerCase() || ''
+      )
+  );
 
   // 计算内容哈希以避免不必要的更新
   const contentHash = useMemo(() => {
@@ -132,24 +129,27 @@ export const useFoldingLogic = ({
   }, [lines, collapsedRanges, foldableRanges, supportsFolding]);
 
   // 获取指定行的折叠范围（按需计算）
-  const getFoldableRangeAtLine = useCallback((lineIndex: number) => {
-    if (!provider || !supportsFolding) return null;
+  const getFoldableRangeAtLine = useCallback(
+    (lineIndex: number) => {
+      if (!provider || !supportsFolding) return null;
 
-    // 首先从当前已计算的范围中查找
-    const existingRange = foldableRanges.find(range => range.startLine === lineIndex);
-    if (existingRange) {
-      return existingRange;
-    }
+      // 首先从当前已计算的范围中查找
+      const existingRange = foldableRanges.find(range => range.startLine === lineIndex);
+      if (existingRange) {
+        return existingRange;
+      }
 
-    // 如果不在当前范围内，使用 provider 计算
-    try {
-      const range = provider.getFoldingRangeAt(lines, lineIndex);
-      return range;
-    } catch (error) {
-      console.warn('Error parsing folding range at line', lineIndex, error);
-      return null;
-    }
-  }, [provider, supportsFolding, foldableRanges, lines]);
+      // 如果不在当前范围内，使用 provider 计算
+      try {
+        const range = provider.getFoldingRangeAt(lines, lineIndex);
+        return range;
+      } catch (error) {
+        console.warn('Error parsing folding range at line', lineIndex, error);
+        return null;
+      }
+    },
+    [provider, supportsFolding, foldableRanges, lines]
+  );
 
   // 切换折叠状态
   const toggleFoldingRange = useCallback((rangeId: string) => {
@@ -165,9 +165,12 @@ export const useFoldingLogic = ({
   }, []);
 
   // 检查范围是否已折叠
-  const isRangeCollapsed = useCallback((rangeId: string) => {
-    return collapsedRanges.has(rangeId);
-  }, [collapsedRanges]);
+  const isRangeCollapsed = useCallback(
+    (rangeId: string) => {
+      return collapsedRanges.has(rangeId);
+    },
+    [collapsedRanges]
+  );
 
   // 当文件改变时清除状态
   useEffect(() => {
@@ -181,7 +184,6 @@ export const useFoldingLogic = ({
     visibleLines,
     getFoldableRangeAtLine,
     toggleFoldingRange,
-    isRangeCollapsed
+    isRangeCollapsed,
   };
 };
-

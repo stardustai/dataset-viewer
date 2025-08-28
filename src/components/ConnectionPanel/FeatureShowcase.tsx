@@ -11,9 +11,7 @@ export const FeatureShowcase: React.FC = () => {
         <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
           {t('app.name')}
         </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">
-          {t('app.tagline')}
-        </p>
+        <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">{t('app.tagline')}</p>
       </div>
 
       {/* 功能特性 */}
@@ -75,7 +73,7 @@ export const FeatureShowcase: React.FC = () => {
           {t('tech.stack')}
         </h3>
         <div className="flex flex-wrap gap-2">
-          {['Tauri', 'React', 'TypeScript', 'Rust', 'Tailwind CSS'].map((tech) => (
+          {['Tauri', 'React', 'TypeScript', 'Rust', 'Tailwind CSS'].map(tech => (
             <span
               key={tech}
               className="px-3 py-1 text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 rounded-full"

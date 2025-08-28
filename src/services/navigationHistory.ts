@@ -50,10 +50,10 @@ class NavigationHistoryService {
       const filteredHistory = history.filter(item => item.path !== path);
 
       // 添加新记录到开头
-      const newHistory: NavigationHistory[] = [
-        { path, timestamp },
-        ...filteredHistory
-      ].slice(0, this.MAX_HISTORY_SIZE);
+      const newHistory: NavigationHistory[] = [{ path, timestamp }, ...filteredHistory].slice(
+        0,
+        this.MAX_HISTORY_SIZE
+      );
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(newHistory));
     } catch (error) {
@@ -71,10 +71,8 @@ class NavigationHistoryService {
 
       const history = JSON.parse(stored) as NavigationHistory[];
       // 验证数据格式
-      return history.filter(item =>
-        item &&
-        typeof item.path === 'string' &&
-        typeof item.timestamp === 'number'
+      return history.filter(
+        item => item && typeof item.path === 'string' && typeof item.timestamp === 'number'
       );
     } catch (error) {
       console.warn('Failed to load navigation history:', error);
@@ -112,7 +110,7 @@ class NavigationHistoryService {
       scrollPositions[path] = {
         scrollTop,
         scrollLeft,
-        timestamp
+        timestamp,
       };
 
       // 限制缓存大小，移除最旧的记录
@@ -263,7 +261,7 @@ class NavigationHistoryService {
         hasMore,
         nextMarker,
         timestamp,
-        lastAccess: timestamp
+        lastAccess: timestamp,
       };
 
       // 限制缓存大小，移除最旧的记录
@@ -290,7 +288,9 @@ class NavigationHistoryService {
   /**
    * 获取缓存的目录数据（包含分页状态）
    */
-  getCachedDirectory(path: string): { files: any[], hasMore?: boolean, nextMarker?: string } | null {
+  getCachedDirectory(
+    path: string
+  ): { files: any[]; hasMore?: boolean; nextMarker?: string } | null {
     try {
       const cache = this.getDirectoryCache();
       const cached = cache[path];
@@ -313,7 +313,7 @@ class NavigationHistoryService {
       return {
         files: cached.files,
         hasMore: cached.hasMore,
-        nextMarker: cached.nextMarker
+        nextMarker: cached.nextMarker,
       };
     } catch (error) {
       console.warn('Failed to get cached directory:', error);
@@ -333,11 +333,13 @@ class NavigationHistoryService {
       // 验证数据格式
       const validCache: Record<string, DirectoryCache> = {};
       Object.entries(cache).forEach(([key, value]) => {
-        if (value &&
-            typeof value.path === 'string' &&
-            Array.isArray(value.files) &&
-            typeof value.timestamp === 'number' &&
-            typeof value.lastAccess === 'number') {
+        if (
+          value &&
+          typeof value.path === 'string' &&
+          Array.isArray(value.files) &&
+          typeof value.timestamp === 'number' &&
+          typeof value.lastAccess === 'number'
+        ) {
           validCache[key] = value;
         }
       });
@@ -351,7 +353,12 @@ class NavigationHistoryService {
   /**
    * 更新缓存目录的分页状态（追加更多文件）
    */
-  updateCachedDirectory(path: string, newFiles: any[], hasMore?: boolean, nextMarker?: string): void {
+  updateCachedDirectory(
+    path: string,
+    newFiles: any[],
+    hasMore?: boolean,
+    nextMarker?: string
+  ): void {
     try {
       const cache = this.getDirectoryCache();
       const cached = cache[path];
@@ -366,11 +373,13 @@ class NavigationHistoryService {
           files: allFiles,
           hasMore,
           nextMarker,
-          lastAccess: Date.now()
+          lastAccess: Date.now(),
         };
 
         localStorage.setItem(this.CACHE_STORAGE_KEY, JSON.stringify(cache));
-        console.log(`Updated cache for ${path}: ${allFiles.length} total files, hasMore: ${hasMore}`);
+        console.log(
+          `Updated cache for ${path}: ${allFiles.length} total files, hasMore: ${hasMore}`
+        );
       }
     } catch (error) {
       console.warn('Failed to update cached directory:', error);

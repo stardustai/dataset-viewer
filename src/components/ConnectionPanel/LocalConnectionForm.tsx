@@ -14,7 +14,7 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
   onConnect,
   connecting,
   error,
-  defaultPath
+  defaultPath,
 }) => {
   const { t } = useTranslation();
   const [rootPath, setRootPath] = useState(defaultPath || '');
@@ -57,12 +57,14 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
     }
   };
 
-
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">{/* 统一使用 space-y-4 */}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* 统一使用 space-y-4 */}
       <div>
-        <label htmlFor="rootPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label
+          htmlFor="rootPath"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
           {t('local.root.path')}
         </label>
         <div className="flex space-x-2">
@@ -72,7 +74,7 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
               id="rootPath"
               type="text"
               value={rootPath}
-              onChange={(e) => setRootPath(e.target.value)}
+              onChange={e => setRootPath(e.target.value)}
               placeholder={t('local.path.placeholder')}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               required
@@ -108,8 +110,6 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
           ))}
         </div>
       </div>
-
-
 
       {error && (
         <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">

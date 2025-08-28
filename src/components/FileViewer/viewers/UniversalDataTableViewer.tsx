@@ -12,24 +12,12 @@ import {
   VisibilityState,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import {
-  ChevronUp,
-  ChevronDown,
-  Database,
-  ArrowUpDown,
-  Loader2
-} from 'lucide-react';
+import { ChevronUp, ChevronDown, Database, ArrowUpDown, Loader2 } from 'lucide-react';
 import { LoadingDisplay, ErrorDisplay } from '../../common';
 import type { DataProvider, DataMetadata } from '../data-providers';
 import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
-import {
-  DataTableControls,
-  DataTableColumnPanel,
-  DataTableCell
-} from '../table-components';
-import {
-  UnifiedContentModal
-} from '../common';
+import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table-components';
+import { UnifiedContentModal } from '../common';
 
 interface DataColumn {
   id: string;
@@ -51,7 +39,12 @@ const MAX_INITIAL_ROWS = 1000;
 const CHUNK_SIZE = 500;
 
 // Provider 工厂函数
-function createProvider(filePath: string, fileSize: number, fileType: 'parquet' | 'xlsx' | 'csv' | 'ods', previewContent?: Uint8Array): DataProvider {
+function createProvider(
+  filePath: string,
+  fileSize: number,
+  fileType: 'parquet' | 'xlsx' | 'csv' | 'ods',
+  previewContent?: Uint8Array
+): DataProvider {
   switch (fileType) {
     case 'parquet':
       return new ParquetDataProvider(filePath, fileSize);
@@ -71,7 +64,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   fileSize,
   fileType,
   onMetadataLoaded,
-  previewContent
+  previewContent,
 }) => {
   const { t } = useTranslation();
 
@@ -97,7 +90,11 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   // UI state
   const [showColumnPanel, setShowColumnPanel] = useState(false);
   const [showContentModal, setShowContentModal] = useState(false);
-  const [modalContentData, setModalContentData] = useState<{ content: string; title: string; description?: React.ReactNode } | null>(null);
+  const [modalContentData, setModalContentData] = useState<{
+    content: string;
+    title: string;
+    description?: React.ReactNode;
+  } | null>(null);
 
   // Refs
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -109,7 +106,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
     setModalContentData({
       content,
       title: t('data.table.cell.details'),
-      description: <span>{t('cell.position', { column, row: rowIndex + 1 })}</span>
+      description: <span>{t('cell.position', { column, row: rowIndex + 1 })}</span>,
     });
     setShowContentModal(true);
   };
@@ -134,7 +131,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
       }
 
       // 设置列信息
-      const columnInfo: DataColumn[] = meta.columns.map((col) => ({
+      const columnInfo: DataColumn[] = meta.columns.map(col => ({
         id: col.name,
         header: col.name,
         type: col.type,
@@ -149,10 +146,11 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
       // 加载初始数据
       await loadInitialData(provider, Math.min(MAX_INITIAL_ROWS, meta.numRows));
-
     } catch (err) {
       console.error('Failed to load data file:', err);
-      setError(`${t('error.failedToLoadDataFile')}: ${err instanceof Error ? err.message : t('error.unknown')}`);
+      setError(
+        `${t('error.failedToLoadDataFile')}: ${err instanceof Error ? err.message : t('error.unknown')}`
+      );
     } finally {
       setLoading(false);
     }
@@ -177,11 +175,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
     setLoadingMore(true);
     try {
       const nextChunkSize = Math.min(CHUNK_SIZE, totalRows - loadedRows);
-      const result = await dataProviderRef.current.loadData(
-        loadedRows,
-        nextChunkSize,
-        activeSheet
-      );
+      const result = await dataProviderRef.current.loadData(loadedRows, nextChunkSize, activeSheet);
 
       setData(prev => [...prev, ...result]);
       setLoadedRows(prev => prev + nextChunkSize);
@@ -215,7 +209,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
       setTotalRows(meta.numRows);
 
       // 更新列信息
-      const columnInfo: DataColumn[] = meta.columns.map((col) => ({
+      const columnInfo: DataColumn[] = meta.columns.map(col => ({
         id: col.name,
         header: col.name,
         type: col.type,
@@ -233,7 +227,9 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
       setLoadedRows(result.length);
     } catch (err) {
       console.error('Failed to switch sheet:', err);
-      setError(`${t('error.failedToSwitchSheet')}: ${err instanceof Error ? err.message : t('error.unknown')}`);
+      setError(
+        `${t('error.failedToSwitchSheet')}: ${err instanceof Error ? err.message : t('error.unknown')}`
+      );
     } finally {
       setLoading(false);
     }
@@ -244,10 +240,14 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
     const colName = col.header.toLowerCase();
 
     if (colName.includes('id') || colName.includes('index')) return 100;
-    if (colName.includes('timestamp') || colName.includes('time') || colName.includes('date')) return 180;
-    if (colName.includes('name') || colName.includes('title') || colName.includes('description')) return 200;
-    if (col.type.toLowerCase().includes('double') || col.type.toLowerCase().includes('float')) return 120;
-    if (col.type.toLowerCase().includes('int') || col.type.toLowerCase().includes('long')) return 100;
+    if (colName.includes('timestamp') || colName.includes('time') || colName.includes('date'))
+      return 180;
+    if (colName.includes('name') || colName.includes('title') || colName.includes('description'))
+      return 200;
+    if (col.type.toLowerCase().includes('double') || col.type.toLowerCase().includes('float'))
+      return 120;
+    if (col.type.toLowerCase().includes('int') || col.type.toLowerCase().includes('long'))
+      return 100;
     if (col.type.toLowerCase().includes('boolean')) return 80;
 
     return 150;
@@ -321,11 +321,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
     const [lastItem] = virtualRows.slice(-1);
     if (!lastItem) return;
 
-    if (
-      lastItem.index >= rows.length - 10 &&
-      !loadingMore &&
-      loadedRows < totalRows
-    ) {
+    if (lastItem.index >= rows.length - 10 && !loadingMore && loadedRows < totalRows) {
       loadMoreData();
     }
   }, [virtualRows, rows.length, loadingMore, loadedRows, totalRows]);
@@ -336,21 +332,11 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   }, [filePath, fileType]);
 
   if (loading) {
-    return (
-      <LoadingDisplay
-        message={t('data.table.loading', { fileName })}
-        icon={Database}
-      />
-    );
+    return <LoadingDisplay message={t('data.table.loading', { fileName })} icon={Database} />;
   }
 
   if (error) {
-    return (
-      <ErrorDisplay
-        message={error}
-        onRetry={loadDataFile}
-      />
-    );
+    return <ErrorDisplay message={error} onRetry={loadDataFile} />;
   }
 
   return (
@@ -370,19 +356,12 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
       {/* Column Visibility Panel */}
       {showColumnPanel && (
-        <DataTableColumnPanel
-          table={table}
-          onClose={() => setShowColumnPanel(false)}
-        />
+        <DataTableColumnPanel table={table} onClose={() => setShowColumnPanel(false)} />
       )}
 
       {/* Table */}
       <div className="flex-1 overflow-hidden">
-        <div
-          ref={tableContainerRef}
-          className="h-full overflow-auto"
-          style={{ contain: 'strict' }}
-        >
+        <div ref={tableContainerRef} className="h-full overflow-auto" style={{ contain: 'strict' }}>
           {/* Table Header */}
           <div
             className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
@@ -438,7 +417,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
             style={{
               height: `${virtualizer.getTotalSize()}px`,
               position: 'relative',
-              minWidth: `${table.getTotalSize()}px`
+              minWidth: `${table.getTotalSize()}px`,
             }}
           >
             {virtualRows.map(virtualRow => {

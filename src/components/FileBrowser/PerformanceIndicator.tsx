@@ -11,7 +11,7 @@ interface PerformanceIndicatorProps {
 export const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
   fileCount,
   isVirtualized,
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation();
 
@@ -21,12 +21,15 @@ export const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
   }
 
   return (
-    <div className={`inline-flex items-center space-x-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm ${className}`}>
+    <div
+      className={`inline-flex items-center space-x-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm ${className}`}
+    >
       {isVirtualized ? (
         <>
           <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           <span className="text-blue-700 dark:text-blue-300">
-            {t('performance.virtualized.mode')} - {t('performance.file.count', { count: fileCount })}
+            {t('performance.virtualized.mode')} -{' '}
+            {t('performance.file.count', { count: fileCount })}
           </span>
         </>
       ) : (

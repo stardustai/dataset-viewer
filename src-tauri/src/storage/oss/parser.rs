@@ -1,9 +1,9 @@
-use quick_xml::Reader;
-use quick_xml::events::Event;
-use urlencoding;
 use chrono::Utc;
+use quick_xml::events::Event;
+use quick_xml::Reader;
+use urlencoding;
 
-use crate::storage::traits::{StorageError, DirectoryResult, StorageFile};
+use crate::storage::traits::{DirectoryResult, StorageError, StorageFile};
 
 /// 解析 OSS 协议 URL 并返回对象键和实际 URL
 ///
@@ -20,7 +20,9 @@ pub fn parse_oss_url(
     configured_bucket: &str,
 ) -> Result<(String, String), StorageError> {
     if !url.starts_with("oss://") {
-        return Err(StorageError::RequestFailed("Only oss:// protocol URLs are supported".to_string()));
+        return Err(StorageError::RequestFailed(
+            "Only oss:// protocol URLs are supported".to_string(),
+        ));
     }
 
     // 解析 oss://bucket/path/to/file 格式
@@ -32,10 +34,14 @@ pub fn parse_oss_url(
         let object_key = if parts.len() >= 2 { parts[1] } else { "" };
 
         // 校验 URL 中的 bucket 与配置的 bucket 一致
-        let bucket_name = configured_bucket.split('/').next().unwrap_or(configured_bucket);
+        let bucket_name = configured_bucket
+            .split('/')
+            .next()
+            .unwrap_or(configured_bucket);
         if !bucket_name.eq(url_bucket) {
             return Err(StorageError::RequestFailed(format!(
-                "Bucket mismatch: url='{}' != configured='{}'", url_bucket, bucket_name
+                "Bucket mismatch: url='{}' != configured='{}'",
+                url_bucket, bucket_name
             )));
         }
 
@@ -43,7 +49,9 @@ pub fn parse_oss_url(
         let actual_url = build_object_url(endpoint, object_key);
         Ok((object_key.to_string(), actual_url))
     } else {
-        Err(StorageError::RequestFailed("Invalid OSS URL format".to_string()))
+        Err(StorageError::RequestFailed(
+            "Invalid OSS URL format".to_string(),
+        ))
     }
 }
 
@@ -108,7 +116,10 @@ pub fn normalize_uri_for_signing(uri: &str) -> String {
 }
 
 /// 解析 XML 列表响应
-pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<DirectoryResult, StorageError> {
+pub fn parse_list_objects_response(
+    xml_content: &str,
+    prefix: &str,
+) -> Result<DirectoryResult, StorageError> {
     let mut reader = Reader::from_str(xml_content);
     reader.trim_text(true);
 
@@ -150,9 +161,14 @@ pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<Di
                     match element_name.as_ref() {
                         "Key" => {
                             // 对于OSS，filename应该是相对于当前prefix的路径，而不是完整的object key
-                            let relative_path = current_text.strip_prefix(prefix).unwrap_or(&current_text);
+                            let relative_path =
+                                current_text.strip_prefix(prefix).unwrap_or(&current_text);
                             obj.filename = relative_path.to_string();
-                            obj.basename = current_text.rsplit('/').next().unwrap_or(&current_text).to_string();
+                            obj.basename = current_text
+                                .rsplit('/')
+                                .next()
+                                .unwrap_or(&current_text)
+                                .to_string();
                         }
                         "LastModified" => {
                             obj.lastmod = current_text.clone();
@@ -166,7 +182,8 @@ pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<Di
                         "Contents" => {
                             if let Some(obj) = current_object.take() {
                                 // 只添加当前前缀下的直接子项
-                                let relative_path = obj.filename.strip_prefix(prefix).unwrap_or(&obj.filename);
+                                let relative_path =
+                                    obj.filename.strip_prefix(prefix).unwrap_or(&obj.filename);
                                 if !relative_path.is_empty() && !relative_path.contains('/') {
                                     files.push(obj);
                                 }
@@ -185,8 +202,11 @@ pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<Di
                         "CommonPrefixes" => {
                             if let Some(prefix_path) = current_prefix.take() {
                                 // 只添加当前前缀下的直接子目录
-                                let relative_path = prefix_path.strip_prefix(prefix).unwrap_or(&prefix_path);
-                                if !relative_path.is_empty() && !relative_path.trim_end_matches('/').contains('/') {
+                                let relative_path =
+                                    prefix_path.strip_prefix(prefix).unwrap_or(&prefix_path);
+                                if !relative_path.is_empty()
+                                    && !relative_path.trim_end_matches('/').contains('/')
+                                {
                                     let dir_name = relative_path.trim_end_matches('/');
                                     files.push(StorageFile {
                                         filename: dir_name.to_string(),
@@ -219,7 +239,12 @@ pub fn parse_list_objects_response(xml_content: &str, prefix: &str) -> Result<Di
                 }
             }
             Ok(Event::Eof) => break,
-            Err(e) => return Err(StorageError::RequestFailed(format!("XML parsing error: {}", e))),
+            Err(e) => {
+                return Err(StorageError::RequestFailed(format!(
+                    "XML parsing error: {}",
+                    e
+                )))
+            }
             _ => {}
         }
         buf.clear();

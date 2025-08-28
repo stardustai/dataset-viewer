@@ -9,11 +9,11 @@ declare module 'dav1d.js' {
     unsafeDecodeFrameAsBMP(obu: Uint8Array): Uint8Array;
     unsafeCleanup(): void;
   }
-  
+
   interface Dav1dModule {
     create(options: { wasmURL?: string; wasmData?: Uint8Array }): Promise<Dav1dDecoder>;
   }
-  
+
   const dav1d: Dav1dModule;
   export { dav1d as default };
 }
@@ -29,6 +29,6 @@ declare module 'mp4box' {
     setExtractionOptions: (trackId: number, user: any, options: any) => void;
     start: () => void;
   }
-  
+
   function createFile(): MP4File;
 }

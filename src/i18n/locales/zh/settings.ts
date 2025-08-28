@@ -1,6 +1,6 @@
 export const settings = {
   // 设置界面
-  'settings': '设置',
+  settings: '设置',
   'settings.theme': '主题设置',
   'settings.update': '更新设置',
   'settings.cache': '缓存管理',
@@ -34,7 +34,7 @@ export const settings = {
   'file.associations.failed': '文件关联注册失败',
 
   // 关于
-  'about': '关于',
+  about: '关于',
   'app.description': '现代化的数据集查看工具',
   'app.features': '支持大文件查看和快速搜索',
 };

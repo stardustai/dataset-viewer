@@ -53,7 +53,9 @@ pub fn is_text_content(data: &[u8]) -> bool {
         // - UTF-8 序列起始字节 (128-255)
         if !(32..=126).contains(&byte) && // 可打印ASCII
            ![9, 10, 13].contains(&byte) && // 制表符、换行符、回车符
-           byte < 128 { // 非UTF-8起始字节
+           byte < 128
+        {
+            // 非UTF-8起始字节
             non_text_count += 1;
         }
     }
@@ -62,14 +64,12 @@ pub fn is_text_content(data: &[u8]) -> bool {
     (non_text_count as f64 / total_checked as f64) < 0.1
 }
 
-
-
 /// 文件预览构建器
 #[derive(Debug, Clone)]
 pub struct PreviewBuilder {
     content: Vec<u8>,
     is_truncated: bool,
-    total_size: String,  // 使用字符串表示大数字
+    total_size: String, // 使用字符串表示大数字
     preview_size: u32,
 }
 
@@ -89,8 +89,6 @@ impl PreviewBuilder {
         self
     }
 
-
-
     pub fn with_truncated(mut self, truncated: bool) -> Self {
         self.is_truncated = truncated;
         self
@@ -100,10 +98,6 @@ impl PreviewBuilder {
         self.total_size = size.to_string();
         self
     }
-
-
-
-
 
     pub fn build(self) -> crate::archive::types::FilePreview {
         crate::archive::types::FilePreview {
@@ -120,8 +114,8 @@ pub struct ArchiveInfoBuilder {
     compression_type: crate::archive::types::CompressionType,
     entries: Vec<crate::archive::types::ArchiveEntry>,
     total_entries: u32,
-    total_uncompressed_size: String,  // 使用字符串表示大数字
-    total_compressed_size: String,  // 使用字符串表示大数字
+    total_uncompressed_size: String, // 使用字符串表示大数字
+    total_compressed_size: String,   // 使用字符串表示大数字
     supports_streaming: bool,
     supports_random_access: bool,
     analysis_status: crate::archive::types::AnalysisStatus,

@@ -1,7 +1,10 @@
 import { highlightCodeBlock } from './syntaxHighlighter';
 
 // 处理 markdown HTML 中的代码块，为其添加语法高亮
-export async function highlightMarkdownCode(html: string, theme: 'light' | 'dark' = 'light'): Promise<string> {
+export async function highlightMarkdownCode(
+  html: string,
+  theme: 'light' | 'dark' = 'light'
+): Promise<string> {
   // 创建一个临时DOM元素来解析HTML
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
@@ -9,7 +12,7 @@ export async function highlightMarkdownCode(html: string, theme: 'light' | 'dark
   // 查找所有的代码块
   const preElements = tempDiv.querySelectorAll('pre');
 
-  const highlightPromises = Array.from(preElements).map(async (preElement) => {
+  const highlightPromises = Array.from(preElements).map(async preElement => {
     const codeElement = preElement.querySelector('code');
     if (!codeElement) return;
 
@@ -49,7 +52,8 @@ export async function highlightMarkdownCode(html: string, theme: 'light' | 'dark
     } catch (error) {
       console.error('Error highlighting code block:', error);
       // 如果高亮失败，至少添加一些基本样式
-      preElement.className = `${preElement.className || ''} bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto`.trim();
+      preElement.className =
+        `${preElement.className || ''} bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto`.trim();
       if (codeElement) {
         codeElement.className = `${codeElement.className || ''} text-sm font-mono`.trim();
       }

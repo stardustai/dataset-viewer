@@ -1,15 +1,18 @@
 use async_trait::async_trait;
 use base64::engine::general_purpose;
 use base64::Engine;
+use futures_util::StreamExt;
+use quick_xml::events::Event;
+use quick_xml::Reader;
 use reqwest::Client;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use quick_xml::Reader;
-use quick_xml::events::Event;
-use futures_util::StreamExt;
 
-use crate::storage::traits::{StorageClient, StorageRequest, StorageResponse, StorageError, ConnectionConfig, DirectoryResult, StorageFile, ListOptions, ProgressCallback};
+use crate::storage::traits::{
+    ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
+    StorageFile, StorageRequest, StorageResponse,
+};
 
 pub struct WebDAVClient {
     client: Client,
@@ -21,35 +24,43 @@ pub struct WebDAVClient {
 
 impl WebDAVClient {
     pub fn new(config: ConnectionConfig) -> Result<Self, StorageError> {
-        let _base_url = config.url.clone()
+        let _base_url = config
+            .url
+            .clone()
             .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL is required".to_string()))?;
 
-        let auth_header = if let (Some(username), Some(password)) = (&config.username, &config.password) {
-            let credentials = general_purpose::STANDARD.encode(format!("{}:{}", username, password));
-            Some(format!("Basic {}", credentials))
-        } else {
-            None
-        };
+        let auth_header =
+            if let (Some(username), Some(password)) = (&config.username, &config.password) {
+                let credentials =
+                    general_purpose::STANDARD.encode(format!("{}:{}", username, password));
+                Some(format!("Basic {}", credentials))
+            } else {
+                None
+            };
 
         // 配置普通请求的HTTP客户端
         let client = Client::builder()
-            .timeout(Duration::from_secs(30))           // 总超时时间
-            .connect_timeout(Duration::from_secs(10))   // 连接超时
+            .timeout(Duration::from_secs(30)) // 总超时时间
+            .connect_timeout(Duration::from_secs(10)) // 连接超时
             .pool_idle_timeout(Duration::from_secs(90)) // 连接池空闲超时
-            .pool_max_idle_per_host(10)                 // 每个主机最大空闲连接数
-            .tcp_keepalive(Duration::from_secs(60))     // TCP keepalive
+            .pool_max_idle_per_host(10) // 每个主机最大空闲连接数
+            .tcp_keepalive(Duration::from_secs(60)) // TCP keepalive
             .build()
-            .map_err(|e| StorageError::InvalidConfig(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                StorageError::InvalidConfig(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         // 配置下载专用的HTTP客户端，使用更长的超时时间
         let download_client = Client::builder()
-            .timeout(Duration::from_secs(600))          // 下载总超时时间：10分钟
-            .connect_timeout(Duration::from_secs(10))   // 连接超时保持不变
+            .timeout(Duration::from_secs(600)) // 下载总超时时间：10分钟
+            .connect_timeout(Duration::from_secs(10)) // 连接超时保持不变
             .pool_idle_timeout(Duration::from_secs(300)) // 连接池空闲超时：5分钟
-            .pool_max_idle_per_host(5)                  // 下载连接数较少
-            .tcp_keepalive(Duration::from_secs(60))     // TCP keepalive
+            .pool_max_idle_per_host(5) // 下载连接数较少
+            .tcp_keepalive(Duration::from_secs(60)) // TCP keepalive
             .build()
-            .map_err(|e| StorageError::InvalidConfig(format!("Failed to create download HTTP client: {}", e)))?;
+            .map_err(|e| {
+                StorageError::InvalidConfig(format!("Failed to create download HTTP client: {}", e))
+            })?;
 
         Ok(WebDAVClient {
             client,
@@ -61,7 +72,10 @@ impl WebDAVClient {
     }
 
     /// 执行单次请求
-    async fn execute_request_internal(&self, request: &StorageRequest) -> Result<StorageResponse, StorageError> {
+    async fn execute_request_internal(
+        &self,
+        request: &StorageRequest,
+    ) -> Result<StorageResponse, StorageError> {
         // 处理 webdav:// 协议 URL
         let actual_url = self.parse_webdav_url(&request.url)?;
 
@@ -71,13 +85,16 @@ impl WebDAVClient {
             "PUT" => self.client.put(&actual_url),
             "DELETE" => self.client.delete(&actual_url),
             "HEAD" => self.client.head(&actual_url),
-            "PROPFIND" => {
-                self.client.request(
-                    reqwest::Method::from_bytes(b"PROPFIND").unwrap(),
-                    &actual_url,
-                )
-            },
-            _ => return Err(StorageError::RequestFailed(format!("Unsupported method: {}", request.method))),
+            "PROPFIND" => self.client.request(
+                reqwest::Method::from_bytes(b"PROPFIND").unwrap(),
+                &actual_url,
+            ),
+            _ => {
+                return Err(StorageError::RequestFailed(format!(
+                    "Unsupported method: {}",
+                    request.method
+                )))
+            }
         };
 
         // 添加认证头
@@ -95,24 +112,26 @@ impl WebDAVClient {
             req_builder = req_builder.body(body.clone());
         }
 
-        let response = req_builder.send().await
-            .map_err(|e| {
-                if e.is_timeout() {
-                    StorageError::NetworkError(format!("Request timeout: {}", e))
-                } else if e.is_connect() {
-                    StorageError::ConnectionFailed(format!("Connection failed: {}", e))
-                } else {
-                    StorageError::NetworkError(e.to_string())
-                }
-            })?;
+        let response = req_builder.send().await.map_err(|e| {
+            if e.is_timeout() {
+                StorageError::NetworkError(format!("Request timeout: {}", e))
+            } else if e.is_connect() {
+                StorageError::ConnectionFailed(format!("Connection failed: {}", e))
+            } else {
+                StorageError::NetworkError(e.to_string())
+            }
+        })?;
 
         let status = response.status().as_u16();
-        let headers = response.headers().iter()
+        let headers = response
+            .headers()
+            .iter()
             .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
             .collect();
 
-        let body = response.text().await
-            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+        let body = response.text().await.map_err(|e| {
+            StorageError::NetworkError(format!("Failed to read response body: {}", e))
+        })?;
 
         Ok(StorageResponse {
             status,
@@ -121,7 +140,6 @@ impl WebDAVClient {
             metadata: None,
         })
     }
-
 }
 
 #[async_trait]
@@ -133,12 +151,14 @@ impl StorageClient for WebDAVClient {
         self.config = config.clone();
 
         // 重新生成认证头
-        self.auth_header = if let (Some(username), Some(password)) = (&config.username, &config.password) {
-            let credentials = general_purpose::STANDARD.encode(format!("{}:{}", username, password));
-            Some(format!("Basic {}", credentials))
-        } else {
-            None
-        };
+        self.auth_header =
+            if let (Some(username), Some(password)) = (&config.username, &config.password) {
+                let credentials =
+                    general_purpose::STANDARD.encode(format!("{}:{}", username, password));
+                Some(format!("Basic {}", credentials))
+            } else {
+                None
+            };
 
         // 测试连接
         let test_request = StorageRequest {
@@ -150,22 +170,28 @@ impl StorageClient for WebDAVClient {
                 headers.insert("Content-Type".to_string(), "application/xml".to_string());
                 headers
             },
-            body: Some(r#"<?xml version="1.0" encoding="utf-8" ?>
+            body: Some(
+                r#"<?xml version="1.0" encoding="utf-8" ?>
 <D:propfind xmlns:D="DAV:">
   <D:prop>
     <D:resourcetype/>
   </D:prop>
-</D:propfind>"#.to_string()),
+</D:propfind>"#
+                    .to_string(),
+            ),
         };
 
         match self.execute_request_internal(&test_request).await {
             Ok(_) => {
                 self.connected.store(true, Ordering::Relaxed);
                 Ok(())
-            },
+            }
             Err(e) => {
                 self.connected.store(false, Ordering::Relaxed);
-                Err(StorageError::ConnectionFailed(format!("WebDAV connection test failed: {}", e)))
+                Err(StorageError::ConnectionFailed(format!(
+                    "WebDAV connection test failed: {}",
+                    e
+                )))
             }
         }
     }
@@ -174,7 +200,11 @@ impl StorageClient for WebDAVClient {
         self.connected.load(Ordering::Relaxed)
     }
 
-    async fn list_directory(&self, path: &str, options: Option<&ListOptions>) -> Result<DirectoryResult, StorageError> {
+    async fn list_directory(
+        &self,
+        path: &str,
+        options: Option<&ListOptions>,
+    ) -> Result<DirectoryResult, StorageError> {
         if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
@@ -207,9 +237,10 @@ impl StorageClient for WebDAVClient {
         let response = self.execute_request_internal(&request).await?;
 
         if response.status < 200 || response.status >= 300 {
-            return Err(StorageError::RequestFailed(
-                format!("PROPFIND failed with status {}: {}", response.status, response.body)
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "PROPFIND failed with status {}: {}",
+                response.status, response.body
+            )));
         }
 
         // 检查响应是否是XML格式
@@ -227,7 +258,9 @@ impl StorageClient for WebDAVClient {
         }
 
         // 如果响应看起来像HTML而不是XML，给出更明确的错误
-        if body_trimmed.to_lowercase().contains("<html>") || body_trimmed.to_lowercase().contains("<!doctype html") {
+        if body_trimmed.to_lowercase().contains("<html>")
+            || body_trimmed.to_lowercase().contains("<!doctype html")
+        {
             return Err(StorageError::RequestFailed(
                 "Server returned HTML instead of XML. This endpoint may not support WebDAV PROPFIND requests.".to_string()
             ));
@@ -255,8 +288,14 @@ impl StorageClient for WebDAVClient {
         "webdav"
     }
 
-    async fn read_file_range(&self, path: &str, start: u64, length: u64) -> Result<Vec<u8>, StorageError> {
-        self.read_file_range_with_progress(path, start, length, None, None).await
+    async fn read_file_range(
+        &self,
+        path: &str,
+        start: u64,
+        length: u64,
+    ) -> Result<Vec<u8>, StorageError> {
+        self.read_file_range_with_progress(path, start, length, None, None)
+            .await
     }
 
     async fn read_file_range_with_progress(
@@ -284,13 +323,17 @@ impl StorageClient for WebDAVClient {
         let range_header = format!("bytes={}-{}", start, start + length - 1);
         request = request.header("Range", range_header.clone());
 
-        let response = request.send().await
+        let response = request
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown"))
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "HTTP {}: {}",
+                response.status(),
+                response.status().canonical_reason().unwrap_or("Unknown")
+            )));
         }
 
         // 使用流式读取以支持进度回调
@@ -302,7 +345,9 @@ impl StorageClient for WebDAVClient {
             // 检查取消信号
             if let Some(ref mut cancel_rx) = cancel_rx {
                 if cancel_rx.try_recv().is_ok() {
-                    return Err(StorageError::RequestFailed("download.cancelled".to_string()));
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
                 }
             }
 
@@ -334,17 +379,22 @@ impl StorageClient for WebDAVClient {
             request = request.header("Authorization", auth);
         }
 
-        let response = request.send().await
+        let response = request
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown"))
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "HTTP {}: {}",
+                response.status(),
+                response.status().canonical_reason().unwrap_or("Unknown")
+            )));
         }
 
-        let bytes = response.bytes().await
-            .map_err(|e| StorageError::NetworkError(format!("Failed to read response body: {}", e)))?;
+        let bytes = response.bytes().await.map_err(|e| {
+            StorageError::NetworkError(format!("Failed to read response body: {}", e))
+        })?;
 
         Ok(bytes.to_vec())
     }
@@ -362,13 +412,17 @@ impl StorageClient for WebDAVClient {
             request = request.header("Authorization", auth);
         }
 
-        let response = request.send().await
+        let response = request
+            .send()
+            .await
             .map_err(|e| StorageError::NetworkError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(StorageError::RequestFailed(
-                format!("HTTP {}: {}", response.status(), response.status().canonical_reason().unwrap_or("Unknown"))
-            ));
+            return Err(StorageError::RequestFailed(format!(
+                "HTTP {}: {}",
+                response.status(),
+                response.status().canonical_reason().unwrap_or("Unknown")
+            )));
         }
 
         // 尝试从 Content-Length 头获取文件大小
@@ -380,18 +434,23 @@ impl StorageClient for WebDAVClient {
             }
         }
 
-        Err(StorageError::RequestFailed("Unable to determine file size".to_string()))
+        Err(StorageError::RequestFailed(
+            "Unable to determine file size".to_string(),
+        ))
     }
 
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.protocol != "webdav" {
-            return Err(StorageError::InvalidConfig(
-                format!("Expected protocol 'webdav', got '{}'", config.protocol)
-            ));
+            return Err(StorageError::InvalidConfig(format!(
+                "Expected protocol 'webdav', got '{}'",
+                config.protocol
+            )));
         }
 
         if config.url.is_none() {
-            return Err(StorageError::InvalidConfig("URL is required for WebDAV".to_string()));
+            return Err(StorageError::InvalidConfig(
+                "URL is required for WebDAV".to_string(),
+            ));
         }
 
         Ok(())
@@ -409,8 +468,10 @@ impl StorageClient for WebDAVClient {
         }
 
         // 使用统一的URL构建方法（处理普通路径）
-        let base_url = self.config.url.as_ref()
-            .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL not configured".to_string()))?;
+        let base_url =
+            self.config.url.as_ref().ok_or_else(|| {
+                StorageError::InvalidConfig("WebDAV URL not configured".to_string())
+            })?;
 
         let clean_base = base_url.trim_end_matches('/');
 
@@ -431,32 +492,36 @@ impl StorageClient for WebDAVClient {
 
         headers
     }
-
-
 }
 
 impl WebDAVClient {
-    fn parse_webdav_xml(&self, xml_body: &str, current_path: &str) -> Result<Vec<StorageFile>, StorageError> {
+    fn parse_webdav_xml(
+        &self,
+        xml_body: &str,
+        current_path: &str,
+    ) -> Result<Vec<StorageFile>, StorageError> {
         // 先检查内容是否像XML
         let body_trimmed = xml_body.trim();
         if body_trimmed.is_empty() {
-            return Err(StorageError::RequestFailed("Server returned empty response".to_string()));
+            return Err(StorageError::RequestFailed(
+                "Server returned empty response".to_string(),
+            ));
         }
 
         // 如果内容看起来像HTML，给出明确错误
-        if body_trimmed.to_lowercase().contains("<html>") ||
-           body_trimmed.to_lowercase().contains("<!doctype") ||
-           body_trimmed.contains("<img>") ||
-           body_trimmed.contains("<table>") {
-            return Err(StorageError::RequestFailed(
-                format!("Server returned HTML content instead of WebDAV XML. Response preview: {}",
-                    if body_trimmed.len() > 300 {
-                        format!("{}...", &body_trimmed[..300])
-                    } else {
-                        body_trimmed.to_string()
-                    }
-                )
-            ));
+        if body_trimmed.to_lowercase().contains("<html>")
+            || body_trimmed.to_lowercase().contains("<!doctype")
+            || body_trimmed.contains("<img>")
+            || body_trimmed.contains("<table>")
+        {
+            return Err(StorageError::RequestFailed(format!(
+                "Server returned HTML content instead of WebDAV XML. Response preview: {}",
+                if body_trimmed.len() > 300 {
+                    format!("{}...", &body_trimmed[..300])
+                } else {
+                    body_trimmed.to_string()
+                }
+            )));
         }
 
         let mut reader = Reader::from_str(xml_body);
@@ -476,44 +541,59 @@ impl WebDAVClient {
 
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name().as_ref() {
-                        b"D:response" | b"response" => {
-                            in_response = true;
-                            current_response = WebDAVResponse::default();
-                        },
-                        b"D:href" | b"href" if in_response => in_href = true,
-                        b"D:prop" | b"prop" if in_response => in_prop = true,
-                        b"D:resourcetype" | b"resourcetype" if in_prop => in_resourcetype = true,
-                        tag if in_prop && (tag.ends_with(b":getcontentlength") || tag == b"getcontentlength") => {
-                            in_getcontentlength = true;
-                        },
-                        tag if in_prop && (tag.ends_with(b":getlastmodified") || tag == b"getlastmodified") => in_getlastmodified = true,
-                        tag if in_prop && (tag.ends_with(b":getcontenttype") || tag == b"getcontenttype") => in_getcontenttype = true,
-                        b"D:collection" | b"collection" if in_resourcetype => {
-                            current_response.is_directory = true;
-                        },
-                        _ => {},
+                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"D:response" | b"response" => {
+                        in_response = true;
+                        current_response = WebDAVResponse::default();
                     }
+                    b"D:href" | b"href" if in_response => in_href = true,
+                    b"D:prop" | b"prop" if in_response => in_prop = true,
+                    b"D:resourcetype" | b"resourcetype" if in_prop => in_resourcetype = true,
+                    tag if in_prop
+                        && (tag.ends_with(b":getcontentlength") || tag == b"getcontentlength") =>
+                    {
+                        in_getcontentlength = true;
+                    }
+                    tag if in_prop
+                        && (tag.ends_with(b":getlastmodified") || tag == b"getlastmodified") =>
+                    {
+                        in_getlastmodified = true
+                    }
+                    tag if in_prop
+                        && (tag.ends_with(b":getcontenttype") || tag == b"getcontenttype") =>
+                    {
+                        in_getcontenttype = true
+                    }
+                    b"D:collection" | b"collection" if in_resourcetype => {
+                        current_response.is_directory = true;
+                    }
+                    _ => {}
                 },
-                Ok(Event::End(ref e)) => {
-                    match e.name().as_ref() {
-                        b"D:response" | b"response" => {
-                            if in_response {
-                                if let Some(file) = self.webdav_response_to_storage_file(current_response.clone(), current_path) {
-                                    files.push(file);
-                                }
-                                in_response = false;
+                Ok(Event::End(ref e)) => match e.name().as_ref() {
+                    b"D:response" | b"response" => {
+                        if in_response {
+                            if let Some(file) = self.webdav_response_to_storage_file(
+                                current_response.clone(),
+                                current_path,
+                            ) {
+                                files.push(file);
                             }
-                        },
-                        b"D:href" | b"href" => in_href = false,
-                        b"D:prop" | b"prop" => in_prop = false,
-                        b"D:resourcetype" | b"resourcetype" => in_resourcetype = false,
-                        tag if tag.ends_with(b":getcontentlength") || tag == b"getcontentlength" => in_getcontentlength = false,
-                        tag if tag.ends_with(b":getlastmodified") || tag == b"getlastmodified" => in_getlastmodified = false,
-                        tag if tag.ends_with(b":getcontenttype") || tag == b"getcontenttype" => in_getcontenttype = false,
-                        _ => {},
+                            in_response = false;
+                        }
                     }
+                    b"D:href" | b"href" => in_href = false,
+                    b"D:prop" | b"prop" => in_prop = false,
+                    b"D:resourcetype" | b"resourcetype" => in_resourcetype = false,
+                    tag if tag.ends_with(b":getcontentlength") || tag == b"getcontentlength" => {
+                        in_getcontentlength = false
+                    }
+                    tag if tag.ends_with(b":getlastmodified") || tag == b"getlastmodified" => {
+                        in_getlastmodified = false
+                    }
+                    tag if tag.ends_with(b":getcontenttype") || tag == b"getcontenttype" => {
+                        in_getcontenttype = false
+                    }
+                    _ => {}
                 },
                 Ok(Event::Text(e)) => {
                     let text = e.unescape().unwrap_or_default();
@@ -526,14 +606,14 @@ impl WebDAVClient {
                     } else if in_getcontenttype {
                         current_response.content_type = Some(text.to_string());
                     }
-                },
+                }
                 Ok(Event::Eof) => break,
                 Err(e) => {
                     return Err(StorageError::RequestFailed(
                         format!("XML parsing failed: {}. This usually means the server returned HTML instead of WebDAV XML. Please check if the URL is a valid WebDAV endpoint.", e)
                     ));
-                },
-                _ => {},
+                }
+                _ => {}
             }
             buf.clear();
         }
@@ -541,7 +621,11 @@ impl WebDAVClient {
         Ok(files)
     }
 
-    fn webdav_response_to_storage_file(&self, resp: WebDAVResponse, current_url: &str) -> Option<StorageFile> {
+    fn webdav_response_to_storage_file(
+        &self,
+        resp: WebDAVResponse,
+        current_url: &str,
+    ) -> Option<StorageFile> {
         if resp.href.is_empty() {
             return None;
         }
@@ -565,9 +649,12 @@ impl WebDAVClient {
         }
 
         // 更精确的目录判断：优先使用XML解析结果，然后检查MIME类型和URL
-        let is_directory = resp.is_directory ||
-            resp.content_type.as_ref().map_or(false, |ct| ct == "httpd/unix-directory") ||
-            decoded_href.ends_with('/');
+        let is_directory = resp.is_directory
+            || resp
+                .content_type
+                .as_ref()
+                .map_or(false, |ct| ct == "httpd/unix-directory")
+            || decoded_href.ends_with('/');
 
         // 检查是否是当前目录本身（通过比较URL和路径）
         let current_url_normalized = current_url.trim_end_matches('/');
@@ -602,20 +689,26 @@ impl WebDAVClient {
             filename: filename.clone(),
             basename: filename,
             lastmod: resp.lastmod,
-            size: if is_directory { "0".to_string() } else { resp.size.to_string() }, // 目录大小为0
+            size: if is_directory {
+                "0".to_string()
+            } else {
+                resp.size.to_string()
+            }, // 目录大小为0
             file_type,
             mime,
             etag: None,
         })
     }
 
-    fn apply_list_options(&self, mut files: Vec<StorageFile>, options: &ListOptions) -> Vec<StorageFile> {
+    fn apply_list_options(
+        &self,
+        mut files: Vec<StorageFile>,
+        options: &ListOptions,
+    ) -> Vec<StorageFile> {
         // 应用前缀过滤
         if let Some(prefix) = &options.prefix {
             files.retain(|f| f.filename.starts_with(prefix));
         }
-
-
 
         // 应用分页
         if let Some(page_size) = options.page_size {
@@ -650,8 +743,10 @@ impl WebDAVClient {
         }
 
         // 其他情况，假设是相对路径，使用配置的基础URL
-        let base_url = self.config.url.as_ref()
-            .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL not configured".to_string()))?;
+        let base_url =
+            self.config.url.as_ref().ok_or_else(|| {
+                StorageError::InvalidConfig("WebDAV URL not configured".to_string())
+            })?;
 
         let clean_base = base_url.trim_end_matches('/');
         let clean_path = webdav_url.trim_start_matches('/');
@@ -663,7 +758,11 @@ impl WebDAVClient {
         self.parse_path_to_url_with_type(path, true) // 默认按目录处理，用于向后兼容
     }
 
-    fn parse_path_to_url_with_type(&self, path: &str, is_directory: bool) -> Result<String, StorageError> {
+    fn parse_path_to_url_with_type(
+        &self,
+        path: &str,
+        is_directory: bool,
+    ) -> Result<String, StorageError> {
         // 如果是协议URL，直接解析转换
         if path.starts_with("webdav://") || path.starts_with("webdavs://") {
             let url = self.parse_webdav_url(path)?;
@@ -671,8 +770,10 @@ impl WebDAVClient {
         }
 
         // 对于相对路径，使用配置的基础URL构建
-        let base_url = self.config.url.as_ref()
-            .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL not configured".to_string()))?;
+        let base_url =
+            self.config.url.as_ref().ok_or_else(|| {
+                StorageError::InvalidConfig("WebDAV URL not configured".to_string())
+            })?;
 
         let clean_base = base_url.trim_end_matches('/');
         let clean_path = path.trim_start_matches('/').trim_end_matches('/');

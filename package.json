@@ -18,7 +18,13 @@
     "clean": "rm -rf dist src-tauri/target node_modules/.vite",
     "clean:build": "rm -rf src-tauri/target/release src-tauri/target/debug",
     "lint": "tsc --noEmit",
-    "postinstall": "echo '✅ Dependencies installed successfully!'"
+    "format": "biome format --write . && cd src-tauri && cargo fmt",
+    "format:check": "biome format . && cd src-tauri && cargo fmt --check",
+    "format:frontend": "biome format --write .",
+    "format:backend": "cd src-tauri && cargo fmt",
+    "check": "biome check --write . && cd src-tauri && cargo fmt && cargo clippy",
+    "postinstall": "echo '✅ Dependencies installed successfully!'",
+    "prepare": "husky"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.16",
@@ -52,6 +58,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.2",
     "@tauri-apps/cli": "^2",
     "@types/node": "^24.0.15",
     "@types/papaparse": "^5.3.16",
@@ -60,10 +67,23 @@
     "@types/semver": "^7.7.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.15",
     "typescript": "~5.6.2",
     "vite": "^6.0.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "biome format --write --no-errors-on-unmatched"
+    ],
+    "*.json": [
+      "biome format --write --no-errors-on-unmatched"
+    ],
+    "src-tauri/src/**/*.rs": [
+      "rustfmt --config-path src-tauri/rustfmt.toml"
+    ]
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }

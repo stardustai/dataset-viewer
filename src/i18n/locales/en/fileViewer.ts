@@ -26,14 +26,15 @@ export const fileViewer = {
   'search.sampling': '(Sampling)',
   'line.number': 'Line {{line}}',
   'line.content': 'Line {{line}} content',
-  'image': 'Image',
+  image: 'Image',
   'truncated.image': 'Truncated Image',
   'image.truncated.title': 'Image Data Truncated',
-  'image.truncated.description': 'This line contains image data, but it has been truncated for display. Please expand the full line content to view the image.',
+  'image.truncated.description':
+    'This line contains image data, but it has been truncated for display. Please expand the full line content to view the image.',
 
   // Loading control
   'load.more': 'Load More Content',
-  'loaded': 'loaded',
+  loaded: 'loaded',
   'viewer.load.more': 'Load More Content',
   'viewer.load.all': 'Load All Content',
   'viewer.fully.loaded': 'File fully loaded',
@@ -55,7 +56,8 @@ export const fileViewer = {
   'viewer.jump.percent': 'Jump to percentage',
   'viewer.jump.percent.large': 'Jump to file position by percentage (large file mode)',
   'viewer.jump': 'Jump',
-  'viewer.line.numbers.estimated': 'Line numbers are estimated (starting from approx. line {{startLine}})',
+  'viewer.line.numbers.estimated':
+    'Line numbers are estimated (starting from approx. line {{startLine}})',
 
   // Syntax highlighting
   'syntax.highlighting': 'Syntax Highlighting',
@@ -73,7 +75,7 @@ export const fileViewer = {
   'copy.full.path': 'Copy full path',
   'copy.line.content': 'Copy line content',
   'copy.content': 'Copy content',
-  'copied': 'Copied',
+  copied: 'Copied',
   'copied.to.clipboard': 'Copied to clipboard',
   'copy.failed': 'Copy failed',
 
@@ -85,8 +87,8 @@ export const fileViewer = {
   'format.xml.success': 'XML formatted successfully',
   'format.xml.failed': 'XML format failed: content is not valid XML',
   'formatted.content': 'Formatted Content',
-	'formatted.json': 'Formatted',
-	'formatted.xml': 'Formatted',
+  'formatted.json': 'Formatted',
+  'formatted.xml': 'Formatted',
   'original.content': 'Original Content',
   'content.details': 'Content Details',
 
@@ -107,7 +109,8 @@ export const fileViewer = {
   // Archive files
   'archive.empty': 'Archive is empty',
   'folder.selected': 'Folder Selected',
-  'folder.info.message': 'This is a folder. Folders in archives are used for organizing file structure and cannot be entered or previewed.',
+  'folder.info.message':
+    'This is a folder. Folders in archives are used for organizing file structure and cannot be entered or previewed.',
   'archive.root': 'Home',
   'archive.back': 'Back',
 
@@ -185,11 +188,15 @@ export const fileViewer = {
   'word.raw.content': 'Raw Content',
   'word.doc.unsupported': 'This is an old version Word document format',
   'word.doc.suggestion': 'Please download and open with Microsoft Word, or convert to .docx format',
-  'word.preview.limitation': 'This is a simplified document preview. For the best viewing experience, please download and open with dedicated Word processing software.',
+  'word.preview.limitation':
+    'This is a simplified document preview. For the best viewing experience, please download and open with dedicated Word processing software.',
   'word.doc.legacy.title': 'Legacy Word Document',
-  'word.doc.legacy.message': 'This file is a legacy Word document format (.doc) that requires specialized parser.\n\nRecommendations:\n1. Download and open with Microsoft Word\n2. Convert to .docx format for better support',
-  'word.rtf.extract.failed': 'Unable to extract RTF document content. Please download the file to view complete content.',
-  'word.rtf.parse.error': 'Error parsing RTF document. Please download the file to view complete content.',
+  'word.doc.legacy.message':
+    'This file is a legacy Word document format (.doc) that requires specialized parser.\n\nRecommendations:\n1. Download and open with Microsoft Word\n2. Convert to .docx format for better support',
+  'word.rtf.extract.failed':
+    'Unable to extract RTF document content. Please download the file to view complete content.',
+  'word.rtf.parse.error':
+    'Error parsing RTF document. Please download the file to view complete content.',
   'word.unsupported.format': 'Unsupported file format',
   'word.load.failed': 'Failed to load document. Please try downloading the file to view content.',
 
@@ -198,11 +205,14 @@ export const fileViewer = {
   'presentation.fileSize': 'File size: {{size}} MB',
   'presentation.slideCount': '{{count}} slides',
   'presentation.preview.title': 'PowerPoint Presentation Preview',
-  'presentation.preview.description': 'This file is a PowerPoint presentation format containing slides, animations, and multimedia content.',
+  'presentation.preview.description':
+    'This file is a PowerPoint presentation format containing slides, animations, and multimedia content.',
   'presentation.preview.limitation.title': 'Preview Limitations',
-  'presentation.preview.limitation.description': 'Due to the complexity of presentations, not all content and effects can be fully displayed in the browser. We recommend downloading the file and opening it with PowerPoint or compatible software for the best experience.',
+  'presentation.preview.limitation.description':
+    'Due to the complexity of presentations, not all content and effects can be fully displayed in the browser. We recommend downloading the file and opening it with PowerPoint or compatible software for the best experience.',
   'presentation.download.to.view': 'Download file to view complete presentation',
-  'presentation.load.error': 'Failed to load presentation. Please try downloading the file to view content.',
+  'presentation.load.error':
+    'Failed to load presentation. Please try downloading the file to view content.',
   'loading.presentation': 'Loading presentation "{{filename}}"...',
   'av1.player.error.invalid.format': 'Invalid AV1 video format',
   'av1.player.error.noData': 'No video data available',
@@ -218,13 +228,14 @@ export const fileViewer = {
 
   // Unsupported format text view option
   'viewer.open.as.text': 'Open as Text',
-  'viewer.unsupported.format.message': 'This file format is not directly supported, but you can try viewing it as text.',
+  'viewer.unsupported.format.message':
+    'This file format is not directly supported, but you can try viewing it as text.',
 
   // Long line optimization
   'expand.long.line': 'Expand',
   'collapse.long.line': 'Collapse',
-  'characters': 'Characters',
-  'lines': 'Lines',
+  characters: 'Characters',
+  lines: 'Lines',
 
   // View modes
   'virtual.viewer': 'Virtual Viewer',
@@ -241,5 +252,4 @@ export const fileViewer = {
   // Code folding
   'fold.range': 'Fold range',
   'unfold.range': 'Unfold range',
-
 };

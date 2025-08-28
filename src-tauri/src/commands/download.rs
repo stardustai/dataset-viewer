@@ -7,8 +7,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 // 全局下载管理器
-static DOWNLOAD_MANAGER: LazyLock<DownloadManager> =
-    LazyLock::new(DownloadManager::new);
+static DOWNLOAD_MANAGER: LazyLock<DownloadManager> = LazyLock::new(DownloadManager::new);
 
 /// 开始文件下载
 /// 支持实时进度更新和下载取消功能
@@ -56,7 +55,7 @@ pub async fn download_start(
     // 如果没有指定保存路径，使用默认下载路径
     let final_save_path = match save_path {
         Some(path) => Some(path),
-        None => Some(get_default_download_path(&filename)?)
+        None => Some(get_default_download_path(&filename)?),
     };
 
     let request = DownloadRequest {
@@ -66,7 +65,9 @@ pub async fn download_start(
         filename,
     };
 
-    DOWNLOAD_MANAGER.download_with_progress(app, request, final_save_path).await
+    DOWNLOAD_MANAGER
+        .download_with_progress(app, request, final_save_path)
+        .await
 }
 
 /// 取消指定文件的下载
@@ -98,7 +99,7 @@ pub async fn download_extract_file(
     // 如果没有指定保存路径，使用默认下载路径
     let final_save_path = match save_path {
         Some(path) => Some(path),
-        None => Some(get_default_download_path(&entry_filename)?)
+        None => Some(get_default_download_path(&entry_filename)?),
     };
 
     // 使用统一的下载管理器来处理压缩包文件下载，支持取消功能

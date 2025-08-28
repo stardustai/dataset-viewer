@@ -50,7 +50,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   onUrlChange,
   onUsernameChange,
   onPasswordChange,
-  onPasswordFocus
+  onPasswordFocus,
 }) => {
   const { t } = useTranslation();
 
@@ -62,9 +62,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             {t('app.name')}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            {t('app.tagline')}
-          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-300">{t('app.tagline')}</p>
         </div>
 
         <div className="space-y-4">
@@ -91,10 +89,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
           </div>
 
           {/* 存储类型选择器 */}
-          <StorageTypeSelector
-            selectedType={storageType}
-            onTypeChange={onStorageTypeChange}
-          />
+          <StorageTypeSelector selectedType={storageType} onTypeChange={onStorageTypeChange} />
 
           {/* 根据存储类型显示不同的表单 */}
           {storageType === 'webdav' ? (
@@ -116,9 +111,11 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               onConnect={onLocalConnect}
               connecting={connecting}
               error={error}
-              defaultPath={selectedStoredConnection?.url.startsWith('file:///')
-                ? selectedStoredConnection.url.replace('file:///', '')
-                : defaultLocalPath}
+              defaultPath={
+                selectedStoredConnection?.url.startsWith('file:///')
+                  ? selectedStoredConnection.url.replace('file:///', '')
+                  : defaultLocalPath
+              }
             />
           ) : storageType === 'oss' ? (
             <OSSConnectionForm

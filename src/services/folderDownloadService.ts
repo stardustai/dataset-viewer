@@ -142,13 +142,7 @@ export class FolderDownloadService {
 
           // 如果启用递归下载，启动并行的扫描和下载
           if (recursive) {
-            await this.downloadFolderRecursiveOptimized(
-              folderPath,
-              files,
-              savePath,
-              state,
-              events
-            );
+            await this.downloadFolderRecursiveOptimized(folderPath, files, savePath, state, events);
           } else {
             // 非递归下载：只下载当前目录文件
             await this.downloadCurrentDirectoryFiles(
@@ -180,7 +174,6 @@ export class FolderDownloadService {
       }, 0);
 
       return `Folder download initiated: ${folderId}`;
-
     } catch (error) {
       // 初始化失败
       state.status = 'error';
@@ -257,8 +250,8 @@ export class FolderDownloadService {
     if (!this.globalStopFlag) return;
 
     const activeDownloads = Array.from(this.activeDownloads.values());
-    const hasActiveDownloads = activeDownloads.some(d =>
-      d.status === 'downloading' || d.status === 'preparing'
+    const hasActiveDownloads = activeDownloads.some(
+      d => d.status === 'downloading' || d.status === 'preparing'
     );
 
     if (!hasActiveDownloads) {
@@ -306,7 +299,9 @@ export class FolderDownloadService {
         this.updateState(state.folderId, state);
         events.onProgress(state);
 
-        console.log(`Starting parallel download: ${file.basename} (${activeDownloads.size + 1}/${this.CONCURRENT_DOWNLOADS})`);
+        console.log(
+          `Starting parallel download: ${file.basename} (${activeDownloads.size + 1}/${this.CONCURRENT_DOWNLOADS})`
+        );
 
         const downloadPromise = this.downloadSingleFile(
           file,
@@ -346,7 +341,9 @@ export class FolderDownloadService {
     try {
       // 构建文件路径
       const filePath = currentPath
-        ? (file.filename.startsWith(`${currentPath}/`) ? file.filename : this.joinPath(currentPath, file.filename))
+        ? file.filename.startsWith(`${currentPath}/`)
+          ? file.filename
+          : this.joinPath(currentPath, file.filename)
         : file.filename;
 
       // 下载单个文件
@@ -356,12 +353,12 @@ export class FolderDownloadService {
       // 更新进度
       state.completedFiles++;
       state.downloadedSize += safeParseInt(file.size);
-      state.progress = state.totalFiles > 0 ? Math.round((state.completedFiles / state.totalFiles) * 100) : 0;
+      state.progress =
+        state.totalFiles > 0 ? Math.round((state.completedFiles / state.totalFiles) * 100) : 0;
 
       this.updateState(state.folderId, state);
       events.onFileComplete(state, file.basename);
       events.onProgress(state);
-
     } catch (error) {
       console.error(`Failed to download file ${file.basename}:`, error);
       // 单个文件失败不影响整体下载，继续下载其他文件
@@ -380,7 +377,13 @@ export class FolderDownloadService {
   ): Promise<void> {
     // 1. 先下载当前目录的文件
     const currentFiles = files.filter(file => file.type === 'file');
-    await this.downloadCurrentDirectoryFiles(currentFiles, currentPath, baseSavePath, state, events);
+    await this.downloadCurrentDirectoryFiles(
+      currentFiles,
+      currentPath,
+      baseSavePath,
+      state,
+      events
+    );
 
     // 2. 同时处理子目录：边扫描边下载
     const directories = files.filter(file => file.type === 'directory');
@@ -406,15 +409,18 @@ export class FolderDownloadService {
         while (hasMore) {
           const subDirectoryResult = await StorageServiceManager.listDirectory(dirPath, {
             marker: nextMarker,
-            pageSize: 1000 // 使用大页面大小提高效率
+            pageSize: 1000, // 使用大页面大小提高效率
           });
 
           // 类型转换：将 tauri-commands StorageFile[] 转换为前端 StorageFile[]
-          const convertedFiles = subDirectoryResult.files.map(file => ({
-            ...file,
-            mime: file.mime ?? undefined,
-            etag: file.etag ?? undefined
-          } as import('../types').StorageFile));
+          const convertedFiles = subDirectoryResult.files.map(
+            file =>
+              ({
+                ...file,
+                mime: file.mime ?? undefined,
+                etag: file.etag ?? undefined,
+              }) as import('../types').StorageFile
+          );
 
           subFiles.push(...convertedFiles);
           hasMore = subDirectoryResult.hasMore || false;
@@ -428,7 +434,9 @@ export class FolderDownloadService {
 
           // 安全检查：防止无限循环
           if (hasMore && !nextMarker) {
-            console.warn(`Directory ${dirPath} reported hasMore=true but no nextMarker provided, stopping pagination`);
+            console.warn(
+              `Directory ${dirPath} reported hasMore=true but no nextMarker provided, stopping pagination`
+            );
             break;
           }
         }
@@ -439,7 +447,9 @@ export class FolderDownloadService {
         const additionalSize = calculateTotalSize(subCurrentFiles);
 
         // 添加调试日志用于验证分页
-        console.log(`Directory ${dir.basename}: found ${additionalFiles} files and ${subFiles.filter(file => file.type === 'directory').length} subdirectories through pagination`);
+        console.log(
+          `Directory ${dir.basename}: found ${additionalFiles} files and ${subFiles.filter(file => file.type === 'directory').length} subdirectories through pagination`
+        );
 
         // 更新扫描状态
         state.currentFile = `扫描目录: ${dir.basename} (发现 ${additionalFiles} 个文件)`;
@@ -453,21 +463,15 @@ export class FolderDownloadService {
         state.totalSize += additionalSize;
 
         // 重新计算进度，确保不会倒退
-        const newProgress = state.totalFiles > 0 ? Math.round((state.completedFiles / state.totalFiles) * 100) : 0;
+        const newProgress =
+          state.totalFiles > 0 ? Math.round((state.completedFiles / state.totalFiles) * 100) : 0;
         state.progress = Math.max(currentProgress, newProgress);
 
         this.updateState(state.folderId, state);
         events.onProgress(state);
 
         // 递归下载子目录
-        await this.downloadFolderRecursiveOptimized(
-          dirPath,
-          subFiles,
-          dirSavePath,
-          state,
-          events
-        );
-
+        await this.downloadFolderRecursiveOptimized(dirPath, subFiles, dirSavePath, state, events);
       } catch (error) {
         console.error(`Failed to process directory ${dir.basename}:`, error);
         // 单个目录失败不影响整体下载，继续处理其他目录
@@ -479,7 +483,12 @@ export class FolderDownloadService {
     this.activeDownloads.set(folderId, { ...state });
 
     // 当下载状态变为终止状态时，检查是否需要自动恢复服务
-    if (state.status === 'completed' || state.status === 'error' || state.status === 'cancelled' || state.status === 'stopped') {
+    if (
+      state.status === 'completed' ||
+      state.status === 'error' ||
+      state.status === 'cancelled' ||
+      state.status === 'stopped'
+    ) {
       setTimeout(() => {
         this.checkAndAutoResumeService();
       }, 500);

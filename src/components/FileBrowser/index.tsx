@@ -11,7 +11,7 @@ import {
   Settings,
   ArrowLeft,
   Download,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { commands } from '../../types/tauri-commands';
@@ -26,12 +26,26 @@ import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
-import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, NoLocalResultsDisplay, NoRemoteResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
+import {
+  LoadingDisplay,
+  HiddenFilesDisplay,
+  NoSearchResultsDisplay,
+  NoLocalResultsDisplay,
+  NoRemoteResultsDisplay,
+  EmptyDisplay,
+  ErrorDisplay,
+  BreadcrumbNavigation,
+} from '../common';
 import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
 import { FolderDownloadService } from '../../services/folderDownloadService';
 
 interface FileBrowserProps {
-  onFileSelect: (file: StorageFile, path: string, storageClient?: IStorageClient, files?: StorageFile[]) => void;
+  onFileSelect: (
+    file: StorageFile,
+    path: string,
+    storageClient?: IStorageClient,
+    files?: StorageFile[]
+  ) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
@@ -39,7 +53,7 @@ interface FileBrowserProps {
 }
 
 // 类型适配函数：将 null 转换为 undefined
-const nullToUndefined = function<T>(value: T | null): T | undefined {
+const nullToUndefined = function <T>(value: T | null): T | undefined {
   return value === null ? undefined : value;
 };
 
@@ -48,7 +62,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   onDisconnect,
   initialPath = '',
   onDirectoryChange,
-  shouldRefresh = false
+  shouldRefresh = false,
 }) => {
   const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState(initialPath);
@@ -102,8 +116,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       : files.filter(file => file.basename && !file.basename.startsWith('.'));
 
     if (searchTerm.trim()) {
-      filteredFiles = filteredFiles.filter(file =>
-        file.basename && file.basename.toLowerCase().includes(searchTerm.toLowerCase())
+      filteredFiles = filteredFiles.filter(
+        file => file.basename && file.basename.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -241,8 +255,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     } catch {
       return true; // 出错时允许搜索（保持向后兼容）
     }
-  };  const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
-    console.log(`loadDirectory called: path="${path}", isManual=${isManual}, forceReload=${forceReload}, currentPath="${currentPath}", loading=${loading}`);
+  };
+  const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
+    console.log(
+      `loadDirectory called: path="${path}", isManual=${isManual}, forceReload=${forceReload}, currentPath="${currentPath}", loading=${loading}`
+    );
 
     // 防止重复请求
     if (loadingRequest === path && !forceReload) {
@@ -291,7 +308,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         // 恢复滚动位置
         const restoreScrollPosition = () => {
           if (fileListRef.current) {
-            const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+            const scrollElement = fileListRef.current.querySelector(
+              '[data-virtualized-container]'
+            ) as HTMLElement;
             if (scrollElement) {
               const savedPosition = navigationHistoryService.getScrollPosition(path);
               if (savedPosition) {
@@ -321,7 +340,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
     // 保存当前目录的滚动位置（如果有的话）
     if (currentPath !== path && fileListRef.current) {
-      const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+      const scrollElement = fileListRef.current.querySelector(
+        '[data-virtualized-container]'
+      ) as HTMLElement;
       if (scrollElement) {
         navigationHistoryService.saveScrollPosition(
           currentPath,
@@ -367,7 +388,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setNextMarker(nullToUndefined(fileList.nextMarker));
 
       // 缓存目录数据（包含分页状态）
-      navigationHistoryService.cacheDirectory(path, fileList.files, fileList.hasMore, nullToUndefined(fileList.nextMarker));
+      navigationHistoryService.cacheDirectory(
+        path,
+        fileList.files,
+        fileList.hasMore,
+        nullToUndefined(fileList.nextMarker)
+      );
 
       // 记录访问历史
       navigationHistoryService.addToHistory(path);
@@ -378,7 +404,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 恢复滚动位置
       const restoreScrollPosition = () => {
         if (fileListRef.current) {
-          const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+          const scrollElement = fileListRef.current.querySelector(
+            '[data-virtualized-container]'
+          ) as HTMLElement;
           if (scrollElement) {
             const savedPosition = navigationHistoryService.getScrollPosition(path);
             if (savedPosition) {
@@ -401,7 +429,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           }, 100);
         }
       }, 50);
-
     } catch (err) {
       console.error('Directory loading failed for path:', path, err);
 
@@ -410,7 +437,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       let displayError = t('error.load.directory');
       let shouldRetryPathFallback = true;
 
-      if (errorMessage.includes('403') || errorMessage.includes('Forbidden') || errorMessage.includes('AccessDenied')) {
+      if (
+        errorMessage.includes('403') ||
+        errorMessage.includes('Forbidden') ||
+        errorMessage.includes('AccessDenied')
+      ) {
         displayError = t('error.access.denied');
         shouldRetryPathFallback = false; // 权限错误不尝试路径回退
       } else if (errorMessage.includes('404') || errorMessage.includes('NotFound')) {
@@ -488,7 +519,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
         const result = await StorageServiceManager.listDirectory(currentPath, {
           marker: nextMarker, // nextMarker can be null/undefined, which is fine
-          pageSize: defaultPageSize || 1000 // 使用客户端默认页面大小，fallback 到 1000
+          pageSize: defaultPageSize || 1000, // 使用客户端默认页面大小，fallback 到 1000
         });
 
         // 将新文件追加到现有文件列表
@@ -499,9 +530,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setNextMarker(nullToUndefined(result.nextMarker));
 
         // 更新缓存
-        navigationHistoryService.updateCachedDirectory(currentPath, result.files, result.hasMore, nullToUndefined(result.nextMarker));
+        navigationHistoryService.updateCachedDirectory(
+          currentPath,
+          result.files,
+          result.hasMore,
+          nullToUndefined(result.nextMarker)
+        );
 
-        console.log(`Loaded ${result.files.length} more files, hasMore: ${result.hasMore}, nextMarker: ${result.nextMarker}`);
+        console.log(
+          `Loaded ${result.files.length} more files, hasMore: ${result.hasMore}, nextMarker: ${result.nextMarker}`
+        );
       } catch (err) {
         console.error('Failed to load more files:', err);
         // 显示分页失败的友好提示，但不设置全局错误状态
@@ -582,7 +620,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       while (hasMorePages) {
         const result = await StorageServiceManager.listDirectory(currentPath, {
           marker,
-          pageSize: defaultPageSize || 1000 // 使用客户端默认页面大小，fallback 到 1000
+          pageSize: defaultPageSize || 1000, // 使用客户端默认页面大小，fallback 到 1000
         });
 
         allFiles.push(...result.files);
@@ -591,7 +629,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
         // 安全检查：防止无限循环
         if (hasMorePages && !marker) {
-          console.warn(`Directory ${currentPath} reported hasMore=true but no nextMarker provided, stopping pagination`);
+          console.warn(
+            `Directory ${currentPath} reported hasMore=true but no nextMarker provided, stopping pagination`
+          );
           break;
         }
       }
@@ -606,27 +646,26 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         allFiles, // 使用完整文件列表而不是 UI 中显示的部分列表
         fullSavePath,
         {
-          onStart: (state) => {
+          onStart: state => {
             console.log(`Started downloading folder: ${state.folderName}`);
           },
-          onProgress: (state) => {
+          onProgress: state => {
             console.log(`Download progress: ${state.progress}%`);
           },
           onFileComplete: (_state, filename) => {
             console.log(`Completed file: ${filename}`);
           },
-          onComplete: (state) => {
+          onComplete: state => {
             console.log(`Folder download completed: ${state.folderName}`);
           },
           onError: (_state, error) => {
             console.error(`Folder download error:`, error);
-          }
+          },
         },
         true // 默认启用递归下载
       );
 
       console.log(`Folder download initiated with ID: ${downloadId}`);
-
     } catch (error) {
       console.error('Failed to start folder download:', error);
       showErrorToast(t('download.folder.failed'));
@@ -678,7 +717,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     const fileListElement = fileListRef.current;
     if (!fileListElement) return;
 
-    const scrollElement = fileListElement.querySelector('[data-virtualized-container]') as HTMLElement;
+    const scrollElement = fileListElement.querySelector(
+      '[data-virtualized-container]'
+    ) as HTMLElement;
     if (!scrollElement) return;
 
     const handleScroll = () => {
@@ -711,7 +752,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     return () => {
       // 在组件卸载时保存当前滚动位置
       if (fileListRef.current && currentPath) {
-        const scrollElement = fileListRef.current.querySelector('[data-virtualized-container]') as HTMLElement;
+        const scrollElement = fileListRef.current.querySelector(
+          '[data-virtualized-container]'
+        ) as HTMLElement;
         if (scrollElement) {
           navigationHistoryService.saveScrollPosition(
             currentPath,
@@ -865,23 +908,24 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:space-x-4 min-w-0 flex-1">
-            <h1 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{t('app.name')}</h1>
+            <h1 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">
+              {t('app.name')}
+            </h1>
             {connection && (
               <div className="hidden md:block">
-                <ConnectionSwitcher onConnectionChange={() => {
-                  // 连接切换后重置到根目录并清除缓存
-                  navigationHistoryService.clearCache();
-                  setCurrentPath('');
-                  loadDirectory('', true, true);
-                }} />
+                <ConnectionSwitcher
+                  onConnectionChange={() => {
+                    // 连接切换后重置到根目录并清除缓存
+                    navigationHistoryService.clearCache();
+                    setCurrentPath('');
+                    loadDirectory('', true, true);
+                  }}
+                />
               </div>
             )}
           </div>
           <div className="flex items-center space-x-2 lg:space-x-4">
-            <PerformanceIndicator
-              fileCount={files.length}
-              isVirtualized={true}
-            />
+            <PerformanceIndicator fileCount={files.length} isVirtualized={true} />
             {/* 响应式显示/隐藏文件按钮 */}
             <button
               onClick={() => setShowHidden(!showHidden)}
@@ -958,12 +1002,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               <input
                 type="text"
                 value={currentView === 'remote-search' ? remoteSearchQuery : searchTerm}
-                onChange={(e) => {
+                onChange={e => {
                   if (currentView === 'directory') {
                     setSearchTerm(e.target.value);
                   }
                 }}
-                onKeyDown={(e) => {
+                onKeyDown={e => {
                   if (e.key === 'Enter') {
                     if (currentView === 'directory' && searchTerm.trim()) {
                       // 检查本地是否有搜索结果
@@ -971,7 +1015,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                       const client = StorageServiceManager.getCurrentClient();
 
                       // 如果本地没有结果且支持远程搜索且允许远程搜索，则触发远程搜索
-                      if (localResults.length === 0 && client.supportsSearch?.() && shouldAllowRemoteSearch()) {
+                      if (
+                        localResults.length === 0 &&
+                        client.supportsSearch?.() &&
+                        shouldAllowRemoteSearch()
+                      ) {
                         handleGlobalSearch(searchTerm);
                       }
                     } else if (currentView === 'remote-search') {
@@ -980,7 +1028,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     }
                   }
                 }}
-                placeholder={currentView === 'remote-search' ? t('search.remoteResults') : t('search.files')}
+                placeholder={
+                  currentView === 'remote-search' ? t('search.remoteResults') : t('search.files')
+                }
                 className="w-32 sm:w-48 lg:w-64 pl-8 lg:pl-10 pr-6 lg:pr-8 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 readOnly={currentView === 'remote-search'}
               />
@@ -1001,8 +1051,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               title="刷新当前目录"
             >
-            <RefreshCw className={`w-4 h-4 text-gray-600 dark:text-gray-300 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
+              <RefreshCw
+                className={`w-4 h-4 text-gray-600 dark:text-gray-300 ${isRefreshing ? 'animate-spin' : ''}`}
+              />
+            </button>
 
             {/* 文件夹下载按钮 */}
             {/* 下载文件夹按钮 */}
@@ -1014,7 +1066,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             >
               <Download className="w-4 h-4 text-gray-600 dark:text-gray-300" />
             </button>
-        </div>
+          </div>
         </div>
       </nav>
 
@@ -1023,9 +1075,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         <div className="h-full flex flex-col">
           {loading && (
             <LoadingDisplay
-              message={currentPath
-                ? t('loading.directory', { path: ` "${currentPath}" ` })
-                : t('loading.directory.root')
+              message={
+                currentPath
+                  ? t('loading.directory', { path: ` "${currentPath}" ` })
+                  : t('loading.directory.root')
               }
             />
           )}
@@ -1044,109 +1097,113 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
           {!loading && !error && (
             <>
               {/* 表头 */}
-              <div ref={tableHeaderRef} className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3">
-              <div className="flex items-center">
-                <div className="flex-1 pr-2 lg:pr-4">
-                  <div
-                    className="flex items-center cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
-                    onClick={() => handleSort('name')}
-                  >
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {t('name')}
-                    </span>
-                    {sortField === 'name' && (
-                      sortDirection === 'asc' ?
-                        <ChevronUp className="ml-1 w-3 h-3" /> :
-                        <ChevronDown className="ml-1 w-3 h-3" />
-                    )}
+              <div
+                ref={tableHeaderRef}
+                className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3"
+              >
+                <div className="flex items-center">
+                  <div className="flex-1 pr-2 lg:pr-4">
+                    <div
+                      className="flex items-center cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
+                      onClick={() => handleSort('name')}
+                    >
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('name')}
+                      </span>
+                      {sortField === 'name' &&
+                        (sortDirection === 'asc' ? (
+                          <ChevronUp className="ml-1 w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="ml-1 w-3 h-3" />
+                        ))}
+                    </div>
                   </div>
-                </div>
-                <div className="w-16 sm:w-20 lg:w-24 text-right pr-2 lg:pr-4">
-                  <div
-                    className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
-                    onClick={() => handleSort('size')}
-                  >
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {t('size')}
-                    </span>
-                    {sortField === 'size' && (
-                      sortDirection === 'asc' ?
-                        <ChevronUp className="ml-1 w-3 h-3" /> :
-                        <ChevronDown className="ml-1 w-3 h-3" />
-                    )}
+                  <div className="w-16 sm:w-20 lg:w-24 text-right pr-2 lg:pr-4">
+                    <div
+                      className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
+                      onClick={() => handleSort('size')}
+                    >
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('size')}
+                      </span>
+                      {sortField === 'size' &&
+                        (sortDirection === 'asc' ? (
+                          <ChevronUp className="ml-1 w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="ml-1 w-3 h-3" />
+                        ))}
+                    </div>
                   </div>
-                </div>
-                <div className="w-24 sm:w-32 lg:w-48 text-right">
-                  <div
-                    className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
-                    onClick={() => handleSort('modified')}
-                  >
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {t('modified')}
-                    </span>
-                    {sortField === 'modified' && (
-                      sortDirection === 'asc' ?
-                        <ChevronUp className="ml-1 w-3 h-3" /> :
-                        <ChevronDown className="ml-1 w-3 h-3" />
-                    )}
+                  <div className="w-24 sm:w-32 lg:w-48 text-right">
+                    <div
+                      className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
+                      onClick={() => handleSort('modified')}
+                    >
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('modified')}
+                      </span>
+                      {sortField === 'modified' &&
+                        (sortDirection === 'asc' ? (
+                          <ChevronUp className="ml-1 w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="ml-1 w-3 h-3" />
+                        ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* 文件列表或空状态 */}
-            {files.length > 0 ? (
-              !showHidden && files.every(file => file.basename && file.basename.startsWith('.')) ? (
-                <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
-              ) : getDisplayFiles().length === 0 ? (
-                (supportsGlobalSearch() && shouldAllowRemoteSearch()) ? (
-                  <NoLocalResultsDisplay
-                    searchTerm={searchTerm}
-                    onRemoteSearch={() => handleGlobalSearch(searchTerm)}
-                  />
-                ) : currentView === 'remote-search' ? (
-                  <NoRemoteResultsDisplay
-                    searchTerm={remoteSearchQuery}
-                    onClearSearch={returnToDirectory}
-                  />
+              {/* 文件列表或空状态 */}
+              {files.length > 0 ? (
+                !showHidden &&
+                files.every(file => file.basename && file.basename.startsWith('.')) ? (
+                  <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
+                ) : getDisplayFiles().length === 0 ? (
+                  supportsGlobalSearch() && shouldAllowRemoteSearch() ? (
+                    <NoLocalResultsDisplay
+                      searchTerm={searchTerm}
+                      onRemoteSearch={() => handleGlobalSearch(searchTerm)}
+                    />
+                  ) : currentView === 'remote-search' ? (
+                    <NoRemoteResultsDisplay
+                      searchTerm={remoteSearchQuery}
+                      onClearSearch={returnToDirectory}
+                    />
+                  ) : (
+                    <NoSearchResultsDisplay
+                      searchTerm={searchTerm}
+                      onClearSearch={handleClearSearch}
+                    />
+                  )
                 ) : (
-                   <NoSearchResultsDisplay
-                     searchTerm={searchTerm}
-                     onClearSearch={handleClearSearch}
-                   />
+                  <div ref={fileListRef} className="bg-white dark:bg-gray-800 relative">
+                    <VirtualizedFileList
+                      files={getDisplayFiles()}
+                      onFileClick={handleItemClick}
+                      height={containerHeight - tableHeaderHeight} // 恢复原来的高度
+                      onScrollToBottom={handleScrollToBottom}
+                    />
+                    {/* Loading more indicator - 绝对定位覆盖层 */}
+                    {loadingMore && (
+                      <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-50/95 dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 backdrop-blur-sm">
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                          <span>{t('loading.more')}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )
               ) : (
-                <div ref={fileListRef} className="bg-white dark:bg-gray-800 relative">
-                  <VirtualizedFileList
-                    files={getDisplayFiles()}
-                    onFileClick={handleItemClick}
-                    height={containerHeight - tableHeaderHeight} // 恢复原来的高度
-                    onScrollToBottom={handleScrollToBottom}
-                  />
-                  {/* Loading more indicator - 绝对定位覆盖层 */}
-                  {loadingMore && (
-                    <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-50/95 dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 backdrop-blur-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                        <span>{t('loading.more')}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            ) : (
-              <EmptyDisplay message={t('directory.empty')} />
-            )}
-          </>
+                <EmptyDisplay message={t('directory.empty')} />
+              )}
+            </>
           )}
         </div>
       </main>
 
       {/* 设置面板 */}
-      <SettingsPanel
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
+      <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 };

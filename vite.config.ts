@@ -1,12 +1,12 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
   plugins: [react()],
-  
+
   // 配置需要拷贝的静态资源
   assetsInclude: ['**/*.wasm'],
 
@@ -21,7 +21,7 @@ export default defineConfig(async () => ({
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
+          protocol: 'ws',
           host,
           port: 1421,
         }
@@ -30,12 +30,12 @@ export default defineConfig(async () => ({
       '/api/webdav-proxy': {
         target: 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/webdav-proxy/, ''),
+        rewrite: path => path.replace(/^\/api\/webdav-proxy/, ''),
       },
     },
     watch: {
       // 3. tell vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      ignored: ['**/src-tauri/**'],
     },
   },
 }));

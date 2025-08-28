@@ -81,7 +81,8 @@ class StreamingAsyncBuffer implements AsyncBuffer {
       );
 
       // 缓存读取的数据块（限制缓存大小以避免内存溢出）
-      if (this.chunks.size < 50) { // 最多缓存50个块
+      if (this.chunks.size < 50) {
+        // 最多缓存50个块
         this.chunks.set(cacheKey, arrayBuffer);
       }
 
@@ -184,7 +185,9 @@ export class ParquetDataProvider implements DataProvider {
         rowEnd: validOffset + validLimit,
       });
 
-      console.debug(`Streaming Parquet: Loaded ${result.length} rows (${validOffset}-${validOffset + validLimit}) using chunked buffer`);
+      console.debug(
+        `Streaming Parquet: Loaded ${result.length} rows (${validOffset}-${validOffset + validLimit}) using chunked buffer`
+      );
 
       return result as Record<string, unknown>[];
     } catch (error) {

@@ -24,7 +24,7 @@ class SettingsStorageService {
     autoCheckUpdates: true,
     theme: 'system',
     usePureBlackBg: false,
-    language: 'zh'
+    language: 'zh',
   };
 
   /**

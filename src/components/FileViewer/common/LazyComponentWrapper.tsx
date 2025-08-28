@@ -18,7 +18,7 @@ export const LazyComponentWrapper: React.FC<LazyComponentWrapperProps> = ({
   component: Component,
   props,
   loadingText,
-  fallbackHeight = 'h-64'
+  fallbackHeight = 'h-64',
 }) => {
   const { t } = useTranslation();
 
@@ -30,7 +30,9 @@ export const LazyComponentWrapper: React.FC<LazyComponentWrapperProps> = ({
     return (
       <Suspense
         fallback={
-          <div className={`flex items-center justify-center ${typeof fallbackHeight === 'string' ? fallbackHeight : 'h-64'}`}>
+          <div
+            className={`flex items-center justify-center ${typeof fallbackHeight === 'string' ? fallbackHeight : 'h-64'}`}
+          >
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
               {loadingText || t('loading', '加载中...')}

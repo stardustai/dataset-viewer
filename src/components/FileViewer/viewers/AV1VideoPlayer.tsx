@@ -19,7 +19,9 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(
+    null
+  );
   const [canvasSize, setCanvasSize] = useState({ width: 480, height: 270 });
 
   // 使用ref管理播放状态，避免state依赖问题
@@ -28,7 +30,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
     totalFrames: 0,
     isPlaying: false,
     frameRate: 15,
-    currentTime: 0
+    currentTime: 0,
   });
 
   // 用于触发UI更新的状态
@@ -54,8 +56,10 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
     if (containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
       const containerStyle = window.getComputedStyle(containerRef.current);
-      const paddingX = parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
-      const paddingY = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+      const paddingX =
+        parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
+      const paddingY =
+        parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
 
       // 使用实际的容器尺寸减去padding
       maxWidth = Math.max(200, containerRect.width - paddingX - 16); // 额外减去一些边距
@@ -80,95 +84,104 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
 
     return {
       width: Math.round(canvasWidth),
-      height: Math.round(canvasHeight)
+      height: Math.round(canvasHeight),
     };
   }, []);
 
   // 渲染帧函数
-  const renderFrame = useCallback((frame: DecodedFrame) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const renderFrame = useCallback(
+    (frame: DecodedFrame) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // 如果是第一帧，设置视频尺寸并计算画布大小
-    if (!videoDimensions || videoDimensions.width !== frame.width || videoDimensions.height !== frame.height) {
-      const newDimensions = { width: frame.width, height: frame.height };
-      setVideoDimensions(newDimensions);
-      const newCanvasSize = calculateCanvasSize(frame.width, frame.height);
-      setCanvasSize(newCanvasSize);
+      // 如果是第一帧，设置视频尺寸并计算画布大小
+      if (
+        !videoDimensions ||
+        videoDimensions.width !== frame.width ||
+        videoDimensions.height !== frame.height
+      ) {
+        const newDimensions = { width: frame.width, height: frame.height };
+        setVideoDimensions(newDimensions);
+        const newCanvasSize = calculateCanvasSize(frame.width, frame.height);
+        setCanvasSize(newCanvasSize);
 
-      // 更新canvas实际尺寸
-      canvas.width = newCanvasSize.width;
-      canvas.height = newCanvasSize.height;
-    }
-
-    // 清空画布
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    try {
-      // 检查是否为BMP格式数据
-      if (frame.data[0] === 0x42 && frame.data[1] === 0x4D) {
-        // BMP格式：创建blob并使用Image对象
-        const blob = new Blob([frame.data], { type: 'image/bmp' });
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          URL.revokeObjectURL(img.src);
-        };
-        img.src = URL.createObjectURL(blob);
-        return;
+        // 更新canvas实际尺寸
+        canvas.width = newCanvasSize.width;
+        canvas.height = newCanvasSize.height;
       }
 
-      // 其他格式：创建ImageData
-      const imageData = ctx.createImageData(frame.width, frame.height);
+      // 清空画布
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (frame.data.length === frame.width * frame.height * 4) {
-        // RGBA格式
-        imageData.data.set(frame.data);
-      } else if (frame.data.length === frame.width * frame.height * 3) {
-        // RGB格式转RGBA
-        const rgbaData = new Uint8ClampedArray(frame.width * frame.height * 4);
-        for (let i = 0; i < frame.width * frame.height; i++) {
-          const idx = i * 3;
-          const rgbaIdx = i * 4;
-          rgbaData[rgbaIdx] = frame.data[idx];     // R
-          rgbaData[rgbaIdx + 1] = frame.data[idx + 1]; // G
-          rgbaData[rgbaIdx + 2] = frame.data[idx + 2]; // B
-          rgbaData[rgbaIdx + 3] = 255; // A
+      try {
+        // 检查是否为BMP格式数据
+        if (frame.data[0] === 0x42 && frame.data[1] === 0x4d) {
+          // BMP格式：创建blob并使用Image对象
+          const blob = new Blob([frame.data], { type: 'image/bmp' });
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(img.src);
+          };
+          img.src = URL.createObjectURL(blob);
+          return;
         }
-        imageData.data.set(rgbaData);
-      } else {
-        // 灰度格式
-        const rgbaData = new Uint8ClampedArray(frame.width * frame.height * 4);
-        for (let i = 0; i < frame.width * frame.height; i++) {
-          const y = frame.data[i] || 0;
-          const rgbaIdx = i * 4;
-          rgbaData[rgbaIdx] = y;
-          rgbaData[rgbaIdx + 1] = y;
-          rgbaData[rgbaIdx + 2] = y;
-          rgbaData[rgbaIdx + 3] = 255;
-        }
-        imageData.data.set(rgbaData);
-      }
 
-      // 使用复用的OffscreenCanvas进行缩放绘制
-      if (!offscreenCanvasRef.current ||
+        // 其他格式：创建ImageData
+        const imageData = ctx.createImageData(frame.width, frame.height);
+
+        if (frame.data.length === frame.width * frame.height * 4) {
+          // RGBA格式
+          imageData.data.set(frame.data);
+        } else if (frame.data.length === frame.width * frame.height * 3) {
+          // RGB格式转RGBA
+          const rgbaData = new Uint8ClampedArray(frame.width * frame.height * 4);
+          for (let i = 0; i < frame.width * frame.height; i++) {
+            const idx = i * 3;
+            const rgbaIdx = i * 4;
+            rgbaData[rgbaIdx] = frame.data[idx]; // R
+            rgbaData[rgbaIdx + 1] = frame.data[idx + 1]; // G
+            rgbaData[rgbaIdx + 2] = frame.data[idx + 2]; // B
+            rgbaData[rgbaIdx + 3] = 255; // A
+          }
+          imageData.data.set(rgbaData);
+        } else {
+          // 灰度格式
+          const rgbaData = new Uint8ClampedArray(frame.width * frame.height * 4);
+          for (let i = 0; i < frame.width * frame.height; i++) {
+            const y = frame.data[i] || 0;
+            const rgbaIdx = i * 4;
+            rgbaData[rgbaIdx] = y;
+            rgbaData[rgbaIdx + 1] = y;
+            rgbaData[rgbaIdx + 2] = y;
+            rgbaData[rgbaIdx + 3] = 255;
+          }
+          imageData.data.set(rgbaData);
+        }
+
+        // 使用复用的OffscreenCanvas进行缩放绘制
+        if (
+          !offscreenCanvasRef.current ||
           offscreenCanvasRef.current.width !== frame.width ||
-          offscreenCanvasRef.current.height !== frame.height) {
-        offscreenCanvasRef.current = new OffscreenCanvas(frame.width, frame.height);
-      }
+          offscreenCanvasRef.current.height !== frame.height
+        ) {
+          offscreenCanvasRef.current = new OffscreenCanvas(frame.width, frame.height);
+        }
 
-      const offscreenCtx = offscreenCanvasRef.current.getContext('2d');
-      if (offscreenCtx) {
-        offscreenCtx.putImageData(imageData, 0, 0);
-        ctx.drawImage(offscreenCanvasRef.current, 0, 0, canvas.width, canvas.height);
+        const offscreenCtx = offscreenCanvasRef.current.getContext('2d');
+        if (offscreenCtx) {
+          offscreenCtx.putImageData(imageData, 0, 0);
+          ctx.drawImage(offscreenCanvasRef.current, 0, 0, canvas.width, canvas.height);
+        }
+      } catch (error) {
+        console.error(t('av1.player.error.decode'), error);
       }
-    } catch (error) {
-      console.error(t('av1.player.error.decode'), error);
-    }
-  }, [videoDimensions, canvasSize, calculateCanvasSize]);
+    },
+    [videoDimensions, canvasSize, calculateCanvasSize]
+  );
 
   // 停止播放
   const stopPlayback = useCallback(() => {
@@ -221,13 +234,17 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
       }
 
       // 检查是否在最后一帧，如果是则从头开始
-      if (playStateRef.current.totalFrames > 0 && playStateRef.current.frameCount >= playStateRef.current.totalFrames) {
+      if (
+        playStateRef.current.totalFrames > 0 &&
+        playStateRef.current.frameCount >= playStateRef.current.totalFrames
+      ) {
         dav1dDecoderService.resetPlayback();
         playStateRef.current.frameCount = 0;
         startTime.current = Date.now();
       } else {
         // 从当前位置继续播放
-        startTime.current = Date.now() - (playStateRef.current.frameCount / playStateRef.current.frameRate) * 1000;
+        startTime.current =
+          Date.now() - (playStateRef.current.frameCount / playStateRef.current.frameRate) * 1000;
       }
 
       playStateRef.current.isPlaying = true;
@@ -252,7 +269,10 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
             playStateRef.current.frameCount += 1;
 
             // 检查是否到达最后一帧
-            if (playStateRef.current.totalFrames > 0 && playStateRef.current.frameCount >= playStateRef.current.totalFrames) {
+            if (
+              playStateRef.current.totalFrames > 0 &&
+              playStateRef.current.frameCount >= playStateRef.current.totalFrames
+            ) {
               // 播放结束，停止播放
               stopPlayback();
               return;
@@ -308,32 +328,35 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
   }, [stopPlayback, triggerUIUpdate]);
 
   // 进度条点击跳转
-  const handleProgressClick = useCallback(async (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDecoderReady.current) return;
+  const handleProgressClick = useCallback(
+    async (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!isDecoderReady.current) return;
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const progressWidth = rect.width;
-    const clickRatio = clickX / progressWidth;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const progressWidth = rect.width;
+      const clickRatio = clickX / progressWidth;
 
-    try {
-      const totalFrames = dav1dDecoderService.getTotalFrames();
-      if (totalFrames > 0) {
-        const targetFrame = Math.floor(clickRatio * totalFrames);
-        await dav1dDecoderService.seekToFrame(targetFrame);
-        playStateRef.current.frameCount = targetFrame;
+      try {
+        const totalFrames = dav1dDecoderService.getTotalFrames();
+        if (totalFrames > 0) {
+          const targetFrame = Math.floor(clickRatio * totalFrames);
+          await dav1dDecoderService.seekToFrame(targetFrame);
+          playStateRef.current.frameCount = targetFrame;
 
-        // 如果正在播放，更新开始时间
-        if (playStateRef.current.isPlaying) {
-          startTime.current = Date.now() - (targetFrame / playStateRef.current.frameRate) * 1000;
+          // 如果正在播放，更新开始时间
+          if (playStateRef.current.isPlaying) {
+            startTime.current = Date.now() - (targetFrame / playStateRef.current.frameRate) * 1000;
+          }
+
+          triggerUIUpdate();
         }
-
-        triggerUIUpdate();
+      } catch (error) {
+        setError(t('av1.player.error.seek'));
       }
-    } catch (error) {
-      setError(t('av1.player.error.seek'));
-    }
-  }, [triggerUIUpdate]);
+    },
+    [triggerUIUpdate]
+  );
 
   // 获取总帧数
   const getTotalFrames = useCallback(() => {
@@ -370,7 +393,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
         playStateRef.current.currentTime = 1 / playStateRef.current.frameRate;
         triggerUIUpdate();
 
-        autoPlayTimeoutRef.current = setTimeout(() => togglePlayback(), 200)
+        autoPlayTimeoutRef.current = setTimeout(() => togglePlayback(), 200);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : t('av1.player.error.decode');
@@ -408,11 +431,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
   if (error) {
     return (
       <div className="h-full">
-        <ErrorDisplay
-          message={error}
-          onRetry={resetPlayer}
-          className="h-full"
-        />
+        <ErrorDisplay message={error} onRetry={resetPlayer} className="h-full" />
       </div>
     );
   }
@@ -443,8 +462,6 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
             className="block"
             style={{ imageRendering: 'pixelated' }}
           />
-
-
         </div>
       </div>
 
@@ -457,14 +474,14 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
             onClick={togglePlayback}
             className="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors shadow-lg flex-shrink-0"
             title={isPlaying ? t('av1.player.pause') : t('av1.player.play')}
-           >
-             {isPlaying ? (
+          >
+            {isPlaying ? (
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
               </svg>
             ) : (
               <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
+                <path d="M8 5v14l11-7z" />
               </svg>
             )}
           </button>
@@ -472,8 +489,12 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
           {/* 进度条区域 */}
           <div className="flex-1">
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-              <span>{frameCount} / {totalFrames || '?'}</span>
-              <span>{formatTime(currentTimeInSeconds)} / {formatTime(estimatedDuration)}</span>
+              <span>
+                {frameCount} / {totalFrames || '?'}
+              </span>
+              <span>
+                {formatTime(currentTimeInSeconds)} / {formatTime(estimatedDuration)}
+              </span>
             </div>
             <div
               className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"

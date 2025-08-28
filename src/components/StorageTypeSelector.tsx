@@ -10,7 +10,7 @@ interface StorageTypeSelectorProps {
 
 export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
   selectedType,
-  onTypeChange
+  onTypeChange,
 }) => {
   const { t } = useTranslation();
 
@@ -19,26 +19,26 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
       type: 'webdav' as StorageClientType,
       label: t('storage.type.webdav'),
       icon: Server,
-      description: t('storage.type.webdav.description')
+      description: t('storage.type.webdav.description'),
     },
     {
       type: 'oss' as StorageClientType,
       label: t('storage.type.oss'),
       icon: Cloud,
-      description: t('storage.type.oss.description')
+      description: t('storage.type.oss.description'),
     },
     {
       type: 'huggingface' as StorageClientType,
       label: t('storage.type.huggingface'),
       icon: Bot,
-      description: t('storage.type.huggingface.description')
+      description: t('storage.type.huggingface.description'),
     },
     {
       type: 'local' as StorageClientType,
       label: t('storage.type.local'),
       icon: Folder,
-      description: t('storage.type.local.description')
-    }
+      description: t('storage.type.local.description'),
+    },
   ];
 
   return (
@@ -61,16 +61,20 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
             title={description}
           >
             <div className="flex flex-col items-center space-y-1">
-              <Icon className={`w-4 h-4 ${
-                selectedType === type
-                  ? 'text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-300'
-              }`} />
-              <span className={`text-xs font-medium ${
-                selectedType === type
-                  ? 'text-indigo-900 dark:text-indigo-100'
-                  : 'text-gray-900 dark:text-gray-100'
-              }`}>
+              <Icon
+                className={`w-4 h-4 ${
+                  selectedType === type
+                    ? 'text-indigo-600 dark:text-indigo-400'
+                    : 'text-gray-600 dark:text-gray-300'
+                }`}
+              />
+              <span
+                className={`text-xs font-medium ${
+                  selectedType === type
+                    ? 'text-indigo-900 dark:text-indigo-100'
+                    : 'text-gray-900 dark:text-gray-100'
+                }`}
+              >
                 {label}
               </span>
             </div>

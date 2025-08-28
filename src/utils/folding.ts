@@ -36,7 +36,10 @@ class CacheManager {
   }
 
   // 获取语法标记缓存
-  getSyntaxTokens(fileKey: string, lineRange: { start: number; end: number }): Map<number, SyntaxToken[]> | null {
+  getSyntaxTokens(
+    fileKey: string,
+    lineRange: { start: number; end: number }
+  ): Map<number, SyntaxToken[]> | null {
     const cache = this.syntaxCache.get(fileKey);
     if (!cache) return null;
 
@@ -111,8 +114,7 @@ class CacheManager {
 
     // 如果超过最大缓存大小，移除最旧的
     if (this.lastAccessTime.size > this.maxCacheSize) {
-      const sortedByTime = Array.from(this.lastAccessTime.entries())
-        .sort(([, a], [, b]) => a - b);
+      const sortedByTime = Array.from(this.lastAccessTime.entries()).sort(([, a], [, b]) => a - b);
 
       const removeCount = this.lastAccessTime.size - this.maxCacheSize + filesToRemove.length;
       for (let i = 0; i < removeCount; i++) {
@@ -153,7 +155,7 @@ function fastHash(content: string): string {
 
   for (let i = 0; i < content.length; i += step) {
     const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // 转换为32位整数
   }
 
@@ -224,7 +226,7 @@ class SyntaxTokenizer {
             line: lineIndex,
             char: charIndex,
             type: 'string',
-            value: char
+            value: char,
           });
           continue;
         }
@@ -237,7 +239,7 @@ class SyntaxTokenizer {
                 char: charIndex,
                 type: 'bracket-open',
                 value: char,
-                bracketType: '{'
+                bracketType: '{',
               });
               break;
             case '}':
@@ -246,7 +248,7 @@ class SyntaxTokenizer {
                 char: charIndex,
                 type: 'bracket-close',
                 value: char,
-                bracketType: '}'
+                bracketType: '}',
               });
               break;
             case '[':
@@ -255,7 +257,7 @@ class SyntaxTokenizer {
                 char: charIndex,
                 type: 'bracket-open',
                 value: char,
-                bracketType: '['
+                bracketType: '[',
               });
               break;
             case ']':
@@ -264,7 +266,7 @@ class SyntaxTokenizer {
                 char: charIndex,
                 type: 'bracket-close',
                 value: char,
-                bracketType: ']'
+                bracketType: ']',
               });
               break;
           }
@@ -299,7 +301,7 @@ class SyntaxTokenizer {
             char: match.index,
             type: isClosing ? 'tag-close' : 'tag-open',
             value: match[0],
-            tagName
+            tagName,
           });
         }
       }
@@ -330,7 +332,7 @@ class SyntaxTokenizer {
           line: lineIndex,
           char: line.indexOf(keyMatch[1]),
           type: 'key',
-          value: keyMatch[1]
+          value: keyMatch[1],
         });
       }
 
@@ -404,11 +406,7 @@ export class FoldingProvider {
   }
 
   // 批量获取可见范围内的折叠区间
-  getFoldingRangesInRange(
-    lines: string[],
-    startLine: number,
-    endLine: number
-  ): FoldableRange[] {
+  getFoldingRangesInRange(lines: string[], startLine: number, endLine: number): FoldableRange[] {
     if (!this.supportsFolding()) return [];
 
     const ranges: FoldableRange[] = [];
@@ -416,7 +414,10 @@ export class FoldingProvider {
     const expandedEnd = Math.min(lines.length - 1, endLine + 50);
 
     // 获取或生成语法标记
-    let tokens = cacheManager.getSyntaxTokens(this.fileKey, { start: expandedStart, end: expandedEnd });
+    let tokens = cacheManager.getSyntaxTokens(this.fileKey, {
+      start: expandedStart,
+      end: expandedEnd,
+    });
     if (!tokens) {
       tokens = this.tokenizer.tokenizeRange(lines, expandedStart, expandedEnd);
       cacheManager.cacheSyntaxTokens(this.fileKey, tokens);
@@ -544,8 +545,15 @@ export class FoldingProvider {
           } else if (char === expectedEndChar) {
             depth--;
             if (depth === 0) {
-              const level = Math.floor((startLineText.length - startLineText.trimStart().length) / 2);
-              const summary = this.generateFoldingSummary(lines, startLineIndex, lineIndex, foldType === 'json-object' ? 'object' : 'array');
+              const level = Math.floor(
+                (startLineText.length - startLineText.trimStart().length) / 2
+              );
+              const summary = this.generateFoldingSummary(
+                lines,
+                startLineIndex,
+                lineIndex,
+                foldType === 'json-object' ? 'object' : 'array'
+              );
 
               return {
                 id: `json-${foldType}-${startLineIndex}-${lineIndex}`,
@@ -555,7 +563,7 @@ export class FoldingProvider {
                 level,
                 summary,
                 startContent: lines[startLineIndex],
-                endContent: lines[lineIndex]
+                endContent: lines[lineIndex],
               };
             }
           }
@@ -594,7 +602,7 @@ export class FoldingProvider {
           level,
           summary,
           startContent: lines[startLineIndex],
-          endContent: lines[lineIndex]
+          endContent: lines[lineIndex],
         };
       }
     }
@@ -637,7 +645,7 @@ export class FoldingProvider {
           level,
           summary,
           startContent: lines[startLineIndex],
-          endContent: lines[lineIndex - 1]
+          endContent: lines[lineIndex - 1],
         };
       }
     }
@@ -655,7 +663,7 @@ export class FoldingProvider {
       level,
       summary,
       startContent: lines[startLineIndex],
-      endContent: lines[endLineIndex]
+      endContent: lines[endLineIndex],
     };
   }
 

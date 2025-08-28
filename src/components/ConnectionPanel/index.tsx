@@ -26,26 +26,26 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
 
             {/* 右侧：连接表单 */}
             <ConnectionFormContainer
-            storageType={connectionLogic.storageType}
-            selectedStoredConnection={connectionLogic.selectedStoredConnection}
-            url={connectionLogic.url}
-            username={connectionLogic.username}
-            password={connectionLogic.password}
-            connecting={connectionLogic.connecting}
-            error={connectionLogic.error}
-            isPasswordFromStorage={connectionLogic.isPasswordFromStorage}
-            defaultLocalPath={connectionLogic.defaultLocalPath}
-            onStorageTypeChange={connectionLogic.handleStorageTypeChange}
-            onStoredConnectionSelect={connectionLogic.handleSelectStoredConnection}
-            onWebDAVConnect={connectionLogic.handleWebDAVConnect}
-            onLocalConnect={connectionLogic.handleLocalConnect}
-            onOSSConnect={connectionLogic.handleOSSConnect}
-            onHuggingFaceConnect={connectionLogic.handleHuggingFaceConnect}
-            onUrlChange={connectionLogic.handleUrlChange}
-            onUsernameChange={connectionLogic.handleUsernameChange}
-            onPasswordChange={connectionLogic.handlePasswordChange}
-            onPasswordFocus={connectionLogic.handlePasswordFocus}
-          />
+              storageType={connectionLogic.storageType}
+              selectedStoredConnection={connectionLogic.selectedStoredConnection}
+              url={connectionLogic.url}
+              username={connectionLogic.username}
+              password={connectionLogic.password}
+              connecting={connectionLogic.connecting}
+              error={connectionLogic.error}
+              isPasswordFromStorage={connectionLogic.isPasswordFromStorage}
+              defaultLocalPath={connectionLogic.defaultLocalPath}
+              onStorageTypeChange={connectionLogic.handleStorageTypeChange}
+              onStoredConnectionSelect={connectionLogic.handleSelectStoredConnection}
+              onWebDAVConnect={connectionLogic.handleWebDAVConnect}
+              onLocalConnect={connectionLogic.handleLocalConnect}
+              onOSSConnect={connectionLogic.handleOSSConnect}
+              onHuggingFaceConnect={connectionLogic.handleHuggingFaceConnect}
+              onUrlChange={connectionLogic.handleUrlChange}
+              onUsernameChange={connectionLogic.handleUsernameChange}
+              onPasswordChange={connectionLogic.handlePasswordChange}
+              onPasswordFocus={connectionLogic.handlePasswordFocus}
+            />
           </div>
         </div>
       </div>

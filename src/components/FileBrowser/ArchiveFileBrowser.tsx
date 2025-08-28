@@ -1,14 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ChevronUp,
-  ChevronDown,
-  Search,
-  X,
-} from 'lucide-react';
+import { ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import { StorageFile, ArchiveInfo } from '../../types';
 import { VirtualizedFileList } from './VirtualizedFileList';
-import { LoadingDisplay, HiddenFilesDisplay, NoSearchResultsDisplay, EmptyDisplay, ErrorDisplay, BreadcrumbNavigation } from '../common';
+import {
+  LoadingDisplay,
+  HiddenFilesDisplay,
+  NoSearchResultsDisplay,
+  EmptyDisplay,
+  ErrorDisplay,
+  BreadcrumbNavigation,
+} from '../common';
 import { cleanPath } from '../../utils/pathUtils';
 import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
 import { compareFileSize } from '../../utils/typeUtils';
@@ -30,15 +32,13 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
   loading = false,
   error,
   showHidden = false,
-  onShowHiddenChange
+  onShowHiddenChange,
 }) => {
   const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-
-
 
   // 构建虚拟文件系统树
   const fileTree = useMemo(() => {
@@ -56,9 +56,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
 
     // 隐藏文件过滤
     if (!showHidden) {
-      filtered = filtered.filter(file =>
-        file.basename && !file.basename.startsWith('.')
-      );
+      filtered = filtered.filter(file => file.basename && !file.basename.startsWith('.'));
     }
 
     // 搜索过滤
@@ -150,10 +148,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
   if (error) {
     return (
       <div className="h-full flex flex-col">
-        <ErrorDisplay
-          message={error}
-          onRetry={onBack}
-        />
+        <ErrorDisplay message={error} onRetry={onBack} />
       </div>
     );
   }
@@ -181,7 +176,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                   type="text"
                   placeholder={t('search.in.file')}
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10 pr-8 py-2 w-64 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 {searchTerm && (
@@ -212,11 +207,12 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('name')}
                   </span>
-                  {sortField === 'name' && (
-                    sortDirection === 'asc' ?
-                      <ChevronUp className="ml-1 w-3 h-3" /> :
+                  {sortField === 'name' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="ml-1 w-3 h-3" />
+                    ) : (
                       <ChevronDown className="ml-1 w-3 h-3" />
-                  )}
+                    ))}
                 </div>
               </div>
               <div className="w-16 sm:w-20 lg:w-24 text-right pr-2 lg:pr-4">
@@ -227,11 +223,12 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('size')}
                   </span>
-                  {sortField === 'size' && (
-                    sortDirection === 'asc' ?
-                      <ChevronUp className="ml-1 w-3 h-3" /> :
+                  {sortField === 'size' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="ml-1 w-3 h-3" />
+                    ) : (
                       <ChevronDown className="ml-1 w-3 h-3" />
-                  )}
+                    ))}
                 </div>
               </div>
               <div className="w-24 sm:w-32 lg:w-48 text-right">
@@ -242,11 +239,12 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('modified')}
                   </span>
-                  {sortField === 'modified' && (
-                    sortDirection === 'asc' ?
-                      <ChevronUp className="ml-1 w-3 h-3" /> :
+                  {sortField === 'modified' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="ml-1 w-3 h-3" />
+                    ) : (
                       <ChevronDown className="ml-1 w-3 h-3" />
-                  )}
+                    ))}
                 </div>
               </div>
             </div>
@@ -254,8 +252,9 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
 
           {/* 文件列表或空状态 */}
           {currentFiles.length > 0 ? (
-            !showHidden && currentFiles.every(file => file.basename && file.basename.startsWith('.')) ? (
-               <HiddenFilesDisplay onShowHidden={() => onShowHiddenChange?.(true)} />
+            !showHidden &&
+            currentFiles.every(file => file.basename && file.basename.startsWith('.')) ? (
+              <HiddenFilesDisplay onShowHidden={() => onShowHiddenChange?.(true)} />
             ) : filteredAndSortedFiles.length === 0 ? (
               <NoSearchResultsDisplay
                 searchTerm={searchTerm}

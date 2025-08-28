@@ -9,7 +9,7 @@ import {
   Folder,
   EyeOff,
   AlertTriangle,
-  LucideIcon
+  LucideIcon,
 } from 'lucide-react';
 
 type StatusType =
@@ -56,7 +56,7 @@ const defaultIcons: Record<StatusType, LucideIcon> = {
 };
 
 const getIconProps = (type: StatusType) => {
-  const baseProps = "mx-auto w-12 h-12 text-gray-400 dark:text-gray-500 mb-4";
+  const baseProps = 'mx-auto w-12 h-12 text-gray-400 dark:text-gray-500 mb-4';
 
   if (type === 'loading') {
     return `${baseProps} animate-spin`;
@@ -72,13 +72,15 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
   icon,
   action,
   secondaryAction,
-  className = "",
+  className = '',
 }) => {
   const IconComponent = icon || defaultIcons[type];
   const iconClassName = getIconProps(type);
 
   return (
-    <div className={`flex-1 flex items-center justify-center min-h-0 bg-white dark:bg-gray-800 ${className}`}>
+    <div
+      className={`flex-1 flex items-center justify-center min-h-0 bg-white dark:bg-gray-800 ${className}`}
+    >
       <div className="text-center py-12">
         <IconComponent className={iconClassName} />
         <p className="text-gray-500 dark:text-gray-400">{message}</p>
@@ -125,11 +127,7 @@ export const LoadingDisplay: React.FC<{
   message?: string;
   icon?: LucideIcon;
   className?: string;
-}> = ({
-  message,
-  icon,
-  className
-}) => {
+}> = ({ message, icon, className }) => {
   const { t } = useTranslation();
   return (
     <StatusDisplay
@@ -163,7 +161,9 @@ export const ErrorDisplay: React.FC<{
     <StatusDisplay
       type="error"
       message={translatedMessage}
-      action={onRetry ? { label: t('status.retry'), onClick: onRetry, variant: "secondary" } : undefined}
+      action={
+        onRetry ? { label: t('status.retry'), onClick: onRetry, variant: 'secondary' } : undefined
+      }
       className={className}
     />
   );
@@ -187,23 +187,22 @@ export const UnsupportedFormatDisplay: React.FC<{
   secondaryMessage?: string;
   className?: string;
   onOpenAsText?: () => void;
-}> = ({
-  message,
-  secondaryMessage,
-  className,
-  onOpenAsText
-}) => {
+}> = ({ message, secondaryMessage, className, onOpenAsText }) => {
   const { t } = useTranslation();
   return (
     <StatusDisplay
       type="unsupported"
       message={message || t('status.unsupported.format')}
       secondaryMessage={secondaryMessage || t('status.unsupported.download')}
-      action={onOpenAsText ? {
-        label: t('viewer.open.as.text'),
-        onClick: onOpenAsText,
-        variant: 'primary'
-      } : undefined}
+      action={
+        onOpenAsText
+          ? {
+              label: t('viewer.open.as.text'),
+              onClick: onOpenAsText,
+              variant: 'primary',
+            }
+          : undefined
+      }
       className={className}
     />
   );
@@ -218,7 +217,7 @@ export const HiddenFilesDisplay: React.FC<{
     <StatusDisplay
       type="hiddenFiles"
       message={t('status.all.files.hidden')}
-      action={{ label: t('status.show.hidden.files'), onClick: onShowHidden, variant: "secondary" }}
+      action={{ label: t('status.show.hidden.files'), onClick: onShowHidden, variant: 'secondary' }}
       className={className}
     />
   );
@@ -235,7 +234,7 @@ export const NoSearchResultsDisplay: React.FC<{
       type="noSearchResults"
       message={t('status.no.matching.files')}
       secondaryMessage={t('status.try.different.keywords', { searchTerm })}
-      action={{ label: t('status.clear.search'), onClick: onClearSearch, variant: "secondary" }}
+      action={{ label: t('status.clear.search'), onClick: onClearSearch, variant: 'secondary' }}
       className={className}
     />
   );
@@ -252,7 +251,7 @@ export const NoLocalResultsDisplay: React.FC<{
       type="noSearchResults"
       message={t('status.no.local.results')}
       secondaryMessage={t('status.try.remote.search', { searchTerm })}
-      action={{ label: t('status.search.remote'), onClick: onRemoteSearch, variant: "secondary" }}
+      action={{ label: t('status.search.remote'), onClick: onRemoteSearch, variant: 'secondary' }}
       className={className}
     />
   );
@@ -269,7 +268,7 @@ export const NoRemoteResultsDisplay: React.FC<{
       type="noSearchResults"
       message={t('status.no.matching.files')}
       secondaryMessage={t('status.try.different.keywords', { searchTerm })}
-      action={{ label: t('status.clear.search'), onClick: onClearSearch, variant: "secondary" }}
+      action={{ label: t('status.clear.search'), onClick: onClearSearch, variant: 'secondary' }}
       className={className}
     />
   );

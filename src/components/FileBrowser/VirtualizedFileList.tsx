@@ -17,7 +17,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   files,
   onFileClick,
   height,
-  onScrollToBottom
+  onScrollToBottom,
 }) => {
   // Use custom hook for responsive behavior
   const isMobile = useIsMobile();
@@ -158,7 +158,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
           position: 'relative',
         }}
       >
-        {virtualizer.getVirtualItems().map((virtualItem) => {
+        {virtualizer.getVirtualItems().map(virtualItem => {
           const file = processedFiles[virtualItem.index];
 
           return (

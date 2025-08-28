@@ -60,7 +60,7 @@ export const useFileSearch = ({
   setCurrentFilePosition,
   setLoadedContentSize,
   setLoading,
-  setError
+  setError,
 }: UseFileSearchProps) => {
   // 防止重复搜索和导航期间搜索的引用
   const lastSearchTermRef = useRef<string>('');
@@ -77,160 +77,205 @@ export const useFileSearch = ({
     };
   }, []);
 
-  const handleSearchResults = useCallback((results: SearchResult[], isLimited?: boolean) => {
-    setSearchLoading(false);
-    setSearchResults(results);
-    setSearchResultsLimited(isLimited || false);
-
-    // 新搜索时总是重置索引到第一个结果
-    setCurrentSearchIndex(results.length > 0 ? 0 : -1);
-  }, [setSearchLoading, setSearchResults, setCurrentSearchIndex, setSearchResultsLimited]);
-
-  const performSearch = useCallback(async (term: string, forceSearch: boolean = false) => {
-    const trimmedTerm = term.trim();
-
-    // 导航期间跳过搜索，除非强制搜索
-    if (isNavigatingRef.current && !forceSearch) {
-      return;
-    }
-
-    // 清空搜索条件
-    if (!trimmedTerm || trimmedTerm.length < 2) {
-      setSearchResults([]);
-      setFullFileSearchResults([]);
-      setCurrentSearchIndex(-1);
+  const handleSearchResults = useCallback(
+    (results: SearchResult[], isLimited?: boolean) => {
       setSearchLoading(false);
-      setFullFileSearchLoading(false);
-      setSearchResultsLimited(false);
-      setFullFileSearchLimited(false);
-      lastSearchTermRef.current = '';
-      return;
-    }
+      setSearchResults(results);
+      setSearchResultsLimited(isLimited || false);
 
-    // 防止重复搜索
-    if (!forceSearch &&
-        trimmedTerm === lastSearchTermRef.current &&
-        fullFileSearchMode === lastSearchModeRef.current) {
-      return;
-    }
+      // 新搜索时总是重置索引到第一个结果
+      setCurrentSearchIndex(results.length > 0 ? 0 : -1);
+    },
+    [setSearchLoading, setSearchResults, setCurrentSearchIndex, setSearchResultsLimited]
+  );
 
-    lastSearchTermRef.current = trimmedTerm;
-    lastSearchModeRef.current = fullFileSearchMode;
+  const performSearch = useCallback(
+    async (term: string, forceSearch: boolean = false) => {
+      const trimmedTerm = term.trim();
 
-    if (fullFileSearchMode) {
-      // 全文件搜索
-      setFullFileSearchLoading(true);
-      setSearchLoading(false);
-      setFullFileSearchResults([]); // 清空之前的结果
-      try {
-        const results = await performFullFileSearch(trimmedTerm);
-        setFullFileSearchResults(results);
-        setCurrentSearchIndex(results.length > 0 ? 0 : -1);
-        setFullFileSearchLimited(results.length >= 500); // 假设500是全文件搜索限制
-      } catch (err) {
-        console.error('Full file search failed:', err);
+      // 导航期间跳过搜索，除非强制搜索
+      if (isNavigatingRef.current && !forceSearch) {
+        return;
+      }
+
+      // 清空搜索条件
+      if (!trimmedTerm || trimmedTerm.length < 2) {
+        setSearchResults([]);
         setFullFileSearchResults([]);
         setCurrentSearchIndex(-1);
-        setFullFileSearchLimited(false);
-      } finally {
+        setSearchLoading(false);
         setFullFileSearchLoading(false);
+        setSearchResultsLimited(false);
+        setFullFileSearchLimited(false);
+        lastSearchTermRef.current = '';
+        return;
       }
-    } else {
-      // 当前内容搜索 - 完全由 VirtualizedTextViewer 处理
-      // 这里只需要清空全文件搜索的相关状态，不设置loading
-      setFullFileSearchLoading(false);
-      setFullFileSearchResults([]); // 清空全文件搜索结果
-      setFullFileSearchLimited(false);
-      // 注意：不设置 setSearchLoading(true)，让 VirtualizedTextViewer 自己管理
-    }
-  }, [fullFileSearchMode, performFullFileSearch, setSearchResults, setFullFileSearchResults, setCurrentSearchIndex, setSearchLoading, setFullFileSearchLoading, setSearchResultsLimited, setFullFileSearchLimited]);
+
+      // 防止重复搜索
+      if (
+        !forceSearch &&
+        trimmedTerm === lastSearchTermRef.current &&
+        fullFileSearchMode === lastSearchModeRef.current
+      ) {
+        return;
+      }
+
+      lastSearchTermRef.current = trimmedTerm;
+      lastSearchModeRef.current = fullFileSearchMode;
+
+      if (fullFileSearchMode) {
+        // 全文件搜索
+        setFullFileSearchLoading(true);
+        setSearchLoading(false);
+        setFullFileSearchResults([]); // 清空之前的结果
+        try {
+          const results = await performFullFileSearch(trimmedTerm);
+          setFullFileSearchResults(results);
+          setCurrentSearchIndex(results.length > 0 ? 0 : -1);
+          setFullFileSearchLimited(results.length >= 500); // 假设500是全文件搜索限制
+        } catch (err) {
+          console.error('Full file search failed:', err);
+          setFullFileSearchResults([]);
+          setCurrentSearchIndex(-1);
+          setFullFileSearchLimited(false);
+        } finally {
+          setFullFileSearchLoading(false);
+        }
+      } else {
+        // 当前内容搜索 - 完全由 VirtualizedTextViewer 处理
+        // 这里只需要清空全文件搜索的相关状态，不设置loading
+        setFullFileSearchLoading(false);
+        setFullFileSearchResults([]); // 清空全文件搜索结果
+        setFullFileSearchLimited(false);
+        // 注意：不设置 setSearchLoading(true)，让 VirtualizedTextViewer 自己管理
+      }
+    },
+    [
+      fullFileSearchMode,
+      performFullFileSearch,
+      setSearchResults,
+      setFullFileSearchResults,
+      setCurrentSearchIndex,
+      setSearchLoading,
+      setFullFileSearchLoading,
+      setSearchResultsLimited,
+      setFullFileSearchLimited,
+    ]
+  );
 
   // 全文件搜索结果导航
-  const navigateToFullFileSearchResult = useCallback(async (result: FullFileSearchResult) => {
-    if (!isLargeFile) {
-      // 小文件直接滚动
-      if (textViewerRef.current) {
-        textViewerRef.current.scrollToLine(result.line, result.column);
-      }
-      return;
-    }
-
-    // 大文件：检查目标搜索结果是否在当前已加载的内容块中
-    const chunkSize = 64 * 1024; // 64KB
-    const targetPosition = result.filePosition;
-
-    // 获取当前已加载内容的范围
-    const currentChunkStart = currentFilePosition;
-    const currentChunkEnd = currentChunkStart + loadedContentSize;
-
-    // 如果目标位置在当前加载的内容范围内，直接滚动到目标行
-    if (targetPosition >= currentChunkStart && targetPosition <= currentChunkEnd) {
-      if (textViewerRef.current) {
-        // 计算目标行在当前内容中的相对位置
-        const avgBytesPerLine = 50;
-        const estimatedStartLine = Math.floor(currentChunkStart / avgBytesPerLine) + 1;
-        const targetLineInCurrentContent = Math.max(1, result.line - estimatedStartLine + 1);
-        textViewerRef.current.scrollToLine(targetLineInCurrentContent, result.column);
-      }
-      return;
-    }
-
-    // 如果目标位置不在当前内容中，才重新加载内容
-    try {
-      setLoading(true);
-      isNavigatingRef.current = true; // 防止加载新内容时触发重新搜索
-
-      const newTargetPosition = Math.max(0, targetPosition - chunkSize / 2);
-      const endPosition = Math.min(newTargetPosition + chunkSize * 2, totalSize);
-
-      const { StorageServiceManager } = await import('../../../services/storage');
-      const newContent = await StorageServiceManager.getFileContent(filePath, newTargetPosition, endPosition - newTargetPosition);
-
-      setContent(newContent.content);
-      setCurrentFilePosition(newTargetPosition);
-      setLoadedContentSize(newContent.content.length);
-
-      // 估算起始行号
-      const avgBytesPerLine = 50;
-      const estimatedStartLine = Math.floor(newTargetPosition / avgBytesPerLine) + 1;
-      setBaselineStartLineNumber(Math.max(1, estimatedStartLine));
-
-      // 延迟滚动，等待内容渲染完成
-      setTimeout(() => {
+  const navigateToFullFileSearchResult = useCallback(
+    async (result: FullFileSearchResult) => {
+      if (!isLargeFile) {
+        // 小文件直接滚动
         if (textViewerRef.current) {
-          const targetLineInNewContent = Math.max(1, result.line - estimatedStartLine + 1);
-          textViewerRef.current.scrollToLine(targetLineInNewContent, result.column);
+          textViewerRef.current.scrollToLine(result.line, result.column);
         }
-        isNavigatingRef.current = false; // 导航完成，重置标志
-      }, 150);
+        return;
+      }
 
-    } catch (err) {
-      console.error('Failed to navigate to search result:', err);
-      setError('Failed to navigate to search result');
-      isNavigatingRef.current = false; // 确保在错误时也重置标志
-    } finally {
-      setLoading(false);
-    }
-  }, [isLargeFile, filePath, totalSize, textViewerRef, setLoading, setContent, setCurrentFilePosition, setLoadedContentSize, setBaselineStartLineNumber, setError]);
+      // 大文件：检查目标搜索结果是否在当前已加载的内容块中
+      const chunkSize = 64 * 1024; // 64KB
+      const targetPosition = result.filePosition;
+
+      // 获取当前已加载内容的范围
+      const currentChunkStart = currentFilePosition;
+      const currentChunkEnd = currentChunkStart + loadedContentSize;
+
+      // 如果目标位置在当前加载的内容范围内，直接滚动到目标行
+      if (targetPosition >= currentChunkStart && targetPosition <= currentChunkEnd) {
+        if (textViewerRef.current) {
+          // 计算目标行在当前内容中的相对位置
+          const avgBytesPerLine = 50;
+          const estimatedStartLine = Math.floor(currentChunkStart / avgBytesPerLine) + 1;
+          const targetLineInCurrentContent = Math.max(1, result.line - estimatedStartLine + 1);
+          textViewerRef.current.scrollToLine(targetLineInCurrentContent, result.column);
+        }
+        return;
+      }
+
+      // 如果目标位置不在当前内容中，才重新加载内容
+      try {
+        setLoading(true);
+        isNavigatingRef.current = true; // 防止加载新内容时触发重新搜索
+
+        const newTargetPosition = Math.max(0, targetPosition - chunkSize / 2);
+        const endPosition = Math.min(newTargetPosition + chunkSize * 2, totalSize);
+
+        const { StorageServiceManager } = await import('../../../services/storage');
+        const newContent = await StorageServiceManager.getFileContent(
+          filePath,
+          newTargetPosition,
+          endPosition - newTargetPosition
+        );
+
+        setContent(newContent.content);
+        setCurrentFilePosition(newTargetPosition);
+        setLoadedContentSize(newContent.content.length);
+
+        // 估算起始行号
+        const avgBytesPerLine = 50;
+        const estimatedStartLine = Math.floor(newTargetPosition / avgBytesPerLine) + 1;
+        setBaselineStartLineNumber(Math.max(1, estimatedStartLine));
+
+        // 延迟滚动，等待内容渲染完成
+        setTimeout(() => {
+          if (textViewerRef.current) {
+            const targetLineInNewContent = Math.max(1, result.line - estimatedStartLine + 1);
+            textViewerRef.current.scrollToLine(targetLineInNewContent, result.column);
+          }
+          isNavigatingRef.current = false; // 导航完成，重置标志
+        }, 150);
+      } catch (err) {
+        console.error('Failed to navigate to search result:', err);
+        setError('Failed to navigate to search result');
+        isNavigatingRef.current = false; // 确保在错误时也重置标志
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      isLargeFile,
+      filePath,
+      totalSize,
+      textViewerRef,
+      setLoading,
+      setContent,
+      setCurrentFilePosition,
+      setLoadedContentSize,
+      setBaselineStartLineNumber,
+      setError,
+    ]
+  );
 
   // 统一的搜索结果导航
-  const navigateToResult = useCallback((index: number) => {
-    const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
-    if (index < 0 || index >= currentResults.length) return;
+  const navigateToResult = useCallback(
+    (index: number) => {
+      const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
+      if (index < 0 || index >= currentResults.length) return;
 
-    setCurrentSearchIndex(index);
-    const result = currentResults[index];
+      setCurrentSearchIndex(index);
+      const result = currentResults[index];
 
-    if (fullFileSearchMode && 'filePosition' in result) {
-      // 全文件搜索结果
-      navigateToFullFileSearchResult(result as FullFileSearchResult);
-    } else {
-      // 当前内容搜索结果，直接滚动
-      if (textViewerRef.current) {
-        textViewerRef.current.scrollToLine(result.line, result.column);
+      if (fullFileSearchMode && 'filePosition' in result) {
+        // 全文件搜索结果
+        navigateToFullFileSearchResult(result as FullFileSearchResult);
+      } else {
+        // 当前内容搜索结果，直接滚动
+        if (textViewerRef.current) {
+          textViewerRef.current.scrollToLine(result.line, result.column);
+        }
       }
-    }
-  }, [fullFileSearchMode, fullFileSearchResults, searchResults, setCurrentSearchIndex, navigateToFullFileSearchResult, textViewerRef]);
+    },
+    [
+      fullFileSearchMode,
+      fullFileSearchResults,
+      searchResults,
+      setCurrentSearchIndex,
+      navigateToFullFileSearchResult,
+      textViewerRef,
+    ]
+  );
 
   // 下一个/上一个搜索结果
   const nextResult = useCallback(() => {
@@ -239,7 +284,13 @@ export const useFileSearch = ({
 
     const nextIndex = (currentSearchIndex + 1) % currentResults.length;
     navigateToResult(nextIndex);
-  }, [fullFileSearchMode, fullFileSearchResults, searchResults, currentSearchIndex, navigateToResult]);
+  }, [
+    fullFileSearchMode,
+    fullFileSearchResults,
+    searchResults,
+    currentSearchIndex,
+    navigateToResult,
+  ]);
 
   const prevResult = useCallback(() => {
     const currentResults = fullFileSearchMode ? fullFileSearchResults : searchResults;
@@ -247,7 +298,13 @@ export const useFileSearch = ({
 
     const prevIndex = currentSearchIndex === 0 ? currentResults.length - 1 : currentSearchIndex - 1;
     navigateToResult(prevIndex);
-  }, [fullFileSearchMode, fullFileSearchResults, searchResults, currentSearchIndex, navigateToResult]);
+  }, [
+    fullFileSearchMode,
+    fullFileSearchResults,
+    searchResults,
+    currentSearchIndex,
+    navigateToResult,
+  ]);
 
   // 搜索词变化时的防抖处理
   useEffect(() => {
@@ -307,6 +364,6 @@ export const useFileSearch = ({
     navigateToResult,
     nextResult,
     prevResult,
-    navigateToFullFileSearchResult
+    navigateToFullFileSearchResult,
   };
 };

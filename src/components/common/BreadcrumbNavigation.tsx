@@ -34,7 +34,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
   showEditButton = true,
   homeLabel,
   className = '',
-  compact = false
+  compact = false,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -133,7 +133,9 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
   if (compact) {
     // 紧凑模式，用于ArchiveTreeList，暂不支持编辑功能
     return (
-      <div className={`flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 ${className}`}>
+      <div
+        className={`flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 ${className}`}
+      >
         <span
           className="cursor-pointer hover:text-gray-900 dark:hover:text-gray-200"
           onClick={onNavigateHome}
@@ -189,14 +191,14 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
               ref={inputRef}
               type="text"
               value={inputPath}
-              onChange={(e) => setInputPath(e.target.value)}
+              onChange={e => setInputPath(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleBlur}
               className="flex-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-indigo-300 dark:border-indigo-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-0"
               placeholder={t('breadcrumb.path.placeholder', 'Enter path...')}
             />
             <button
-              onMouseDown={(e) => {
+              onMouseDown={e => {
                 e.preventDefault(); // 防止输入框失焦
                 confirmNavigation();
               }}
@@ -206,7 +208,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
               <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
             </button>
             <button
-              onMouseDown={(e) => {
+              onMouseDown={e => {
                 e.preventDefault(); // 防止输入框失焦
                 exitEditMode();
               }}

@@ -59,7 +59,13 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
             <RefreshCw className="w-5 h-5 text-gray-500" />
           )}
           <h3 className="font-semibold text-gray-900 dark:text-white">
-            {isChecking ? t('checking.updates') : error ? t('update.check.failed') : updateInfo?.hasUpdate ? t('update.available') : t('no.updates')}
+            {isChecking
+              ? t('checking.updates')
+              : error
+                ? t('update.check.failed')
+                : updateInfo?.hasUpdate
+                  ? t('update.available')
+                  : t('no.updates')}
           </h3>
         </div>
         <button
@@ -70,20 +76,22 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
         </button>
       </div>
 
-      {error && (
-        <div className="text-sm text-red-600 dark:text-red-400 mb-3">
-          {error}
-        </div>
-      )}
+      {error && <div className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</div>}
 
       {updateInfo && !isChecking && !error && (
         <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-          <div>{t('current.version')}: v{updateInfo.currentVersion}</div>
+          <div>
+            {t('current.version')}: v{updateInfo.currentVersion}
+          </div>
           {updateInfo.hasUpdate && (
             <>
-              <div>{t('latest.version')}: v{updateInfo.latestVersion}</div>
+              <div>
+                {t('latest.version')}: v{updateInfo.latestVersion}
+              </div>
               {updateInfo.fileSize && (
-                <div>{t('file.size')}: {updateInfo.fileSize}</div>
+                <div>
+                  {t('file.size')}: {updateInfo.fileSize}
+                </div>
               )}
             </>
           )}

@@ -13,7 +13,7 @@ import {
   FileType2,
   BookOpen,
   Presentation,
-  Box
+  Box,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { FileType } from './fileTypes';
@@ -37,7 +37,7 @@ const FILE_ICON_CONFIG: Record<FileType | 'directory', FileIconConfig> = {
   archive: { icon: Archive, color: 'text-orange-500' },
   data: { icon: Database, color: 'text-cyan-500' },
   pointcloud: { icon: Box, color: 'text-violet-500' },
-  unknown: { icon: File, color: 'text-gray-400 dark:text-gray-500' }
+  unknown: { icon: File, color: 'text-gray-400 dark:text-gray-500' },
 };
 
 interface FileIconProps {
@@ -46,18 +46,14 @@ interface FileIconProps {
   className?: string;
 }
 
-export const FileIcon: React.FC<FileIconProps> = ({
-  fileType,
-  size = 'md',
-  className = ''
-}) => {
+export const FileIcon: React.FC<FileIconProps> = ({ fileType, size = 'md', className = '' }) => {
   const config = FILE_ICON_CONFIG[fileType] || FILE_ICON_CONFIG.unknown;
   const IconComponent = config.icon;
 
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-5 h-5',
-    lg: 'w-5 h-5 lg:w-6 lg:h-6'
+    lg: 'w-5 h-5 lg:w-6 lg:h-6',
   };
 
   const baseClassName = `${sizeClasses[size]} ${config.color} flex-shrink-0`;

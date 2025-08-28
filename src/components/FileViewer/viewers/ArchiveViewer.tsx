@@ -4,7 +4,14 @@ import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { CompressionService } from '../../../services/compression';
 import { StorageServiceManager } from '../../../services/storage/StorageManager';
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
-import { getFileType, isMediaFile, isDataFile, isSpreadsheetFile, isTextLikeFile, isPointCloudFile } from '../../../utils/fileTypes';
+import {
+  getFileType,
+  isMediaFile,
+  isDataFile,
+  isSpreadsheetFile,
+  isTextLikeFile,
+  isPointCloudFile,
+} from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
 import { safeParseInt } from '../../../utils/typeUtils';
 import { configManager } from '../../../config';
@@ -14,7 +21,12 @@ import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 import { MediaViewer } from './MediaViewer';
 import { UniversalDataTableViewer } from './UniversalDataTableViewer';
 import { PointCloudViewer } from './PointCloudViewer';
-import { LoadingDisplay, ErrorDisplay, StatusDisplay, UnsupportedFormatDisplay } from '../../common';
+import {
+  LoadingDisplay,
+  ErrorDisplay,
+  StatusDisplay,
+  UnsupportedFormatDisplay,
+} from '../../common';
 import { ManualLoadButton } from '../common';
 import { useTranslation } from 'react-i18next';
 
@@ -29,7 +41,11 @@ const translateError = (error: string, t: (key: string) => string): string => {
 };
 
 // 从错误对象中提取错误信息的辅助函数
-const extractErrorMessage = (err: unknown, fallbackKey: string, t: (key: string) => string): string => {
+const extractErrorMessage = (
+  err: unknown,
+  fallbackKey: string,
+  t: (key: string) => string
+): string => {
   if (err instanceof Error) {
     return err.message;
   } else if (typeof err === 'string') {
@@ -50,11 +66,7 @@ interface ArchiveViewerProps {
 
 // 移除不再需要的LoadMoreProgress接口
 
-export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
-  url,
-  filename,
-  storageClient
-}) => {
+export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, storageClient }) => {
   const { t } = useTranslation();
   const [archiveInfo, setArchiveInfo] = useState<ArchiveInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,7 +104,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     loadingMore: false,
     autoLoadTriggered: false,
     manualLoadRequested: false,
-    manualLoading: false
+    manualLoading: false,
   });
 
   // 强制以文本方式查看的状态
@@ -117,11 +129,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       } else {
         // 回退到直接的压缩服务接口
         const maxSize = 1024 * 1024; // 1MB
-        info = await CompressionService.analyzeArchive(
-          url,
-          filename,
-          maxSize
-        );
+        info = await CompressionService.analyzeArchive(url, filename, maxSize);
       }
 
       setArchiveInfo(info);
@@ -167,8 +175,13 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
   const previewFile = async (entry: ArchiveEntry) => {
     // 检查是否为占位符条目（大文件的流式处理条目）
-    if (entry.is_dir && entry.size === '0' && archiveInfo?.analysis_status &&
-        typeof archiveInfo.analysis_status === 'object' && 'Streaming' in archiveInfo.analysis_status) {
+    if (
+      entry.is_dir &&
+      entry.size === '0' &&
+      archiveInfo?.analysis_status &&
+      typeof archiveInfo.analysis_status === 'object' &&
+      'Streaming' in archiveInfo.analysis_status
+    ) {
       await loadDetailedArchiveInfo();
       return;
     }
@@ -203,7 +216,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         loadingMore: false,
         autoLoadTriggered: false,
         manualLoadRequested: false,
-        manualLoading: false
+        manualLoading: false,
       });
 
       const fileSize = safeParseInt(entry.size) || 0;
@@ -213,7 +226,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
 
       setFileLoadState(prev => ({
         ...prev,
-        totalSize: fileSize
+        totalSize: fileSize,
       }));
 
       // 对于非文本文件，检查是否需要自动加载
@@ -230,7 +243,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
             content: new Uint8Array(0),
             is_truncated: true,
             total_size: entry.size,
-            preview_size: 0
+            preview_size: 0,
           };
           setFilePreview(emptyPreview);
           return;
@@ -241,12 +254,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
         let preview: FilePreview;
 
         if (storageClient && storageClient.getArchiveFilePreview) {
-          preview = await storageClient.getArchiveFilePreview(
-            url,
-            filename,
-            entry.path,
-            loadSize
-          );
+          preview = await storageClient.getArchiveFilePreview(url, filename, entry.path, loadSize);
         } else {
           preview = await CompressionService.extractFilePreview(
             url,
@@ -296,14 +304,13 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
             ...prev,
             loadedContentSize: preview.content.length,
             loadedChunks: 1,
-            currentFilePosition: 0
+            currentFilePosition: 0,
           }));
         } catch (decodeError) {
           console.error('Failed to decode text content:', decodeError);
           setPreviewError(t('error.decode.text'));
         }
       }
-
     } catch (err) {
       const errorMessage = extractErrorMessage(err, 'error.preview.file', t);
       setPreviewError(translateError(errorMessage, t));
@@ -321,7 +328,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       isMedia: isMediaFile(entry.path),
       isData: isDataFile(entry.path),
       isSpreadsheet: isSpreadsheetFile(entry.path),
-      isPointCloud: isPointCloudFile(entry.path)
+      isPointCloud: isPointCloudFile(entry.path),
     };
   };
 
@@ -331,37 +338,72 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   };
 
   // 加载更多内容的函数
-  const loadMoreContent = useCallback(async (entry: ArchiveEntry) => {
-    if (fileLoadState.loadingMore || !isTextLikeFile(entry.path)) return;
-    if (!filePreview?.is_truncated) return; // 如果文件已完整加载，不需要加载更多
+  const loadMoreContent = useCallback(
+    async (entry: ArchiveEntry) => {
+      if (fileLoadState.loadingMore || !isTextLikeFile(entry.path)) return;
+      if (!filePreview?.is_truncated) return; // 如果文件已完整加载，不需要加载更多
 
-    setFileLoadState(prev => ({ ...prev, loadingMore: true }));
-    try {
-      const config = configManager.getConfig();
-      const nextPosition = fileLoadState.currentFilePosition + fileLoadState.loadedContentSize;
-      if (nextPosition >= fileLoadState.totalSize) {
-        setFileLoadState(prev => ({ ...prev, loadingMore: false }));
-        return;
-      }
+      setFileLoadState(prev => ({ ...prev, loadingMore: true }));
+      try {
+        const config = configManager.getConfig();
+        const nextPosition = fileLoadState.currentFilePosition + fileLoadState.loadedContentSize;
+        if (nextPosition >= fileLoadState.totalSize) {
+          setFileLoadState(prev => ({ ...prev, loadingMore: false }));
+          return;
+        }
 
-      const remainingSize = fileLoadState.totalSize - nextPosition;
-      const chunkSize = Math.min(config.streaming.chunkSize, remainingSize);
+        const remainingSize = fileLoadState.totalSize - nextPosition;
+        const chunkSize = Math.min(config.streaming.chunkSize, remainingSize);
 
-      let additionalPreview: FilePreview;
-      if (storageClient && storageClient.getArchiveFilePreview && typeof storageClient.getArchiveFilePreview === 'function') {
-        // 检查storageClient是否支持偏移量参数
-        try {
-          additionalPreview = await storageClient.getArchiveFilePreview(
-            url,
-            filename,
-            entry.path,
-            chunkSize,
-            nextPosition
-          );
-        } catch (offsetError) {
-          // 如果不支持偏移量，回退到加载完整文件
-          console.warn('StorageClient does not support offset, loading full file:', offsetError);
-          const fullPreview = await storageClient.getArchiveFilePreview(
+        let additionalPreview: FilePreview;
+        if (
+          storageClient &&
+          storageClient.getArchiveFilePreview &&
+          typeof storageClient.getArchiveFilePreview === 'function'
+        ) {
+          // 检查storageClient是否支持偏移量参数
+          try {
+            additionalPreview = await storageClient.getArchiveFilePreview(
+              url,
+              filename,
+              entry.path,
+              chunkSize,
+              nextPosition
+            );
+          } catch (offsetError) {
+            // 如果不支持偏移量，回退到加载完整文件
+            console.warn('StorageClient does not support offset, loading full file:', offsetError);
+            const fullPreview = await storageClient.getArchiveFilePreview(
+              url,
+              filename,
+              entry.path,
+              fileLoadState.totalSize
+            );
+            if (
+              fullPreview.content &&
+              fullPreview.content.length > fileLoadState.loadedContentSize
+            ) {
+              const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
+              const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(
+                remainingContent
+              );
+              setFileContent(prev => prev + additionalText);
+              setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
+              setFileLoadState(prev => ({
+                ...prev,
+                loadedContentSize: fullPreview.content!.length,
+                loadedChunks: prev.loadedChunks + 1,
+                loadingMore: false,
+              }));
+            } else {
+              setFileLoadState(prev => ({ ...prev, loadingMore: false }));
+            }
+            return;
+          }
+        } else {
+          // CompressionService 目前不支持偏移量，需要加载完整文件
+          console.warn('CompressionService does not support offset loading, loading full file');
+          const fullPreview = await CompressionService.extractFilePreview(
             url,
             filename,
             entry.path,
@@ -369,77 +411,78 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
           );
           if (fullPreview.content && fullPreview.content.length > fileLoadState.loadedContentSize) {
             const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
-            const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(remainingContent);
+            const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(
+              remainingContent
+            );
             setFileContent(prev => prev + additionalText);
             setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
             setFileLoadState(prev => ({
               ...prev,
               loadedContentSize: fullPreview.content!.length,
               loadedChunks: prev.loadedChunks + 1,
-              loadingMore: false
+              loadingMore: false,
             }));
           } else {
             setFileLoadState(prev => ({ ...prev, loadingMore: false }));
           }
           return;
         }
-      } else {
-        // CompressionService 目前不支持偏移量，需要加载完整文件
-        console.warn('CompressionService does not support offset loading, loading full file');
-        const fullPreview = await CompressionService.extractFilePreview(
-          url,
-          filename,
-          entry.path,
-          fileLoadState.totalSize
-        );
-        if (fullPreview.content && fullPreview.content.length > fileLoadState.loadedContentSize) {
-          const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
-          const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(remainingContent);
+
+        if (additionalPreview.content) {
+          const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(
+            additionalPreview.content
+          );
           setFileContent(prev => prev + additionalText);
-          setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
+
+          // 更新filePreview状态，特别是is_truncated状态
+          setFilePreview(prev =>
+            prev
+              ? {
+                  ...prev,
+                  content: prev.content
+                    ? new Uint8Array([...prev.content, ...additionalPreview.content!])
+                    : additionalPreview.content!,
+                  is_truncated: additionalPreview.is_truncated,
+                  preview_size: (prev.preview_size || 0) + additionalPreview.content!.length,
+                }
+              : additionalPreview
+          );
+
           setFileLoadState(prev => ({
             ...prev,
-            loadedContentSize: fullPreview.content!.length,
+            loadedContentSize: prev.loadedContentSize + additionalPreview.content!.length,
             loadedChunks: prev.loadedChunks + 1,
-            loadingMore: false
           }));
-        } else {
-          setFileLoadState(prev => ({ ...prev, loadingMore: false }));
         }
-        return;
+      } catch (err) {
+        console.error('Failed to load more content:', err);
+        setPreviewError(t('error.load.more'));
+      } finally {
+        setFileLoadState(prev => ({ ...prev, loadingMore: false }));
       }
-
-      if (additionalPreview.content) {
-        const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(additionalPreview.content);
-        setFileContent(prev => prev + additionalText);
-
-        // 更新filePreview状态，特别是is_truncated状态
-        setFilePreview(prev => prev ? {
-          ...prev,
-          content: prev.content ?
-            new Uint8Array([...prev.content, ...additionalPreview.content!]) :
-            additionalPreview.content!,
-          is_truncated: additionalPreview.is_truncated,
-          preview_size: (prev.preview_size || 0) + additionalPreview.content!.length
-        } : additionalPreview);
-
-        setFileLoadState(prev => ({
-          ...prev,
-          loadedContentSize: prev.loadedContentSize + additionalPreview.content!.length,
-          loadedChunks: prev.loadedChunks + 1
-        }));
-      }
-    } catch (err) {
-      console.error('Failed to load more content:', err);
-      setPreviewError(t('error.load.more'));
-    } finally {
-      setFileLoadState(prev => ({ ...prev, loadingMore: false }));
-    }
-  }, [url, filename, storageClient, fileLoadState.loadingMore, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, filePreview?.is_truncated, t]);
+    },
+    [
+      url,
+      filename,
+      storageClient,
+      fileLoadState.loadingMore,
+      fileLoadState.currentFilePosition,
+      fileLoadState.loadedContentSize,
+      fileLoadState.totalSize,
+      filePreview?.is_truncated,
+      t,
+    ]
+  );
 
   // 滚动到底部时的回调
   const handleScrollToBottom = useCallback(async () => {
-    if (!selectedEntry || !filePreview?.is_truncated || fileLoadState.loadingMore || fileLoadState.autoLoadTriggered) return;
+    if (
+      !selectedEntry ||
+      !filePreview?.is_truncated ||
+      fileLoadState.loadingMore ||
+      fileLoadState.autoLoadTriggered
+    )
+      return;
     if (!isTextLikeFile(selectedEntry.path)) return;
 
     const currentEndPosition = fileLoadState.currentFilePosition + fileLoadState.loadedContentSize;
@@ -451,99 +494,116 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
     setTimeout(() => {
       setFileLoadState(prev => ({ ...prev, autoLoadTriggered: false }));
     }, 1000);
-  }, [selectedEntry, filePreview?.is_truncated, fileLoadState.loadingMore, fileLoadState.autoLoadTriggered, fileLoadState.currentFilePosition, fileLoadState.loadedContentSize, fileLoadState.totalSize, loadMoreContent]);
+  }, [
+    selectedEntry,
+    filePreview?.is_truncated,
+    fileLoadState.loadingMore,
+    fileLoadState.autoLoadTriggered,
+    fileLoadState.currentFilePosition,
+    fileLoadState.loadedContentSize,
+    fileLoadState.totalSize,
+    loadMoreContent,
+  ]);
 
   // 手动加载完整内容的函数（用于非文本文件）
-  const loadFullContent = useCallback(async (entry: ArchiveEntry) => {
-    if (fileLoadState.manualLoading) return;
+  const loadFullContent = useCallback(
+    async (entry: ArchiveEntry) => {
+      if (fileLoadState.manualLoading) return;
 
-    setFileLoadState(prev => ({ ...prev, manualLoading: true }));
-    try {
-      let fullPreview: FilePreview;
-      if (storageClient && storageClient.getArchiveFilePreview) {
-        fullPreview = await storageClient.getArchiveFilePreview(
-          url,
-          filename,
-          entry.path,
-          safeParseInt(entry.size) || undefined // 加载完整文件
-        );
-      } else {
-        fullPreview = await CompressionService.extractFilePreview(
-          url,
-          filename,
-          entry.path,
-          safeParseInt(entry.size) || undefined // 加载完整文件
-        );
-      }
-
-      setFilePreview(fullPreview);
-      setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
-
-      // 如果是文本文件，也更新文本内容
-      if (isTextLikeFile(entry.path) && fullPreview.content) {
-        try {
-          const textContent = new TextDecoder('utf-8', { fatal: false }).decode(fullPreview.content);
-          setFileContent(textContent);
-          setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
-        } catch (decodeError) {
-          console.error('Failed to decode text content:', decodeError);
+      setFileLoadState(prev => ({ ...prev, manualLoading: true }));
+      try {
+        let fullPreview: FilePreview;
+        if (storageClient && storageClient.getArchiveFilePreview) {
+          fullPreview = await storageClient.getArchiveFilePreview(
+            url,
+            filename,
+            entry.path,
+            safeParseInt(entry.size) || undefined // 加载完整文件
+          );
+        } else {
+          fullPreview = await CompressionService.extractFilePreview(
+            url,
+            filename,
+            entry.path,
+            safeParseInt(entry.size) || undefined // 加载完整文件
+          );
         }
+
+        setFilePreview(fullPreview);
+        setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
+
+        // 如果是文本文件，也更新文本内容
+        if (isTextLikeFile(entry.path) && fullPreview.content) {
+          try {
+            const textContent = new TextDecoder('utf-8', { fatal: false }).decode(
+              fullPreview.content
+            );
+            setFileContent(textContent);
+            setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
+          } catch (decodeError) {
+            console.error('Failed to decode text content:', decodeError);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load full content:', err);
+        setPreviewError(t('error.load.full.content'));
+      } finally {
+        setFileLoadState(prev => ({ ...prev, manualLoading: false }));
       }
-    } catch (err) {
-      console.error('Failed to load full content:', err);
-      setPreviewError(t('error.load.full.content'));
-    } finally {
-      setFileLoadState(prev => ({ ...prev, manualLoading: false }));
-    }
-  }, [url, filename, storageClient, fileLoadState.manualLoading, t]);
+    },
+    [url, filename, storageClient, fileLoadState.manualLoading, t]
+  );
 
   // 强制以文本方式查看文件的函数
-  const loadAsText = useCallback(async (entry: ArchiveEntry) => {
-    if (fileLoadState.manualLoading) return;
+  const loadAsText = useCallback(
+    async (entry: ArchiveEntry) => {
+      if (fileLoadState.manualLoading) return;
 
-    setFileLoadState(prev => ({ ...prev, manualLoading: true }));
-    try {
-      let fullPreview: FilePreview;
-      if (storageClient && storageClient.getArchiveFilePreview) {
-        fullPreview = await storageClient.getArchiveFilePreview(
-          url,
-          filename,
-          entry.path,
-          safeParseInt(entry.size) || undefined // 加载完整文件
-        );
-      } else {
-        fullPreview = await CompressionService.extractFilePreview(
-          url,
-          filename,
-          entry.path,
-          safeParseInt(entry.size) || undefined // 加载完整文件
-        );
-      }
-
-      setFilePreview(fullPreview);
-      setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
-
-      // 强制以文本方式解码内容
-      if (fullPreview.content) {
-        try {
-          const textContent = new TextDecoder('utf-8', { fatal: false }).decode(fullPreview.content);
-          setFileContent(textContent);
-          setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
-          setForceTextView(true); // 标记为强制文本查看
-        } catch (decodeError) {
-          console.error('Failed to decode text content:', decodeError);
-          setPreviewError(t('error.decode.text'));
+      setFileLoadState(prev => ({ ...prev, manualLoading: true }));
+      try {
+        let fullPreview: FilePreview;
+        if (storageClient && storageClient.getArchiveFilePreview) {
+          fullPreview = await storageClient.getArchiveFilePreview(
+            url,
+            filename,
+            entry.path,
+            safeParseInt(entry.size) || undefined // 加载完整文件
+          );
+        } else {
+          fullPreview = await CompressionService.extractFilePreview(
+            url,
+            filename,
+            entry.path,
+            safeParseInt(entry.size) || undefined // 加载完整文件
+          );
         }
+
+        setFilePreview(fullPreview);
+        setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
+
+        // 强制以文本方式解码内容
+        if (fullPreview.content) {
+          try {
+            const textContent = new TextDecoder('utf-8', { fatal: false }).decode(
+              fullPreview.content
+            );
+            setFileContent(textContent);
+            setFileLoadState(prev => ({ ...prev, loadedContentSize: fullPreview.content!.length }));
+            setForceTextView(true); // 标记为强制文本查看
+          } catch (decodeError) {
+            console.error('Failed to decode text content:', decodeError);
+            setPreviewError(t('error.decode.text'));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load as text:', err);
+        setPreviewError(t('error.load.full.content'));
+      } finally {
+        setFileLoadState(prev => ({ ...prev, manualLoading: false }));
       }
-    } catch (err) {
-      console.error('Failed to load as text:', err);
-      setPreviewError(t('error.load.full.content'));
-    } finally {
-      setFileLoadState(prev => ({ ...prev, manualLoading: false }));
-    }
-  }, [url, filename, storageClient, fileLoadState.manualLoading, t]);
-
-
+    },
+    [url, filename, storageClient, fileLoadState.manualLoading, t]
+  );
   // 复制压缩包内文件路径到剪贴板
   const copyFilePath = async (entry: ArchiveEntry) => {
     try {
@@ -579,7 +639,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
       // 如果是用户取消操作，不显示错误弹窗
       const errorMessage = extractErrorMessage(err, 'error.unknown', t);
       if (errorMessage !== 'download.cancelled') {
-				showToast(`${t('download.failed')}: ${errorMessage}`, 'error');
+        showToast(`${t('download.failed')}: ${errorMessage}`, 'error');
       }
     }
   };
@@ -587,245 +647,251 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({
   // 不再需要过滤逻辑，由ArchiveFileBrowser处理
 
   if (loading) {
-    return (
-      <LoadingDisplay
-        message={t('loading.analyzing.archive')}
-        icon={Archive}
-      />
-    );
+    return <LoadingDisplay message={t('loading.analyzing.archive')} icon={Archive} />;
   }
 
   if (error) {
-    return (
-      <ErrorDisplay
-        message={error}
-        onRetry={loadArchiveInfo}
-      />
-    );
+    return <ErrorDisplay message={error} onRetry={loadArchiveInfo} />;
   }
 
   return (
-		<div className="flex-1 flex min-h-0">
-			{/* 使用ArchiveFileBrowser组件 */}
-			<div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-0">
-				{archiveInfo && (
-					<ArchiveFileBrowser
-						archiveInfo={archiveInfo}
-						onFileSelect={previewFile}
-						onBack={() => window.history.back()}
-						showHidden={showHidden}
-						onShowHiddenChange={setShowHidden}
-					/>
-				)}
-			</div>
+    <div className="flex-1 flex min-h-0">
+      {/* 使用ArchiveFileBrowser组件 */}
+      <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-0">
+        {archiveInfo && (
+          <ArchiveFileBrowser
+            archiveInfo={archiveInfo}
+            onFileSelect={previewFile}
+            onBack={() => window.history.back()}
+            showHidden={showHidden}
+            onShowHiddenChange={setShowHidden}
+          />
+        )}
+      </div>
 
-			{/* 文件预览 */}
-			<div className="w-1/2 flex flex-col min-h-0">
-				{previewLoading ? (
-					<LoadingDisplay message={t('loading.preview')} />
-				) : selectedEntry ? (
-					<div className="flex-1 flex flex-col min-h-0">
-						<div className="p-4 -my-0.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
-							<div className="flex items-center justify-between">
-								<div className="min-w-0 flex-1">
-									<div className="flex items-center space-x-2">
-										<h3 className="font-medium truncate">{selectedEntry.path}</h3>
-										<div className="flex items-center space-x-1">
-											{/* 下载文件按钮 */}
-											{!selectedEntry.is_dir && (
-												<button
-													onClick={() => downloadFile(selectedEntry)}
-													className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-													title={t('viewer.download')}
-												>
-													<Download className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-												</button>
-											)}
-											{/* 复制文件路径按钮 */}
-											<button
-												onClick={() => copyFilePath(selectedEntry)}
-												className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-												title={t('copy.full.path')}
-											>
-												<Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-											</button>
-										</div>
-									</div>
-									<p className="text-sm text-gray-600 dark:text-gray-400">
-										{t('file.size.label')}: {formatFileSize(selectedEntry.size)}
-										{(() => {
-											const formattedTime = formatModifiedTime(selectedEntry.modified_time || undefined);
-											return formattedTime ? (
-												<span className="ml-4">
-													{t('file.modified.time')}: {formattedTime}
-												</span>
-											) : null;
-										})()}
-									</p>
-								</div>
-							</div>
-						</div>
+      {/* 文件预览 */}
+      <div className="w-1/2 flex flex-col min-h-0">
+        {previewLoading ? (
+          <LoadingDisplay message={t('loading.preview')} />
+        ) : selectedEntry ? (
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="p-4 -my-0.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-medium truncate">{selectedEntry.path}</h3>
+                    <div className="flex items-center space-x-1">
+                      {/* 下载文件按钮 */}
+                      {!selectedEntry.is_dir && (
+                        <button
+                          onClick={() => downloadFile(selectedEntry)}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title={t('viewer.download')}
+                        >
+                          <Download className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        </button>
+                      )}
+                      {/* 复制文件路径按钮 */}
+                      <button
+                        onClick={() => copyFilePath(selectedEntry)}
+                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                        title={t('copy.full.path')}
+                      >
+                        <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {t('file.size.label')}: {formatFileSize(selectedEntry.size)}
+                    {(() => {
+                      const formattedTime = formatModifiedTime(
+                        selectedEntry.modified_time || undefined
+                      );
+                      return formattedTime ? (
+                        <span className="ml-4">
+                          {t('file.modified.time')}: {formattedTime}
+                        </span>
+                      ) : null;
+                    })()}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-						<div className="flex-1 flex flex-col overflow-auto min-h-0">
-							{previewError ? (
-								<ErrorDisplay
-									message={previewError}
-									onRetry={() => {
-										setPreviewError(null);
-										if (selectedEntry) {
-											previewFile(selectedEntry);
-										}
-									}}
-									className="h-full"
-								/>
-							) : selectedEntry?.is_dir ? (
-								<StatusDisplay
-									type="directoryEmpty"
-									message={t('folder.selected')}
-									secondaryMessage={t('folder.info.message')}
-									icon={Folder}
-									className="h-full"
-								/>
-							) : selectedEntry && filePreview ? (
-								(() => {
-									const { isText, isMedia, isData, isSpreadsheet, isPointCloud, fileType } = getFileTypeInfo(selectedEntry);
-									const virtualFilePath = createVirtualFilePath(selectedEntry);
+            <div className="flex-1 flex flex-col overflow-auto min-h-0">
+              {previewError ? (
+                <ErrorDisplay
+                  message={previewError}
+                  onRetry={() => {
+                    setPreviewError(null);
+                    if (selectedEntry) {
+                      previewFile(selectedEntry);
+                    }
+                  }}
+                  className="h-full"
+                />
+              ) : selectedEntry?.is_dir ? (
+                <StatusDisplay
+                  type="directoryEmpty"
+                  message={t('folder.selected')}
+                  secondaryMessage={t('folder.info.message')}
+                  icon={Folder}
+                  className="h-full"
+                />
+              ) : selectedEntry && filePreview ? (
+                (() => {
+                  const { isText, isMedia, isData, isSpreadsheet, isPointCloud, fileType } =
+                    getFileTypeInfo(selectedEntry);
+                  const virtualFilePath = createVirtualFilePath(selectedEntry);
 
-									// 检查是否强制以文本方式查看或本身就是文本文件
-									if ((isText || forceTextView) && fileContent) {
-										return (
-											<div className="h-full flex flex-col">
-                									<VirtualizedTextViewer
-													content={fileContent}
-													searchTerm=""
-													onSearchResults={() => {}}
-													className="flex-1"
-													onScrollToBottom={filePreview?.is_truncated ? handleScrollToBottom : undefined}
-													fileName={selectedEntry.path}
-													isMarkdown={false}
-													isMarkdownPreviewOpen={false}
-													setIsMarkdownPreviewOpen={() => {}}												/>
-												{filePreview?.is_truncated && (
-													<div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
-														<div className="flex items-center justify-between">
-															<span>
-																{t('file.loaded.chunks', { chunks: fileLoadState.loadedChunks, size: formatFileSize(fileLoadState.loadedContentSize) })}
-															</span>
-															{fileLoadState.loadingMore && (
-																<div className="flex items-center gap-2">
-																	<Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-																	<span>{t('loading.more.content')}</span>
-																</div>
-															)}
-															{!fileLoadState.loadingMore && filePreview?.is_truncated && (
-																<span className="text-blue-600 dark:text-blue-400">
-																	{t('scroll.to.load.more')}
-																</span>
-															)}
-														</div>
-													</div>
-												)}
-											</div>
-										);
-									} else if (isMedia) {
-										// 媒体文件：小于10MB自动加载，大于10MB需要手动加载
-										const fileSize = safeParseInt(selectedEntry.size) || 0;
-										const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
+                  // 检查是否强制以文本方式查看或本身就是文本文件
+                  if ((isText || forceTextView) && fileContent) {
+                    return (
+                      <div className="h-full flex flex-col">
+                        <VirtualizedTextViewer
+                          content={fileContent}
+                          searchTerm=""
+                          onSearchResults={() => {}}
+                          className="flex-1"
+                          onScrollToBottom={
+                            filePreview?.is_truncated ? handleScrollToBottom : undefined
+                          }
+                          fileName={selectedEntry.path}
+                          isMarkdown={false}
+                          isMarkdownPreviewOpen={false}
+                          setIsMarkdownPreviewOpen={() => {}}
+                        />
+                        {filePreview?.is_truncated && (
+                          <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex items-center justify-between">
+                              <span>
+                                {t('file.loaded.chunks', {
+                                  chunks: fileLoadState.loadedChunks,
+                                  size: formatFileSize(fileLoadState.loadedContentSize),
+                                })}
+                              </span>
+                              {fileLoadState.loadingMore && (
+                                <div className="flex items-center gap-2">
+                                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                  <span>{t('loading.more.content')}</span>
+                                </div>
+                              )}
+                              {!fileLoadState.loadingMore && filePreview?.is_truncated && (
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  {t('scroll.to.load.more')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else if (isMedia) {
+                    // 媒体文件：小于10MB自动加载，大于10MB需要手动加载
+                    const fileSize = safeParseInt(selectedEntry.size) || 0;
+                    const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
 
-										if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
-											return (
-												<ManualLoadButton
-													entry={selectedEntry}
-													onLoad={loadFullContent}
-													isLoading={fileLoadState.manualLoading}
-													loadType="media"
-												/>
-											);
-										}
-										return (
-											<MediaViewer
-												filePath={virtualFilePath}
-												fileName={selectedEntry.path}
-												fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
-												fileSize={safeParseInt(selectedEntry.size)}
-												previewContent={filePreview.content}
-											/>
-										);
-									} else if (isData || isSpreadsheet) {
-										// 数据文件：小于10MB自动加载，大于10MB需要手动加载
-										const fileSize = safeParseInt(selectedEntry.size) || 0;
-										const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
+                    if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
+                      return (
+                        <ManualLoadButton
+                          entry={selectedEntry}
+                          onLoad={loadFullContent}
+                          isLoading={fileLoadState.manualLoading}
+                          loadType="media"
+                        />
+                      );
+                    }
+                    return (
+                      <MediaViewer
+                        filePath={virtualFilePath}
+                        fileName={selectedEntry.path}
+                        fileType={fileType as 'image' | 'pdf' | 'video' | 'audio'}
+                        fileSize={safeParseInt(selectedEntry.size)}
+                        previewContent={filePreview.content}
+                      />
+                    );
+                  } else if (isData || isSpreadsheet) {
+                    // 数据文件：小于10MB自动加载，大于10MB需要手动加载
+                    const fileSize = safeParseInt(selectedEntry.size) || 0;
+                    const shouldAutoLoad = fileSize < 10 * 1024 * 1024; // 10MB
 
-										if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
-											return (
-												<ManualLoadButton
-													entry={selectedEntry}
-													onLoad={loadFullContent}
-													isLoading={fileLoadState.manualLoading}
-													loadType="data"
-												/>
-											);
-										}
-										return (
-											<UniversalDataTableViewer
-												filePath={virtualFilePath}
-												fileName={selectedEntry.path}
-												fileSize={safeParseInt(selectedEntry.size)}
-												fileType={isSpreadsheet ?
-													(selectedEntry.path.toLowerCase().endsWith('.xlsx') || selectedEntry.path.toLowerCase().endsWith('.xls') ? 'xlsx' : 'ods') :
-													(selectedEntry.path.toLowerCase().endsWith('.parquet') || selectedEntry.path.toLowerCase().endsWith('.pqt') ? 'parquet' : 'csv')
-												}
-												previewContent={filePreview.content}
-											/>
-										);
-									} else if (isPointCloud) {
-										// 点云文件：需要手动加载
-										if (!fileLoadState.manualLoadRequested) {
-											return (
-												<ManualLoadButton
-													entry={selectedEntry}
-													onLoad={loadFullContent}
-													isLoading={fileLoadState.manualLoading}
-													loadType="pointCloud"
-												/>
-											);
-										}
-										return (
-											<PointCloudViewer
-												filePath={virtualFilePath}
-												onMetadataLoaded={() => {}}
-												previewContent={filePreview.content}
-											/>
-										);
-									} else {
-										// 不支持的格式：只提供文本查看选项
-										return (
-											<UnsupportedFormatDisplay
-												message={t('viewer.unsupported.format')}
-												secondaryMessage={t('viewer.unsupported.format.message')}
-												onOpenAsText={() => loadAsText(selectedEntry)}
-												className="h-full"
-											/>
-										);
-									}
-								})()
-							) : (
-								<StatusDisplay
-									type="previewEmpty"
-									message={t('preparing.preview')}
-									className="h-full"
-								/>
-							)}
-						</div>
-					</div>
-				) : (
-					<StatusDisplay
-						type="previewEmpty"
-						message={t('select.file.for.preview')}
-						className="h-full"
-					/>
-				)}
-			</div>
-		</div>
+                    if (!shouldAutoLoad && !fileLoadState.manualLoadRequested) {
+                      return (
+                        <ManualLoadButton
+                          entry={selectedEntry}
+                          onLoad={loadFullContent}
+                          isLoading={fileLoadState.manualLoading}
+                          loadType="data"
+                        />
+                      );
+                    }
+                    return (
+                      <UniversalDataTableViewer
+                        filePath={virtualFilePath}
+                        fileName={selectedEntry.path}
+                        fileSize={safeParseInt(selectedEntry.size)}
+                        fileType={
+                          isSpreadsheet
+                            ? selectedEntry.path.toLowerCase().endsWith('.xlsx') ||
+                              selectedEntry.path.toLowerCase().endsWith('.xls')
+                              ? 'xlsx'
+                              : 'ods'
+                            : selectedEntry.path.toLowerCase().endsWith('.parquet') ||
+                                selectedEntry.path.toLowerCase().endsWith('.pqt')
+                              ? 'parquet'
+                              : 'csv'
+                        }
+                        previewContent={filePreview.content}
+                      />
+                    );
+                  } else if (isPointCloud) {
+                    // 点云文件：需要手动加载
+                    if (!fileLoadState.manualLoadRequested) {
+                      return (
+                        <ManualLoadButton
+                          entry={selectedEntry}
+                          onLoad={loadFullContent}
+                          isLoading={fileLoadState.manualLoading}
+                          loadType="pointCloud"
+                        />
+                      );
+                    }
+                    return (
+                      <PointCloudViewer
+                        filePath={virtualFilePath}
+                        onMetadataLoaded={() => {}}
+                        previewContent={filePreview.content}
+                      />
+                    );
+                  } else {
+                    // 不支持的格式：只提供文本查看选项
+                    return (
+                      <UnsupportedFormatDisplay
+                        message={t('viewer.unsupported.format')}
+                        secondaryMessage={t('viewer.unsupported.format.message')}
+                        onOpenAsText={() => loadAsText(selectedEntry)}
+                        className="h-full"
+                      />
+                    );
+                  }
+                })()
+              ) : (
+                <StatusDisplay
+                  type="previewEmpty"
+                  message={t('preparing.preview')}
+                  className="h-full"
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <StatusDisplay
+            type="previewEmpty"
+            message={t('select.file.for.preview')}
+            className="h-full"
+          />
+        )}
+      </div>
+    </div>
   );
 };

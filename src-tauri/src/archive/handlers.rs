@@ -1,4 +1,4 @@
-use crate::archive::{types::*, formats};
+use crate::archive::{formats, types::*};
 use crate::storage::traits::StorageClient;
 use std::sync::Arc;
 
@@ -42,7 +42,9 @@ impl ArchiveHandler {
 
         let handler = if matches!(compression_type, CompressionType::Unknown) {
             // 通过 StorageClient 读取文件头部来检测格式
-            let header_data = client.read_file_range(&file_path, 0, 512).await
+            let header_data = client
+                .read_file_range(&file_path, 0, 512)
+                .await
                 .map_err(|e| format!("Failed to read file header: {}", e))?;
             formats::detect_format_and_get_handler(&header_data)
                 .ok_or_else(|| "Unsupported archive format".to_string())?
@@ -52,7 +54,9 @@ impl ArchiveHandler {
         };
 
         // 通过 StorageClient 进行流式分析
-        handler.analyze_with_client(client, &file_path, &filename, max_size).await
+        handler
+            .analyze_with_client(client, &file_path, &filename, max_size)
+            .await
     }
 
     /// 获取文件预览
@@ -93,7 +97,9 @@ impl ArchiveHandler {
         }
 
         let handler = if matches!(compression_type, CompressionType::Unknown) {
-            let header_data = client.read_file_range(&file_path, 0, 512).await
+            let header_data = client
+                .read_file_range(&file_path, 0, 512)
+                .await
                 .map_err(|e| format!("Failed to read file header: {}", e))?;
             formats::detect_format_and_get_handler(&header_data)
                 .ok_or_else(|| "Unsupported archive format".to_string())?
@@ -110,7 +116,17 @@ impl ArchiveHandler {
             let boxed: Box<dyn Fn(u64, u64) + Send + Sync> = Box::new(callback);
             boxed
         });
-        handler.extract_preview_with_client(client, &file_path, &entry_path, max_size, offset, boxed_callback, cancel_rx).await
+        handler
+            .extract_preview_with_client(
+                client,
+                &file_path,
+                &entry_path,
+                max_size,
+                offset,
+                boxed_callback,
+                cancel_rx,
+            )
+            .await
     }
 
     // 辅助方法

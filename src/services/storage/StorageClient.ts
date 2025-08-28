@@ -1,10 +1,15 @@
-import { commands, DirectoryResult, ListOptions, ConnectionConfig as TauriConnectionConfig } from '../../types/tauri-commands';
+import {
+  commands,
+  DirectoryResult,
+  ListOptions,
+  ConnectionConfig as TauriConnectionConfig,
+} from '../../types/tauri-commands';
 import {
   StorageClient as IStorageClient,
   ConnectionConfig,
   StorageClientType,
   FileContent,
-  ReadOptions
+  ReadOptions,
 } from './types';
 import { ArchiveInfo, FilePreview } from '../../types';
 
@@ -51,7 +56,10 @@ export interface StorageAdapter {
   /** 连接名称生成逻辑 */
   generateConnectionName: (config: ConnectionConfig) => string;
   /** 根路径显示信息 */
-  getRootDisplayInfo?: (connection: any, config?: ConnectionConfig) => { showWelcome?: boolean; customMessage?: string };
+  getRootDisplayInfo?: (
+    connection: any,
+    config?: ConnectionConfig
+  ) => { showWelcome?: boolean; customMessage?: string };
   /** 特定的连接后处理 */
   postConnect?: (connection: any, config: ConnectionConfig) => any;
 }
@@ -64,7 +72,7 @@ const STORAGE_ADAPTERS: Record<StorageClientType, StorageAdapter> = {
   local: localStorageAdapter,
   oss: ossStorageAdapter,
   s3: ossStorageAdapter, // S3 使用 OSS 适配器（兼容）
-  huggingface: huggingfaceStorageAdapter
+  huggingface: huggingfaceStorageAdapter,
 };
 
 /**
@@ -185,19 +193,25 @@ export class StorageClient implements IStorageClient {
       // 使用适配器的路径预处理逻辑
       let actualPath = path;
       if (this.adapter.preprocessPath) {
-        actualPath = this.adapter.preprocessPath(path, this.connection, this.connectionConfig || undefined);
+        actualPath = this.adapter.preprocessPath(
+          path,
+          this.connection,
+          this.connectionConfig || undefined
+        );
       }
 
       return await this.invokeListDirectory(
         actualPath,
-        options ? {
-          pageSize: options.pageSize || null,
-          marker: options.marker || null,
-          prefix: options.prefix || null,
-          recursive: options.recursive || null,
-          sortBy: options.sortBy || null,
-          sortOrder: options.sortOrder || null,
-        } : undefined,
+        options
+          ? {
+              pageSize: options.pageSize || null,
+              marker: options.marker || null,
+              prefix: options.prefix || null,
+              recursive: options.recursive || null,
+              sortBy: options.sortBy || null,
+              sortOrder: options.sortOrder || null,
+            }
+          : undefined
       );
     } catch (error) {
       console.error(`Failed to list directory ${path}:`, error);
@@ -252,7 +266,11 @@ export class StorageClient implements IStorageClient {
     }
   }
 
-  async downloadFileWithProgress(path: string, filename: string, savePath?: string): Promise<string> {
+  async downloadFileWithProgress(
+    path: string,
+    filename: string,
+    savePath?: string
+  ): Promise<string> {
     if (!this.connected) {
       throw new Error(`${this.storageType} storage not connected`);
     }
@@ -270,11 +288,7 @@ export class StorageClient implements IStorageClient {
   /**
    * 分析压缩文件（统一使用StorageClient流式接口）
    */
-  async analyzeArchive(
-    path: string,
-    filename: string,
-    maxSize?: number
-  ): Promise<ArchiveInfo> {
+  async analyzeArchive(path: string, filename: string, maxSize?: number): Promise<ArchiveInfo> {
     try {
       // 所有存储类型都使用统一的StorageClient流式接口
       console.log(`${this.protocol}存储使用统一流式分析:`, { path, filename });
@@ -293,13 +307,19 @@ export class StorageClient implements IStorageClient {
     filename: string,
     entryPath: string,
     maxPreviewSize?: number,
-    offset?: number  // 支持偏移量参数
+    offset?: number // 支持偏移量参数
   ): Promise<FilePreview> {
     try {
       // 所有存储类型都使用统一的StorageClient流式接口
       console.log(`${this.protocol}存储使用统一流式预览:`, { path, filename, entryPath, offset });
 
-      return await this.getArchiveFilePreviewWithClient(path, filename, entryPath, maxPreviewSize, offset);
+      return await this.getArchiveFilePreviewWithClient(
+        path,
+        filename,
+        entryPath,
+        maxPreviewSize,
+        offset
+      );
     } catch (error) {
       console.error('Failed to get archive file preview:', error);
       throw error;
@@ -336,11 +356,7 @@ export class StorageClient implements IStorageClient {
     // 确保 savePath 不是 undefined，如果是则设为 null
     const normalizedSavePath = savePath === undefined ? null : savePath;
 
-    const result = await commands.downloadStart(
-      url,
-      filename,
-      normalizedSavePath
-    );
+    const result = await commands.downloadStart(url, filename, normalizedSavePath);
 
     if (result.status === 'error') {
       throw new Error(result.error);
@@ -358,11 +374,7 @@ export class StorageClient implements IStorageClient {
     maxSize?: number
   ): Promise<ArchiveInfo> {
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveGetFileInfo(
-      path,
-      filename,
-      maxSize || null
-    );
+    const result = await commands.archiveGetFileInfo(path, filename, maxSize || null);
 
     if (result.status === 'error') {
       throw new Error(result.error);
@@ -399,7 +411,7 @@ export class StorageClient implements IStorageClient {
       content: new Uint8Array(result.data.content),
       is_truncated: result.data.is_truncated,
       total_size: result.data.total_size,
-      preview_size: result.data.preview_size
+      preview_size: result.data.preview_size,
     };
   }
 
@@ -499,7 +511,11 @@ export class StorageClient implements IStorageClient {
    * @param length 读取长度（可选）
    * @returns 二进制数据
    */
-  protected async readFileBytes(path: string, start?: number, length?: number): Promise<Uint8Array> {
+  protected async readFileBytes(
+    path: string,
+    start?: number,
+    length?: number
+  ): Promise<Uint8Array> {
     const result = await commands.storageGetFileContent(
       this.toProtocolUrl(path),
       start !== undefined ? start.toString() : null,
@@ -558,7 +574,6 @@ export class StorageClient implements IStorageClient {
       extraOptions: null,
     };
   }
-
 }
 
 // 导出适配器映射，供外部使用

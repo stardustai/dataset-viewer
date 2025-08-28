@@ -10,7 +10,7 @@ export const webdavStorageAdapter: StorageAdapter = {
   protocol: 'webdav',
   displayName: 'WebDAV Server',
   defaultSortOptions: null, // 使用前端排序
-  defaultPageSize: null,    // 不分页
+  defaultPageSize: null, // 不分页
   supportsSearch: false,
   supportsCustomRootDisplay: false,
 
@@ -49,5 +49,5 @@ export const webdavStorageAdapter: StorageAdapter = {
       password: config.password,
       connected: true,
     };
-  }
+  },
 };

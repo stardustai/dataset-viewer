@@ -8,10 +8,7 @@ interface DataTableColumnPanelProps {
   onClose: () => void;
 }
 
-export const DataTableColumnPanel: React.FC<DataTableColumnPanelProps> = ({
-  table,
-  onClose
-}) => {
+export const DataTableColumnPanel: React.FC<DataTableColumnPanelProps> = ({ table, onClose }) => {
   const { t } = useTranslation();
 
   return (

@@ -45,7 +45,7 @@ export class FileAssociationService {
     }
 
     try {
-      await listen('file-opened', async (event) => {
+      await listen('file-opened', async event => {
         const filePath = event.payload as string;
         console.log('File opened from association:', filePath);
 
@@ -91,7 +91,7 @@ export class FileAssociationService {
         return {
           success: false,
           fileName: '',
-          error: 'Failed to connect to local storage'
+          error: 'Failed to connect to local storage',
         };
       }
 
@@ -105,7 +105,7 @@ export class FileAssociationService {
         success: true,
         file,
         fileName,
-        fileDirectory: fileDir
+        fileDirectory: fileDir,
       };
     } catch (error) {
       console.error('Error in handleFileOpen:', error);
@@ -113,7 +113,7 @@ export class FileAssociationService {
         success: false,
         fileName: '',
         fileDirectory: '',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -135,7 +135,7 @@ export class FileAssociationService {
         size: String(fileSize),
         type: 'file',
         mime: null,
-        etag: null
+        etag: null,
       };
     } catch (error) {
       console.error('Failed to get file size:', error);
@@ -148,7 +148,7 @@ export class FileAssociationService {
         size: '0',
         type: 'file',
         mime: null,
-        etag: null
+        etag: null,
       };
     }
   }

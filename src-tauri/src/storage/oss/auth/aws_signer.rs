@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use crate::utils::crypto::{hmac_sha256, hmac_sha256_bytes, sha256_hex};
 use chrono::Utc;
-use crate::utils::crypto::{sha256_hex, hmac_sha256, hmac_sha256_bytes};
+use std::collections::HashMap;
 
 /// 构建AWS S3的认证头
 pub fn build_aws_auth_headers(
@@ -31,7 +31,7 @@ pub fn build_aws_auth_headers(
         uri,
         &headers,
         &payload_hash,
-        query_string.unwrap_or("")
+        query_string.unwrap_or(""),
     );
 
     // 构建待签名字符串
@@ -65,7 +65,7 @@ fn build_canonical_request_with_payload(
     uri: &str,
     headers: &HashMap<String, String>,
     payload_hash: &str,
-    query_string: &str
+    query_string: &str,
 ) -> String {
     // 规范化URI
     let canonical_uri = if uri.is_empty() || uri == "/" {
@@ -91,7 +91,8 @@ fn build_canonical_request_with_payload(
         .iter()
         .map(|(k, v)| format!("{}:{}", k.to_lowercase(), v.trim()))
         .collect::<Vec<_>>()
-        .join("\n") + "\n";
+        .join("\n")
+        + "\n";
 
     let signed_headers = get_signed_headers(headers);
 
@@ -114,7 +115,12 @@ fn get_signed_headers(headers: &HashMap<String, String>) -> String {
 }
 
 /// 计算AWS签名
-fn calculate_aws_signature(string_to_sign: &str, date_stamp: &str, region: &str, secret_key: &str) -> String {
+fn calculate_aws_signature(
+    string_to_sign: &str,
+    date_stamp: &str,
+    region: &str,
+    secret_key: &str,
+) -> String {
     // AWS4 签名密钥派生
     let k_date = hmac_sha256(&format!("AWS4{}", secret_key), date_stamp);
     let k_region = hmac_sha256_bytes(&k_date, region);
@@ -142,15 +148,25 @@ pub fn generate_aws_presigned_url(
 
     // AWS限制：最大7天
     let max_expires = 7 * 24 * 3600;
-    let expires = if expires_in_seconds > max_expires { max_expires } else { expires_in_seconds };
+    let expires = if expires_in_seconds > max_expires {
+        max_expires
+    } else {
+        expires_in_seconds
+    };
 
     // 构建查询参数
     let credential_scope = format!("{}/{}/s3/aws4_request", date_stamp, region);
     let credential = format!("{}/{}", access_key, credential_scope);
 
     let mut query_params = vec![
-        ("X-Amz-Algorithm".to_string(), "AWS4-HMAC-SHA256".to_string()),
-        ("X-Amz-Credential".to_string(), urlencoding::encode(&credential).to_string()),
+        (
+            "X-Amz-Algorithm".to_string(),
+            "AWS4-HMAC-SHA256".to_string(),
+        ),
+        (
+            "X-Amz-Credential".to_string(),
+            urlencoding::encode(&credential).to_string(),
+        ),
         ("X-Amz-Date".to_string(), amz_date.clone()),
         ("X-Amz-Expires".to_string(), expires.to_string()),
         ("X-Amz-SignedHeaders".to_string(), "host".to_string()),
@@ -158,7 +174,8 @@ pub fn generate_aws_presigned_url(
 
     // 排序查询参数
     query_params.sort_by(|a, b| a.0.cmp(&b.0));
-    let query_string = query_params.iter()
+    let query_string = query_params
+        .iter()
         .map(|(k, v)| format!("{}={}", k, v))
         .collect::<Vec<_>>()
         .join("&");
@@ -174,7 +191,8 @@ pub fn generate_aws_presigned_url(
 
     let (canonical_uri, object_url) = if is_virtual_hosted {
         // 虚拟主机风格 - 对于S3预签名URL，路径需要进行URI编码，但保持斜杠
-        let encoded_key = object_key.split('/')
+        let encoded_key = object_key
+            .split('/')
             .map(|segment| urlencoding::encode(segment).to_string())
             .collect::<Vec<_>>()
             .join("/");
@@ -183,7 +201,8 @@ pub fn generate_aws_presigned_url(
         (uri, url)
     } else {
         // 路径风格
-        let encoded_key = object_key.split('/')
+        let encoded_key = object_key
+            .split('/')
             .map(|segment| urlencoding::encode(segment).to_string())
             .collect::<Vec<_>>()
             .join("/");
@@ -195,9 +214,7 @@ pub fn generate_aws_presigned_url(
     // 构建规范请求
     let canonical_request = format!(
         "GET\n{}\n{}\nhost:{}\n\nhost\nUNSIGNED-PAYLOAD",
-        canonical_uri,
-        query_string,
-        host
+        canonical_uri, query_string, host
     );
 
     // 构建待签名字符串
@@ -212,5 +229,8 @@ pub fn generate_aws_presigned_url(
     let signature = calculate_aws_signature(&string_to_sign, &date_stamp, region, secret_key);
 
     // 构建最终URL
-    Ok(format!("{}?{}&X-Amz-Signature={}", object_url, query_string, signature))
+    Ok(format!(
+        "{}?{}&X-Amz-Signature={}",
+        object_url, query_string, signature
+    ))
 }
