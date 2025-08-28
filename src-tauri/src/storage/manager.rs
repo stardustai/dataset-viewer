@@ -108,6 +108,13 @@ impl StorageManager {
 
         client.get_download_url(path)
     }
+
+    pub async fn get_download_headers(&self) -> Result<HashMap<String, String>, StorageError> {
+        let client = self.cached_client.as_ref()
+            .ok_or(StorageError::NotConnected)?;
+
+        Ok(client.get_download_headers())
+    }
 }
 
 // 全局存储管理器

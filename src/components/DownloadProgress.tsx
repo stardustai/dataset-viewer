@@ -126,7 +126,7 @@ const DownloadItem = ({
 
         {download.status === 'stopped' && (
           <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-            {download.currentFile || '下载已停止'}
+            {download.currentFile || t('download.status.stopped')}
           </p>
         )}
       </div>
@@ -145,7 +145,7 @@ const DownloadItem = ({
         <button
           onClick={() => onRemove(download.filename)}
           className="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-          title={download.status === 'stopped' ? '移除停止的下载' : undefined}
+          title={download.status === 'stopped' ? t('download.remove.stopped') : undefined}
         >
           <X className="w-3 h-3" />
         </button>
@@ -217,16 +217,16 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
     const unlistenError = listen('download-error', (event) => {
       const { filename, error } = event.payload as { filename: string; error: string };
 
-      // 所有错误都正常显示，包括取消状态
-
       setDownloads(prev => {
         const newMap = new Map(prev);
         const existing = newMap.get(filename);
         if (existing) {
+          // 如果错误信息包含 "canceled/cancelled"（忽略大小写），则标记为 stopped 而不是 error
+          const isCancelled = /cancell?ed/i.test(error);
           newMap.set(filename, {
             ...existing,
-            status: 'error',
-            error
+            status: isCancelled ? 'stopped' : 'error',
+            error: isCancelled ? undefined : error
           });
         }
         return newMap;
@@ -253,15 +253,14 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
           }, timeoutMs);
         })
       ]);
-      // 显示取消状态
+      // 立即更新为stopped状态，与全部取消保持一致
         setDownloads(prev => {
           const newMap = new Map(prev);
           const existing = newMap.get(filename);
           if (existing && existing.status === 'downloading') {
             newMap.set(filename, {
               ...existing,
-              status: 'error',
-              error: t('download.cancelled')
+              status: 'stopped'
             });
           }
           return newMap;
@@ -301,9 +300,32 @@ export default function DownloadProgress({ isVisible, onClose }: DownloadProgres
 
   const stopAllDownloads = async () => {
     try {
+      // 先获取当前正在下载的文件名列表
+      const activeDownloads = Array.from(downloads.values())
+        .filter(d => d.status === 'downloading' || d.status === 'preparing')
+        .map(d => d.filename);
+
       await FolderDownloadService.stopAllDownloads();
       // 也取消后端的所有下载
       await commands.downloadCancelAll();
+
+      // 立即更新前端状态为stopped
+      if (activeDownloads.length > 0) {
+        setDownloads(prev => {
+          const newMap = new Map(prev);
+          activeDownloads.forEach(filename => {
+            const existing = newMap.get(filename);
+            if (existing && existing.status === 'downloading') {
+              newMap.set(filename, {
+                ...existing,
+                status: 'stopped'
+              });
+            }
+          });
+          return newMap;
+        });
+      }
+
       console.log('All downloads stopped');
     } catch (error) {
       console.error('Failed to stop all downloads:', error);

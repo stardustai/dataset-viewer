@@ -1,42 +1,27 @@
-import { BaseStorageClient } from './BaseStorageClient';
-import { WebDAVStorageClient } from './WebDAVStorageClient';
-import { LocalStorageClient } from './LocalStorageClient';
-import { OSSStorageClient } from './OSSStorageClient';
-import { HuggingFaceStorageClient } from './HuggingFaceStorageClient';
+import { StorageClient } from './StorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
 import { connectionStorage, StoredConnection } from '../connectionStorage';
-import { formatServiceName } from '../../utils/urlUtils';
+import { StorageConnection } from '../../types';
 import { commands } from '../../types/tauri-commands';
 
 /**
- * 存储客户端工厂
- * 负责创建和管理不同类型的存储客户端实例
+ * 存储客户端工厂 - 简化版
+ * 统一使用 StorageClient 处理所有存储类型
  */
 export class StorageClientFactory {
-  private static instances: Map<string, BaseStorageClient> = new Map();
+  private static instances: Map<string, StorageClient> = new Map();
 
   /**
-   * 创建存储客户端实例
+   * 创建存储客户端实例 - 统一使用 StorageClient
    */
-  static createClient(type: StorageClientType): BaseStorageClient {
-    switch (type) {
-      case 'webdav':
-        return new WebDAVStorageClient();
-      case 'local':
-        return new LocalStorageClient();
-      case 'oss':
-        return new OSSStorageClient();
-      case 'huggingface':
-        return new HuggingFaceStorageClient();
-      default:
-        throw new Error(`Unsupported storage type: ${type}`);
-    }
+  static createClient(type: StorageClientType): StorageClient {
+    return new StorageClient(type);
   }
 
   /**
    * 获取或创建存储客户端实例（单例模式）
    */
-  static getInstance(type: StorageClientType, key?: string): BaseStorageClient {
+  static getInstance(type: StorageClientType, key?: string): StorageClient {
     const instanceKey = key || type;
 
     if (!this.instances.has(instanceKey)) {
@@ -49,7 +34,7 @@ export class StorageClientFactory {
   /**
    * 连接到存储服务
    */
-  static async connectToStorage(config: ConnectionConfig, key?: string): Promise<BaseStorageClient> {
+  static async connectToStorage(config: ConnectionConfig, key?: string): Promise<StorageClient> {
     const client = this.getInstance(config.type, key);
 
     try {
@@ -78,18 +63,21 @@ export class StorageClientFactory {
       }
     } else {
       // 断开所有连接
-      this.instances.forEach(client => client.disconnect());
-      this.instances.clear();
+      for (const [key, client] of this.instances) {
+        client.disconnect();
+        this.instances.delete(key);
+      }
     }
   }
 
   /**
    * 获取所有活跃的连接
    */
-  static getActiveConnections(): Array<{ key: string; client: BaseStorageClient }> {
-    return Array.from(this.instances.entries())
-      .filter(([_, client]) => client.isConnected())
-      .map(([key, client]) => ({ key, client }));
+  static getActiveConnections(): Array<{ key: string; client: StorageClient }> {
+    return Array.from(this.instances.entries()).map(([key, client]) => ({
+      key,
+      client
+    }));
   }
 
   /**
@@ -115,11 +103,11 @@ export class StorageClientFactory {
 }
 
 /**
- * 统一存储服务管理器
- * 提供高级存储操作和缓存管理
+ * 统一存储服务管理器 - 简化版
+ * 提供高级存储操作和连接管理
  */
 export class StorageServiceManager {
-  private static currentClient: BaseStorageClient | null = null;
+  private static currentClient: StorageClient | null = null;
   private static currentConnection: ConnectionConfig | null = null;
 
   /**
@@ -127,36 +115,22 @@ export class StorageServiceManager {
    */
   static async connectWithConfig(config: ConnectionConfig): Promise<boolean> {
     try {
-      if (this.isConnected()) {
-        this.disconnect();
-      }
+      // 断开现有连接
+      this.disconnect();
 
-      // 生成默认连接名称（如果没有提供）
-      if (!config.name) {
-        config.name = StorageClientFactory.generateConnectionName(config);
-      }
+      // 连接新的存储
+      this.currentClient = await StorageClientFactory.connectToStorage(config);
+      this.currentConnection = config;
 
-      // 直接使用 setCurrentStorage 建立连接
-      await this.setCurrentStorage(config);
-
-      // 只有非临时连接才保存连接信息
+      // 自动保存连接信息（除非明确标记为临时连接）
       if (!config.isTemporary) {
-        // 连接成功后保存连接信息
         await this.saveConnectionInfo(config);
-
-        // 设置为默认连接
-        const connections = this.getStoredConnections();
-        const matchingConnection = this.findMatchingStoredConnection(connections, config);
-
-        if (matchingConnection) {
-          this.setDefaultConnection(matchingConnection.id);
-        }
       }
 
       return true;
     } catch (error) {
-      console.error(`${config.type} connection error:`, error);
-      throw error;
+      console.error('Connection failed:', error);
+      return false;
     }
   }
 
@@ -164,72 +138,36 @@ export class StorageServiceManager {
    * 保存连接信息到本地存储
    */
   private static async saveConnectionInfo(config: ConnectionConfig): Promise<void> {
-    let connectionData;
+    try {
+      // 查找匹配的已保存连接
+      const connections = connectionStorage.getStoredConnections();
+      const matchedConnection = this.findMatchingStoredConnection(connections, config);
 
-    switch (config.type) {
-      case 'webdav': {
-        connectionData = {
-          url: config.url!,
-          username: config.username!,
-          password: config.password!,
-          connected: true
-        };
-        await connectionStorage.saveConnection(connectionData, config.name, true);
-        break;
-      }
-
-      case 'local': {
-        connectionData = {
-          url: `file:///${config.rootPath || config.url!}`,
-          username: 'local',
-          password: '',
-          connected: true
-        };
-        await connectionStorage.saveConnection(connectionData, config.name, false);
-        break;
-      }
-
-      case 'oss': {
-        // config.url 已经是 oss:// 格式，直接使用
-        connectionData = {
-          url: config.url!, // 直接使用传入的 oss:// URL
-          username: config.username!,
-          password: config.password!,
+      if (matchedConnection) {
+        // 更新最后连接时间
+        connectionStorage.updateLastConnected(matchedConnection.id);
+      } else {
+        // 创建新的保存连接记录
+        const newConnection: StorageConnection = {
+          url: this.getConnectionUrl(config),
+          username: config.username || '',
+          password: config.password || config.apiToken || '',
           connected: true,
-          metadata: {
-            bucket: config.bucket,
-            region: config.region,
-            endpoint: config.endpoint,
-            platform: config.platform || 'custom' // 直接使用传递的平台信息
-          }
+          metadata: this.getConnectionMetadata(config)
         };
-        await connectionStorage.saveConnection(connectionData, config.name, true);
-        break;
-      }
 
-      case 'huggingface': {
-        const organization = config.organization || 'hub';
-        const hfUrl = `huggingface://${organization}`;
-        connectionData = {
-          url: hfUrl,
-          username: '', // 不再使用 username 存储组织信息
-          password: '', // 不再使用 password 存储 API token
-          connected: true,
-          metadata: {
-            organization: organization === 'hub' ? undefined : organization,
-            apiToken: config.apiToken
-          }
-        };
-        await connectionStorage.saveConnection(connectionData, config.name, true);
-        break;
+        await connectionStorage.saveConnection(newConnection, this.currentClient!.generateConnectionName(config), true);
       }
+    } catch (error) {
+      console.warn('Failed to save connection info:', error);
+      // 不抛出错误，允许连接继续
     }
   }
 
   /**
    * 查找匹配的已保存连接
    */
-  private static findMatchingStoredConnection(connections: any[], config: ConnectionConfig) {
+  private static findMatchingStoredConnection(connections: StoredConnection[], config: ConnectionConfig): StoredConnection | undefined {
     return connections.find(conn => {
       switch (config.type) {
         case 'webdav':
@@ -239,7 +177,6 @@ export class StorageServiceManager {
         case 'oss':
           return conn.url.startsWith('oss://') && conn.username === config.username;
         case 'huggingface':
-          // 匹配 HuggingFace 连接：使用 metadata 中的组织信息
           const storedOrg = conn.metadata?.organization;
           const configOrg = config.organization;
           return conn.url.startsWith('huggingface://') && storedOrg === configOrg;
@@ -250,24 +187,49 @@ export class StorageServiceManager {
   }
 
   /**
+   * 获取连接URL
+   */
+  private static getConnectionUrl(config: ConnectionConfig): string {
+    switch (config.type) {
+      case 'webdav': {
+        return config.url!;
+      }
+      case 'local': {
+        return `file:///${config.rootPath || config.url}`;
+      }
+      case 'oss': {
+        return `oss://${config.bucket}`;
+      }
+      case 'huggingface': {
+        return `huggingface://${config.organization || 'hub'}`;
+      }
+      default: {
+        return config.url || '';
+      }
+    }
+  }
+
+  /**
+   * 获取连接元数据
+   */
+  private static getConnectionMetadata(config: ConnectionConfig): any {
+    const metadata: any = {};
+
+    if (config.type === 'oss') {
+      metadata.region = config.region;
+      metadata.platform = config.platform;
+    } else if (config.type === 'huggingface') {
+      metadata.organization = config.organization;
+    }
+
+    return metadata;
+  }
+
+  /**
    * 设置当前活跃的存储客户端
    */
   static async setCurrentStorage(config: ConnectionConfig): Promise<void> {
-    // 断开现有连接
-    if (this.currentClient) {
-      this.currentClient.disconnect();
-      this.currentClient = null;
-      this.currentConnection = null;
-    }
-
-    // 如果切换到不同类型的存储，清理对应的单例实例
-    if (this.currentConnection && this.currentConnection.type !== config.type) {
-      StorageClientFactory.disconnect(this.currentConnection.type);
-    }
-
-    // 连接新的存储
-    this.currentClient = await StorageClientFactory.connectToStorage(config);
-    this.currentConnection = config;
+    await this.connectWithConfig(config);
   }
 
   /**
@@ -283,7 +245,7 @@ export class StorageServiceManager {
   /**
    * 获取当前存储客户端
    */
-  static getCurrentClient(): BaseStorageClient {
+  static getCurrentClient(): StorageClient {
     if (!this.currentClient) {
       throw new Error('No storage client connected');
     }
@@ -322,15 +284,7 @@ export class StorageServiceManager {
    * 切换存储类型（如从 WebDAV 切换到 OSS）
    */
   static async switchStorage(config: ConnectionConfig): Promise<void> {
-    const previousType = this.currentConnection?.type;
-
-    try {
-      await this.setCurrentStorage(config);
-      console.log(`Switched from ${previousType || 'none'} to ${config.type}`);
-    } catch (error) {
-      console.error(`Failed to switch to ${config.type}:`, error);
-      throw error;
-    }
+    await this.connectWithConfig(config);
   }
 
   /**
@@ -345,79 +299,42 @@ export class StorageServiceManager {
       throw new Error('No storage connection active');
     }
 
-    // 根据存储类型返回不同的功能集
-    switch (this.currentConnection.type) {
-      case 'webdav':
-        return {
-          type: 'webdav',
-          supportsRangeRequests: true,
-          supportsSearch: false, // 大多数 WebDAV 服务器不支持搜索
-        };
-      case 'local':
-        return {
-          type: 'local',
-          supportsRangeRequests: true,
-          supportsSearch: true, // 本机文件系统支持文件名搜索
-        };
-      default:
-        throw new Error(`Unknown storage type: ${this.currentConnection.type}`);
-    }
+    return {
+      type: this.currentConnection.type,
+      supportsRangeRequests: true, // 所有存储类型都支持范围请求
+      supportsSearch: this.currentClient.supportsSearch(),
+    };
   }
 
   /**
    * 自动连接
    */
   static async autoConnect(): Promise<boolean> {
-    const defaultConnection = connectionStorage.getDefaultConnection();
-    if (!defaultConnection) return false;
-
     try {
-      // 根据连接类型进行不同的处理
-      if (defaultConnection.url.startsWith('file:///')) {
-      // 本地连接
-      const rootPath = defaultConnection.url.replace('file:///', '');
-        return await this.connectToLocal(rootPath, defaultConnection.name);
-      } else if (defaultConnection.url.startsWith('oss://')) {
-        // OSS 连接 - 从 metadata 获取信息
-        const endpoint = defaultConnection.metadata?.endpoint;
-        const bucketName = defaultConnection.metadata?.bucket || '';
-        const region = defaultConnection.metadata?.region || '';
-
-        const config: ConnectionConfig = {
-          type: 'oss',
-          url: endpoint,
-          username: defaultConnection.username, // accessKey
-          password: defaultConnection.password || '', // secretKey
-          bucket: bucketName,
-          region: region,
-          endpoint: endpoint,
-          name: defaultConnection.name
-        };
-
-        await this.setCurrentStorage(config);
-        return true;
-      } else if (defaultConnection.url.startsWith('huggingface://')) {
-        // HuggingFace 连接 - 从 metadata 获取信息
-        const organization = defaultConnection.metadata?.organization;
-        const apiToken = defaultConnection.metadata?.apiToken || '';
-
-        const config: ConnectionConfig = {
-          type: 'huggingface',
-          name: defaultConnection.name,
-          apiToken: apiToken,
-          organization: organization
-        };
-
-        await this.setCurrentStorage(config);
-        return true;
-      } else {
-        // WebDAV 连接
-        return await this.connect(
-          defaultConnection.url,
-          defaultConnection.username,
-          defaultConnection.password || ''
-        );
+      // 尝试使用默认连接
+      const defaultConnection = connectionStorage.getDefaultConnection();
+      if (defaultConnection) {
+        const config = this.convertStoredConnectionToConfig(defaultConnection);
+        if (config) {
+          return await this.connectWithConfig(config);
+        }
       }
+
+      // 尝试使用最近的连接
+      const connections = connectionStorage.getStoredConnections();
+      if (connections.length > 0) {
+        // 按最后连接时间排序
+        const recent = [...connections].sort((a, b) =>
+          new Date(b.lastConnected || 0).getTime() - new Date(a.lastConnected || 0).getTime()
+        )[0];
+
+        const config = this.convertStoredConnectionToConfig(recent);
+        if (config) {
+          return await this.connectWithConfig(config);
+        }
+      }
+
+      return false;
     } catch (error) {
       console.warn('Auto connect failed:', error);
       return false;
@@ -425,12 +342,67 @@ export class StorageServiceManager {
   }
 
   /**
+   * 将存储的连接转换为配置
+   */
+  private static convertStoredConnectionToConfig(connection: StoredConnection): ConnectionConfig | null {
+    try {
+      // 从 URL 推断存储类型
+      let storageType: StorageClientType;
+      if (connection.url.startsWith('file:///')) {
+        storageType = 'local';
+      } else if (connection.url.startsWith('oss://')) {
+        storageType = 'oss';
+      } else if (connection.url.startsWith('huggingface://')) {
+        storageType = 'huggingface';
+      } else {
+        storageType = 'webdav';
+      }
+
+      const baseConfig: ConnectionConfig = {
+        type: storageType,
+        name: connection.name,
+        username: connection.username,
+        password: connection.password,
+      };
+
+      if (connection.url.startsWith('file:///')) {
+        baseConfig.rootPath = connection.url.replace('file:///', '/');
+        if (!baseConfig.rootPath) {
+          console.warn('Local storage missing rootPath');
+          return null;
+        }
+      } else if (connection.url.startsWith('oss://')) {
+        baseConfig.bucket = connection.url.replace('oss://', '');
+        if (!baseConfig.bucket) {
+          console.warn('OSS storage missing bucket');
+          return null;
+        }
+        baseConfig.region = connection.metadata?.region;
+      } else if (connection.url.startsWith('huggingface://')) {
+        baseConfig.organization = connection.metadata?.organization;
+      } else {
+        baseConfig.url = connection.url;
+        if (!baseConfig.url) {
+          console.warn('WebDAV storage missing URL');
+          return null;
+        }
+      }
+
+      return baseConfig;
+    } catch (error) {
+      console.warn('Failed to convert stored connection:', error);
+      return null;
+    }
+  }
+
+  // ========== 文件操作便捷方法 ==========
+
+  /**
    * 列出目录
    */
   static async listDirectory(path: string = '', options?: any) {
     const client = this.getCurrentClient();
-    const result = await client.listDirectory(path, options);
-    return result;
+    return await client.listDirectory(path, options);
   }
 
   /**
@@ -465,53 +437,8 @@ export class StorageServiceManager {
     const client = this.getCurrentClient();
     if (client.downloadFileWithProgress) {
       return await client.downloadFileWithProgress(path, filename, savePath);
-    } else {
-      throw new Error('Download with progress not supported');
     }
-  }
-
-  /**
-   * 下载压缩包内的单个文件
-   */
-  static async downloadArchiveFileWithProgress(
-    archivePath: string,
-    archiveFilename: string,
-    entryPath: string,
-    entryFilename: string,
-    savePath?: string
-  ): Promise<string> {
-    // 使用超时保护，下载操作使用较长的超时时间
-    const timeoutMs = 300000; // 5分钟
-
-    const result = await Promise.race([
-      commands.downloadExtractFile(archivePath, archiveFilename, entryPath, entryFilename, savePath || null),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error(`文件提取超时 (${timeoutMs}ms)`));
-        }, timeoutMs);
-      })
-    ]);
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-
-    return result.data;
-  }
-
-  /**
-   * 获取文件ArrayBuffer数据
-   */
-  static async getFileArrayBuffer(path: string): Promise<ArrayBuffer> {
-    const blob = await this.downloadFile(path);
-    return await blob.arrayBuffer();
-  }
-
-  /**
-   * 获取文件二进制数据
-   */
-  static async getFileBlob(path: string): Promise<Blob> {
-    return await this.downloadFile(path);
+    throw new Error('Progress download not supported for this storage type');
   }
 
   /**
@@ -519,67 +446,18 @@ export class StorageServiceManager {
    */
   static getFileUrl(path: string): string {
     const client = this.getCurrentClient();
-
-    // 如果路径已经是协议URL格式，直接返回
-    if (path.includes('://')) {
-      return path;
-    }
-
     return client.toProtocolUrl(path);
-  }
-
-  /**
-   * 获取文件下载URL（直接可用的URL）
-   */
-  static async getDownloadUrl(path: string): Promise<string> {
-    const result = await commands.storageGetUrl(path);
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-
-    return result.data;
-  }
-
-  /**
-   * 获取请求headers
-   */
-  static getHeaders(): Record<string, string> {
-    const connection = this.getCurrentConnection();
-    if (!connection || !connection.username || !connection.password) return {};
-
-    return {
-      'Authorization': `Basic ${btoa(`${connection.username}:${connection.password}`)}`
-    };
   }
 
   /**
    * 获取连接信息
    */
-  static getConnection() {
-    try {
-      const config = this.getCurrentConnection();
-      const client = this.getCurrentClient();
-
-      // 对于 HuggingFace，构建虚拟 URL
-      let url = config.url;
-      if (client instanceof HuggingFaceStorageClient && !url) {
-        const org = config.organization || 'hub';
-        url = `huggingface://${org}`;
-      }
-
-      return {
-        url: url!,
-        username: config.username!,
-        password: config.password!,
-        connected: true
-      };
-    } catch {
-      return null;
-    }
+  static getConnection(): any {
+    return this.currentConnection;
   }
 
-  // 连接管理便捷方法
+  // ========== 连接管理便捷方法 ==========
+
   static getStoredConnections() {
     return connectionStorage.getStoredConnections();
   }
@@ -608,31 +486,10 @@ export class StorageServiceManager {
     connectionStorage.setDefaultConnection(id);
   }
 
-  // ========== 统一存储接口（便捷方法）==========
-
   /**
-   * WebDAV 兼容连接方法
+   * 连接到本地文件系统的便利方法
    */
-  static async connect(
-    url: string,
-    username: string,
-    password: string,
-    connectionName?: string
-  ): Promise<boolean> {
-    const config: ConnectionConfig = {
-      type: 'webdav',
-      url,
-      username,
-      password,
-      name: connectionName || formatServiceName(url, 'WebDAV')
-    };
-    return await this.connectWithConfig(config);
-  }
-
-  /**
-   * 连接到本机文件系统
-   */
-  static async connectToLocal(
+	static async connectToLocal(
     rootPath: string,
     connectionName?: string,
     isTemporary?: boolean
@@ -648,16 +505,50 @@ export class StorageServiceManager {
   }
 
   /**
-   * 连接到 OSS 对象存储
+   * 下载压缩文件中的文件（带进度）
    */
-  static async connectToOSS(config: ConnectionConfig): Promise<boolean> {
-    return await this.connectWithConfig(config);
+  static async downloadArchiveFileWithProgress(
+    archivePath: string,
+    entryPath: string,
+    filename: string,
+    savePath?: string
+  ): Promise<string> {
+    // 对于压缩文件内的文件，我们需要先获取文件内容，然后保存
+    // 这个方法可能需要后端支持
+    const client = this.getCurrentClient();
+
+    try {
+      // 尝试使用普通下载方法
+      if (client.downloadFileWithProgress) {
+        // 构造压缩文件内文件的路径
+        const fullPath = `${archivePath}#${entryPath}`;
+        return await client.downloadFileWithProgress(fullPath, filename, savePath);
+      } else {
+        throw new Error('Archive file progress download not supported for this storage type');
+      }
+    } catch (error) {
+      console.error('downloadArchiveFileWithProgress failed:', error);
+      throw error;
+    }
   }
 
   /**
-   * 连接到 HuggingFace Hub
+   * 获取文件下载URL
    */
-  static async connectToHuggingFace(config: ConnectionConfig): Promise<boolean> {
-    return await this.connectWithConfig(config);
+  static async getDownloadUrl(path: string): Promise<string> {
+    const result = await commands.storageGetUrl(path);
+    if (result.status === 'error') {
+      throw new Error(result.error);
+    }
+    return result.data;
+  }
+
+  /**
+   * 获取文件的ArrayBuffer内容
+   */
+  static async getFileArrayBuffer(path: string): Promise<ArrayBuffer> {
+    const client = this.getCurrentClient();
+    const blob = await client.downloadFile(path);
+    return await blob.arrayBuffer();
   }
 }

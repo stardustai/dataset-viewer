@@ -19,7 +19,7 @@ import { compareFileSize } from '../../utils/typeUtils';
 import { StorageServiceManager } from '../../services/storage';
 import { ListOptions } from '../../services/storage/types';
 import { cleanPath } from '../../utils/pathUtils';
-import { BaseStorageClient } from '../../services/storage/BaseStorageClient';
+import type { StorageClient as IStorageClient } from '../../services/storage/types';
 import { navigationHistoryService } from '../../services/navigationHistory';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
@@ -31,7 +31,7 @@ import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clip
 import { FolderDownloadService } from '../../services/folderDownloadService';
 
 interface FileBrowserProps {
-  onFileSelect: (file: StorageFile, path: string, storageClient?: BaseStorageClient, files?: StorageFile[]) => void;
+  onFileSelect: (file: StorageFile, path: string, storageClient?: IStorageClient, files?: StorageFile[]) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
@@ -164,6 +164,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     try {
       const client = StorageServiceManager.getCurrentClient();
       if (client.supportsSearch?.()) {
+        // 检查是否应该允许远程搜索（HuggingFace在子目录时禁用）
+        if (!shouldAllowRemoteSearch()) {
+          return;
+        }
+
         setLoading(true);
         setError('');
         setCurrentView('remote-search');
@@ -206,7 +211,37 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
   };
 
-  const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
+  // 检查是否应该允许远程搜索
+  // 对于 HuggingFace，只有在首页或组织根页面才允许远程搜索
+  const shouldAllowRemoteSearch = () => {
+    try {
+      const connection = StorageServiceManager.getCurrentConnection();
+
+      // 只有 HuggingFace 需要特殊处理
+      if (connection.type !== 'huggingface') {
+        return true;
+      }
+
+      // 对于 HuggingFace，检查当前路径
+      // 首页：空路径、'/'
+      // 组织根页：只包含组织名，不包含数据集路径
+      if (!currentPath || currentPath === '' || currentPath === '/') {
+        return true; // 首页允许搜索
+      }
+
+      // 检查是否是组织根页面（路径中不包含 ':' 和不包含多层路径）
+      const cleanPath = currentPath.replace(/^\/+|\/+$/g, '');
+      const pathParts = cleanPath.split('/');
+      if (pathParts.length === 1 && pathParts[0] && !pathParts[0].includes(':')) {
+        return true; // 组织根页面允许搜索
+      }
+
+      // 其他情况（在具体数据集内部）不允许远程搜索
+      return false;
+    } catch {
+      return true; // 出错时允许搜索（保持向后兼容）
+    }
+  };  const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
     console.log(`loadDirectory called: path="${path}", isManual=${isManual}, forceReload=${forceReload}, currentPath="${currentPath}", loading=${loading}`);
 
     // 防止重复请求
@@ -935,8 +970,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                       const localResults = getDisplayFiles();
                       const client = StorageServiceManager.getCurrentClient();
 
-                      // 如果本地没有结果且支持远程搜索，则触发远程搜索
-                      if (localResults.length === 0 && client.supportsSearch?.()) {
+                      // 如果本地没有结果且支持远程搜索且允许远程搜索，则触发远程搜索
+                      if (localResults.length === 0 && client.supportsSearch?.() && shouldAllowRemoteSearch()) {
                         handleGlobalSearch(searchTerm);
                       }
                     } else if (currentView === 'remote-search') {
@@ -1064,7 +1099,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               !showHidden && files.every(file => file.basename && file.basename.startsWith('.')) ? (
                 <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
               ) : getDisplayFiles().length === 0 ? (
-                supportsGlobalSearch() ? (
+                (supportsGlobalSearch() && shouldAllowRemoteSearch()) ? (
                   <NoLocalResultsDisplay
                     searchTerm={searchTerm}
                     onRemoteSearch={() => handleGlobalSearch(searchTerm)}
