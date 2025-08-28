@@ -398,12 +398,17 @@ impl StorageClient for WebDAVClient {
     }
 
     fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 如果传入的已经是完整 URL，直接返回
+        // 如果传入的已经是完整 HTTP URL，直接返回
         if path.starts_with("http://") || path.starts_with("https://") {
             return Ok(path.to_string());
         }
 
-        // 使用统一的URL构建方法
+        // 如果是 webdav:// 协议URL，使用协议解析方法
+        if path.starts_with("webdav://") || path.starts_with("webdavs://") {
+            return self.parse_webdav_url(path);
+        }
+
+        // 使用统一的URL构建方法（处理普通路径）
         let base_url = self.config.url.as_ref()
             .ok_or_else(|| StorageError::InvalidConfig("WebDAV URL not configured".to_string()))?;
 
@@ -414,6 +419,17 @@ impl StorageClient for WebDAVClient {
         let download_url = format!("{}/{}", clean_base, clean_path);
 
         Ok(download_url)
+    }
+
+    fn get_download_headers(&self) -> HashMap<String, String> {
+        let mut headers = HashMap::new();
+
+        // 添加 WebDAV 认证头
+        if let Some(ref auth) = self.auth_header {
+            headers.insert("Authorization".to_string(), auth.clone());
+        }
+
+        headers
     }
 
 

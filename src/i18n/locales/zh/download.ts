@@ -18,6 +18,10 @@ export const download = {
   'download.status.completed': '已完成',
   'download.status.error': '下载失败',
   'download.status.cancelled': '已取消',
+  'download.status.stopped': '下载已停止',
+
+  // 下载操作
+  'download.remove.stopped': '移除停止的下载',
 
   // 文件夹下载
   'download.folder': '下载文件夹',

@@ -18,6 +18,10 @@ export const download = {
   'download.status.completed': 'Completed',
   'download.status.error': 'Failed',
   'download.status.cancelled': 'Cancelled',
+  'download.status.stopped': 'Download stopped',
+
+  // Download actions
+  'download.remove.stopped': 'Remove stopped download',
 
   // Folder download
   'download.folder': 'Download Folder',

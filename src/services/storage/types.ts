@@ -63,9 +63,4 @@ export interface StorageResponse {
 }
 
 // 服务器能力检测
-export interface ServerCapabilities {
-  supportsWebDAV: boolean;
-  preferredMethod: 'PROPFIND' | 'GET' | 'AUTO';
-  lastDetected: number;
-  maxPageSize?: number;
-}
+

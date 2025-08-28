@@ -18,24 +18,31 @@ pub async fn download_start(
     app: tauri::AppHandle,
     url: String,
     filename: String,
-    headers: HashMap<String, String>,
     save_path: Option<String>,
 ) -> Result<String, String> {
     // 获取存储管理器并处理下载URL（避免死锁）
-    let download_url = {
+    let (download_url, download_headers) = {
         let manager_arc = get_storage_manager().await;
         let manager = manager_arc.read().await;
 
         // 通过存储客户端获取正确的下载 URL
         // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
-        match manager.get_download_url(&url).await {
+        let processed_url = match manager.get_download_url(&url).await {
             Ok(processed_url) => {
                 processed_url
             },
             Err(_e) => {
-                url
+                url.clone()
             }
-        }
+        };
+
+        // 获取存储客户端提供的认证头（WebDAV 需要）
+        let headers = match manager.get_download_headers().await {
+            Ok(headers) => headers,
+            Err(_) => HashMap::new(), // 如果获取失败，使用空的头部
+        };
+
+        (processed_url, headers)
         // 锁在这里自动释放
     };
 
@@ -48,7 +55,7 @@ pub async fn download_start(
     let request = DownloadRequest {
         method: "GET".to_string(), // 下载文件统一使用 GET 请求
         url: download_url,
-        headers,
+        headers: download_headers, // 使用存储客户端提供的认证头
         filename,
     };
 

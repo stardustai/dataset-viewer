@@ -166,6 +166,12 @@ pub trait StorageClient: Send + Sync {
         Ok(path.to_string())
     }
 
+    /// 获取下载时需要的认证头（用于需要认证的存储如 WebDAV）
+    fn get_download_headers(&self) -> HashMap<String, String> {
+        // 默认实现：返回空的 headers，适用于不需要认证头的存储
+        HashMap::new()
+    }
+
     /// 获取协议名称
     fn protocol(&self) -> &str;
 
