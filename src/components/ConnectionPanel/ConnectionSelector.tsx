@@ -81,6 +81,10 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   const [deletedConnection, setDeletedConnection] = useState<StoredConnection | null>(null);
   const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
 
+  const loadConnections = () => {
+    setConnections(StorageServiceManager.getStoredConnections());
+  };
+
   useEffect(() => {
     loadConnections();
   }, [loadConnections]);
@@ -93,10 +97,6 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
       }
     };
   }, [undoTimer]);
-
-  const loadConnections = () => {
-    setConnections(StorageServiceManager.getStoredConnections());
-  };
 
   const handleDelete = (connection: StoredConnection, e: React.MouseEvent) => {
     e.stopPropagation();

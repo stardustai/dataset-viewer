@@ -110,10 +110,6 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
   // 强制以文本方式查看的状态
   const [forceTextView, setForceTextView] = useState(false);
 
-  useEffect(() => {
-    loadArchiveInfo();
-  }, [loadArchiveInfo]);
-
   const loadArchiveInfo = async () => {
     try {
       setLoading(true);
@@ -140,6 +136,10 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadArchiveInfo();
+  }, [loadArchiveInfo]);
 
   const loadDetailedArchiveInfo = async () => {
     if (!filename.toLowerCase().endsWith('.zip')) {

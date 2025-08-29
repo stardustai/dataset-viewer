@@ -20,6 +20,16 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const loadConnections = () => {
+    const storedConnections = StorageServiceManager.getStoredConnections();
+    setConnections(storedConnections);
+  };
+
+  const updateCurrentConnection = () => {
+    const displayName = StorageServiceManager.getConnectionDisplayName();
+    setCurrentConnection(displayName);
+  };
+
   useEffect(() => {
     loadConnections();
     updateCurrentConnection();
@@ -37,16 +47,6 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const loadConnections = () => {
-    const storedConnections = StorageServiceManager.getStoredConnections();
-    setConnections(storedConnections);
-  };
-
-  const updateCurrentConnection = () => {
-    const displayName = StorageServiceManager.getConnectionDisplayName();
-    setCurrentConnection(displayName);
-  };
 
   const handleConnectionSwitch = async (connection: StoredConnection) => {
     if (switchingConnection) return; // 防止重复点击

@@ -46,6 +46,30 @@ function App() {
     }
   }, [appState]);
 
+  const handleFileSelect = (
+    file: StorageFile,
+    path: string,
+    storageClient?: any,
+    files?: StorageFile[]
+  ) => {
+    setSelectedFile(file);
+    setSelectedFilePath(path);
+    setSelectedStorageClient(storageClient); // 保存存储客户端引用
+
+    // 检查是否存在关联文件（如YOLO标注的txt文件）
+    if (files && file.basename) {
+      const baseName = file.basename.replace(/\.[^.]+$/, ''); // 移除扩展名
+      const correspondingTxtExists = files.some(
+        f => f.basename === `${baseName}.txt` && f.type === 'file'
+      );
+      setHasAssociatedFiles(correspondingTxtExists);
+    } else {
+      setHasAssociatedFiles(false);
+    }
+
+    setAppState('viewing');
+  };
+
   useEffect(() => {
     // 如果是文件查看模式且URL中有文件参数，直接处理
     if (isFileViewerMode) {
@@ -189,30 +213,6 @@ function App() {
     setSelectedFilePath('');
     setCurrentDirectory('');
     setIsFileAssociationMode(false);
-  };
-
-  const handleFileSelect = (
-    file: StorageFile,
-    path: string,
-    storageClient?: any,
-    files?: StorageFile[]
-  ) => {
-    setSelectedFile(file);
-    setSelectedFilePath(path);
-    setSelectedStorageClient(storageClient); // 保存存储客户端引用
-
-    // 检查是否存在关联文件（如YOLO标注的txt文件）
-    if (files && file.basename) {
-      const baseName = file.basename.replace(/\.[^.]+$/, ''); // 移除扩展名
-      const correspondingTxtExists = files.some(
-        f => f.basename === `${baseName}.txt` && f.type === 'file'
-      );
-      setHasAssociatedFiles(correspondingTxtExists);
-    } else {
-      setHasAssociatedFiles(false);
-    }
-
-    setAppState('viewing');
   };
 
   const handleBackToBrowser = async () => {

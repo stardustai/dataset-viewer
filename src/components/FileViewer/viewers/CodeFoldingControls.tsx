@@ -71,7 +71,7 @@ export const useFoldingLogic = ({
   );
 
   // 计算内容哈希以避免不必要的更新
-  const _contentHash = useMemo(() => {
+  const contentHash = useMemo(() => {
     if (lines.length === 0) return '';
     // 简单哈希：首行 + 长度 + 末行
     return `${lines[0] || ''}-${lines.length}-${lines[lines.length - 1] || ''}`;
@@ -86,7 +86,7 @@ export const useFoldingLogic = ({
     } else {
       setProvider(null);
     }
-  }, [supportsFolding, fileName, lines.join, lines.length]); // 使用 contentHash 而不是 lines
+  }, [supportsFolding, fileName, contentHash]); // 使用 contentHash 而不是 lines
 
   // 按需计算当前可见范围内的折叠区间
   useEffect(() => {

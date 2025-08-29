@@ -43,32 +43,6 @@ export const useConnectionLogic = (onConnect: () => void) => {
     return '';
   };
 
-  useEffect(() => {
-    const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
-
-    if (!wasDisconnected) {
-      const defaultConnection = StorageServiceManager.getDefaultConnection();
-      if (defaultConnection) {
-        if (defaultConnection.url.startsWith('file:///')) {
-          setStorageType('local');
-          const localPath = defaultConnection.url.replace('file:///', '');
-          setDefaultLocalPath(localPath);
-        } else if (defaultConnection.url.startsWith('oss://')) {
-          setStorageType('oss');
-          handleSelectStoredConnection(defaultConnection);
-        } else if (defaultConnection.url.startsWith('huggingface://')) {
-          setStorageType('huggingface');
-          handleSelectStoredConnection(defaultConnection);
-        } else {
-          setStorageType('webdav');
-          handleSelectStoredConnection(defaultConnection);
-        }
-      }
-    }
-
-    localStorage.removeItem('userDisconnected');
-  }, [handleSelectStoredConnection]);
-
   const handleSelectStoredConnection = (connection: StoredConnection) => {
     setSelectedStoredConnection(connection);
     setError('');
@@ -94,6 +68,32 @@ export const useConnectionLogic = (onConnect: () => void) => {
       }
     }
   };
+
+  useEffect(() => {
+    const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
+
+    if (!wasDisconnected) {
+      const defaultConnection = StorageServiceManager.getDefaultConnection();
+      if (defaultConnection) {
+        if (defaultConnection.url.startsWith('file:///')) {
+          setStorageType('local');
+          const localPath = defaultConnection.url.replace('file:///', '');
+          setDefaultLocalPath(localPath);
+        } else if (defaultConnection.url.startsWith('oss://')) {
+          setStorageType('oss');
+          handleSelectStoredConnection(defaultConnection);
+        } else if (defaultConnection.url.startsWith('huggingface://')) {
+          setStorageType('huggingface');
+          handleSelectStoredConnection(defaultConnection);
+        } else {
+          setStorageType('webdav');
+          handleSelectStoredConnection(defaultConnection);
+        }
+      }
+    }
+
+    localStorage.removeItem('userDisconnected');
+  }, [handleSelectStoredConnection]);
 
   const handleWebDAVConnect = async (e: React.FormEvent) => {
     e.preventDefault();
