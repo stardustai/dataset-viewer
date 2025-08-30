@@ -1,9 +1,8 @@
-import { Bot, Loader2, Lock } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StoredConnection } from '../../services/connectionStorage';
-import type { ConnectionConfig } from '../../services/storage/types';
+import { Lock, Bot, Loader2 } from 'lucide-react';
+import { ConnectionConfig } from '../../services/storage/types';
+import { StoredConnection } from '../../services/connectionStorage';
 
 interface HuggingFaceConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;
@@ -24,7 +23,7 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
 
   // 当选中连接变化时，更新表单
   useEffect(() => {
-    if (selectedConnection?.url.startsWith('huggingface://')) {
+    if (selectedConnection && selectedConnection.url.startsWith('huggingface://')) {
       // 从 metadata 获取信息
       const organization = selectedConnection.metadata?.organization || '';
       const apiToken = selectedConnection.metadata?.apiToken || '';

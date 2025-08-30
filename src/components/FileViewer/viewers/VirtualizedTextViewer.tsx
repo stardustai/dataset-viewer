@@ -1,26 +1,25 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
-import type React from 'react';
-import {
-  forwardRef,
-  useCallback,
+import React, {
   useEffect,
-  useImperativeHandle,
-  useMemo,
   useRef,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
   useState,
+  useMemo,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
-import { useTheme } from '../../../hooks/useTheme';
-import type { FoldableRange } from '../../../utils/folding';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   getLanguageFromFileName,
-  highlightLine,
   isLanguageSupported,
+  highlightLine,
 } from '../../../utils/syntaxHighlighter';
+import { useTheme } from '../../../hooks/useTheme';
+import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { UnifiedContentModal } from '../common/UnifiedContentModal';
-import { FoldingIndicator, useFoldingLogic } from './CodeFoldingControls';
 import { MarkdownPreviewModal } from './MarkdownPreviewModal';
+import { FoldingIndicator, useFoldingLogic } from './CodeFoldingControls';
+import type { FoldableRange } from '../../../utils/folding';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -130,7 +129,7 @@ export const VirtualizedTextViewer = forwardRef<
 
       // 内容变化时清空高亮缓存
       setHighlightedLines(new Map());
-    }, [lines.length, onScrollToBottom]);
+    }, [lines.length, onScrollToBottom, detectedLanguage, isDark]);
 
     // 搜索相关
     const searchResultsMap = new Map(searchResults.map(result => [result.line, true]));
@@ -211,7 +210,7 @@ export const VirtualizedTextViewer = forwardRef<
           end: Math.min(lines.length - 1, endOriginalIndex + 20),
         });
       }
-    }, [visibleLines, lines.length, virtualizer.getVirtualItems]);
+    }, [virtualizer.getVirtualItems(), visibleLines, lines.length]);
 
     // 当虚拟项改变时，触发可见行的语法高亮
     useEffect(() => {
@@ -226,7 +225,7 @@ export const VirtualizedTextViewer = forwardRef<
             .filter(item => item.index !== undefined)
         );
       }
-    }, [shouldHighlight, highlightVisibleLines, visibleLines, virtualizer.getVirtualItems]);
+    }, [virtualizer.getVirtualItems(), shouldHighlight, highlightVisibleLines, visibleLines]);
 
     const performSearch = useCallback(
       (term: string) => {
@@ -250,7 +249,7 @@ export const VirtualizedTextViewer = forwardRef<
             results.push({
               line: startLineNumber + originalIndex,
               column: match.index + 1,
-              text: line.length > 200 ? `${line.substring(0, 200)}...` : line,
+              text: line.length > 200 ? line.substring(0, 200) + '...' : line,
               match: match[0],
             });
 
@@ -302,7 +301,7 @@ export const VirtualizedTextViewer = forwardRef<
         let showExpandButton = false;
 
         if (isLongLine && !isExpanded && line.length > TRUNCATE_LENGTH) {
-          displayLine = `${line.substring(0, TRUNCATE_LENGTH)}...`;
+          displayLine = line.substring(0, TRUNCATE_LENGTH) + '...';
           showExpandButton = true;
         }
 
@@ -539,6 +538,8 @@ export const VirtualizedTextViewer = forwardRef<
         shouldHighlight,
         highlightedLines,
         expandedLongLines,
+        setExpandedLongLines,
+        foldableRanges,
         collapsedRanges,
         toggleFoldingRange,
         t,
@@ -726,7 +727,7 @@ export const VirtualizedTextViewer = forwardRef<
           }
         },
       }),
-      [virtualizer, lines, startLineNumber, visibleLines, expandedLongLines.has]
+      [virtualizer, lines, startLineNumber, visibleLines]
     );
 
     // 行号区域引用

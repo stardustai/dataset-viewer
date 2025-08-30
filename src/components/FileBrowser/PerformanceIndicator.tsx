@@ -1,6 +1,6 @@
-import { Info, Zap } from 'lucide-react';
-import type React from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Info, Zap } from 'lucide-react';
 
 interface PerformanceIndicatorProps {
   fileCount: number;

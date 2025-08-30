@@ -1,10 +1,9 @@
-import { Braces, Check, Copy, X } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Copy, Braces, X, Check } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
-import { ImageRenderer } from '../viewers/ImageRenderer';
 import { VirtualizedTextViewer } from '../viewers/VirtualizedTextViewer';
+import { ImageRenderer } from '../viewers/ImageRenderer';
 
 // 检测是否为 base64 编码的图片
 const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; format?: string } => {
@@ -77,7 +76,7 @@ const formatXML = (xml: string): string => {
     }
 
     // 添加缩进和内容
-    formatted += `${PADDING.repeat(pad) + trimmedNode}\n`;
+    formatted += PADDING.repeat(pad) + trimmedNode + '\n';
     pad += indent;
   });
 
@@ -128,7 +127,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
 
   // 检测逻辑 - 优先级：图片 > 结构化数据格式化 > 原始文本
   const imageInfo = isBase64Image(content);
-  const isJSONContent = !imageInfo.isImage && content.trim().match(/^[[{].*[\]}]$/s);
+  const isJSONContent = !imageInfo.isImage && content.trim().match(/^[\[\{].*[\]\}]$/s);
   const isXMLContent =
     !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
 
@@ -139,7 +138,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
   // 当内容改变时，重置手动格式化状态，让新内容使用默认格式化
   useEffect(() => {
     setManualFormatState(null);
-  }, []);
+  }, [content]);
 
   // 确定显示内容
   const displayContent = (() => {
@@ -324,7 +323,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
                       )
                       .map((part: string, index: number) => {
                         const regex = new RegExp(
-                          searchTerm?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                          searchTerm!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
                           'gi'
                         );
                         if (regex.test(part)) {

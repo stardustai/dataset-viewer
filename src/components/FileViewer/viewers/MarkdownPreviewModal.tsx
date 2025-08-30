@@ -1,10 +1,9 @@
-import DOMPurify from 'dompurify';
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
-import type React from 'react';
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import DOMPurify from 'dompurify';
 import { highlightMarkdownCode } from '../../../utils/markdownCodeHighlighter';
 
 interface MarkdownPreviewModalProps {

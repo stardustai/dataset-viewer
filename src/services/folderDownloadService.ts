@@ -1,7 +1,7 @@
-import type { StorageFile } from '../types';
-import { commands } from '../types/tauri-commands';
-import { calculateTotalSize, safeParseInt } from '../utils/typeUtils';
 import { StorageServiceManager } from './storage/StorageManager';
+import { StorageFile } from '../types';
+import { safeParseInt, calculateTotalSize } from '../utils/typeUtils';
+import { commands } from '../types/tauri-commands';
 
 export interface FolderDownloadState {
   folderId: string;
@@ -112,7 +112,7 @@ export class FolderDownloadService {
     };
 
     // 立即注册状态并触发开始事件，这样 UI 可以立即显示
-    FolderDownloadService.activeDownloads.set(folderId, state);
+    this.activeDownloads.set(folderId, state);
     events.onStart(state);
 
     try {
@@ -121,8 +121,8 @@ export class FolderDownloadService {
         try {
           // 立即开始下载当前目录的文件
           const currentFiles = files.filter(file => file.type === 'file');
-          const totalFiles = currentFiles.length;
-          const totalSize = calculateTotalSize(currentFiles);
+          let totalFiles = currentFiles.length;
+          let totalSize = calculateTotalSize(currentFiles);
 
           // 更新初始状态
           state.totalFiles = totalFiles;
@@ -137,21 +137,15 @@ export class FolderDownloadService {
             state.currentFile = '没有文件需要下载';
           }
 
-          FolderDownloadService.updateState(folderId, state);
+          this.updateState(folderId, state);
           events.onProgress(state);
 
           // 如果启用递归下载，启动并行的扫描和下载
           if (recursive) {
-            await FolderDownloadService.downloadFolderRecursiveOptimized(
-              folderPath,
-              files,
-              savePath,
-              state,
-              events
-            );
+            await this.downloadFolderRecursiveOptimized(folderPath, files, savePath, state, events);
           } else {
             // 非递归下载：只下载当前目录文件
-            await FolderDownloadService.downloadCurrentDirectoryFiles(
+            await this.downloadCurrentDirectoryFiles(
               currentFiles,
               folderPath,
               savePath,
@@ -160,13 +154,13 @@ export class FolderDownloadService {
             );
           }
 
-          if (state.status === 'downloading' && !FolderDownloadService.globalStopFlag) {
+          if (state.status === 'downloading' && !this.globalStopFlag) {
             // 下载完成
             state.status = 'completed';
             state.progress = 100;
             state.currentFile = '';
 
-            FolderDownloadService.updateState(folderId, state);
+            this.updateState(folderId, state);
             events.onComplete(state);
           }
         } catch (error) {
@@ -174,7 +168,7 @@ export class FolderDownloadService {
           state.status = 'error';
           state.error = error instanceof Error ? error.message : String(error);
 
-          FolderDownloadService.updateState(folderId, state);
+          this.updateState(folderId, state);
           events.onError(state, state.error);
         }
       }, 0);
@@ -185,7 +179,7 @@ export class FolderDownloadService {
       state.status = 'error';
       state.error = error instanceof Error ? error.message : String(error);
 
-      FolderDownloadService.updateState(folderId, state);
+      this.updateState(folderId, state);
       events.onError(state, state.error);
 
       throw error;
@@ -196,10 +190,10 @@ export class FolderDownloadService {
    * 取消文件夹下载
    */
   static cancelDownload(folderId: string): void {
-    const state = FolderDownloadService.activeDownloads.get(folderId);
+    const state = this.activeDownloads.get(folderId);
     if (state && (state.status === 'downloading' || state.status === 'preparing')) {
       state.status = 'cancelled';
-      FolderDownloadService.updateState(folderId, state);
+      this.updateState(folderId, state);
     }
   }
 
@@ -207,14 +201,14 @@ export class FolderDownloadService {
    * 获取下载状态
    */
   static getDownloadState(folderId: string): FolderDownloadState | undefined {
-    return FolderDownloadService.activeDownloads.get(folderId);
+    return this.activeDownloads.get(folderId);
   }
 
   /**
    * 移除下载记录
    */
   static removeDownload(folderId: string): void {
-    FolderDownloadService.activeDownloads.delete(folderId);
+    this.activeDownloads.delete(folderId);
   }
 
   /**
@@ -222,21 +216,21 @@ export class FolderDownloadService {
    */
   static getActiveDownloads(): FolderDownloadState[] {
     // 倒序排列，最新的下载显示在前面
-    return Array.from(FolderDownloadService.activeDownloads.values()).reverse();
+    return Array.from(this.activeDownloads.values()).reverse();
   }
 
   /**
    * 停止所有下载
    */
   static async stopAllDownloads(): Promise<void> {
-    FolderDownloadService.globalStopFlag = true;
+    this.globalStopFlag = true;
 
     // 将所有活跃下载标记为已停止
-    for (const [folderId, state] of FolderDownloadService.activeDownloads.entries()) {
+    for (const [folderId, state] of this.activeDownloads.entries()) {
       if (state.status === 'downloading' || state.status === 'preparing') {
         state.status = 'stopped';
         state.currentFile = '下载已停止';
-        FolderDownloadService.updateState(folderId, state);
+        this.updateState(folderId, state);
       }
     }
 
@@ -253,15 +247,15 @@ export class FolderDownloadService {
    * 当没有正在进行的下载时，自动恢复服务
    */
   private static checkAndAutoResumeService(): void {
-    if (!FolderDownloadService.globalStopFlag) return;
+    if (!this.globalStopFlag) return;
 
-    const activeDownloads = Array.from(FolderDownloadService.activeDownloads.values());
+    const activeDownloads = Array.from(this.activeDownloads.values());
     const hasActiveDownloads = activeDownloads.some(
       d => d.status === 'downloading' || d.status === 'preparing'
     );
 
     if (!hasActiveDownloads) {
-      FolderDownloadService.globalStopFlag = false;
+      this.globalStopFlag = false;
       console.log('Auto-resumed download service: no active downloads remaining');
     }
   }
@@ -270,11 +264,8 @@ export class FolderDownloadService {
    * 检查下载服务是否被停止
    */
   static isDownloadServiceStopped(): boolean {
-    console.log(
-      'Checking download service status, globalStopFlag:',
-      FolderDownloadService.globalStopFlag
-    );
-    return FolderDownloadService.globalStopFlag;
+    console.log('Checking download service status, globalStopFlag:', this.globalStopFlag);
+    return this.globalStopFlag;
   }
 
   /**
@@ -292,15 +283,12 @@ export class FolderDownloadService {
     const activeFileNames = new Set<string>();
 
     while (downloadQueue.length > 0 || activeDownloads.size > 0) {
-      if (state.status === 'cancelled' || FolderDownloadService.globalStopFlag) {
+      if (state.status === 'cancelled' || this.globalStopFlag) {
         return;
       }
 
       // 启动新的下载任务（最多并行N个）
-      while (
-        downloadQueue.length > 0 &&
-        activeDownloads.size < FolderDownloadService.CONCURRENT_DOWNLOADS
-      ) {
+      while (downloadQueue.length > 0 && activeDownloads.size < this.CONCURRENT_DOWNLOADS) {
         const file = downloadQueue.shift()!;
         activeFileNames.add(file.basename);
 
@@ -308,14 +296,14 @@ export class FolderDownloadService {
         const fileList = Array.from(activeFileNames).slice(0, 2).join(', ');
         const extraCount = activeFileNames.size > 2 ? ` +${activeFileNames.size - 2}` : '';
         state.currentFile = `正在下载: ${fileList}${extraCount}`;
-        FolderDownloadService.updateState(state.folderId, state);
+        this.updateState(state.folderId, state);
         events.onProgress(state);
 
         console.log(
-          `Starting parallel download: ${file.basename} (${activeDownloads.size + 1}/${FolderDownloadService.CONCURRENT_DOWNLOADS})`
+          `Starting parallel download: ${file.basename} (${activeDownloads.size + 1}/${this.CONCURRENT_DOWNLOADS})`
         );
 
-        const downloadPromise = FolderDownloadService.downloadSingleFile(
+        const downloadPromise = this.downloadSingleFile(
           file,
           currentPath,
           baseSavePath,
@@ -355,11 +343,11 @@ export class FolderDownloadService {
       const filePath = currentPath
         ? file.filename.startsWith(`${currentPath}/`)
           ? file.filename
-          : FolderDownloadService.joinPath(currentPath, file.filename)
+          : this.joinPath(currentPath, file.filename)
         : file.filename;
 
       // 下载单个文件
-      const fullFilePath = FolderDownloadService.joinLocalPath(baseSavePath, file.basename);
+      const fullFilePath = this.joinLocalPath(baseSavePath, file.basename);
       await StorageServiceManager.downloadFileWithProgress(filePath, file.basename, fullFilePath);
 
       // 更新进度
@@ -368,7 +356,7 @@ export class FolderDownloadService {
       state.progress =
         state.totalFiles > 0 ? Math.round((state.completedFiles / state.totalFiles) * 100) : 0;
 
-      FolderDownloadService.updateState(state.folderId, state);
+      this.updateState(state.folderId, state);
       events.onFileComplete(state, file.basename);
       events.onProgress(state);
     } catch (error) {
@@ -389,7 +377,7 @@ export class FolderDownloadService {
   ): Promise<void> {
     // 1. 先下载当前目录的文件
     const currentFiles = files.filter(file => file.type === 'file');
-    await FolderDownloadService.downloadCurrentDirectoryFiles(
+    await this.downloadCurrentDirectoryFiles(
       currentFiles,
       currentPath,
       baseSavePath,
@@ -400,22 +388,22 @@ export class FolderDownloadService {
     // 2. 同时处理子目录：边扫描边下载
     const directories = files.filter(file => file.type === 'directory');
     for (const dir of directories) {
-      if (state.status === 'cancelled' || FolderDownloadService.globalStopFlag) {
+      if (state.status === 'cancelled' || this.globalStopFlag) {
         return;
       }
 
       try {
         // 构建子目录路径
-        const dirPath = FolderDownloadService.joinPath(currentPath, dir.basename);
-        const dirSavePath = FolderDownloadService.joinLocalPath(baseSavePath, dir.basename);
+        const dirPath = this.joinPath(currentPath, dir.basename);
+        const dirSavePath = this.joinLocalPath(baseSavePath, dir.basename);
 
         // 获取子目录完整文件列表（处理分页）
-        const subFiles: StorageFile[] = [];
+        let subFiles: StorageFile[] = [];
         let hasMore = true;
         let nextMarker: string | undefined;
 
         state.currentFile = `扫描目录: ${dir.basename}...`;
-        FolderDownloadService.updateState(state.folderId, state);
+        this.updateState(state.folderId, state);
         events.onProgress(state);
 
         while (hasMore) {
@@ -441,7 +429,7 @@ export class FolderDownloadService {
           // 更新扫描进度
           const currentFileCount = subFiles.filter(file => file.type === 'file').length;
           state.currentFile = `扫描目录: ${dir.basename} (已发现 ${currentFileCount} 个文件)`;
-          FolderDownloadService.updateState(state.folderId, state);
+          this.updateState(state.folderId, state);
           events.onProgress(state);
 
           // 安全检查：防止无限循环
@@ -465,7 +453,7 @@ export class FolderDownloadService {
 
         // 更新扫描状态
         state.currentFile = `扫描目录: ${dir.basename} (发现 ${additionalFiles} 个文件)`;
-        FolderDownloadService.updateState(state.folderId, state);
+        this.updateState(state.folderId, state);
         events.onProgress(state);
 
         // 保存当前进度，避免进度条倒退
@@ -479,17 +467,11 @@ export class FolderDownloadService {
           state.totalFiles > 0 ? Math.round((state.completedFiles / state.totalFiles) * 100) : 0;
         state.progress = Math.max(currentProgress, newProgress);
 
-        FolderDownloadService.updateState(state.folderId, state);
+        this.updateState(state.folderId, state);
         events.onProgress(state);
 
         // 递归下载子目录
-        await FolderDownloadService.downloadFolderRecursiveOptimized(
-          dirPath,
-          subFiles,
-          dirSavePath,
-          state,
-          events
-        );
+        await this.downloadFolderRecursiveOptimized(dirPath, subFiles, dirSavePath, state, events);
       } catch (error) {
         console.error(`Failed to process directory ${dir.basename}:`, error);
         // 单个目录失败不影响整体下载，继续处理其他目录
@@ -498,7 +480,7 @@ export class FolderDownloadService {
   }
 
   private static updateState(folderId: string, state: FolderDownloadState): void {
-    FolderDownloadService.activeDownloads.set(folderId, { ...state });
+    this.activeDownloads.set(folderId, { ...state });
 
     // 当下载状态变为终止状态时，检查是否需要自动恢复服务
     if (
@@ -508,7 +490,7 @@ export class FolderDownloadService {
       state.status === 'stopped'
     ) {
       setTimeout(() => {
-        FolderDownloadService.checkAndAutoResumeService();
+        this.checkAndAutoResumeService();
       }, 500);
     }
   }

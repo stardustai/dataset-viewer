@@ -1,7 +1,6 @@
-import { Eye, EyeOff, GalleryHorizontal, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
-import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ZoomIn, ZoomOut, RotateCcw, GalleryHorizontal, Eye, EyeOff } from 'lucide-react';
 import { getFileArrayBuffer } from '../../../utils/fileDataUtils';
 
 interface ImageRendererProps {
@@ -71,7 +70,7 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
           const parts = line.trim().split(/\s+/);
           if (parts.length >= 5) {
             return {
-              classId: parseInt(parts[0], 10),
+              classId: parseInt(parts[0]),
               x: parseFloat(parts[1]),
               y: parseFloat(parts[2]),
               width: parseFloat(parts[3]),

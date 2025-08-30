@@ -1,11 +1,11 @@
-import * as dat from 'dat.gui';
-import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
-import { OrbitControls, PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
+import { OrbitControls } from 'three-stdlib';
+import { PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
+import * as dat from 'dat.gui';
+import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
 import { StorageServiceManager } from '../../../services/storage';
-import { ErrorDisplay, LoadingDisplay } from '../../common/StatusDisplay';
 
 // 点云数据点接口
 interface PCDPoint {
@@ -162,7 +162,7 @@ const validateAndCleanPointCloud = (points: THREE.Points): THREE.Points => {
 
     // 使用位运算和快速异常检测
     const hasNaN = x !== x || y !== y || z !== z; // NaN检测：NaN !== NaN
-    const hasInfinity = !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z);
+    const hasInfinity = !isFinite(x) || !isFinite(y) || !isFinite(z);
     const hasExtreme = Math.abs(x) > 1e6 || Math.abs(y) > 1e6 || Math.abs(z) > 1e6;
 
     if (hasNaN || hasInfinity || hasExtreme) {
@@ -211,9 +211,9 @@ const validateAndCleanPointCloud = (points: THREE.Points): THREE.Points => {
         const b = colors[readPos + 2];
 
         // 使用三元运算符优化颜色验证
-        validColors[writePos] = r === r && Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1;
-        validColors[writePos + 1] = g === g && Number.isFinite(g) ? Math.max(0, Math.min(1, g)) : 1;
-        validColors[writePos + 2] = b === b && Number.isFinite(b) ? Math.max(0, Math.min(1, b)) : 1;
+        validColors[writePos] = r === r && isFinite(r) ? Math.max(0, Math.min(1, r)) : 1;
+        validColors[writePos + 1] = g === g && isFinite(g) ? Math.max(0, Math.min(1, g)) : 1;
+        validColors[writePos + 2] = b === b && isFinite(b) ? Math.max(0, Math.min(1, b)) : 1;
       }
 
       writeIdx++;
@@ -272,9 +272,9 @@ const parsePtsFile = (text: string): THREE.BufferGeometry => {
       x === x &&
       y === y &&
       z === z && // NaN检测
-      Number.isFinite(x) &&
-      Number.isFinite(y) &&
-      Number.isFinite(z) &&
+      isFinite(x) &&
+      isFinite(y) &&
+      isFinite(z) &&
       Math.abs(x) < 1e6 &&
       Math.abs(y) < 1e6 &&
       Math.abs(z) < 1e6
@@ -291,14 +291,7 @@ const parsePtsFile = (text: string): THREE.BufferGeometry => {
         let b = +parts[5];
 
         // 快速颜色验证和归一化
-        if (
-          r === r &&
-          g === g &&
-          b === b &&
-          Number.isFinite(r) &&
-          Number.isFinite(g) &&
-          Number.isFinite(b)
-        ) {
+        if (r === r && g === g && b === b && isFinite(r) && isFinite(g) && isFinite(b)) {
           // 自动检测颜色范围并归一化
           if (r > 1 || g > 1 || b > 1) {
             r *= 0.003921569; // 1/255，比除法更快
@@ -374,7 +367,7 @@ const calculatePointColor = (
       }
       break;
 
-    case 'height': {
+    case 'height':
       const normalizedHeight =
         (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
       // 使用更自然的渐变色：蓝色(低) -> 绿色(中) -> 红色(高)
@@ -392,15 +385,13 @@ const calculatePointColor = (
         b = 0.2 - t * 0.2;
       }
       break;
-    }
 
-    case 'uniform': {
+    case 'uniform':
       const color = new THREE.Color(uniformColor);
       r = color.r;
       g = color.g;
       b = color.b;
       break;
-    }
   }
 
   return { r, g, b };
@@ -701,7 +692,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [filePath, previewContent, settings.colorMode, t, onMetadataLoaded]);
+  }, [filePath, previewContent, extractPointCloudStats, settings.colorMode, t, onMetadataLoaded]);
 
   // 初始化Three.js场景
   const initializeThreeJS = useCallback(() => {
@@ -945,7 +936,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
       .add(settings, 'pointSize', 0.5, 20, 0.5)
       .name('Point Size')
       .onChange(() => {
-        if (pointsRef.current?.material) {
+        if (pointsRef.current && pointsRef.current.material) {
           (pointsRef.current.material as THREE.PointsMaterial).size = settings.pointSize;
           (pointsRef.current.material as THREE.PointsMaterial).needsUpdate = true;
         }
@@ -1021,7 +1012,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
     animationFolder.open();
 
     return gui;
-  }, [settings, stats, updatePointColors, updateAxes]);
+  }, [settings, pcdData, stats, loadPointCloudFile, updatePointColors, updateAxes]);
 
   // 处理窗口大小变化
   const handleResize = useCallback(() => {

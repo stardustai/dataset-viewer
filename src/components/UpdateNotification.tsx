@@ -1,9 +1,8 @@
-import { AlertCircle, Download, RefreshCw, X } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Download, X, RefreshCw, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { settingsStorage } from '../services/settingsStorage';
 import { updateService } from '../services/updateService';
+import { settingsStorage } from '../services/settingsStorage';
 import type { UpdateCheckResult } from '../types';
 
 interface UpdateNotificationProps {
@@ -32,12 +31,12 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
 
   useEffect(() => {
     checkForUpdates();
-  }, [checkForUpdates]);
+  }, []);
 
   const handleDownload = async () => {
     try {
       await updateService.openDownloadPage();
-    } catch (_err) {
+    } catch (err) {
       setError(t('update.download.failed'));
     }
   };

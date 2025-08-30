@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { settingsStorage } from '../services/settingsStorage';
 import { commands } from '../types/tauri-commands';
 

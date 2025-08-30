@@ -1,43 +1,43 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  Download,
   Eye,
   EyeOff,
-  Loader2,
+  ChevronUp,
+  ChevronDown,
   RefreshCw,
   Search,
-  Settings,
   X,
+  Settings,
+  ArrowLeft,
+  Download,
+  Loader2,
 } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FolderDownloadService } from '../../services/folderDownloadService';
-import { navigationHistoryService } from '../../services/navigationHistory';
-import { StorageServiceManager } from '../../services/storage';
-import type { StorageClient as IStorageClient, ListOptions } from '../../services/storage/types';
-import type { StorageFile } from '../../types';
+import { StorageFile } from '../../types';
 import { commands } from '../../types/tauri-commands';
-import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
-import { cleanPath } from '../../utils/pathUtils';
 import { compareFileSize } from '../../utils/typeUtils';
-import {
-  BreadcrumbNavigation,
-  EmptyDisplay,
-  ErrorDisplay,
-  HiddenFilesDisplay,
-  LoadingDisplay,
-  NoLocalResultsDisplay,
-  NoRemoteResultsDisplay,
-  NoSearchResultsDisplay,
-} from '../common';
+import { StorageServiceManager } from '../../services/storage';
+import { ListOptions } from '../../services/storage/types';
+import { cleanPath } from '../../utils/pathUtils';
+import type { StorageClient as IStorageClient } from '../../services/storage/types';
+import { navigationHistoryService } from '../../services/navigationHistory';
 import { LanguageSwitcher } from '../LanguageSwitcher';
-import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
-import { VirtualizedFileList } from './VirtualizedFileList';
+import { ConnectionSwitcher } from './ConnectionSwitcher';
+import {
+  LoadingDisplay,
+  HiddenFilesDisplay,
+  NoSearchResultsDisplay,
+  NoLocalResultsDisplay,
+  NoRemoteResultsDisplay,
+  EmptyDisplay,
+  ErrorDisplay,
+  BreadcrumbNavigation,
+} from '../common';
+import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
+import { FolderDownloadService } from '../../services/folderDownloadService';
 
 interface FileBrowserProps {
   onFileSelect: (
@@ -53,8 +53,9 @@ interface FileBrowserProps {
 }
 
 // 类型适配函数：将 null 转换为 undefined
-const nullToUndefined = <T,>(value: T | null): T | undefined =>
-  value === null ? undefined : value;
+const nullToUndefined = function <T>(value: T | null): T | undefined {
+  return value === null ? undefined : value;
+};
 
 export const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileSelect,
@@ -115,8 +116,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       : files.filter(file => file.basename && !file.basename.startsWith('.'));
 
     if (searchTerm.trim()) {
-      filteredFiles = filteredFiles.filter(file =>
-        file.basename?.toLowerCase().includes(searchTerm.toLowerCase())
+      filteredFiles = filteredFiles.filter(
+        file => file.basename && file.basename.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -607,7 +608,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       // 获取完整的文件列表（处理分页）
       setIsRefreshing(true); // 使用刷新状态而不是全屏loading
-      const allFiles: StorageFile[] = [];
+      let allFiles: StorageFile[] = [];
       let hasMorePages = true;
       let marker: string | undefined;
 
@@ -683,7 +684,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       if (!currentPath || initialPath !== currentPath) {
         loadDirectory(initialPath);
       }
-    } else if (error?.includes('Storage connection not ready')) {
+    } else if (error && error.includes('Storage connection not ready')) {
       // 只有当错误是由于存储未连接引起时才重试
       console.log('Storage not connected, setting up retry...');
       retryTimer = setTimeout(() => {
@@ -700,7 +701,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         clearTimeout(retryTimer);
       }
     };
-  }, [initialPath, currentPath, error?.includes, loadDirectory]); // 移除error依赖避免无限重试循环
+  }, [initialPath]); // 移除error依赖避免无限重试循环
 
   // 响应从文件查看器返回的刷新请求
   useEffect(() => {
@@ -709,7 +710,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       setError(''); // 清除可能存在的错误状态
       loadDirectory(initialPath || currentPath, false, true);
     }
-  }, [shouldRefresh, currentPath, initialPath, loadDirectory]);
+  }, [shouldRefresh]);
 
   // 监听滚动事件，实时保存滚动位置
   useEffect(() => {
@@ -744,7 +745,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         clearTimeout(scrollSaveTimeoutRef.current);
       }
     };
-  }, [currentPath]); // 当路径或文件列表变化时重新绑定事件
+  }, [currentPath, files.length]); // 当路径或文件列表变化时重新绑定事件
 
   // 组件卸载时保存当前滚动位置
   useEffect(() => {
@@ -800,7 +801,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }, 50); // 给一点时间让DOM更新
 
     return () => clearTimeout(timer);
-  }, []); // 当这些状态变化时重新计算
+  }, [files.length, loading, error]); // 当这些状态变化时重新计算
 
   const navigateUp = () => {
     if (currentPath === '') return; // Already at root
@@ -1154,7 +1155,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
               {/* 文件列表或空状态 */}
               {files.length > 0 ? (
-                !showHidden && files.every(file => file.basename?.startsWith('.')) ? (
+                !showHidden &&
+                files.every(file => file.basename && file.basename.startsWith('.')) ? (
                   <HiddenFilesDisplay onShowHidden={() => setShowHidden(true)} />
                 ) : getDisplayFiles().length === 0 ? (
                   supportsGlobalSearch() && shouldAllowRemoteSearch() ? (

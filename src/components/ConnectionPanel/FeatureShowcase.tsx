@@ -1,4 +1,4 @@
-import type React from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const FeatureShowcase: React.FC = () => {

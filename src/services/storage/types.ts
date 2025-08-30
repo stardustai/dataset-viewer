@@ -1,5 +1,5 @@
 // 存储类型定义
-import type { DirectoryResult, ListOptions } from '../../types/tauri-commands';
+import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 
 // 重新导出从 tauri-commands 导入的类型，使其对外可用
 export type { DirectoryResult, ListOptions };

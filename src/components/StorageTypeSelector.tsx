@@ -1,7 +1,7 @@
-import { Bot, Cloud, Folder, Server } from 'lucide-react';
-import type React from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StorageClientType } from '../services/storage/types';
+import { Server, Folder, Cloud, Bot } from 'lucide-react';
+import { StorageClientType } from '../services/storage/types';
 
 interface StorageTypeSelectorProps {
   selectedType: StorageClientType;

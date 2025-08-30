@@ -71,7 +71,7 @@ class CacheManager {
     }
 
     tokens.forEach((tokenList, lineNumber) => {
-      cache?.set(lineNumber, tokenList);
+      cache!.set(lineNumber, tokenList);
     });
 
     this.lastAccessTime.set(fileKey, Date.now());
@@ -369,12 +369,12 @@ export class FoldingProvider {
     switch (ext) {
       case 'json':
       case 'jsonl':
-        return /[{[]$/.test(trimmedLine) || /[{[]\s*,?\s*$/.test(trimmedLine);
+        return /[{\[]$/.test(trimmedLine) || /[{\[]\s*,?\s*$/.test(trimmedLine);
       case 'xml':
       case 'svg':
       case 'html':
       case 'htm':
-        return /<[^/][^>]*[^/]>/.test(trimmedLine) && !trimmedLine.includes('</');
+        return /<[^\/][^>]*[^\/]>/.test(trimmedLine) && !trimmedLine.includes('</');
       case 'yaml':
       case 'yml':
         return /^[^:]+:\s*$/.test(trimmedLine);

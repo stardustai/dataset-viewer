@@ -1,8 +1,8 @@
-import { ArrowLeft, Check, ChevronRight, Copy, Edit3, Home, X } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageServiceManager } from '../../services/storage';
+import { Home, ArrowLeft, ChevronRight, Copy, Edit3, Check, X } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
+import { StorageServiceManager } from '../../services/storage';
 import { parseUserInput } from '../../utils/pathUtils';
 
 interface BreadcrumbNavigationProps {

@@ -1,8 +1,7 @@
-import { Check, ChevronDown, Loader2, Star } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StoredConnection } from '../../services/connectionStorage';
+import { ChevronDown, Check, Star, Loader2 } from 'lucide-react';
+import { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
 import { showErrorToast } from '../../utils/clipboard';
 import { formatConnectionDisplayName } from '../../utils/urlUtils';
@@ -33,7 +32,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
   useEffect(() => {
     loadConnections();
     updateCurrentConnection();
-  }, [loadConnections, updateCurrentConnection]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -158,7 +157,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
           conn => conn && conn.url === current.url && conn.username === current.username
         )?.id || null
       );
-    } catch (_error) {
+    } catch (error) {
       // 没有活动连接时返回null，避免抛出错误
       return null;
     }

@@ -1,24 +1,23 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  type ColumnFiltersState,
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
   createColumnHelper,
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  type SortingState,
-  useReactTable,
-  type VisibilityState,
+  SortingState,
+  ColumnFiltersState,
+  VisibilityState,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowUpDown, ChevronDown, ChevronUp, Database, Loader2 } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ErrorDisplay, LoadingDisplay } from '../../common';
+import { ChevronUp, ChevronDown, Database, ArrowUpDown, Loader2 } from 'lucide-react';
+import { LoadingDisplay, ErrorDisplay } from '../../common';
+import type { DataProvider, DataMetadata } from '../data-providers';
+import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
+import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table-components';
 import { UnifiedContentModal } from '../common';
-import type { DataMetadata, DataProvider } from '../data-providers';
-import { CsvDataProvider, ParquetDataProvider, XlsxDataProvider } from '../data-providers';
-import { DataTableCell, DataTableColumnPanel, DataTableControls } from '../table-components';
 
 interface DataColumn {
   id: string;
@@ -283,7 +282,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
         maxSize: 400,
       });
     });
-  }, [columns, getColumnWidth, openContentModal]);
+  }, [columns]);
 
   // 创建表格实例
   const table = useReactTable({
@@ -325,12 +324,12 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
     if (lastItem.index >= rows.length - 10 && !loadingMore && loadedRows < totalRows) {
       loadMoreData();
     }
-  }, [virtualRows, rows.length, loadingMore, loadedRows, totalRows, loadMoreData]);
+  }, [virtualRows, rows.length, loadingMore, loadedRows, totalRows]);
 
   // 初始化
   useEffect(() => {
     loadDataFile();
-  }, [loadDataFile]);
+  }, [filePath, fileType]);
 
   if (loading) {
     return <LoadingDisplay message={t('data.table.loading', { fileName })} icon={Database} />;

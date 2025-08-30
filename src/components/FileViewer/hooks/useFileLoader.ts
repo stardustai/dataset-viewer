@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { configManager } from '../../../config';
+import { useState, useCallback, useEffect } from 'react';
+import { StorageFile, SearchResult, FullFileSearchResult } from '../../../types';
 import { StorageServiceManager } from '../../../services/storage';
-import type { FullFileSearchResult, SearchResult, StorageFile } from '../../../types';
+import { configManager } from '../../../config';
 import { getFileType } from '../../../utils/fileTypes';
 
 export const useFileLoader = (file: StorageFile, filePath: string) => {
@@ -113,7 +113,7 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
         setLoading(false);
       }
     },
-    [filePath, config.streaming.maxInitialLoad, config.streaming.chunkSize, fileInfo.isTextBased]
+    [filePath, isTextBased, config.streaming.maxInitialLoad, config.streaming.chunkSize]
   );
 
   const handleScrollToBottom = useCallback(async () => {

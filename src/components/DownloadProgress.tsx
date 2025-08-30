@@ -1,21 +1,21 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useState, useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import {
-  AlertCircle,
-  Check,
-  Download,
-  FolderOpen,
-  Pause,
-  Square,
-  StopCircle,
   X,
+  Download,
+  Check,
+  AlertCircle,
+  StopCircle,
+  FolderOpen,
+  Square,
+  Pause,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { formatFileSize } from '../utils/fileUtils';
 import { FolderDownloadService } from '../services/folderDownloadService';
 import { commands } from '../types/tauri-commands';
-import { formatFileSize } from '../utils/fileUtils';
 
 interface DownloadProgressProps {
   isVisible: boolean;

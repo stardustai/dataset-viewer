@@ -1,7 +1,6 @@
-import { Loader2 } from 'lucide-react';
-import type React from 'react';
-import { type ComponentType, Suspense } from 'react';
+import React, { Suspense, ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Loader2 } from 'lucide-react';
 
 interface LazyComponentWrapperProps {
   component: ComponentType<any> | React.LazyExoticComponent<ComponentType<any>>;

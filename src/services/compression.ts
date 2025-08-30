@@ -1,4 +1,4 @@
-import type { ArchiveInfo, FilePreview } from '../types';
+import { ArchiveInfo, FilePreview } from '../types';
 import { commands } from '../types/tauri-commands';
 
 export class CompressionService {

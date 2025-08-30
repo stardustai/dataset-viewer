@@ -1,13 +1,13 @@
-import type React from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StoredConnection } from '../../services/connectionStorage';
-import type { ConnectionConfig, StorageClientType } from '../../services/storage/types';
-import { StorageTypeSelector } from '../StorageTypeSelector';
+import { StorageClientType, ConnectionConfig } from '../../services/storage/types';
+import { StoredConnection } from '../../services/connectionStorage';
 import { ConnectionSelector } from './ConnectionSelector';
-import { HuggingFaceConnectionForm } from './HuggingFaceConnectionForm';
+import { StorageTypeSelector } from '../StorageTypeSelector';
 import { LocalConnectionForm } from './LocalConnectionForm';
 import { OSSConnectionForm } from './OSSConnectionForm';
 import { WebDAVConnectionForm } from './WebDAVConnectionForm';
+import { HuggingFaceConnectionForm } from './HuggingFaceConnectionForm';
 
 interface ConnectionFormContainerProps {
   storageType: StorageClientType;

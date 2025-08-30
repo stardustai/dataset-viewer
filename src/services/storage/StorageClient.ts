@@ -1,22 +1,23 @@
-import type { ArchiveInfo, FilePreview } from '../../types';
 import {
   commands,
-  type DirectoryResult,
-  type ListOptions,
-  type ConnectionConfig as TauriConnectionConfig,
+  DirectoryResult,
+  ListOptions,
+  ConnectionConfig as TauriConnectionConfig,
 } from '../../types/tauri-commands';
-import { huggingfaceStorageAdapter } from './adapters/HuggingFaceAdapter';
-import { localStorageAdapter } from './adapters/LocalAdapter';
-import { ossStorageAdapter } from './adapters/OSSAdapter';
+import {
+  StorageClient as IStorageClient,
+  ConnectionConfig,
+  StorageClientType,
+  FileContent,
+  ReadOptions,
+} from './types';
+import { ArchiveInfo, FilePreview } from '../../types';
+
 // 导入平台特定的适配器
 import { webdavStorageAdapter } from './adapters/WebDAVAdapter';
-import type {
-  ConnectionConfig,
-  FileContent,
-  StorageClient as IStorageClient,
-  ReadOptions,
-  StorageClientType,
-} from './types';
+import { localStorageAdapter } from './adapters/LocalAdapter';
+import { ossStorageAdapter } from './adapters/OSSAdapter';
+import { huggingfaceStorageAdapter } from './adapters/HuggingFaceAdapter';
 
 /**
  * 存储客户端排序选项

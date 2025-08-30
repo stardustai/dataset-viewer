@@ -1,7 +1,6 @@
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   createFoldingProvider,
   type FoldableRange,
@@ -100,7 +99,7 @@ export const useFoldingLogic = ({
 
     const ranges = provider.getFoldingRangesInRange(lines, startLine, endLine);
     setFoldableRanges(ranges);
-  }, [provider, supportsFolding, visibleRange?.start, visibleRange?.end, lines.length, lines]); // 分别依赖具体属性
+  }, [provider, supportsFolding, visibleRange?.start, visibleRange?.end, lines.length]); // 分别依赖具体属性
 
   // 计算可见行（考虑折叠状态）
   const visibleLines = useMemo(() => {
@@ -176,7 +175,7 @@ export const useFoldingLogic = ({
   // 当文件改变时清除状态
   useEffect(() => {
     setCollapsedRanges(new Set());
-  }, []);
+  }, [fileName]);
 
   return {
     supportsFolding,

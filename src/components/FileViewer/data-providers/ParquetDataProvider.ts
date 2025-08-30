@@ -1,4 +1,4 @@
-import { type AsyncBuffer, parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
+import { parquetMetadataAsync, parquetReadObjects, type AsyncBuffer } from 'hyparquet';
 import { commands } from '../../../types/tauri-commands';
 
 export interface DataColumn {

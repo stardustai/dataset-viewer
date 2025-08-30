@@ -1,16 +1,16 @@
+import { useState, useEffect } from 'react';
 import { emit } from '@tauri-apps/api/event';
-import { useEffect, useState } from 'react';
 import { ConnectionPanel } from './components/ConnectionPanel';
-import ErrorBoundary from './components/common/ErrorBoundary';
-import DownloadProgress from './components/DownloadProgress';
 import { FileBrowser } from './components/FileBrowser';
 import { FileViewer } from './components/FileViewer';
+import DownloadProgress from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
-import { useTheme } from './hooks/useTheme';
-import { fileAssociationService } from './services/fileAssociationService';
-import { navigationHistoryService } from './services/navigationHistory';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
-import type { StorageFile } from './types';
+import { navigationHistoryService } from './services/navigationHistory';
+import { fileAssociationService } from './services/fileAssociationService';
+import { useTheme } from './hooks/useTheme';
 import './i18n';
 import './App.css';
 
@@ -41,7 +41,7 @@ function App() {
   useEffect(() => {
     if (appState === 'initializing') return;
     const initialLoader = document.querySelector('.app-loading') as HTMLElement;
-    if (initialLoader?.parentNode) {
+    if (initialLoader && initialLoader.parentNode) {
       initialLoader.parentNode.removeChild(initialLoader);
     }
   }, [appState]);
@@ -182,12 +182,7 @@ function App() {
     };
 
     tryAutoConnect();
-  }, [
-    // 然后再处理文件选择（这会将状态改为viewing）
-    handleFileSelect,
-    isFileViewerMode,
-    urlParams.get,
-  ]);
+  }, []);
 
   const handleConnect = () => {
     // 连接成功时清除断开连接标记

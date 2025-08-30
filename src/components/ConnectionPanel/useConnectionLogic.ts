@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StoredConnection } from '../../services/connectionStorage';
+import { StorageClientType, ConnectionConfig } from '../../services/storage/types';
 import { StorageServiceManager } from '../../services/storage';
-import type { ConnectionConfig, StorageClientType } from '../../services/storage/types';
+import { StoredConnection } from '../../services/connectionStorage';
 import { getHostnameFromUrl } from '../../utils/urlUtils';
 
 export const useConnectionLogic = (onConnect: () => void) => {
@@ -177,7 +177,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
         setIsPasswordFromStorage(false);
       }
     } else if (type === 'local') {
-      if (selectedStoredConnection?.url.startsWith('file:///')) {
+      if (selectedStoredConnection && selectedStoredConnection.url.startsWith('file:///')) {
         const localPath = selectedStoredConnection.url.replace('file:///', '');
         setDefaultLocalPath(localPath);
       } else {

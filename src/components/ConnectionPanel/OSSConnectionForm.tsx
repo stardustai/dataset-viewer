@@ -1,9 +1,8 @@
-import type React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StoredConnection } from '../../services/connectionStorage';
-import type { ConnectionConfig } from '../../services/storage/types';
-import { OSS_PLATFORMS, OSSPlatformSelector } from './OSSPlatformSelector';
+import { ConnectionConfig } from '../../services/storage/types';
+import { StoredConnection } from '../../services/connectionStorage';
+import { OSSPlatformSelector, OSS_PLATFORMS } from './OSSPlatformSelector';
 
 interface OSSConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;
@@ -99,7 +98,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
   // 当选中连接变化时，更新表单
   useEffect(() => {
-    if (selectedConnection?.url.startsWith('oss://')) {
+    if (selectedConnection && selectedConnection.url.startsWith('oss://')) {
       try {
         // 解析 OSS URL: oss://hostname/bucket
         const ossUrl = selectedConnection.url.replace('oss://', '');
@@ -319,80 +318,124 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {externalError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
-          <p className="text-sm text-red-600 dark:text-red-400">{externalError}</p>
-        </div>
-      )}
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {externalError && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+            <p className="text-sm text-red-600 dark:text-red-400">{externalError}</p>
+          </div>
+        )}
 
-      {/* 平台选择器 */}
-      <OSSPlatformSelector
-        selectedPlatform={selectedPlatform}
-        selectedRegion={selectedRegion}
-        customEndpoint={customEndpoint}
-        onPlatformChange={handlePlatformChange}
-        onRegionChange={handleRegionChange}
-        onCustomEndpointChange={handleCustomEndpointChange}
-        disabled={connecting}
-      />
-      {errors.endpoint && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-2">
-          <p className="text-sm text-red-600 dark:text-red-400">{errors.endpoint}</p>
-        </div>
-      )}
+        {/* 平台选择器 */}
+        <OSSPlatformSelector
+          selectedPlatform={selectedPlatform}
+          selectedRegion={selectedRegion}
+          customEndpoint={customEndpoint}
+          onPlatformChange={handlePlatformChange}
+          onRegionChange={handleRegionChange}
+          onCustomEndpointChange={handleCustomEndpointChange}
+          disabled={connecting}
+        />
+        {errors.endpoint && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-2">
+            <p className="text-sm text-red-600 dark:text-red-400">{errors.endpoint}</p>
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="accessKey"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            {t('oss.access.key')}
-          </label>
-          <input
-            type="text"
-            id="accessKey"
-            value={config.accessKey}
-            onChange={e => handleInputChange('accessKey', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-              errors.accessKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
-            }`}
-            placeholder={t('oss.access.key.placeholder')}
-            disabled={connecting}
-          />
-          {errors.accessKey && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.accessKey}</p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor="secretKey"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            {t('oss.secret.key')}
-          </label>
-          <input
-            type="password"
-            id="secretKey"
-            value={config.secretKey}
-            onChange={e => handleInputChange('secretKey', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-              errors.secretKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
-            }`}
-            placeholder={t('oss.secret.key.placeholder')}
-            disabled={connecting}
-          />
-          {errors.secretKey && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.secretKey}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Bucket 字段 - 根据平台类型调整布局 */}
-      {selectedPlatform === 'custom' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="accessKey"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              {t('oss.access.key')}
+            </label>
+            <input
+              type="text"
+              id="accessKey"
+              value={config.accessKey}
+              onChange={e => handleInputChange('accessKey', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                errors.accessKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
+              }`}
+              placeholder={t('oss.access.key.placeholder')}
+              disabled={connecting}
+            />
+            {errors.accessKey && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.accessKey}</p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="secretKey"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              {t('oss.secret.key')}
+            </label>
+            <input
+              type="password"
+              id="secretKey"
+              value={config.secretKey}
+              onChange={e => handleInputChange('secretKey', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                errors.secretKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
+              }`}
+              placeholder={t('oss.secret.key.placeholder')}
+              disabled={connecting}
+            />
+            {errors.secretKey && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.secretKey}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Bucket 字段 - 根据平台类型调整布局 */}
+        {selectedPlatform === 'custom' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="bucket"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                {t('oss.bucket')}
+              </label>
+              <input
+                type="text"
+                id="bucket"
+                value={config.bucket}
+                onChange={e => handleInputChange('bucket', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  errors.bucket ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
+                }`}
+                placeholder={t('oss.bucket.placeholder')}
+                disabled={connecting}
+              />
+              {errors.bucket && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.bucket}</p>
+              )}
+            </div>
+
+            {/* 区域信息显示 - 仅在自定义平台时允许手动输入 */}
+            <div>
+              <label
+                htmlFor="region"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                {t('oss.region')}
+              </label>
+              <input
+                type="text"
+                id="region"
+                value={config.region}
+                onChange={e => handleInputChange('region', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder={t('oss.region.placeholder')}
+                disabled={connecting}
+              />
+            </div>
+          </div>
+        ) : (
           <div>
             <label
               htmlFor="bucket"
@@ -415,95 +458,53 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.bucket}</p>
             )}
           </div>
+        )}
 
-          {/* 区域信息显示 - 仅在自定义平台时允许手动输入 */}
-          <div>
-            <label
-              htmlFor="region"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              {t('oss.region')}
-            </label>
-            <input
-              type="text"
-              id="region"
-              value={config.region}
-              onChange={e => handleInputChange('region', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder={t('oss.region.placeholder')}
-              disabled={connecting}
-            />
-          </div>
-        </div>
-      ) : (
-        <div>
-          <label
-            htmlFor="bucket"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            {t('oss.bucket')}
-          </label>
-          <input
-            type="text"
-            id="bucket"
-            value={config.bucket}
-            onChange={e => handleInputChange('bucket', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-              errors.bucket ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
-            }`}
-            placeholder={t('oss.bucket.placeholder')}
-            disabled={connecting}
-          />
-          {errors.bucket && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.bucket}</p>
-          )}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={connecting}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
+        <button
+          type="submit"
+          disabled={connecting}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
                    text-white font-medium py-2 px-4 rounded-md transition-colors
                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
                    disabled:cursor-not-allowed flex items-center justify-center"
-      >
-        {connecting ? (
-          <>
-            <svg
-              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            {t('connecting')}
-          </>
-        ) : (
-          t('connect')
-        )}
-      </button>
+        >
+          {connecting ? (
+            <>
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              {t('connecting')}
+            </>
+          ) : (
+            t('connect')
+          )}
+        </button>
 
-      {/* 帮助信息 */}
-      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-        <p>{t('oss.help.credentials.title')}</p>
-        <p>1. {t('oss.help.step1')}</p>
-        <p>2. {t('oss.help.step2')}</p>
-        <p>3. {t('oss.help.step3')}</p>
-        <p>4. {t('oss.help.step4')}</p>
-      </div>
-    </form>
+        {/* 帮助信息 */}
+        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+          <p>{t('oss.help.credentials.title')}</p>
+          <p>1. {t('oss.help.step1')}</p>
+          <p>2. {t('oss.help.step2')}</p>
+          <p>3. {t('oss.help.step3')}</p>
+          <p>4. {t('oss.help.step4')}</p>
+        </div>
+      </form>
+    </>
   );
 };

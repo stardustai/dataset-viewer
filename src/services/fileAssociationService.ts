@@ -1,7 +1,7 @@
 import { listen } from '@tauri-apps/api/event';
-import type { StorageFile } from '../types';
-import { navigationHistoryService } from './navigationHistory';
+import { StorageFile } from '../types';
 import { StorageServiceManager } from './storage';
+import { navigationHistoryService } from './navigationHistory';
 
 /**
  * Result type for file opening operations
@@ -96,7 +96,7 @@ export class FileAssociationService {
       }
 
       // 获取相对路径（文件名）
-      const fileName = filePath.split(/[/\\]/).pop() || '';
+      const fileName = filePath.split(/[\/\\]/).pop() || '';
 
       // 创建文件对象
       const file = await this.createStorageFile(fileName);
@@ -174,7 +174,7 @@ export class FileAssociationService {
 
       const currentConnection = StorageServiceManager.getCurrentConnection();
       return currentConnection.type === 'local';
-    } catch (_error) {
+    } catch (error) {
       // 如果获取当前连接失败，说明没有连接
       return false;
     }

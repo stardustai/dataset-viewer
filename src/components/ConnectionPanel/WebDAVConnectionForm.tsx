@@ -1,6 +1,6 @@
-import { Lock, User } from 'lucide-react';
-import type React from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { User, Lock } from 'lucide-react';
 
 interface WebDAVConnectionFormProps {
   url: string;
