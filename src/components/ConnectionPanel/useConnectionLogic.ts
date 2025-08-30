@@ -93,7 +93,7 @@ export const useConnectionLogic = (onConnect: () => void) => {
     }
 
     localStorage.removeItem('userDisconnected');
-  }, [handleSelectStoredConnection]);
+  }, []);
 
   const handleWebDAVConnect = async (e: React.FormEvent) => {
     e.preventDefault();

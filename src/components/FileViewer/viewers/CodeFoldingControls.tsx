@@ -85,7 +85,7 @@ export const useFoldingLogic = ({
     } else {
       setProvider(null);
     }
-  }, [supportsFolding, fileName, contentHash]); // 使用 contentHash 而不是 lines
+  }, [supportsFolding, contentHash, fileName]); // 使用 contentHash 而不是 lines
 
   // 按需计算当前可见范围内的折叠区间
   useEffect(() => {

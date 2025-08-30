@@ -139,7 +139,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
   useEffect(() => {
     loadArchiveInfo();
-  }, [loadArchiveInfo]);
+  }, [url, filename]);
 
   const loadDetailedArchiveInfo = async () => {
     if (!filename.toLowerCase().endsWith('.zip')) {

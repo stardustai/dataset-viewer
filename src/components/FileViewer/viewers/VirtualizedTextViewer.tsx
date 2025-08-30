@@ -100,6 +100,7 @@ export const VirtualizedTextViewer = forwardRef<
     // 使用新的折叠逻辑 hook（按需计算）
     const {
       supportsFolding,
+      foldableRanges,
       collapsedRanges,
       visibleLines,
       getFoldableRangeAtLine,
