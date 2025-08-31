@@ -9,7 +9,6 @@ import { settingsStorage } from '../../services/settingsStorage';
 import { showToast } from '../../utils/clipboard';
 import type { UpdateCheckResult } from '../../types';
 import { commands } from '../../types/tauri-commands';
-import { FileAssociationSettings } from '../FileAssociation';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -27,7 +26,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   );
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [isRegisteringFileAssociations, setIsRegisteringFileAssociations] = useState(false);
-  const [showAdvancedFileAssociations, setShowAdvancedFileAssociations] = useState(false);
   // 切换纯黑色背景
   const handlePureBlackBgToggle = () => {
     const newValue = !usePureBlackBg;
@@ -110,7 +108,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       const result = await commands.systemRegisterFiles();
       if (result.status === 'ok') {
         console.log('File associations registered successfully:', result.data);
-        showToast(t('file.associations.capability.success'), 'success');
+        showToast(t('file.associations.success'), 'success');
       } else {
         throw new Error(result.error);
       }
@@ -298,8 +296,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               <p className="text-xs text-gray-600 dark:text-gray-300">
                 {t('file.association.description')}
               </p>
-              
-              {/* Basic Registration */}
               <button
                 onClick={handleRegisterFileAssociations}
                 disabled={isRegisteringFileAssociations}
@@ -311,17 +307,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 <span className="text-sm">
                   {isRegisteringFileAssociations
                     ? t('registering.file.associations')
-                    : t('register.file.capability')}
+                    : t('register.file.associations')}
                 </span>
-              </button>
-
-              {/* Advanced Settings */}
-              <button
-                onClick={() => setShowAdvancedFileAssociations(true)}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-                <span className="text-sm">{t('advanced.file.associations')}</span>
               </button>
             </div>
           </div>
@@ -347,13 +334,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           </button>
         </div>
       </div>
-
-      {/* Advanced File Association Settings Modal */}
-      {showAdvancedFileAssociations && (
-        <FileAssociationSettings
-          onClose={() => setShowAdvancedFileAssociations(false)}
-        />
-      )}
     </div>
   );
 };

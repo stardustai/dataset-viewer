@@ -55,8 +55,8 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
     }
 }
 
-/// 注册支持的文件类型关联 (兼容性方法)
-/// 仅注册应用程序能力，不设置为默认程序
+/// 注册支持的文件类型关联
+/// 将应用程序注册为特定文件类型的默认程序
 #[tauri::command]
 #[specta::specta]
 pub async fn system_register_files() -> Result<String, String> {
@@ -75,60 +75,6 @@ pub async fn system_register_files() -> Result<String, String> {
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
         Err("File association registration is not supported on this platform".to_string())
-    }
-}
-
-/// 获取所有支持的文件扩展名列表
-/// 返回应用程序可以处理的所有文件类型
-#[tauri::command]
-#[specta::specta]
-pub async fn system_get_supported_extensions() -> Result<Vec<String>, String> {
-    Ok(get_supported_extensions())
-}
-
-/// 注册选定的文件类型关联
-/// 只为用户选择的文件类型设置默认程序关联
-#[tauri::command]
-#[specta::specta]
-pub async fn system_register_selected_files(extensions: Vec<String>) -> Result<String, String> {
-    #[cfg(target_os = "windows")]
-    {
-        register_windows_selected_file_associations(extensions).await
-    }
-    #[cfg(target_os = "macos")]
-    {
-        register_macos_selected_file_associations(extensions).await
-    }
-    #[cfg(target_os = "linux")]
-    {
-        register_linux_selected_file_associations(extensions).await
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-    {
-        Err("File association registration is not supported on this platform".to_string())
-    }
-}
-
-/// 取消注册指定的文件类型关联
-/// 移除指定文件类型的默认程序关联
-#[tauri::command]
-#[specta::specta]
-pub async fn system_unregister_files(extensions: Vec<String>) -> Result<String, String> {
-    #[cfg(target_os = "windows")]
-    {
-        unregister_windows_file_associations(extensions).await
-    }
-    #[cfg(target_os = "macos")]
-    {
-        unregister_macos_file_associations(extensions).await
-    }
-    #[cfg(target_os = "linux")]
-    {
-        unregister_linux_file_associations(extensions).await
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-    {
-        Err("File association unregistration is not supported on this platform".to_string())
     }
 }
 
@@ -166,34 +112,26 @@ pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<St
 
 // 平台特定的文件关联实现
 
-/// 获取所有支持的文件扩展名
-fn get_supported_extensions() -> Vec<String> {
-    vec![
-        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", "bz2", "xz",
-        "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", "jsonl", "js", "ts", "jsx", "tsx",
-        "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml",
-        "yaml", "yml", "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md", "markdown",
-        "mdown", "mkd", "mdx",
-    ].into_iter().map(String::from).collect()
-}
-
-/// Windows 平台选择性文件关联注册
+/// Windows 平台文件关联注册
 #[cfg(target_os = "windows")]
-async fn register_windows_selected_file_associations(extensions: Vec<String>) -> Result<String, String> {
+async fn register_windows_file_associations() -> Result<String, String> {
     // 获取当前可执行文件路径
     let exe_path =
         std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
 
-    // 验证扩展名是否在支持列表中
-    let supported_extensions = get_supported_extensions();
+    // 定义支持的文件扩展名
+    let extensions = vec![
+        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", "bz2", "xz",
+        "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", "jsonl", "js", "ts", "jsx", "tsx",
+        "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml",
+        "yaml", "yml", "sql", "sh", "ps1", "log", "config", "ini", "tsv", "md", "markdown",
+        "mdown", "mkd", "mdx",
+    ];
+
     let mut registered_count = 0;
 
-    for ext in &extensions {
-        if !supported_extensions.contains(ext) {
-            continue; // 跳过不支持的扩展名
-        }
-
+    for ext in extensions {
         // 注册文件类型
         let output = Command::new("reg")
             .args([
@@ -212,66 +150,7 @@ async fn register_windows_selected_file_associations(extensions: Vec<String>) ->
         }
     }
 
-    // 如果注册了任何文件类型，就注册应用程序信息
-    if registered_count > 0 {
-        let _ = Command::new("reg")
-            .args([
-                "add",
-                "HKCU\\Software\\Classes\\DatasetViewer.File\\shell\\open\\command",
-                "/v",
-                "",
-                "/d",
-                &format!("\"{}\" \"%1\"", exe_path_str),
-                "/f",
-            ])
-            .output();
-    }
-
-    Ok(format!(
-        "Successfully registered {} file associations on Windows",
-        registered_count
-    ))
-}
-
-/// Windows 平台文件关联取消注册
-#[cfg(target_os = "windows")]
-async fn unregister_windows_file_associations(extensions: Vec<String>) -> Result<String, String> {
-    let mut unregistered_count = 0;
-
-    for ext in &extensions {
-        // 删除文件类型关联
-        let output = Command::new("reg")
-            .args([
-                "delete",
-                &format!("HKCU\\Software\\Classes\\.{}", ext),
-                "/f",
-            ])
-            .output();
-
-        if output.is_ok() {
-            unregistered_count += 1;
-        }
-    }
-
-    Ok(format!(
-        "Successfully unregistered {} file associations on Windows",
-        unregistered_count
-    ))
-}
-
-/// Windows 平台文件关联注册 (仅注册能力，不设置为默认)
-/// 让系统知道应用程序可以打开这些文件类型，但不设置为默认程序
-#[cfg(target_os = "windows")]
-async fn register_windows_file_associations() -> Result<String, String> {
-    // 获取当前可执行文件路径
-    let exe_path =
-        std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
-    let exe_path_str = exe_path.to_string_lossy();
-
-    // 定义支持的文件扩展名
-    let extensions = get_supported_extensions();
-
-    // 仅注册应用程序信息，不设置文件类型默认关联
+    // 注册应用程序信息
     let _ = Command::new("reg")
         .args([
             "add",
@@ -284,35 +163,24 @@ async fn register_windows_file_associations() -> Result<String, String> {
         ])
         .output();
 
-    // 注册应用程序到"打开方式"列表中，但不设为默认
-    let _ = Command::new("reg")
-        .args([
-            "add",
-            "HKCU\\Software\\Classes\\Applications\\dataset-viewer.exe\\shell\\open\\command",
-            "/v",
-            "",
-            "/d",
-            &format!("\"{}\" \"%1\"", exe_path_str),
-            "/f",
-        ])
-        .output();
-
     Ok(format!(
-        "Registered application capability for {} file types (not as default handler)",
-        extensions.len()
+        "Successfully registered {} file associations on Windows",
+        registered_count
     ))
 }
 
-/// macOS 平台选择性文件关联注册
+/// macOS 平台文件关联注册
 #[cfg(target_os = "macos")]
-async fn register_macos_selected_file_associations(extensions: Vec<String>) -> Result<String, String> {
-    // macOS 上的文件关联通过 Info.plist 预配置，这里主要是刷新系统服务
+async fn register_macos_file_associations() -> Result<String, String> {
+    // macOS 上文件关联通过 Info.plist 和 Launch Services 处理
+    // 在构建时已经通过 tauri.conf.json 中的 fileAssociations 配置
+    // 这里可以刷新 Launch Services 数据库
     let output = Command::new("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
         .args(["-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"])
         .output();
 
     match output {
-        Ok(_) => Ok(format!("File associations registered for {} extensions on macOS", extensions.len())),
+        Ok(_) => Ok("File associations refreshed successfully on macOS".to_string()),
         Err(e) => Err(format!(
             "Failed to refresh file associations on macOS: {}",
             e
@@ -320,25 +188,7 @@ async fn register_macos_selected_file_associations(extensions: Vec<String>) -> R
     }
 }
 
-/// macOS 平台文件关联取消注册
-#[cfg(target_os = "macos")]
-async fn unregister_macos_file_associations(_extensions: Vec<String>) -> Result<String, String> {
-    // macOS 的文件关联主要通过系统偏好设置管理，这里提供清理缓存功能
-    let output = Command::new("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
-        .args(["-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"])
-        .output();
-
-    match output {
-        Ok(_) => Ok("File association cache cleared on macOS".to_string()),
-        Err(e) => Err(format!(
-            "Failed to clear file association cache on macOS: {}",
-            e
-        )),
-    }
-}
-
-/// Linux 平台文件关联注册 (仅注册能力，不设置为默认)
-/// 让系统知道应用程序可以打开这些文件类型，但不设置为默认程序
+/// Linux 平台文件关联注册
 #[cfg(target_os = "linux")]
 async fn register_linux_file_associations() -> Result<String, String> {
     use std::fs;
@@ -368,7 +218,7 @@ async fn register_linux_file_associations() -> Result<String, String> {
         Terminal=false\n\
         Type=Application\n\
         Categories=Office;Development;\n\
-        NoDisplay=true\n",
+        MimeType=text/csv;application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.oasis.opendocument.spreadsheet;application/octet-stream;application/zip;application/x-tar;application/gzip;application/x-bzip2;application/x-xz;application/x-7z-compressed;application/x-rar-compressed;text/plain;application/json;text/html;text/css;text/javascript;application/javascript;text/x-python;text/x-java-source;text/x-c;text/x-c++;text/x-php;text/x-ruby;text/x-go;text/x-rust;application/xml;text/yaml;application/sql;text/x-shellscript;text/x-log;text/markdown;image/jpeg;image/png;image/gif;image/webp;image/svg+xml;image/bmp;image/x-icon;image/tiff;application/pdf;video/mp4;video/webm;video/ogg;video/x-msvideo;video/quicktime;video/x-ms-wmv;video/x-flv;video/x-matroska;audio/mpeg;audio/ogg;audio/wav;audio/x-flac;audio/aac;audio/x-m4a;application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/rtf;application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.oasis.opendocument.presentation;\n",
         exe_path_str
     );
 
@@ -380,99 +230,5 @@ async fn register_linux_file_associations() -> Result<String, String> {
         .arg(desktop_dir)
         .output();
 
-    let extensions = get_supported_extensions();
-    Ok(format!(
-        "Registered application capability for {} file types (not as default handler)",
-        extensions.len()
-    ))
-}
-
-/// Linux 平台选择性文件关联注册
-#[cfg(target_os = "linux")]
-async fn register_linux_selected_file_associations(extensions: Vec<String>) -> Result<String, String> {
-    use std::fs;
-    use std::path::Path;
-
-    // 获取当前可执行文件路径
-    let exe_path =
-        std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
-    let exe_path_str = exe_path.to_string_lossy();
-
-    // 创建 .desktop 文件
-    let home_dir = std::env::var("HOME").map_err(|_| "Failed to get HOME directory".to_string())?;
-    let desktop_dir = format!("{}/.local/share/applications", home_dir);
-    let desktop_file_path = format!("{}/dataset-viewer.desktop", desktop_dir);
-
-    // 确保目录存在
-    if let Some(parent) = Path::new(&desktop_file_path).parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
-    }
-
-    // 为选定的扩展名生成 MIME 类型
-    let mime_types = extensions.iter()
-        .filter_map(|ext| match ext.as_str() {
-            "csv" => Some("text/csv"),
-            "txt" => Some("text/plain"),
-            "json" => Some("application/json"),
-            "html" => Some("text/html"),
-            "css" => Some("text/css"),
-            "js" => Some("application/javascript"),
-            "py" => Some("text/x-python"),
-            "java" => Some("text/x-java-source"),
-            "cpp" | "c" => Some("text/x-c++"),
-            "xml" => Some("application/xml"),
-            "yaml" | "yml" => Some("text/yaml"),
-            "md" | "markdown" => Some("text/markdown"),
-            "zip" => Some("application/zip"),
-            "tar" => Some("application/x-tar"),
-            "gz" => Some("application/gzip"),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join(";");
-
-    let desktop_content = format!(
-        "[Desktop Entry]\n\
-        Name=Dataset Viewer\n\
-        Comment=Modern dataset viewer with large file streaming support\n\
-        Exec={} %f\n\
-        Icon=dataset-viewer\n\
-        Terminal=false\n\
-        Type=Application\n\
-        Categories=Office;Development;\n\
-        MimeType={};\n",
-        exe_path_str, mime_types
-    );
-
-    fs::write(&desktop_file_path, desktop_content)
-        .map_err(|e| format!("Failed to write desktop file: {}", e))?;
-
-    // 更新 MIME 数据库
-    let _ = Command::new("update-desktop-database")
-        .arg(desktop_dir)
-        .output();
-
-    Ok(format!("File associations registered for {} extensions on Linux", extensions.len()))
-}
-
-/// Linux 平台文件关联取消注册
-#[cfg(target_os = "linux")]
-async fn unregister_linux_file_associations(_extensions: Vec<String>) -> Result<String, String> {
-    use std::fs;
-
-    let home_dir = std::env::var("HOME").map_err(|_| "Failed to get HOME directory".to_string())?;
-    let desktop_dir = format!("{}/.local/share/applications", home_dir);
-    let desktop_file_path = format!("{}/dataset-viewer.desktop", desktop_dir);
-
-    // 删除 .desktop 文件
-    if fs::remove_file(&desktop_file_path).is_ok() {
-        // 更新 MIME 数据库
-        let _ = Command::new("update-desktop-database")
-            .arg(desktop_dir)
-            .output();
-        
-        Ok("File associations unregistered on Linux".to_string())
-    } else {
-        Ok("No file associations found to unregister on Linux".to_string())
-    }
+    Ok("File associations registered successfully on Linux".to_string())
 }
