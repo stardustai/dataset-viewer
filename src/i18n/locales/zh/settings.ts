@@ -40,7 +40,6 @@ export const settings = {
   'file.association.settings': '文件关联设置',
   'file.association.advanced.description': 
     '选择您希望此应用程序作为默认程序处理的文件类型。只有选中的扩展名才会被设置为默认关联。',
-  'file.association.current.status': '当前有 {{count}} 种文件类型已关联到此应用',
   'selected.extensions.count': '已选择 {{selected}}/{{total}} 个扩展名',
   'select.all.safe': '全选（安全）',
   'deselect.all': '全部取消',
@@ -64,10 +63,6 @@ export const settings = {
   // 文件扩展名警告
   'file.extension.problematic.tooltip': '此文件类型可能与系统功能冲突',
   'file.extension.problematic.warning': '部分选中的文件类型（如 .bat、.sh、.ps1）可能会干扰正常的系统操作，请谨慎使用。',
-  'file.extension.currently.associated': '当前已关联到此应用',
-  'file.extension.will.be.removed': '将从关联中移除',
-  'file.extension.will.be.added': '将添加到关联',
-  'file.extension.will.be.new': '新增关联',
 
   // 关于
   about: '关于',

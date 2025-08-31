@@ -57,7 +57,6 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
   const { t } = useTranslation();
   const [supportedExtensions, setSupportedExtensions] = useState<string[]>([]);
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
-  const [currentAssociations, setCurrentAssociations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
 
@@ -73,26 +72,9 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
       const extensions = getAllSupportedExtensions();
       setSupportedExtensions(extensions);
       
-      // Query current file associations from system instead of defaulting to safe extensions
-      try {
-        const currentAssociationsResult = await commands.systemGetCurrentFileAssociations();
-        if (currentAssociationsResult.status === 'ok') {
-          const currentAssociations = currentAssociationsResult.data;
-          setCurrentAssociations(currentAssociations);
-          setSelectedExtensions(currentAssociations);
-        } else {
-          // If query fails, fall back to safe extensions as default
-          const safeExtensions = extensions.filter(ext => !problematicExtensions.includes(ext));
-          setSelectedExtensions(safeExtensions);
-          setCurrentAssociations([]);
-        }
-      } catch (error) {
-        console.warn('Failed to query current file associations, using safe defaults:', error);
-        // Fallback to safe extensions if query fails
-        const safeExtensions = extensions.filter(ext => !problematicExtensions.includes(ext));
-        setSelectedExtensions(safeExtensions);
-        setCurrentAssociations([]);
-      }
+      // Pre-select safe extensions (exclude problematic ones)
+      const safeExtensions = extensions.filter(ext => !problematicExtensions.includes(ext));
+      setSelectedExtensions(safeExtensions);
       
       setIsLoading(false);
     } catch (error) {
@@ -211,7 +193,6 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
         <div className="flex flex-wrap gap-2">
           {categoryExtensions.map(extension => {
             const isSelected = selectedExtensions.includes(extension);
-            const isCurrentlyAssociated = currentAssociations.includes(extension);
             const isProblematic = problematicExtensions.includes(extension);
             
             return (
@@ -225,27 +206,12 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
                 } ${
                   isProblematic ? 'border-orange-300 dark:border-orange-700' : ''
                 }`}
-                title={
-                  isProblematic 
-                    ? t('file.extension.problematic.tooltip') 
-                    : isCurrentlyAssociated && !isSelected
-                    ? t('file.extension.will.be.removed')
-                    : !isCurrentlyAssociated && isSelected
-                    ? t('file.extension.will.be.added')
-                    : undefined
-                }
+                title={isProblematic ? t('file.extension.problematic.tooltip') : undefined}
               >
                 <span>.{extension}</span>
                 {isSelected && <Check className="w-3 h-3 ml-1" />}
                 {isProblematic && !isSelected && (
                   <span className="w-3 h-3 ml-1 text-orange-500">⚠</span>
-                )}
-                {/* Show current association status */}
-                {isCurrentlyAssociated && !isSelected && (
-                  <span className="w-3 h-3 ml-1 text-red-500" title={t('file.extension.currently.associated')}>●</span>
-                )}
-                {!isCurrentlyAssociated && isSelected && (
-                  <span className="w-3 h-3 ml-1 text-green-500" title={t('file.extension.will.be.new')}>+</span>
                 )}
               </button>
             );
@@ -295,11 +261,6 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
               <p className="text-sm text-blue-800 dark:text-blue-300">
                 {t('file.association.advanced.description')}
               </p>
-              {currentAssociations.length > 0 && (
-                <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
-                  {t('file.association.current.status', { count: currentAssociations.length })}
-                </p>
-              )}
             </div>
 
             {/* Bulk Actions */}
