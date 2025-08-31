@@ -98,34 +98,34 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
   // 当选中连接变化时，更新表单
   useEffect(() => {
-    if (selectedConnection && selectedConnection.url.startsWith('oss://')) {
+    if (selectedConnection && selectedConnection.config.type === 'oss') {
       try {
-        // 解析 OSS URL: oss://hostname/bucket
-        const ossUrl = selectedConnection.url.replace('oss://', '');
-        const [hostname, ...bucketParts] = ossUrl.split('/');
-        const bucket = bucketParts.join('/'); // 支持路径包含斜杠的情况
-        const endpoint = selectedConnection.metadata?.endpoint || `https://${hostname}`;
-        const region = selectedConnection.metadata?.region || '';
-        const savedPlatform = selectedConnection.metadata?.platform;
+        const config = selectedConnection.config;
 
-        // 优先使用保存的平台信息，如果没有则尝试匹配
-        let matchedPlatform = savedPlatform || 'custom';
+        // 从配置中获取信息
+        const bucket = config.bucket || '';
+        const endpoint = config.endpoint || '';
+        const region = config.region || '';
+        const platform = config.platform || 'custom';
+
+        // 尝试匹配平台
+        let matchedPlatform = platform;
         let matchedRegion = region;
 
-        // 如果没有保存的平台信息，尝试根据endpoint匹配
-        if (!savedPlatform) {
-          for (const platform of OSS_PLATFORMS) {
-            if (platform.id === 'custom') continue;
+        // 如果没有明确的平台信息，尝试根据endpoint匹配
+        if (platform === 'custom' || !platform) {
+          for (const platformInfo of OSS_PLATFORMS) {
+            if (platformInfo.id === 'custom') continue;
 
-            const regionMatch = platform.regions.find(
+            const regionMatch = platformInfo.regions.find(
               r =>
                 r.endpoint === endpoint ||
                 endpoint.includes(r.id) ||
-                (platform.endpoint.includes('{region}') && endpoint.includes(r.id))
+                (platformInfo.endpoint.includes('{region}') && endpoint.includes(r.id))
             );
 
             if (regionMatch) {
-              matchedPlatform = platform.id;
+              matchedPlatform = platformInfo.id;
               matchedRegion = regionMatch.id;
               break;
             }
@@ -142,26 +142,22 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
         setConfig({
           endpoint: endpoint,
-          accessKey: selectedConnection.username,
-          secretKey: selectedConnection.password ? '••••••••' : '',
-          bucket: bucket || '',
+          accessKey: config.username || '',
+          secretKey: config.password ? '••••••••' : '',
+          bucket: bucket,
           region: matchedRegion,
         });
       } catch (error) {
         console.error('Failed to parse OSS connection:', error);
         // 如果解析失败，使用自定义模式
         setSelectedPlatform('custom');
-        const raw = selectedConnection.url.replace('oss://', '');
-        const [host, ...bucketParts] = raw.split('/');
-        const bucket = bucketParts.join('/'); // 保持完整路径
-        const fallbackEndpoint = `https://${host}`;
-        setCustomEndpoint(fallbackEndpoint);
+        setCustomEndpoint(selectedConnection.config.endpoint || '');
         setConfig({
-          endpoint: fallbackEndpoint,
-          accessKey: selectedConnection.username,
-          secretKey: selectedConnection.password ? '••••••••' : '',
-          bucket: bucket || '',
-          region: '',
+          endpoint: selectedConnection.config.endpoint || '',
+          accessKey: selectedConnection.config.username || '',
+          secretKey: selectedConnection.config.password ? '••••••••' : '',
+          bucket: selectedConnection.config.bucket || '',
+          region: selectedConnection.config.region || '',
         });
       }
     } else if (!selectedConnection) {
@@ -261,8 +257,8 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 
     // 如果密码是占位符（来自已保存的连接），使用真实密码
     const actualSecretKey =
-      config.secretKey === '••••••••' && selectedConnection?.password
-        ? selectedConnection.password
+      config.secretKey === '••••••••' && selectedConnection?.config.password
+        ? selectedConnection.config.password
         : config.secretKey;
 
     // 处理bucket路径：移除尾部无意义的斜杠

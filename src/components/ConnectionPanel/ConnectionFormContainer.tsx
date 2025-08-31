@@ -112,8 +112,8 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               connecting={connecting}
               error={error}
               defaultPath={
-                selectedStoredConnection?.url.startsWith('file:///')
-                  ? selectedStoredConnection.url.replace('file:///', '')
+                selectedStoredConnection?.config.type === 'local'
+                  ? selectedStoredConnection.config.rootPath || ''
                   : defaultLocalPath
               }
             />

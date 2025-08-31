@@ -23,14 +23,11 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
 
   // 当选中连接变化时，更新表单
   useEffect(() => {
-    if (selectedConnection && selectedConnection.url.startsWith('huggingface://')) {
-      // 从 metadata 获取信息
-      const organization = selectedConnection.metadata?.organization || '';
-      const apiToken = selectedConnection.metadata?.apiToken || '';
-
+    if (selectedConnection && selectedConnection.config.type === 'huggingface') {
+      const config = selectedConnection.config;
       setFormData({
-        organization: organization,
-        apiToken: apiToken ? '••••••••' : '', // 显示占位符表示已保存的 token
+        organization: config.organization || '',
+        apiToken: config.apiToken ? '••••••••' : '',
       });
     } else if (!selectedConnection) {
       // 清空表单
@@ -47,11 +44,11 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
     // 如果 API token 是占位符且有选中的连接，使用真实的 token
     const actualApiToken =
       formData.apiToken === '••••••••' && selectedConnection
-        ? selectedConnection.metadata?.apiToken || ''
+        ? selectedConnection.config.apiToken || ''
         : formData.apiToken;
 
     // 检查组织名是否发生变化
-    const originalOrg = selectedConnection?.metadata?.organization || '';
+    const originalOrg = selectedConnection?.config.organization || '';
     const currentOrg = formData.organization || '';
     const orgChanged = originalOrg !== currentOrg;
 

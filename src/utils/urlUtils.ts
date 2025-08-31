@@ -16,31 +16,31 @@ export function getHostnameFromUrl(url: string): string {
 }
 
 /**
- * Formats a connection display name based on URL and username
- * @param url - The connection URL
- * @param username - The username (optional)
+ * Formats a connection display name based on connection config
+ * @param config - The connection configuration object
  * @returns Formatted display name
  */
-export function formatConnectionDisplayName(url: string, username?: string): string {
-  // Handle special URL schemes using regex
-  const specialSchemeMatch = url.match(/^(\w+):\/\/(.+)$/);
-  if (specialSchemeMatch) {
-    const [, scheme, content] = specialSchemeMatch;
-    // Skip http/https as they are regular URLs
-    if (scheme !== 'http' && scheme !== 'https') {
-      const displayScheme = scheme.charAt(0).toUpperCase() + scheme.slice(1);
-      return `${displayScheme}: ${content}`;
-    }
-  }
+export function formatConnectionDisplayName(config: any): string {
+  if (!config) return '';
 
-  // For regular URLs, try to format with username@hostname
-  if (username) {
-    const hostname = getHostnameFromUrl(url);
-    return hostname !== url ? `${username}@${hostname}` : url;
-  }
+  switch (config.type) {
+    case 'local':
+      return config.rootPath || '';
 
-  // Fallback to hostname only or original URL
-  return getHostnameFromUrl(url);
+    case 'oss':
+      return `OSS: ${config.username || config.accessKeyId || ''}`;
+
+    case 'huggingface':
+      return `HuggingFace: ${config.organization || 'hub'}`;
+
+    default:
+      // For WebDAV and other URL-based connections
+      if (config.username && config.url) {
+        const hostname = getHostnameFromUrl(config.url);
+        return hostname !== config.url ? `${config.username}@${hostname}` : config.url;
+      }
+      return config.url ? getHostnameFromUrl(config.url) : '';
+  }
 }
 
 /**

@@ -1,40 +1,15 @@
-import { StorageConnection } from '../types';
+import { ConnectionConfig } from './storage/types';
 
 export interface StoredConnection {
   id: string;
   name: string;
-  url: string;
-  username: string;
-  password?: string; // 可选的密码字段
+  config: ConnectionConfig; // 直接存储完整的连接配置
   lastConnected?: string;
   isDefault?: boolean;
-  // 扩展元数据字段，用于存储不同存储类型的特定信息
-  metadata?: {
-    // HuggingFace 特定字段
-    organization?: string;
-    apiToken?: string;
-    // OSS 特定字段
-    bucket?: string;
-    region?: string;
-    endpoint?: string;
-    // 其他存储类型可以在此添加字段
-    [key: string]: any;
-  };
 }
 
 class ConnectionStorageService {
   private readonly STORAGE_KEY = 'storage-connections';
-
-  // 标准化 URL 格式 - 统一以斜杠结尾
-  private normalizeUrl(url: string): string {
-    try {
-      // 移除尾部的多个斜杠，然后统一添加单个斜杠
-      return url.replace(/\/+$/, '') + '/';
-    } catch (error) {
-      console.warn('Failed to normalize URL:', url, error);
-      return url;
-    }
-  }
 
   // 获取所有保存的连接
   getStoredConnections(): StoredConnection[] {
@@ -42,27 +17,13 @@ class ConnectionStorageService {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       const connections = stored ? JSON.parse(stored) : [];
 
-      // 迁移现有连接的 URL 格式（一次性处理）
-      let needsSave = false;
-      const migratedConnections = connections.map((conn: StoredConnection) => {
-        const normalizedUrl = this.normalizeUrl(conn.url);
-        if (conn.url !== normalizedUrl) {
-          needsSave = true;
-          return { ...conn, url: normalizedUrl };
-        }
-        return conn;
+      // 过滤无效的连接数据
+      const validConnections = connections.filter((conn: any) => {
+        return conn.id && conn.name && conn.config && conn.config.type;
       });
 
-      // 如果有 URL 被标准化，保存更新后的连接
-      if (needsSave) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(migratedConnections));
-      }
-
-      const finalConnections = needsSave ? migratedConnections : connections;
-
       // 按照最后连接时间排序，最近的在前面
-      // 对于没有 lastConnected 的连接，使用当前时间作为默认值
-      return finalConnections.sort((a: StoredConnection, b: StoredConnection) => {
+      return validConnections.sort((a: StoredConnection, b: StoredConnection) => {
         const aTime = new Date(a.lastConnected || new Date().toISOString()).getTime();
         const bTime = new Date(b.lastConnected || new Date().toISOString()).getTime();
         return bTime - aTime; // 降序排列，最新的在前面
@@ -73,89 +34,48 @@ class ConnectionStorageService {
     }
   }
 
-  // 保存连接配置（可选择保存密码）
+  // 保存连接配置
   async saveConnection(
-    connection: StorageConnection,
+    config: ConnectionConfig,
     name?: string,
     savePassword: boolean = false
   ): Promise<string> {
     const connections = this.getStoredConnections();
 
-    // 清理输入数据：去除首尾空格
-    const cleanedConnection = {
-      ...connection,
-      url: connection.url.trim(),
-      username: connection.username.trim(),
-    };
-
-    // 标准化 URL 格式
-    const normalizedUrl = this.normalizeUrl(cleanedConnection.url);
-
-    // 检查是否已存在相同的连接（基于标准化的 URL 和用户名）
-    const existingConnection = this.findConnection(
-      normalizedUrl,
-      cleanedConnection.username,
-      cleanedConnection.metadata
-    );
+    // 检查是否已存在相同的连接
+    const existingConnection = this.findConnection(config);
     if (existingConnection) {
-      // 如果连接已存在，更新最后连接时间和密码（如果需要）
+      // 更新现有连接
       this.updateLastConnected(existingConnection.id);
-      if (savePassword && cleanedConnection.password) {
-        this.updatePassword(existingConnection.id, cleanedConnection.password);
-      }
-      // 更新 metadata 信息（如果有变化）
-      if (cleanedConnection.metadata) {
-        this.updateMetadata(existingConnection.id, cleanedConnection.metadata);
+      if (savePassword && (config.password || config.apiToken)) {
+        existingConnection.config.password = config.password;
+        existingConnection.config.apiToken = config.apiToken;
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
       }
       return existingConnection.id;
     }
 
     const id = this.generateId();
 
-    // 如果没有提供名称，使用 client 生成名称
-    let connectionName = name;
+    // 生成连接名称
+    let connectionName = name || config.name;
     if (!connectionName) {
-      try {
-        // 动态导入避免循环依赖
-        const { StorageClientFactory } = await import('./storage/StorageManager');
+      connectionName = this.generateConnectionName(config);
+    }
 
-        // 确定连接类型
-        let type: 'webdav' | 'oss' | 'local' = 'webdav';
-        if (normalizedUrl.startsWith('file:///')) {
-          type = 'local';
-        } else if (normalizedUrl.startsWith('oss://') || this.isOSSEndpoint(normalizedUrl)) {
-          type = 'oss';
-        }
-
-        connectionName = StorageClientFactory.generateConnectionName({
-          type,
-          url: normalizedUrl,
-          username: cleanedConnection.username,
-          password: cleanedConnection.password,
-        });
-      } catch (error) {
-        console.warn('Failed to generate connection name with client, using fallback:', error);
-        connectionName = normalizedUrl;
-      }
+    // 创建连接配置副本，根据保存选项决定是否包含敏感信息
+    const configToSave = { ...config };
+    if (!savePassword) {
+      delete configToSave.password;
+      delete configToSave.apiToken;
     }
 
     const storedConnection: StoredConnection = {
       id,
       name: connectionName,
-      url: normalizedUrl, // 使用标准化的 URL
-      username: cleanedConnection.username,
+      config: configToSave,
       lastConnected: new Date().toISOString(),
     };
-
-    // 根据选择决定是否保存密码
-    if (savePassword && cleanedConnection.password) {
-      storedConnection.password = cleanedConnection.password;
-    }
-
-    // 保存扩展的 metadata 信息
-    if (cleanedConnection.metadata) {
-      storedConnection.metadata = cleanedConnection.metadata;
-    }
 
     // 如果是第一个连接，设为默认
     if (connections.length === 0) {
@@ -165,32 +85,83 @@ class ConnectionStorageService {
     connections.push(storedConnection);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
     return id;
-  } // 更新最后连接时间
+  }
+
+  // 查找匹配的连接
+  findConnection(config: ConnectionConfig): StoredConnection | null {
+    const connections = this.getStoredConnections();
+
+    return (
+      connections.find(conn => {
+        const storedConfig = conn.config;
+
+        // 基本类型匹配
+        if (storedConfig.type !== config.type) return false;
+
+        switch (config.type) {
+          case 'webdav':
+            return storedConfig.url === config.url && storedConfig.username === config.username;
+
+          case 'local':
+            return storedConfig.rootPath === config.rootPath;
+
+          case 'oss':
+            return (
+              storedConfig.bucket === config.bucket &&
+              storedConfig.region === config.region &&
+              storedConfig.endpoint === config.endpoint &&
+              storedConfig.username === config.username
+            );
+
+          case 'huggingface':
+            return storedConfig.organization === config.organization;
+
+          default:
+            return false;
+        }
+      }) || null
+    );
+  }
+
+  // 生成连接名称
+  generateConnectionName(config: ConnectionConfig): string {
+    switch (config.type) {
+      case 'webdav':
+        const hostname = config.url ? this.getHostnameFromUrl(config.url) : 'WebDAV';
+        return `WebDAV(${hostname})`;
+
+      case 'local':
+        const path = config.rootPath || '/';
+        const folderName = path.split('/').filter(Boolean).pop() || 'Root';
+        return `Local(${folderName})`;
+
+      case 'oss':
+        const platform = config.platform || 'OSS';
+        return `${platform}(${config.bucket})`;
+
+      case 'huggingface':
+        return `HuggingFace(${config.organization || 'hub'})`;
+
+      default:
+        return 'Unknown Connection';
+    }
+  }
+
+  // 从URL提取主机名
+  private getHostnameFromUrl(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  }
+
+  // 更新最后连接时间
   updateLastConnected(id: string): void {
     const connections = this.getStoredConnections();
     const connection = connections.find(c => c.id === id);
     if (connection) {
       connection.lastConnected = new Date().toISOString();
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
-    }
-  }
-
-  // 更新连接密码
-  updatePassword(id: string, password: string): void {
-    const connections = this.getStoredConnections();
-    const connection = connections.find(c => c.id === id);
-    if (connection) {
-      connection.password = password;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
-    }
-  }
-
-  // 更新连接的 metadata
-  updateMetadata(id: string, metadata: { [key: string]: any }): void {
-    const connections = this.getStoredConnections();
-    const connection = connections.find(c => c.id === id);
-    if (connection) {
-      connection.metadata = { ...connection.metadata, ...metadata };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
     }
   }
@@ -205,8 +176,6 @@ class ConnectionStorageService {
   // 恢复已删除的连接
   restoreConnection(connection: StoredConnection): void {
     const connections = this.getStoredConnections();
-
-    // 检查连接是否已存在（避免重复恢复）
     const exists = connections.some(c => c.id === connection.id);
     if (!exists) {
       connections.push(connection);
@@ -229,32 +198,6 @@ class ConnectionStorageService {
     return connections.find(c => c.isDefault) || connections[0] || null;
   }
 
-  // 查找连接 - 使用标准化的 URL 进行比较
-  findConnection(
-    url: string,
-    username: string,
-    metadata?: { [key: string]: any }
-  ): StoredConnection | null {
-    const connections = this.getStoredConnections();
-    const normalizedUrl = this.normalizeUrl(url);
-
-    return (
-      connections.find(c => {
-        const urlMatch = this.normalizeUrl(c.url) === normalizedUrl;
-        const usernameMatch = c.username === username;
-
-        // 对于 HuggingFace 连接，额外检查组织名
-        if (normalizedUrl.startsWith('huggingface://')) {
-          const storedOrg = c.metadata?.organization;
-          const inputOrg = metadata?.organization;
-          return urlMatch && usernameMatch && storedOrg === inputOrg;
-        }
-
-        return urlMatch && usernameMatch;
-      }) || null
-    );
-  }
-
   // 重命名连接
   renameConnection(id: string, newName: string): boolean {
     const connections = this.getStoredConnections();
@@ -274,19 +217,6 @@ class ConnectionStorageService {
 
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }
-
-  // 检测是否为 OSS 端点
-  private isOSSEndpoint(url: string): boolean {
-    try {
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname;
-      return (
-        hostname.includes('.oss') || hostname.includes('.s3.') || hostname.includes('amazonaws.com')
-      );
-    } catch {
-      return false;
-    }
   }
 }
 

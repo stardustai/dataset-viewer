@@ -1,43 +1,43 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageClientType, ConnectionConfig } from '../../services/storage/types';
-import { StorageServiceManager } from '../../services/storage';
+import { StorageServiceManager } from '../../services/storage/StorageManager';
 import { StoredConnection } from '../../services/connectionStorage';
-import { getHostnameFromUrl } from '../../utils/urlUtils';
+import { ConnectionConfig, StorageClientType } from '../../services/storage/types';
 
-export const useConnectionLogic = (onConnect: () => void) => {
+export default function useConnectionLogic(onConnectSuccess?: () => void) {
   const { t } = useTranslation();
 
-  // 存储类型选择
+  // 通用状态
   const [storageType, setStorageType] = useState<StorageClientType>('webdav');
-
-  // WebDAV 连接状态
-  const [url, setUrl] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
   const [selectedStoredConnection, setSelectedStoredConnection] = useState<StoredConnection | null>(
     null
   );
+
+  // WebDAV 状态
+  const [url, setUrl] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false);
 
-  // 本地文件系统连接状态
+  // 本地文件系统状态
   const [defaultLocalPath, setDefaultLocalPath] = useState('');
 
-  // 获取最近的本地连接路径
-  const getRecentLocalPath = () => {
+  // 获取默认本地路径（从已保存的连接中）
+  const getDefaultLocalPath = (): string => {
     const connections = StorageServiceManager.getStoredConnections();
-    const localConnections = connections.filter(conn => conn.url.startsWith('file:///'));
+    const localConnections = connections.filter(conn => conn.config.type === 'local');
 
     if (localConnections.length > 0) {
+      // 按最后连接时间排序
       const sorted = localConnections.sort((a, b) => {
         const aTime = new Date(a.lastConnected || 0).getTime();
         const bTime = new Date(b.lastConnected || 0).getTime();
         return bTime - aTime;
       });
 
-      return sorted[0].url.replace('file:///', '');
+      return sorted[0].config.rootPath || '';
     }
 
     return '';
@@ -47,25 +47,33 @@ export const useConnectionLogic = (onConnect: () => void) => {
     setSelectedStoredConnection(connection);
     setError('');
 
-    if (connection.url.startsWith('file:///')) {
-      setStorageType('local');
-      const localPath = connection.url.replace('file:///', '');
-      setDefaultLocalPath(localPath);
-    } else if (connection.url.startsWith('oss://')) {
-      setStorageType('oss');
-    } else if (connection.url.startsWith('huggingface://')) {
-      setStorageType('huggingface');
-    } else {
-      setStorageType('webdav');
-      setUrl(connection.url);
-      setUsername(connection.username);
-      if (connection.password) {
-        setPassword('••••••••');
-        setIsPasswordFromStorage(true);
-      } else {
-        setPassword('');
-        setIsPasswordFromStorage(false);
-      }
+    const config = connection.config;
+    setStorageType(config.type);
+
+    switch (config.type) {
+      case 'local':
+        setDefaultLocalPath(config.rootPath || '');
+        break;
+
+      case 'oss':
+        // OSS 相关状态将由 OSSConnectionForm 处理
+        break;
+
+      case 'huggingface':
+        // HuggingFace 相关状态将由 HuggingFaceConnectionForm 处理
+        break;
+
+      case 'webdav':
+        setUrl(config.url || '');
+        setUsername(config.username || '');
+        if (config.password) {
+          setPassword('••••••••');
+          setIsPasswordFromStorage(true);
+        } else {
+          setPassword('');
+          setIsPasswordFromStorage(false);
+        }
+        break;
     }
   };
 
@@ -75,24 +83,22 @@ export const useConnectionLogic = (onConnect: () => void) => {
     if (!wasDisconnected) {
       const defaultConnection = StorageServiceManager.getDefaultConnection();
       if (defaultConnection) {
-        if (defaultConnection.url.startsWith('file:///')) {
-          setStorageType('local');
-          const localPath = defaultConnection.url.replace('file:///', '');
-          setDefaultLocalPath(localPath);
-        } else if (defaultConnection.url.startsWith('oss://')) {
-          setStorageType('oss');
-          handleSelectStoredConnection(defaultConnection);
-        } else if (defaultConnection.url.startsWith('huggingface://')) {
-          setStorageType('huggingface');
-          handleSelectStoredConnection(defaultConnection);
-        } else {
-          setStorageType('webdav');
-          handleSelectStoredConnection(defaultConnection);
+        const config = defaultConnection.config;
+        setStorageType(config.type);
+
+        switch (config.type) {
+          case 'local':
+            setDefaultLocalPath(config.rootPath || '');
+            break;
+          case 'oss':
+          case 'huggingface':
+          case 'webdav':
+            handleSelectStoredConnection(defaultConnection);
+            break;
         }
       }
     }
-
-    localStorage.removeItem('userDisconnected');
+    // 注意：不要在这里清除 userDisconnected 标志，应该在实际连接成功时清除
   }, []);
 
   const handleWebDAVConnect = async (e: React.FormEvent) => {
@@ -103,8 +109,8 @@ export const useConnectionLogic = (onConnect: () => void) => {
       : t('connection.name.webdav', 'WebDAV({{host}})', { host: getHostnameFromUrl(url) });
 
     const actualPassword =
-      isPasswordFromStorage && selectedStoredConnection?.password
-        ? selectedStoredConnection.password
+      isPasswordFromStorage && selectedStoredConnection?.config.password
+        ? selectedStoredConnection.config.password
         : password;
 
     const config: ConnectionConfig = {
@@ -119,25 +125,25 @@ export const useConnectionLogic = (onConnect: () => void) => {
   };
 
   const handleLocalConnect = async (rootPath: string) => {
+    const path = rootPath || defaultLocalPath || getDefaultLocalPath();
+    if (!path.trim()) {
+      setError(t('error.path.required'));
+      return;
+    }
+
     const config: ConnectionConfig = {
       type: 'local',
-      rootPath,
-      url: rootPath, // 兼容性
-      name: t('connection.name.local', '本机文件({{path}})', { path: rootPath }),
+      rootPath: path,
+      name:
+        selectedStoredConnection?.name ||
+        t('connection.name.local', 'Local({{path}})', {
+          path: path.split('/').pop() || 'Root',
+        }),
     };
 
     await handleConnect(config);
   };
 
-  const handleOSSConnect = async (config: ConnectionConfig) => {
-    await handleConnect(config);
-  };
-
-  const handleHuggingFaceConnect = async (config: ConnectionConfig) => {
-    await handleConnect(config);
-  };
-
-  // 统一的连接处理方法
   const handleConnect = async (config: ConnectionConfig) => {
     setConnecting(true);
     setError('');
@@ -145,88 +151,33 @@ export const useConnectionLogic = (onConnect: () => void) => {
     try {
       const success = await StorageServiceManager.connectWithConfig(config);
       if (success) {
-        onConnect();
+        onConnectSuccess?.();
+        return;
       } else {
-        setError(t(`error.${config.type}.connection.failed`));
+        throw new Error(t('error.connection.failed'));
       }
     } catch (err) {
-      console.error(`${config.type} connection error:`, err);
       setError(err instanceof Error ? err.message : t('error.connection.failed'));
     } finally {
       setConnecting(false);
     }
   };
 
-  const handleStorageTypeChange = (type: StorageClientType) => {
-    setStorageType(type);
-    setError('');
-
-    if (type === 'webdav') {
-      if (
-        selectedStoredConnection &&
-        !selectedStoredConnection.url.startsWith('file:///') &&
-        !selectedStoredConnection.url.startsWith('oss://') &&
-        !selectedStoredConnection.url.startsWith('huggingface://')
-      ) {
-        // 保持 WebDAV 连接选择
-      } else {
-        setSelectedStoredConnection(null);
-        setUrl('');
-        setUsername('');
-        setPassword('');
-        setIsPasswordFromStorage(false);
-      }
-    } else if (type === 'local') {
-      if (selectedStoredConnection && selectedStoredConnection.url.startsWith('file:///')) {
-        const localPath = selectedStoredConnection.url.replace('file:///', '');
-        setDefaultLocalPath(localPath);
-      } else {
-        setSelectedStoredConnection(null);
-        if (!defaultLocalPath) {
-          const recentPath = getRecentLocalPath();
-          if (recentPath) {
-            setDefaultLocalPath(recentPath);
-          }
-        }
-      }
-    } else if (type === 'oss') {
-      if (!selectedStoredConnection || !selectedStoredConnection.url.startsWith('oss://')) {
-        setSelectedStoredConnection(null);
-      }
-    } else if (type === 'huggingface') {
-      if (!selectedStoredConnection || !selectedStoredConnection.url.startsWith('huggingface://')) {
-        setSelectedStoredConnection(null);
-      }
-    }
-
-    if (type !== 'webdav') {
-      setUrl('');
-      setUsername('');
-      setPassword('');
-      setIsPasswordFromStorage(false);
-    }
-  };
-
+  // 处理WebDAV表单字段变化
   const handleUrlChange = (value: string) => {
-    setUrl(value.trim());
-    setSelectedStoredConnection(null);
-    if (isPasswordFromStorage) {
-      setPassword('');
-      setIsPasswordFromStorage(false);
-    }
+    setUrl(value);
+    setError('');
   };
 
   const handleUsernameChange = (value: string) => {
-    setUsername(value.trim());
-    setSelectedStoredConnection(null);
-    if (isPasswordFromStorage) {
-      setPassword('');
-      setIsPasswordFromStorage(false);
-    }
+    setUsername(value);
+    setError('');
   };
 
   const handlePasswordChange = (value: string) => {
     setPassword(value);
+    setError('');
+    setIsPasswordFromStorage(false);
   };
 
   const handlePasswordFocus = () => {
@@ -236,25 +187,95 @@ export const useConnectionLogic = (onConnect: () => void) => {
     }
   };
 
+  // OSS和HuggingFace连接处理
+  const handleOSSConnect = async (config: ConnectionConfig) => {
+    await handleConnect(config);
+  };
+
+  const handleHuggingFaceConnect = async (config: ConnectionConfig) => {
+    await handleConnect(config);
+  };
+
+  const handleStorageTypeChange = (type: StorageClientType) => {
+    setStorageType(type);
+    setError('');
+
+    if (type === 'webdav') {
+      if (selectedStoredConnection && selectedStoredConnection.config.type === 'webdav') {
+        // 保持 WebDAV 连接选择
+      } else {
+        setSelectedStoredConnection(null);
+        setUrl('');
+        setUsername('');
+        setPassword('');
+        setIsPasswordFromStorage(false);
+      }
+    } else if (type === 'local') {
+      if (selectedStoredConnection && selectedStoredConnection.config.type === 'local') {
+        setDefaultLocalPath(selectedStoredConnection.config.rootPath || '');
+      } else {
+        setSelectedStoredConnection(null);
+        if (!defaultLocalPath) {
+          setDefaultLocalPath(getDefaultLocalPath());
+        }
+      }
+    } else if (type === 'oss') {
+      if (!selectedStoredConnection || selectedStoredConnection.config.type !== 'oss') {
+        setSelectedStoredConnection(null);
+      }
+    } else if (type === 'huggingface') {
+      if (!selectedStoredConnection || selectedStoredConnection.config.type !== 'huggingface') {
+        setSelectedStoredConnection(null);
+      }
+    }
+  };
+
+  // 辅助函数
+  const getHostnameFromUrl = (url: string): string => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  };
+
   return {
+    // 状态
     storageType,
+    connecting,
+    error,
     selectedStoredConnection,
     url,
     username,
     password,
-    connecting,
-    error,
     isPasswordFromStorage,
     defaultLocalPath,
+
+    // 状态设置函数
+    setStorageType,
+    setError,
+    setSelectedStoredConnection,
+    setUrl,
+    setUsername,
+    setPassword,
+    setIsPasswordFromStorage,
+    setDefaultLocalPath,
+
+    // 处理函数
     handleStorageTypeChange,
     handleSelectStoredConnection,
     handleWebDAVConnect,
     handleLocalConnect,
+    handleConnect,
     handleOSSConnect,
     handleHuggingFaceConnect,
     handleUrlChange,
     handleUsernameChange,
     handlePasswordChange,
     handlePasswordFocus,
+
+    // 辅助函数
+    getDefaultLocalPath,
+    getHostnameFromUrl,
   };
-};
+}

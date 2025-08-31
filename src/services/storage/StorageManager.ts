@@ -1,7 +1,6 @@
 import { StorageClient } from './StorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
 import { connectionStorage, StoredConnection } from '../connectionStorage';
-import { StorageConnection } from '../../types';
 import { commands } from '../../types/tauri-commands';
 
 /**
@@ -148,16 +147,8 @@ export class StorageServiceManager {
         connectionStorage.updateLastConnected(matchedConnection.id);
       } else {
         // 创建新的保存连接记录
-        const newConnection: StorageConnection = {
-          url: this.getConnectionUrl(config),
-          username: config.username || '',
-          password: config.password || config.apiToken || '',
-          connected: true,
-          metadata: this.getConnectionMetadata(config),
-        };
-
         await connectionStorage.saveConnection(
-          newConnection,
+          config,
           this.currentClient!.generateConnectionName(config),
           true
         );
@@ -178,60 +169,19 @@ export class StorageServiceManager {
     return connections.find(conn => {
       switch (config.type) {
         case 'webdav':
-          return conn.url === config.url && conn.username === config.username;
+          return conn.config.url === config.url && conn.config.username === config.username;
         case 'local':
-          return (
-            conn.url.startsWith('file:///') && conn.url.includes(config.rootPath || config.url!)
-          );
+          return conn.config.type === 'local' && conn.config.rootPath === config.rootPath;
         case 'oss':
-          return conn.url.startsWith('oss://') && conn.username === config.username;
+          return conn.config.type === 'oss' && conn.config.username === config.username;
         case 'huggingface':
-          const storedOrg = conn.metadata?.organization;
+          const storedOrg = conn.config.organization;
           const configOrg = config.organization;
-          return conn.url.startsWith('huggingface://') && storedOrg === configOrg;
+          return conn.config.type === 'huggingface' && storedOrg === configOrg;
         default:
           return false;
       }
     });
-  }
-
-  /**
-   * 获取连接URL
-   */
-  private static getConnectionUrl(config: ConnectionConfig): string {
-    switch (config.type) {
-      case 'webdav': {
-        return config.url!;
-      }
-      case 'local': {
-        return `file:///${config.rootPath || config.url}`;
-      }
-      case 'oss': {
-        return `oss://${config.bucket}`;
-      }
-      case 'huggingface': {
-        return `huggingface://${config.organization || 'hub'}`;
-      }
-      default: {
-        return config.url || '';
-      }
-    }
-  }
-
-  /**
-   * 获取连接元数据
-   */
-  private static getConnectionMetadata(config: ConnectionConfig): any {
-    const metadata: any = {};
-
-    if (config.type === 'oss') {
-      metadata.region = config.region;
-      metadata.platform = config.platform;
-    } else if (config.type === 'huggingface') {
-      metadata.organization = config.organization;
-    }
-
-    return metadata;
   }
 
   /**
@@ -244,8 +194,11 @@ export class StorageServiceManager {
   /**
    * 获取当前连接的显示名称
    */
+  /**
+   * 获取连接显示名称
+   */
   static getConnectionDisplayName(): string {
-    if (!this.currentClient) {
+    if (!this.isConnected() || !this.currentClient) {
       return 'Unknown';
     }
     return this.currentClient.getDisplayName();
@@ -323,25 +276,14 @@ export class StorageServiceManager {
       // 尝试使用默认连接
       const defaultConnection = connectionStorage.getDefaultConnection();
       if (defaultConnection) {
-        const config = this.convertStoredConnectionToConfig(defaultConnection);
-        if (config) {
-          return await this.connectWithConfig(config);
-        }
+        return await this.connectWithConfig(defaultConnection.config);
       }
 
       // 尝试使用最近的连接
       const connections = connectionStorage.getStoredConnections();
       if (connections.length > 0) {
-        // 按最后连接时间排序
-        const recent = [...connections].sort(
-          (a, b) =>
-            new Date(b.lastConnected || 0).getTime() - new Date(a.lastConnected || 0).getTime()
-        )[0];
-
-        const config = this.convertStoredConnectionToConfig(recent);
-        if (config) {
-          return await this.connectWithConfig(config);
-        }
+        // connections 已经按最后连接时间排序，取第一个即可
+        return await this.connectWithConfig(connections[0].config);
       }
 
       return false;
@@ -354,59 +296,6 @@ export class StorageServiceManager {
   /**
    * 将存储的连接转换为配置
    */
-  private static convertStoredConnectionToConfig(
-    connection: StoredConnection
-  ): ConnectionConfig | null {
-    try {
-      // 从 URL 推断存储类型
-      let storageType: StorageClientType;
-      if (connection.url.startsWith('file:///')) {
-        storageType = 'local';
-      } else if (connection.url.startsWith('oss://')) {
-        storageType = 'oss';
-      } else if (connection.url.startsWith('huggingface://')) {
-        storageType = 'huggingface';
-      } else {
-        storageType = 'webdav';
-      }
-
-      const baseConfig: ConnectionConfig = {
-        type: storageType,
-        name: connection.name,
-        username: connection.username,
-        password: connection.password,
-      };
-
-      if (connection.url.startsWith('file:///')) {
-        baseConfig.rootPath = connection.url.replace('file:///', '/');
-        if (!baseConfig.rootPath) {
-          console.warn('Local storage missing rootPath');
-          return null;
-        }
-      } else if (connection.url.startsWith('oss://')) {
-        baseConfig.bucket = connection.url.replace('oss://', '');
-        if (!baseConfig.bucket) {
-          console.warn('OSS storage missing bucket');
-          return null;
-        }
-        baseConfig.region = connection.metadata?.region;
-      } else if (connection.url.startsWith('huggingface://')) {
-        baseConfig.organization = connection.metadata?.organization;
-      } else {
-        baseConfig.url = connection.url;
-        if (!baseConfig.url) {
-          console.warn('WebDAV storage missing URL');
-          return null;
-        }
-      }
-
-      return baseConfig;
-    } catch (error) {
-      console.warn('Failed to convert stored connection:', error);
-      return null;
-    }
-  }
-
   // ========== 文件操作便捷方法 ==========
 
   /**

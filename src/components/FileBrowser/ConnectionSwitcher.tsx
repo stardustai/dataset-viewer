@@ -61,33 +61,14 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
     }
 
     // 根据StoredConnection推断连接类型（在try块外定义，以便在catch块中使用）
-    const isLocal = connection.url?.startsWith('file:///');
-    const isOSS = connection.url?.startsWith('oss://') || connection.metadata?.bucket;
-    const isHuggingFace =
-      connection.url?.startsWith('huggingface://') || connection.metadata?.organization;
+    const isLocal = connection.config.type === 'local';
+    const isOSS = connection.config.type === 'oss';
+    const isHuggingFace = connection.config.type === 'huggingface';
 
     try {
       // 根据StoredConnection构建ConnectionConfig
-
-      const config = {
-        type: isLocal
-          ? ('local' as const)
-          : isOSS
-            ? ('oss' as const)
-            : isHuggingFace
-              ? ('huggingface' as const)
-              : ('webdav' as const),
-        url: isLocal ? undefined : connection.url,
-        username: connection.username,
-        password: connection.password,
-        name: connection.name,
-        rootPath: isLocal ? connection.url.replace('file:///', '') : undefined,
-        bucket: connection.metadata?.bucket,
-        region: connection.metadata?.region,
-        endpoint: connection.metadata?.endpoint,
-        apiToken: connection.metadata?.apiToken,
-        organization: connection.metadata?.organization,
-      };
+      // 现在 connection 已经包含了完整的 config，可以直接使用
+      const config = connection.config;
 
       const success = await StorageServiceManager.connectWithConfig(config);
       if (success) {
@@ -154,7 +135,8 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
 
       return (
         connections.find(
-          conn => conn && conn.url === current.url && conn.username === current.username
+          conn =>
+            conn && conn.config.url === current.url && conn.config.username === current.username
         )?.id || null
       );
     } catch (error) {
@@ -239,14 +221,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
                       )}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {connection.url?.startsWith('file:///')
-                        ? connection.url.replace('file:///', '')
-                        : connection.url?.startsWith('oss://')
-                          ? `OSS: ${connection.username}`
-                          : connection.url?.startsWith('huggingface://')
-                            ? `HuggingFace: ${connection.url.replace('huggingface://', '')}`
-                            : formatConnectionDisplayName(connection.url, connection.username) ||
-                              ''}
+                      {formatConnectionDisplayName(connection.config)}
                     </div>
                     {connection.lastConnected && (
                       <div className="text-xs text-gray-400 dark:text-gray-500">

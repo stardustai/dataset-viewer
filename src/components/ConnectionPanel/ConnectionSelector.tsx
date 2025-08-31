@@ -258,11 +258,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
                       )}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {connection.url.startsWith('file:///')
-                        ? connection.url.replace('file:///', '')
-                        : connection.url.startsWith('oss://')
-                          ? `OSS: ${connection.username}`
-                          : formatConnectionDisplayName(connection.url, connection.username)}
+                      {formatConnectionDisplayName(connection.config)}
                     </div>
                     {connection.lastConnected && (
                       <div className="text-xs text-gray-400 dark:text-gray-500">

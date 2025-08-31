@@ -2,7 +2,7 @@ import React from 'react';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 import { FeatureShowcase } from './FeatureShowcase';
 import { ConnectionFormContainer } from './ConnectionFormContainer';
-import { useConnectionLogic } from './useConnectionLogic';
+import useConnectionLogic from './useConnectionLogic';
 
 interface ConnectionPanelProps {
   onConnect: () => void;

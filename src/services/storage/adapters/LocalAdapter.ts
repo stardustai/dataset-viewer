@@ -13,6 +13,17 @@ export const localStorageAdapter: StorageAdapter = {
   supportsSearch: true,
   supportsCustomRootDisplay: false,
 
+  preprocessConnection: (config: ConnectionConfig) => {
+    // 将 rootPath 转换为 url 字段供后端使用
+    if (config.rootPath && !config.url) {
+      return {
+        ...config,
+        url: config.rootPath,
+      };
+    }
+    return config;
+  },
+
   buildProtocolUrl: (path: string, connection: any) => {
     if (!connection?.rootPath) {
       throw new Error('Local storage not connected');
