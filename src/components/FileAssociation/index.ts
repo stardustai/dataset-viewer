@@ -1,0 +1,1 @@
+export { FileAssociationSettings } from './FileAssociationSettings';

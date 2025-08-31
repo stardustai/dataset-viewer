@@ -31,9 +31,39 @@ export const settings = {
   'file.association.description':
     'Register supported file type associations so the system knows these files can be opened with this app',
   'register.file.associations': 'Register File Associations',
+  'register.file.capability': 'Register File Capability',
+  'advanced.file.associations': 'Advanced Settings',
   'registering.file.associations': 'Registering...',
   'file.associations.success': 'File associations registered successfully',
+  'file.associations.capability.success': 'File capability registered successfully (not as default handler)',
   'file.associations.failed': 'Failed to register file associations',
+
+  // Advanced file associations
+  'file.association.settings': 'File Association Settings',
+  'file.association.advanced.description': 
+    'Choose which file types you want this application to handle as the default program. Only selected extensions will be set as default associations.',
+  'selected.extensions.count': 'Selected {{selected}} of {{total}} extensions',
+  'select.all.safe': 'Select All (Safe)',
+  'deselect.all': 'Deselect All',
+  'loading.file.extensions': 'Loading supported file types...',
+  'file.extensions.load.failed': 'Failed to load supported file types',
+  'file.associations.applied.success': '{{count}} file associations applied successfully',
+  'file.associations.cleared.success': 'File associations cleared successfully',
+  'file.associations.apply.failed': 'Failed to apply file association settings',
+  'applying': 'Applying...',
+  'apply.settings': 'Apply Settings',
+  'cancel': 'Cancel',
+  'warning': 'Warning',
+
+  // File categories
+  'file.category.documents': 'Documents',
+  'file.category.archives': 'Archives', 
+  'file.category.code files': 'Code Files',
+  'file.category.data files': 'Data Files',
+
+  // File extension warnings
+  'file.extension.problematic.tooltip': 'This file type may conflict with system functionality',
+  'file.extension.problematic.warning': 'Some selected file types (like .bat, .sh, .ps1) may interfere with normal system operations. Use with caution.',
 
   // About
   about: 'About',

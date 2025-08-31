@@ -122,6 +122,9 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         archive_get_file_content,
         // 文件关联注册命令
         system_register_files,
+        system_get_supported_extensions,
+        system_register_selected_files,
+        system_unregister_files,
         // 窗口主题设置命令
         system_set_theme
     ])
