@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { showToast } from '../../utils/clipboard';
 import { commands } from '../../types/tauri-commands';
 
+// Import functions from fileTypes.ts to get all supported extensions
+import { FileType, getAllSupportedExtensions, getExtensionsByType } from '../../utils/fileTypes';
+
 interface FileAssociationSettingsProps {
   onClose: () => void;
 }
@@ -12,30 +15,40 @@ interface ExtensionCategory {
   name: string;
   icon: React.ComponentType<any>;
   extensions: string[];
+  types: FileType[];
 }
 
 const extensionCategories: ExtensionCategory[] = [
   {
     name: 'Documents',
     icon: FileText,
-    extensions: ['csv', 'xlsx', 'xls', 'ods', 'txt', 'json', 'jsonl', 'md', 'markdown', 'mdown', 'mkd', 'mdx', 'tsv', 'log', 'config', 'ini'],
+    extensions: [], // Will be populated dynamically
+    types: ['text', 'markdown', 'word', 'presentation', 'pdf', 'spreadsheet'],
+  },
+  {
+    name: 'Media',
+    icon: FileText,
+    extensions: [], // Will be populated dynamically
+    types: ['image', 'video', 'audio'],
   },
   {
     name: 'Archives',
     icon: Archive,
-    extensions: ['zip', 'tar', 'gz', 'tgz', 'bz2', 'xz', '7z', 'rar', 'lz4', 'zst', 'zstd', 'br'],
-  },
-  {
-    name: 'Code Files',
-    icon: Code2,
-    extensions: ['js', 'ts', 'jsx', 'tsx', 'html', 'css', 'scss', 'less', 'py', 'java', 'cpp', 'c', 'php', 'rb', 'go', 'rs', 'xml', 'yaml', 'yml', 'sql', 'sh', 'ps1'],
+    extensions: [], // Will be populated dynamically
+    types: ['archive'],
   },
   {
     name: 'Data Files',
     icon: Folder,
-    extensions: ['parquet', 'pqt'],
+    extensions: [], // Will be populated dynamically
+    types: ['data', 'pointcloud'],
   },
 ];
+
+// Populate extensions for each category
+extensionCategories.forEach(category => {
+  category.extensions = getExtensionsByType(category.types);
+});
 
 // Extensions that should be excluded from default registration due to potential system conflicts
 const problematicExtensions = ['bat', 'exe', 'sh', 'ps1'];
@@ -55,21 +68,18 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
   const loadSupportedExtensions = async () => {
     setIsLoading(true);
     try {
-      const result = await commands.systemGetSupportedExtensions();
-      if (result.status === 'ok') {
-        const extensions = result.data;
-        setSupportedExtensions(extensions);
-        
-        // Pre-select safe extensions (exclude problematic ones)
-        const safeExtensions = extensions.filter(ext => !problematicExtensions.includes(ext));
-        setSelectedExtensions(safeExtensions);
-      } else {
-        throw new Error(result.error);
-      }
+      // Get extensions from fileTypes.ts instead of backend
+      const extensions = getAllSupportedExtensions();
+      setSupportedExtensions(extensions);
+      
+      // Pre-select safe extensions (exclude problematic ones)
+      const safeExtensions = extensions.filter(ext => !problematicExtensions.includes(ext));
+      setSelectedExtensions(safeExtensions);
+      
+      setIsLoading(false);
     } catch (error) {
       console.error('Failed to load supported extensions:', error);
       showToast(t('file.extensions.load.failed'), 'error');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -115,10 +125,15 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
   const handleApply = async () => {
     setIsApplying(true);
     try {
+      // Send all supported extensions to backend, it will handle both selected and unselected
+      const allExtensions = supportedExtensions;
+      
       // First, unregister all supported extensions
-      const unregisterResult = await commands.systemUnregisterFiles(supportedExtensions);
-      if (unregisterResult.status !== 'ok') {
-        console.warn('Failed to unregister some file associations:', unregisterResult.error);
+      if (allExtensions.length > 0) {
+        const unregisterResult = await commands.systemUnregisterFiles(allExtensions);
+        if (unregisterResult.status !== 'ok') {
+          console.warn('Failed to unregister some file associations:', unregisterResult.error);
+        }
       }
 
       // Then register only selected extensions
