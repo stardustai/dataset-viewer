@@ -55,26 +55,26 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
     }
 }
 
-/// 注册支持的文件类型关联
-/// 将应用程序注册为特定文件类型的默认程序
+/// 注册支持的文件类型关联（仅能力注册，不设置为默认）
+/// 让系统知道应用程序可以打开这些文件类型，但不设置为默认应用
 #[tauri::command]
 #[specta::specta]
-pub async fn system_register_files() -> Result<String, String> {
+pub async fn system_register_file_capabilities(extensions: Vec<String>) -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
-        register_windows_file_associations().await
+        register_windows_file_capabilities(extensions).await
     }
     #[cfg(target_os = "macos")]
     {
-        register_macos_file_associations().await
+        register_macos_file_capabilities().await
     }
     #[cfg(target_os = "linux")]
     {
-        register_linux_file_associations().await
+        register_linux_file_capabilities(extensions).await
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
-        Err("File association registration is not supported on this platform".to_string())
+        Err("File capability registration is not supported on this platform".to_string())
     }
 }
 
@@ -112,35 +112,43 @@ pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<St
 
 // 平台特定的文件关联实现
 
-/// Windows 平台文件关联注册
+/// Windows 平台文件能力注册（仅注册能力，不设置为默认）
 #[cfg(target_os = "windows")]
-async fn register_windows_file_associations() -> Result<String, String> {
+async fn register_windows_file_capabilities(extensions: Vec<String>) -> Result<String, String> {
     // 获取当前可执行文件路径
     let exe_path =
         std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
-
-    // 定义支持的文件扩展名
-    let extensions = vec![
-        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", "bz2", "xz",
-        "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", "jsonl", "js", "ts", "jsx", "tsx",
-        "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml",
-        "yaml", "yml", "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md", "markdown",
-        "mdown", "mkd", "mdx",
-    ];
+    let app_name = "dataset-viewer.exe";
 
     let mut registered_count = 0;
 
+    // 注册应用程序能力（不设置为默认）
+    let app_key = format!("HKCU\\Software\\Classes\\Applications\\{}", app_name);
+
+    // 注册应用程序基本信息
+    let _ = Command::new("reg")
+        .args([
+            "add",
+            &format!("{}\\shell\\open\\command", app_key),
+            "/v",
+            "",
+            "/d",
+            &format!("\"{}\" \"%1\"", exe_path_str),
+            "/f",
+        ])
+        .output();
+
+    // 注册支持的文件扩展名（仅能力注册）
     for ext in extensions {
-        // 注册文件类型
         let output = Command::new("reg")
             .args([
                 "add",
-                &format!("HKCU\\Software\\Classes\\.{}", ext),
+                &format!("{}\\SupportedTypes", app_key),
                 "/v",
-                "",
+                &format!(".{}", ext),
                 "/d",
-                "DatasetViewer.File",
+                "",
                 "/f",
             ])
             .output();
@@ -150,47 +158,34 @@ async fn register_windows_file_associations() -> Result<String, String> {
         }
     }
 
-    // 注册应用程序信息
-    let _ = Command::new("reg")
-        .args([
-            "add",
-            "HKCU\\Software\\Classes\\DatasetViewer.File\\shell\\open\\command",
-            "/v",
-            "",
-            "/d",
-            &format!("\"{}\" \"%1\"", exe_path_str),
-            "/f",
-        ])
-        .output();
-
     Ok(format!(
-        "Successfully registered {} file associations on Windows",
+        "Successfully registered capability for {} file types on Windows",
         registered_count
     ))
 }
 
-/// macOS 平台文件关联注册
+/// macOS 平台文件能力注册（仅注册能力，不设置为默认）
 #[cfg(target_os = "macos")]
-async fn register_macos_file_associations() -> Result<String, String> {
+async fn register_macos_file_capabilities() -> Result<String, String> {
     // macOS 上文件关联通过 Info.plist 和 Launch Services 处理
     // 在构建时已经通过 tauri.conf.json 中的 fileAssociations 配置
-    // 这里可以刷新 Launch Services 数据库
+    // 这里只刷新 Launch Services 数据库，让系统知道应用能力
     let output = Command::new("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
         .args(["-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"])
         .output();
 
     match output {
-        Ok(_) => Ok("File associations refreshed successfully on macOS".to_string()),
+        Ok(_) => Ok("File capabilities refreshed successfully on macOS".to_string()),
         Err(e) => Err(format!(
-            "Failed to refresh file associations on macOS: {}",
+            "Failed to refresh file capabilities on macOS: {}",
             e
         )),
     }
 }
 
-/// Linux 平台文件关联注册
+/// Linux 平台文件能力注册（仅注册能力，不设置为默认）
 #[cfg(target_os = "linux")]
-async fn register_linux_file_associations() -> Result<String, String> {
+async fn register_linux_file_capabilities(extensions: Vec<String>) -> Result<String, String> {
     use std::fs;
     use std::path::Path;
 
@@ -209,6 +204,27 @@ async fn register_linux_file_associations() -> Result<String, String> {
         fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
     }
 
+    // 生成基本 MIME 类型（简化映射，让前端处理复杂逻辑）
+    let mime_types: Vec<String> = extensions
+        .iter()
+        .map(|ext| {
+            match ext.as_str() {
+                "csv" => "text/csv",
+                "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "json" => "application/json",
+                "txt" => "text/plain",
+                "pdf" => "application/pdf",
+                "zip" => "application/zip",
+                "png" => "image/png",
+                "jpg" | "jpeg" => "image/jpeg",
+                _ => "application/octet-stream", // 通用类型
+            }
+            .to_string()
+        })
+        .collect();
+
+    let mime_string = mime_types.join(";");
+
     let desktop_content = format!(
         "[Desktop Entry]\n\
         Name=Dataset Viewer\n\
@@ -218,17 +234,20 @@ async fn register_linux_file_associations() -> Result<String, String> {
         Terminal=false\n\
         Type=Application\n\
         Categories=Office;Development;\n\
-        MimeType=text/csv;application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.oasis.opendocument.spreadsheet;application/octet-stream;application/zip;application/x-tar;application/gzip;application/x-bzip2;application/x-xz;application/x-7z-compressed;application/x-rar-compressed;text/plain;application/json;text/html;text/css;text/javascript;application/javascript;text/x-python;text/x-java-source;text/x-c;text/x-c++;text/x-php;text/x-ruby;text/x-go;text/x-rust;application/xml;text/yaml;application/sql;text/x-shellscript;text/x-log;text/markdown;image/jpeg;image/png;image/gif;image/webp;image/svg+xml;image/bmp;image/x-icon;image/tiff;application/pdf;video/mp4;video/webm;video/ogg;video/x-msvideo;video/quicktime;video/x-ms-wmv;video/x-flv;video/x-matroska;audio/mpeg;audio/ogg;audio/wav;audio/x-flac;audio/aac;audio/x-m4a;application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/rtf;application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.oasis.opendocument.presentation;\n",
-        exe_path_str
+        MimeType={};\n",
+        exe_path_str, mime_string
     );
 
     fs::write(&desktop_file_path, desktop_content)
         .map_err(|e| format!("Failed to write desktop file: {}", e))?;
 
-    // 更新 MIME 数据库
+    // 更新 MIME 数据库（仅注册能力，不设置为默认）
     let _ = Command::new("update-desktop-database")
         .arg(desktop_dir)
         .output();
 
-    Ok("File associations registered successfully on Linux".to_string())
+    Ok(format!(
+        "File capabilities registered successfully for {} types on Linux",
+        extensions.len()
+    ))
 }

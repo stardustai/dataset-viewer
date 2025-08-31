@@ -29,11 +29,11 @@ export const settings = {
   // File associations
   'settings.file.association': 'File Associations',
   'file.association.description':
-    'Register supported file type associations so the system knows these files can be opened with this app',
-  'register.file.associations': 'Register File Associations',
+    'Register supported file type capabilities so the system knows these files can be opened with this app (does not set as default)',
+  'register.file.associations': 'Register File Capabilities',
   'registering.file.associations': 'Registering...',
-  'file.associations.success': 'File associations registered successfully',
-  'file.associations.failed': 'Failed to register file associations',
+  'file.associations.success': 'File capabilities registered successfully',
+  'file.associations.failed': 'Failed to register file capabilities',
 
   // About
   about: 'About',

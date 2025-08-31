@@ -14,7 +14,7 @@ export type FileType =
   | 'unknown';
 
 // 文件扩展名到类型和MIME类型的映射
-const FILE_EXTENSIONS: Record<string, { type: FileType; mime: string }> = {
+export const FILE_EXTENSIONS: Record<string, { type: FileType; mime: string }> = {
   // Text files
   txt: { type: 'text', mime: 'text/plain' },
   json: { type: 'text', mime: 'application/json' },
@@ -216,4 +216,34 @@ export const isTextLikeFile = (filename: string): boolean => {
 
 export const isPointCloudFile = (filename: string): boolean => {
   return getFileType(filename) === 'pointcloud';
+};
+
+// 获取所有支持的文件扩展名
+export const getAllSupportedExtensions = (): string[] => {
+  return Object.keys(FILE_EXTENSIONS);
+};
+
+// 按类型分组获取文件扩展名
+export const getExtensionsByType = (): Record<FileType, string[]> => {
+  const result: Record<FileType, string[]> = {
+    text: [],
+    markdown: [],
+    word: [],
+    presentation: [],
+    image: [],
+    pdf: [],
+    video: [],
+    audio: [],
+    spreadsheet: [],
+    data: [],
+    pointcloud: [],
+    archive: [],
+    unknown: [],
+  };
+
+  for (const [ext, info] of Object.entries(FILE_EXTENSIONS)) {
+    result[info.type].push(ext);
+  }
+
+  return result;
 };

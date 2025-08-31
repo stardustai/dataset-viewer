@@ -27,11 +27,12 @@ export const settings = {
 
   // 文件关联
   'settings.file.association': '文件关联',
-  'file.association.description': '注册支持的文件类型关联，让系统知道可以用此应用打开这些文件',
-  'register.file.associations': '注册文件关联',
+  'file.association.description':
+    '注册支持的文件类型能力，让系统知道可以用此应用打开这些文件（不设置为默认应用）',
+  'register.file.associations': '注册文件能力',
   'registering.file.associations': '注册中...',
-  'file.associations.success': '文件关联注册成功',
-  'file.associations.failed': '文件关联注册失败',
+  'file.associations.success': '文件能力注册成功',
+  'file.associations.failed': '文件能力注册失败',
 
   // 关于
   about: '关于',
