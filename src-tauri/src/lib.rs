@@ -120,8 +120,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         // 压缩包处理命令（统一接口）
         archive_get_file_info,
         archive_get_file_content,
-        // 文件关联注册命令
-        system_register_files,
         // 窗口主题设置命令
         system_set_theme
     ])

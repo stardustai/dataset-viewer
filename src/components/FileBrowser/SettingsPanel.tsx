@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Link } from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
@@ -8,7 +8,6 @@ import { connectionStorage } from '../../services/connectionStorage';
 import { settingsStorage } from '../../services/settingsStorage';
 import { showToast } from '../../utils/clipboard';
 import type { UpdateCheckResult } from '../../types';
-import { commands } from '../../types/tauri-commands';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -25,7 +24,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     settingsStorage.getSetting('usePureBlackBg')
   );
   const [isClearingCache, setIsClearingCache] = useState(false);
-  const [isRegisteringFileAssociations, setIsRegisteringFileAssociations] = useState(false);
   // 切换纯黑色背景
   const handlePureBlackBgToggle = () => {
     const newValue = !usePureBlackBg;
@@ -99,24 +97,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       showToast(t('cache.clear.failed'), 'error');
     } finally {
       setIsClearingCache(false);
-    }
-  };
-
-  const handleRegisterFileAssociations = async () => {
-    setIsRegisteringFileAssociations(true);
-    try {
-      const result = await commands.systemRegisterFiles();
-      if (result.status === 'ok') {
-        console.log('File associations registered successfully:', result.data);
-        showToast(t('file.associations.success'), 'success');
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      console.error('Failed to register file associations:', error);
-      showToast(t('file.associations.failed'), 'error');
-    } finally {
-      setIsRegisteringFileAssociations(false);
     }
   };
 
@@ -282,32 +262,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 <Trash2 className={`w-4 h-4 ${isClearingCache ? 'animate-pulse' : ''}`} />
                 <span className="text-sm">
                   {isClearingCache ? t('clearing.cache') : t('clear.cache')}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* File Associations */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              {t('settings.file.association')}
-            </h3>
-            <div className="space-y-3">
-              <p className="text-xs text-gray-600 dark:text-gray-300">
-                {t('file.association.description')}
-              </p>
-              <button
-                onClick={handleRegisterFileAssociations}
-                disabled={isRegisteringFileAssociations}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <Link
-                  className={`w-4 h-4 ${isRegisteringFileAssociations ? 'animate-pulse' : ''}`}
-                />
-                <span className="text-sm">
-                  {isRegisteringFileAssociations
-                    ? t('registering.file.associations')
-                    : t('register.file.associations')}
                 </span>
               </button>
             </div>
