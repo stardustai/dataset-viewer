@@ -9,7 +9,7 @@ export interface StoredConnection {
 }
 
 class ConnectionStorageService {
-  private readonly STORAGE_KEY = 'storage-connections';
+  private readonly STORAGE_KEY = 'saved-connections';
 
   // 获取所有保存的连接
   getStoredConnections(): StoredConnection[] {
