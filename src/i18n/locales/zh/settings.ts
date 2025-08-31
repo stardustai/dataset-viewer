@@ -55,6 +55,7 @@ export const settings = {
 
   // 文件类别
   'file.category.documents': '文档文件',
+  'file.category.media': '媒体文件',
   'file.category.archives': '压缩文件', 
   'file.category.code files': '代码文件',
   'file.category.data files': '数据文件',
