@@ -9,7 +9,6 @@ import { settingsStorage } from '../../services/settingsStorage';
 import { showToast } from '../../utils/clipboard';
 import type { UpdateCheckResult } from '../../types';
 import { commands } from '../../types/tauri-commands';
-import { getAllSupportedExtensions } from '../../utils/fileTypes';
 import { FileAssociationSettings } from '../FileAssociation';
 
 interface SettingsPanelProps {
@@ -108,9 +107,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const handleRegisterFileAssociations = async () => {
     setIsRegisteringFileAssociations(true);
     try {
-      // Get all supported extensions from fileTypes.ts using shared function
-      const extensions = getAllSupportedExtensions();
-      const result = await commands.systemRegisterFiles(extensions);
+      const result = await commands.systemRegisterFiles();
       if (result.status === 'ok') {
         console.log('File associations registered successfully:', result.data);
         showToast(t('file.associations.capability.success'), 'success');

@@ -57,13 +57,12 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
 
 /// 注册支持的文件类型关联 (兼容性方法)
 /// 仅注册应用程序能力，不设置为默认程序
-/// 现在接受前端提供的扩展名列表
 #[tauri::command]
 #[specta::specta]
-pub async fn system_register_files(extensions: Vec<String>) -> Result<String, String> {
+pub async fn system_register_files() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
-        register_windows_file_associations(extensions).await
+        register_windows_file_associations().await
     }
     #[cfg(target_os = "macos")]
     {
@@ -71,7 +70,7 @@ pub async fn system_register_files(extensions: Vec<String>) -> Result<String, St
     }
     #[cfg(target_os = "linux")]
     {
-        register_linux_file_associations(extensions).await
+        register_linux_file_associations().await
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
@@ -81,12 +80,10 @@ pub async fn system_register_files(extensions: Vec<String>) -> Result<String, St
 
 /// 获取所有支持的文件扩展名列表
 /// 返回应用程序可以处理的所有文件类型
-/// 现在由前端提供，后端不再维护文件扩展名列表
 #[tauri::command]
 #[specta::specta]
 pub async fn system_get_supported_extensions() -> Result<Vec<String>, String> {
-    // 返回空列表，让前端使用 fileTypes.ts 中的 FILE_EXTENSIONS
-    Ok(vec![])
+    Ok(get_supported_extensions())
 }
 
 /// 注册选定的文件类型关联
@@ -168,7 +165,17 @@ pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<St
 }
 
 // 平台特定的文件关联实现
-// 文件扩展名列表现在由前端 src/utils/fileTypes.ts 提供
+
+/// 获取所有支持的文件扩展名
+fn get_supported_extensions() -> Vec<String> {
+    vec![
+        "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", "bz2", "xz",
+        "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", "jsonl", "js", "ts", "jsx", "tsx",
+        "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml",
+        "yaml", "yml", "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md", "markdown",
+        "mdown", "mkd", "mdx",
+    ].into_iter().map(String::from).collect()
+}
 
 /// Windows 平台选择性文件关联注册
 #[cfg(target_os = "windows")]
@@ -178,9 +185,15 @@ async fn register_windows_selected_file_associations(extensions: Vec<String>) ->
         std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
 
+    // 验证扩展名是否在支持列表中
+    let supported_extensions = get_supported_extensions();
     let mut registered_count = 0;
 
     for ext in &extensions {
+        if !supported_extensions.contains(ext) {
+            continue; // 跳过不支持的扩展名
+        }
+
         // 注册文件类型
         let output = Command::new("reg")
             .args([
@@ -249,11 +262,14 @@ async fn unregister_windows_file_associations(extensions: Vec<String>) -> Result
 /// Windows 平台文件关联注册 (仅注册能力，不设置为默认)
 /// 让系统知道应用程序可以打开这些文件类型，但不设置为默认程序
 #[cfg(target_os = "windows")]
-async fn register_windows_file_associations(extensions: Vec<String>) -> Result<String, String> {
+async fn register_windows_file_associations() -> Result<String, String> {
     // 获取当前可执行文件路径
     let exe_path =
         std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
     let exe_path_str = exe_path.to_string_lossy();
+
+    // 定义支持的文件扩展名
+    let extensions = get_supported_extensions();
 
     // 仅注册应用程序信息，不设置文件类型默认关联
     let _ = Command::new("reg")
@@ -285,24 +301,6 @@ async fn register_windows_file_associations(extensions: Vec<String>) -> Result<S
         "Registered application capability for {} file types (not as default handler)",
         extensions.len()
     ))
-}
-
-/// macOS 平台文件关联注册 (仅注册能力，不设置为默认)
-/// 让系统知道应用程序可以打开这些文件类型，但不设置为默认程序
-#[cfg(target_os = "macos")]
-async fn register_macos_file_associations() -> Result<String, String> {
-    // macOS 上的文件关联通过 Info.plist 预配置，这里主要是刷新系统服务
-    let output = Command::new("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
-        .args(["-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"])
-        .output();
-
-    match output {
-        Ok(_) => Ok("Registered application capability for file types (not as default handler)".to_string()),
-        Err(e) => Err(format!(
-            "Failed to refresh file associations on macOS: {}",
-            e
-        )),
-    }
 }
 
 /// macOS 平台选择性文件关联注册
@@ -342,7 +340,7 @@ async fn unregister_macos_file_associations(_extensions: Vec<String>) -> Result<
 /// Linux 平台文件关联注册 (仅注册能力，不设置为默认)
 /// 让系统知道应用程序可以打开这些文件类型，但不设置为默认程序
 #[cfg(target_os = "linux")]
-async fn register_linux_file_associations(extensions: Vec<String>) -> Result<String, String> {
+async fn register_linux_file_associations() -> Result<String, String> {
     use std::fs;
     use std::path::Path;
 
@@ -382,6 +380,7 @@ async fn register_linux_file_associations(extensions: Vec<String>) -> Result<Str
         .arg(desktop_dir)
         .output();
 
+    let extensions = get_supported_extensions();
     Ok(format!(
         "Registered application capability for {} file types (not as default handler)",
         extensions.len()
