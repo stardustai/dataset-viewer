@@ -56,10 +56,13 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
 }
 
 /// 注册支持的文件类型关联（仅能力注册，不设置为默认）
-/// 让系统知道应用程序可以打开这些文件类型，但不设置为默认应用
+/// 自动从 tauri.conf.json 读取文件关联配置并注册
 #[tauri::command]
 #[specta::specta]
-pub async fn system_register_file_capabilities(extensions: Vec<String>) -> Result<String, String> {
+pub async fn system_register_file_capabilities() -> Result<String, String> {
+    // 读取 tauri.conf.json 中的文件关联配置
+    let extensions = read_file_associations_from_config()?;
+    
     #[cfg(target_os = "windows")]
     {
         register_windows_file_capabilities(extensions).await
@@ -108,6 +111,72 @@ pub async fn system_set_theme(app: tauri::AppHandle, theme: String) -> Result<St
     } else {
         Err("Main window not found".to_string())
     }
+}
+
+// 从 tauri.conf.json 读取文件关联配置
+fn read_file_associations_from_config() -> Result<Vec<String>, String> {
+    use serde_json::Value;
+    use std::fs;
+    use std::path::Path;
+    
+    // 尝试多个可能的 tauri.conf.json 位置
+    let possible_paths = [
+        "tauri.conf.json",
+        "../tauri.conf.json", 
+        "../../tauri.conf.json",
+        "./src-tauri/tauri.conf.json",
+    ];
+    
+    let mut config_content = None;
+    for path in &possible_paths {
+        if Path::new(path).exists() {
+            match fs::read_to_string(path) {
+                Ok(content) => {
+                    config_content = Some(content);
+                    break;
+                }
+                Err(_) => continue,
+            }
+        }
+    }
+    
+    let config_content = config_content
+        .ok_or("Failed to find or read tauri.conf.json")?;
+    
+    // 解析 JSON
+    let config: Value = serde_json::from_str(&config_content)
+        .map_err(|e| format!("Failed to parse tauri.conf.json: {}", e))?;
+    
+    // 获取 fileAssociations 数组
+    let file_associations = config
+        .get("bundle")
+        .and_then(|bundle| bundle.get("fileAssociations"))
+        .and_then(|fa| fa.as_array())
+        .ok_or("No fileAssociations found in tauri.conf.json")?;
+    
+    // 收集所有扩展名
+    let mut extensions = Vec::new();
+    for association in file_associations {
+        if let Some(ext_array) = association.get("ext").and_then(|e| e.as_array()) {
+            for ext in ext_array {
+                if let Some(ext_str) = ext.as_str() {
+                    extensions.push(ext_str.to_string());
+                }
+            }
+        }
+    }
+    
+    if extensions.is_empty() {
+        return Err("No file extensions found in tauri.conf.json".to_string());
+    }
+    
+    // 排除潜在问题扩展名
+    let safe_extensions: Vec<String> = extensions
+        .into_iter()
+        .filter(|ext| !["bat", "sh", "ps1"].contains(&ext.as_str()))
+        .collect();
+    
+    Ok(safe_extensions)
 }
 
 // 平台特定的文件关联实现

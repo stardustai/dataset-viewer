@@ -158,6 +158,18 @@ pub fn run() {
     let tauri_builder = tauri_builder
         .invoke_handler(builder.invoke_handler())
         .setup(|app| {
+            // 自动注册文件能力
+            tauri::async_runtime::spawn(async move {
+                match system_register_file_capabilities().await {
+                    Ok(message) => {
+                        println!("✅ {}", message);
+                    }
+                    Err(e) => {
+                        eprintln!("⚠️ Failed to register file capabilities: {}", e);
+                    }
+                }
+            });
+
             // 监听前端就绪事件
             let app_handle = app.handle().clone();
             app.listen("frontend-ready", move |_event| {

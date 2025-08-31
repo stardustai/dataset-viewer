@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Link } from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
@@ -8,8 +8,8 @@ import { connectionStorage } from '../../services/connectionStorage';
 import { settingsStorage } from '../../services/settingsStorage';
 import { showToast } from '../../utils/clipboard';
 import type { UpdateCheckResult } from '../../types';
-import { commands } from '../../types/tauri-commands';
-import { getAllSupportedExtensions, getExtensionsByType, FileType } from '../../utils/fileTypes';
+
+
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -26,16 +26,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     settingsStorage.getSetting('usePureBlackBg')
   );
   const [isClearingCache, setIsClearingCache] = useState(false);
-  const [isRegisteringFileAssociations, setIsRegisteringFileAssociations] = useState(false);
-  const [showFileAssociationSettings, setShowFileAssociationSettings] = useState(false);
-  const [selectedExtensions, setSelectedExtensions] = useState<Set<string>>(() => {
-    // 默认选择安全的文件类型（排除可能有问题的扩展名）
-    const allExtensions = getAllSupportedExtensions();
-    const safeExtensions = allExtensions.filter(
-      ext => !['bat', 'sh', 'ps1'].includes(ext) // 排除可能有安全风险的扩展名
-    );
-    return new Set(safeExtensions);
-  });
   // 切换纯黑色背景
   const handlePureBlackBgToggle = () => {
     const newValue = !usePureBlackBg;
@@ -112,46 +102,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     }
   };
 
-  const handleRegisterFileAssociations = async () => {
-    setIsRegisteringFileAssociations(true);
-    try {
-      // 从选择的扩展名获取列表
-      const extensionsToRegister = Array.from(selectedExtensions);
 
-      const result = await commands.systemRegisterFileCapabilities(extensionsToRegister);
-      if (result.status === 'ok') {
-        console.log('File capabilities registered successfully:', result.data);
-        showToast(t('file.associations.success'), 'success');
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      console.error('Failed to register file capabilities:', error);
-      showToast(t('file.associations.failed'), 'error');
-    } finally {
-      setIsRegisteringFileAssociations(false);
-    }
-  };
-
-  const handleExtensionToggle = (extension: string) => {
-    const newSelected = new Set(selectedExtensions);
-    if (newSelected.has(extension)) {
-      newSelected.delete(extension);
-    } else {
-      newSelected.add(extension);
-    }
-    setSelectedExtensions(newSelected);
-  };
-
-  const handleSelectAllSafe = () => {
-    const allExtensions = getAllSupportedExtensions();
-    const safeExtensions = allExtensions.filter(ext => !['bat', 'sh', 'ps1'].includes(ext));
-    setSelectedExtensions(new Set(safeExtensions));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedExtensions(new Set());
-  };
 
   if (!isOpen) return null;
 
@@ -317,114 +268,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   {isClearingCache ? t('clearing.cache') : t('clear.cache')}
                 </span>
               </button>
-            </div>
-          </div>
-
-          {/* File Associations */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              {t('settings.file.association')}
-            </h3>
-            <div className="space-y-3">
-              <p className="text-xs text-gray-600 dark:text-gray-300">
-                {t('file.association.description')}
-              </p>
-
-              {/* Simple registration button */}
-              <button
-                onClick={handleRegisterFileAssociations}
-                disabled={isRegisteringFileAssociations}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <Link
-                  className={`w-4 h-4 ${isRegisteringFileAssociations ? 'animate-pulse' : ''}`}
-                />
-                <span className="text-sm">
-                  {isRegisteringFileAssociations
-                    ? t('registering.file.associations')
-                    : t('register.file.associations')}
-                </span>
-              </button>
-
-              {/* Advanced settings toggle */}
-              <button
-                onClick={() => setShowFileAssociationSettings(!showFileAssociationSettings)}
-                className="w-full text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                {showFileAssociationSettings ? '▼ 隐藏高级设置' : '▶ 显示高级设置'}
-              </button>
-
-              {/* Advanced file type selection */}
-              {showFileAssociationSettings && (
-                <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                      已选择 {selectedExtensions.size} 个文件类型
-                    </span>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={handleSelectAllSafe}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        选择安全类型
-                      </button>
-                      <button
-                        onClick={handleDeselectAll}
-                        className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
-                      >
-                        全部取消
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* File type categories */}
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {Object.entries(getExtensionsByType()).map(([type, extensions]) => {
-                      if (extensions.length === 0) return null;
-
-                      const typeLabels: Record<FileType, string> = {
-                        text: '文本文件',
-                        markdown: 'Markdown',
-                        word: 'Word文档',
-                        presentation: '演示文档',
-                        image: '图像文件',
-                        pdf: 'PDF文档',
-                        video: '视频文件',
-                        audio: '音频文件',
-                        spreadsheet: '电子表格',
-                        data: '数据文件',
-                        pointcloud: '点云文件',
-                        archive: '压缩文件',
-                        unknown: '未知类型',
-                      };
-
-                      return (
-                        <div key={type} className="space-y-1">
-                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                            {typeLabels[type as FileType]}
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {extensions.map(ext => (
-                              <button
-                                key={ext}
-                                onClick={() => handleExtensionToggle(ext)}
-                                className={`text-xs px-2 py-1 rounded border transition-colors ${
-                                  selectedExtensions.has(ext)
-                                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
-                                    : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                } ${['bat', 'sh', 'ps1'].includes(ext) ? 'border-red-300 dark:border-red-600' : ''}`}
-                              >
-                                {selectedExtensions.has(ext) ? '✓ ' : ''}.{ext}
-                                {['bat', 'sh', 'ps1'].includes(ext) && ' ⚠️'}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

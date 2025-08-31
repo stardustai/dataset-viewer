@@ -26,15 +26,6 @@ export const settings = {
   'cache.cleared.success': 'Cache and connections cleared successfully',
   'cache.clear.failed': 'Failed to clear cache',
 
-  // File associations
-  'settings.file.association': 'File Associations',
-  'file.association.description':
-    'Register supported file type capabilities so the system knows these files can be opened with this app (does not set as default)',
-  'register.file.associations': 'Register File Capabilities',
-  'registering.file.associations': 'Registering...',
-  'file.associations.success': 'File capabilities registered successfully',
-  'file.associations.failed': 'Failed to register file capabilities',
-
   // About
   about: 'About',
   'app.description': 'Modern dataset viewer tool',
