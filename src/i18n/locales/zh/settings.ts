@@ -4,6 +4,7 @@ export const settings = {
   'settings.theme': '主题设置',
   'settings.update': '更新设置',
   'settings.cache': '缓存管理',
+  'pure.black.background': '纯黑色背景',
 
   // 更新功能
   'auto.check.updates': '自动检查更新',
@@ -29,8 +30,6 @@ export const settings = {
   'settings.file.association': '文件关联',
   'file.association.description': '注册支持的文件类型关联，让系统知道可以用此应用打开这些文件',
   'register.file.associations': '注册文件关联',
-  'register.file.capability': '注册文件打开能力',
-  'advanced.file.associations': '高级设置',
   'registering.file.associations': '注册中...',
   'file.associations.success': '文件关联注册成功',
   'file.associations.capability.success': '文件打开能力注册成功（未设为默认程序）',
@@ -38,9 +37,8 @@ export const settings = {
 
   // 高级文件关联
   'file.association.settings': '文件关联设置',
-  'file.association.advanced.description': 
-    '选择您希望此应用程序作为默认程序处理的文件类型。只有选中的扩展名才会被设置为默认关联。',
-  'file.association.current.status': '当前有 {{count}} 种文件类型已关联到此应用',
+  'file.association.advanced.description':
+    '选择您希望此应用程序处理的文件类型。只有选中的扩展名才会被注册为关联。',
   'selected.extensions.count': '已选择 {{selected}}/{{total}} 个扩展名',
   'select.all.safe': '全选（安全）',
   'deselect.all': '全部取消',
@@ -49,25 +47,20 @@ export const settings = {
   'file.associations.applied.success': '已成功应用 {{count}} 个文件关联',
   'file.associations.cleared.success': '文件关联清理成功',
   'file.associations.apply.failed': '应用文件关联设置失败',
-  'applying': '应用中...',
+  applying: '应用中...',
   'apply.settings': '应用设置',
-  'cancel': '取消',
-  'warning': '警告',
-
-  // 文件类别
+  cancel: '取消',
+  warning: '警告', // 文件类别
   'file.category.documents': '文档文件',
   'file.category.media': '媒体文件',
-  'file.category.archives': '压缩文件', 
+  'file.category.archives': '压缩文件',
   'file.category.code files': '代码文件',
   'file.category.data files': '数据文件',
 
   // 文件扩展名警告
   'file.extension.problematic.tooltip': '此文件类型可能与系统功能冲突',
-  'file.extension.problematic.warning': '部分选中的文件类型（如 .bat、.sh、.ps1）可能会干扰正常的系统操作，请谨慎使用。',
-  'file.extension.currently.associated': '当前已关联到此应用',
-  'file.extension.will.be.removed': '将从关联中移除',
-  'file.extension.will.be.added': '将添加到关联',
-  'file.extension.will.be.new': '新增关联',
+  'file.extension.problematic.warning':
+    '部分选中的文件类型（如 .bat、.sh、.ps1）可能会干扰正常的系统操作，请谨慎使用。',
 
   // 关于
   about: '关于',
