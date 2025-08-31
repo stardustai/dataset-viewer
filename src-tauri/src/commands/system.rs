@@ -125,7 +125,7 @@ async fn register_windows_file_associations() -> Result<String, String> {
         "csv", "xlsx", "xls", "ods", "parquet", "pqt", "zip", "tar", "gz", "tgz", "bz2", "xz",
         "7z", "rar", "lz4", "zst", "zstd", "br", "txt", "json", "jsonl", "js", "ts", "jsx", "tsx",
         "html", "css", "scss", "less", "py", "java", "cpp", "c", "php", "rb", "go", "rs", "xml",
-        "yaml", "yml", "sql", "sh", "ps1", "log", "config", "ini", "tsv", "md", "markdown",
+        "yaml", "yml", "sql", "sh", "bat", "ps1", "log", "config", "ini", "tsv", "md", "markdown",
         "mdown", "mkd", "mdx",
     ];
 
