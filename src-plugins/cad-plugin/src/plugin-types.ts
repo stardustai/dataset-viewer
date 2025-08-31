@@ -9,13 +9,12 @@ export interface PluginViewerProps {
   };
   content: string | ArrayBuffer;
   storageClient: any;
-  containerHeight: number;
   isLargeFile: boolean;
   onError: (error: string) => void;
-  onLoadingChange: (loading: boolean) => void;
   // 语言设置
   language?: string;
-  t?: (key: string, options?: any) => string;
+  // 主应用的翻译函数
+  t: (key: string, options?: any) => string;
 }
 
 export interface PluginMetadata {

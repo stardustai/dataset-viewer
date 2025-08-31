@@ -4,6 +4,7 @@ export const settings = {
   'settings.theme': '主题设置',
   'settings.update': '更新设置',
   'settings.cache': '缓存管理',
+  'pure.black.bg': '纯黑色背景',
 
   // 更新功能
   'auto.check.updates': '自动检查更新',

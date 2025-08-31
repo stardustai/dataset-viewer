@@ -44,7 +44,6 @@ export interface PluginViewerProps {
   };
   content: string | ArrayBuffer;
   storageClient: any;
-  containerHeight: number;
   isLargeFile: boolean;
   onError: (error: string) => void;
   onLoadingChange: (loading: boolean) => void;

@@ -17,7 +17,7 @@ export class PluginInitializationService {
     }
 
     try {
-      console.log('� Initializing plugin system...');
+      console.log('Initializing plugin system...');
 
       // 初始化插件管理器
       await pluginManager.initialize();

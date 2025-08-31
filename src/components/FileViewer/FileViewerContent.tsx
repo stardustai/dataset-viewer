@@ -37,7 +37,6 @@ interface FileViewerContentProps {
   searchResults: SearchResult[];
   fullFileSearchResults: FullFileSearchResult[];
   fullFileSearchMode: boolean;
-  containerHeight: number;
   calculateStartLineNumber?: (filePosition: number) => number;
   fileInfo: {
     fileType: string;
@@ -86,7 +85,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       searchResults,
       fullFileSearchResults,
       fullFileSearchMode,
-      containerHeight,
       calculateStartLineNumber,
       fileInfo,
       isLargeFile,
@@ -136,7 +134,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
           filePath={filePath}
           content={content}
           storageClient={storageClient}
-          containerHeight={containerHeight}
           isLargeFile={isLargeFile}
         />
       );
@@ -157,7 +154,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
               searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
               fileName={file.basename}
               isMarkdown={fileInfo.isMarkdown}
-              height={containerHeight}
               isMarkdownPreviewOpen={isMarkdownPreviewOpen}
               setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
             />
@@ -289,10 +285,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     if (openAsText) {
       return (
         <>
-          <div
-            className="flex-1 relative overflow-hidden"
-            style={{ height: `${containerHeight}px` }}
-          >
+          <div className="flex-1 relative overflow-hidden">
             <VirtualizedTextViewer
               ref={ref}
               content={content}
@@ -304,7 +297,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
               searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
               fileName={file.basename}
               isMarkdown={false}
-              height={containerHeight}
               isMarkdownPreviewOpen={isMarkdownPreviewOpen}
               setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
             />

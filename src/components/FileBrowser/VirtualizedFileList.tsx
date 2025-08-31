@@ -9,14 +9,12 @@ import { formatFileSize } from '../../utils/fileUtils';
 interface VirtualizedFileListProps {
   files: StorageFile[];
   onFileClick: (file: StorageFile) => void;
-  height?: number;
   onScrollToBottom?: () => void;
 }
 
 export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   files,
   onFileClick,
-  height,
   onScrollToBottom,
 }) => {
   // Use custom hook for responsive behavior
@@ -145,12 +143,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   };
 
   return (
-    <div
-      ref={parentRef}
-      style={{ height: height ? `${height}px` : '100%' }}
-      className="h-full overflow-auto"
-      data-virtualized-container
-    >
+    <div ref={parentRef} className="h-full overflow-auto" data-virtualized-container>
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,

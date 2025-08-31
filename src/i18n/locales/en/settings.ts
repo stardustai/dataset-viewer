@@ -4,6 +4,7 @@ export const settings = {
   'settings.theme': 'Theme Settings',
   'settings.update': 'Update Settings',
   'settings.cache': 'Cache Management',
+  'pure.black.bg': 'Pure Black Background',
 
   // Update functionality
   'auto.check.updates': 'Auto check updates',

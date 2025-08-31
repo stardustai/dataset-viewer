@@ -10,7 +10,6 @@ interface PluginViewerProps {
   filePath: string;
   content?: string | ArrayBuffer;
   storageClient: any;
-  containerHeight: number;
   isLargeFile: boolean;
 }
 
@@ -19,7 +18,6 @@ export const PluginViewer: React.FC<PluginViewerProps> = ({
   filePath,
   content,
   storageClient,
-  containerHeight,
   isLargeFile,
 }) => {
   const { t } = useTranslation();
@@ -72,26 +70,20 @@ export const PluginViewer: React.FC<PluginViewerProps> = ({
   const PluginComponent = pluginComponent;
 
   return (
-    <div className="flex-1">
-      {loading ? (
-        <LoadingDisplay message={t('loading')} className="h-full" />
-      ) : (
-        <PluginComponent
-          file={{
-            filename: file.basename,
-            size: file.size,
-            path: filePath,
-          }}
-          content={content}
-          storageClient={storageClient}
-          containerHeight={containerHeight}
-          isLargeFile={isLargeFile}
-          onError={(error: string) => setError(error)}
-          onLoadingChange={(loading: boolean) => setLoading(loading)}
-          language={i18n.language}
-          t={t}
-        />
-      )}
+    <div className="flex-1 overflow-hidden">
+      <PluginComponent
+        file={{
+          filename: file.basename,
+          size: file.size,
+          path: filePath,
+        }}
+        content={content}
+        storageClient={storageClient}
+        isLargeFile={isLargeFile}
+        onError={(error: string) => setError(error)}
+        language={i18n.language}
+        t={t}
+      />
     </div>
   );
 };

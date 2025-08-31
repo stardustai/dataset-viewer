@@ -1,15 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Settings,
-  Download,
-  RefreshCw,
-  Check,
-  X,
-  Sun,
-  Moon,
-  Trash2,
-  Package,
-} from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Package } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
@@ -160,7 +150,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             </div>
             {/* 纯黑色背景开关 */}
             <div className="flex items-center justify-between mt-2">
-              <span className="text-sm text-gray-600 dark:text-gray-300">纯黑色背景</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('pure.black.bg')}</span>
               <button
                 onClick={handlePureBlackBgToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -279,7 +269,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-					{/* Plugin Management */}
+          {/* Plugin Management */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
               {t('settings.plugins')}

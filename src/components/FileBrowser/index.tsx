@@ -92,8 +92,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [loadingRequest, setLoadingRequest] = useState<string | null>(null); // 跟踪当前正在加载的路径
   const [isRefreshing, setIsRefreshing] = useState(false); // 专门跟踪刷新按钮状态
   const [failedPath, setFailedPath] = useState<string>(''); // 记录失败的路径
-  const [containerHeight, setContainerHeight] = useState(600); // 容器高度
-  const [tableHeaderHeight, setTableHeaderHeight] = useState(40); // 表头高度
   const [searchTerm, setSearchTerm] = useState(''); // 文件名搜索
   const [showSettings, setShowSettings] = useState(false); // 设置面板显示状态
   const [currentView, setCurrentView] = useState<'directory' | 'remote-search'>('directory'); // 当前显示的内容类型
@@ -766,43 +764,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     };
   }, [currentPath]);
 
-  // 监听容器大小变化
-  useEffect(() => {
-    const updateContainerHeight = () => {
-      if (containerRef.current && tableHeaderRef.current) {
-        const mainRect = containerRef.current.getBoundingClientRect();
-        const headerRect = tableHeaderRef.current.getBoundingClientRect();
-        setContainerHeight(mainRect.height);
-        setTableHeaderHeight(headerRect.height);
-      } else if (containerRef.current) {
-        // 如果表头还没有渲染，使用默认值
-        const rect = containerRef.current.getBoundingClientRect();
-        setContainerHeight(rect.height);
-      }
-    };
-
-    updateContainerHeight();
-    window.addEventListener('resize', updateContainerHeight);
-
-    return () => {
-      window.removeEventListener('resize', updateContainerHeight);
-    };
-  }, []);
-
-  // 当文件列表变化时重新计算高度（确保表头已渲染）
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (containerRef.current && tableHeaderRef.current) {
-        const mainRect = containerRef.current.getBoundingClientRect();
-        const headerRect = tableHeaderRef.current.getBoundingClientRect();
-        setContainerHeight(mainRect.height);
-        setTableHeaderHeight(headerRect.height);
-      }
-    }, 50); // 给一点时间让DOM更新
-
-    return () => clearTimeout(timer);
-  }, [files.length, loading, error]); // 当这些状态变化时重新计算
-
   const navigateUp = () => {
     if (currentPath === '') return; // Already at root
 
@@ -1176,11 +1137,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     />
                   )
                 ) : (
-                  <div ref={fileListRef} className="bg-white dark:bg-gray-800 relative">
+                  <div
+                    ref={fileListRef}
+                    className="bg-white dark:bg-gray-800 relative flex-1 overflow-hidden"
+                  >
                     <VirtualizedFileList
                       files={getDisplayFiles()}
                       onFileClick={handleItemClick}
-                      height={containerHeight - tableHeaderHeight} // 恢复原来的高度
                       onScrollToBottom={handleScrollToBottom}
                     />
                     {/* Loading more indicator - 绝对定位覆盖层 */}
