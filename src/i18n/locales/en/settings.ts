@@ -57,7 +57,6 @@ export const settings = {
 
   // File categories
   'file.category.documents': 'Documents',
-  'file.category.media': 'Media',
   'file.category.archives': 'Archives', 
   'file.category.code files': 'Code Files',
   'file.category.data files': 'Data Files',

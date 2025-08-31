@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Link2, Folder, FileText, Archive } from 'lucide-react';
+import { Check, X, Link2, Folder, FileText, Archive, Code2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { showToast } from '../../utils/clipboard';
 import { commands } from '../../types/tauri-commands';
@@ -125,22 +125,30 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
   const handleApply = async () => {
     setIsApplying(true);
     try {
-      // Calculate unselected extensions
-      const unselectedExtensions = supportedExtensions.filter(ext => !selectedExtensions.includes(ext));
+      // Send all supported extensions to backend, it will handle both selected and unselected
+      const allExtensions = supportedExtensions;
       
-      // Use the new consolidated API that handles both selected and unselected extensions
-      const result = await commands.systemManageFileAssociations(selectedExtensions, unselectedExtensions);
-      if (result.status === 'ok') {
-        if (selectedExtensions.length > 0) {
+      // First, unregister all supported extensions
+      if (allExtensions.length > 0) {
+        const unregisterResult = await commands.systemUnregisterFiles(allExtensions);
+        if (unregisterResult.status !== 'ok') {
+          console.warn('Failed to unregister some file associations:', unregisterResult.error);
+        }
+      }
+
+      // Then register only selected extensions
+      if (selectedExtensions.length > 0) {
+        const registerResult = await commands.systemRegisterSelectedFiles(selectedExtensions);
+        if (registerResult.status === 'ok') {
           showToast(
             t('file.associations.applied.success', { count: selectedExtensions.length }),
             'success'
           );
         } else {
-          showToast(t('file.associations.cleared.success'), 'success');
+          throw new Error(registerResult.error);
         }
       } else {
-        throw new Error(result.error);
+        showToast(t('file.associations.cleared.success'), 'success');
       }
       
       onClose();
@@ -307,14 +315,14 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
         <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm"
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             {t('cancel')}
           </button>
           <button
             onClick={handleApply}
             disabled={isApplying}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center space-x-2 text-sm"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center space-x-2"
           >
             {isApplying && <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>}
             <span>{isApplying ? t('applying') : t('apply.settings')}</span>
