@@ -42,6 +42,7 @@ export const settings = {
   'file.association.settings': 'File Association Settings',
   'file.association.advanced.description': 
     'Choose which file types you want this application to handle as the default program. Only selected extensions will be set as default associations.',
+  'file.association.current.status': 'Currently {{count}} file types are associated with this app',
   'selected.extensions.count': 'Selected {{selected}} of {{total}} extensions',
   'select.all.safe': 'Select All (Safe)',
   'deselect.all': 'Deselect All',
@@ -65,6 +66,10 @@ export const settings = {
   // File extension warnings
   'file.extension.problematic.tooltip': 'This file type may conflict with system functionality',
   'file.extension.problematic.warning': 'Some selected file types (like .bat, .sh, .ps1) may interfere with normal system operations. Use with caution.',
+  'file.extension.currently.associated': 'Currently associated with this app',
+  'file.extension.will.be.removed': 'Will be removed from associations',
+  'file.extension.will.be.added': 'Will be added to associations',
+  'file.extension.will.be.new': 'New association',
 
   // About
   about: 'About',
