@@ -5,12 +5,7 @@ import { showToast } from '../../utils/clipboard';
 import { commands } from '../../types/tauri-commands';
 
 // Import functions from fileTypes.ts to get all supported extensions
-import {
-  FileType,
-  getAllSupportedExtensions,
-  getExtensionsByType,
-  getMimeType,
-} from '../../utils/fileTypes';
+import { FileType, getAllSupportedExtensions, getExtensionsByType } from '../../utils/fileTypes';
 
 interface FileAssociationSettingsProps {
   onClose: () => void;
@@ -62,6 +57,7 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
   const { t } = useTranslation();
   const [supportedExtensions, setSupportedExtensions] = useState<string[]>([]);
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
+  const [currentAssociations, setCurrentAssociations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
 
@@ -76,10 +72,28 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
       // Get extensions from fileTypes.ts instead of backend
       const extensions = getAllSupportedExtensions();
       setSupportedExtensions(extensions);
-
-      // Default to no selection, let users choose what they want
-      setSelectedExtensions([]);
-
+      
+      // Query current file associations from system instead of defaulting to safe extensions
+      try {
+        const currentAssociationsResult = await commands.systemGetCurrentFileAssociations();
+        if (currentAssociationsResult.status === 'ok') {
+          const currentAssociations = currentAssociationsResult.data;
+          setCurrentAssociations(currentAssociations);
+          setSelectedExtensions(currentAssociations);
+        } else {
+          // If query fails, fall back to safe extensions as default
+          const safeExtensions = extensions.filter(ext => !problematicExtensions.includes(ext));
+          setSelectedExtensions(safeExtensions);
+          setCurrentAssociations([]);
+        }
+      } catch (error) {
+        console.warn('Failed to query current file associations, using safe defaults:', error);
+        // Fallback to safe extensions if query fails
+        const safeExtensions = extensions.filter(ext => !problematicExtensions.includes(ext));
+        setSelectedExtensions(safeExtensions);
+        setCurrentAssociations([]);
+      }
+      
       setIsLoading(false);
     } catch (error) {
       console.error('Failed to load supported extensions:', error);
@@ -89,15 +103,17 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
   };
 
   const handleExtensionToggle = (extension: string) => {
-    setSelectedExtensions(prev =>
-      prev.includes(extension) ? prev.filter(ext => ext !== extension) : [...prev, extension]
+    setSelectedExtensions(prev => 
+      prev.includes(extension)
+        ? prev.filter(ext => ext !== extension)
+        : [...prev, extension]
     );
   };
 
   const handleCategoryToggle = (category: ExtensionCategory) => {
     const categoryExtensions = category.extensions.filter(ext => supportedExtensions.includes(ext));
     const allSelected = categoryExtensions.every(ext => selectedExtensions.includes(ext));
-
+    
     if (allSelected) {
       // Deselect all in category
       setSelectedExtensions(prev => prev.filter(ext => !categoryExtensions.includes(ext)));
@@ -128,23 +144,10 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
     setIsApplying(true);
     try {
       // Calculate unselected extensions
-      const unselectedExtensions = supportedExtensions.filter(
-        ext => !selectedExtensions.includes(ext)
-      );
-
-      // Generate MIME types list for Linux platform
-      const mimeTypes =
-        selectedExtensions.length > 0
-          ? selectedExtensions.map(ext => getMimeType(`file.${ext}`))
-          : null;
-
+      const unselectedExtensions = supportedExtensions.filter(ext => !selectedExtensions.includes(ext));
+      
       // Use the new consolidated API that handles both selected and unselected extensions
-      const result = await commands.systemManageFileAssociations(
-        selectedExtensions,
-        unselectedExtensions,
-        mimeTypes
-      );
-
+      const result = await commands.systemManageFileAssociations(selectedExtensions, unselectedExtensions);
       if (result.status === 'ok') {
         if (selectedExtensions.length > 0) {
           showToast(
@@ -157,7 +160,7 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
       } else {
         throw new Error(result.error);
       }
-
+      
       onClose();
     } catch (error) {
       console.error('Failed to apply file associations:', error);
@@ -176,10 +179,7 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
     const someSelected = selectedCount > 0 && selectedCount < categoryExtensions.length;
 
     return (
-      <div
-        key={category.name}
-        className="border border-gray-200 dark:border-gray-600 rounded-lg p-4"
-      >
+      <div key={category.name} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-3">
             <category.icon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
@@ -196,8 +196,8 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
               allSelected
                 ? 'bg-blue-500'
                 : someSelected
-                  ? 'bg-blue-300 dark:bg-blue-700'
-                  : 'bg-gray-300 dark:bg-gray-600'
+                ? 'bg-blue-300 dark:bg-blue-700'
+                : 'bg-gray-300 dark:bg-gray-600'
             }`}
           >
             <span
@@ -207,12 +207,13 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
             />
           </button>
         </div>
-
+        
         <div className="flex flex-wrap gap-2">
           {categoryExtensions.map(extension => {
             const isSelected = selectedExtensions.includes(extension);
+            const isCurrentlyAssociated = currentAssociations.includes(extension);
             const isProblematic = problematicExtensions.includes(extension);
-
+            
             return (
               <button
                 key={extension}
@@ -221,13 +222,30 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
                   isSelected
                     ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                } ${isProblematic ? 'border-orange-300 dark:border-orange-700' : ''}`}
-                title={isProblematic ? t('file.extension.problematic.tooltip') : undefined}
+                } ${
+                  isProblematic ? 'border-orange-300 dark:border-orange-700' : ''
+                }`}
+                title={
+                  isProblematic 
+                    ? t('file.extension.problematic.tooltip') 
+                    : isCurrentlyAssociated && !isSelected
+                    ? t('file.extension.will.be.removed')
+                    : !isCurrentlyAssociated && isSelected
+                    ? t('file.extension.will.be.added')
+                    : undefined
+                }
               >
                 <span>.{extension}</span>
                 {isSelected && <Check className="w-3 h-3 ml-1" />}
                 {isProblematic && !isSelected && (
                   <span className="w-3 h-3 ml-1 text-orange-500">⚠</span>
+                )}
+                {/* Show current association status */}
+                {isCurrentlyAssociated && !isSelected && (
+                  <span className="w-3 h-3 ml-1 text-red-500" title={t('file.extension.currently.associated')}>●</span>
+                )}
+                {!isCurrentlyAssociated && isSelected && (
+                  <span className="w-3 h-3 ml-1 text-green-500" title={t('file.extension.will.be.new')}>+</span>
                 )}
               </button>
             );
@@ -277,14 +295,19 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
               <p className="text-sm text-blue-800 dark:text-blue-300">
                 {t('file.association.advanced.description')}
               </p>
+              {currentAssociations.length > 0 && (
+                <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
+                  {t('file.association.current.status', { count: currentAssociations.length })}
+                </p>
+              )}
             </div>
 
             {/* Bulk Actions */}
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600 dark:text-gray-300">
-                {t('selected.extensions.count', {
-                  selected: selectedExtensions.length,
-                  total: supportedExtensions.length,
+                {t('selected.extensions.count', { 
+                  selected: selectedExtensions.length, 
+                  total: supportedExtensions.length 
                 })}
               </div>
               <div className="flex space-x-2">
@@ -304,7 +327,9 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
             </div>
 
             {/* Extension Categories */}
-            <div className="space-y-4">{extensionCategories.map(renderExtensionCategory)}</div>
+            <div className="space-y-4">
+              {extensionCategories.map(renderExtensionCategory)}
+            </div>
 
             {/* Warning for problematic extensions */}
             {selectedExtensions.some(ext => problematicExtensions.includes(ext)) && (
@@ -330,9 +355,7 @@ export const FileAssociationSettings: React.FC<FileAssociationSettingsProps> = (
             disabled={isApplying}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center space-x-2 text-sm"
           >
-            {isApplying && (
-              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-            )}
+            {isApplying && <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>}
             <span>{isApplying ? t('applying') : t('apply.settings')}</span>
           </button>
         </div>
