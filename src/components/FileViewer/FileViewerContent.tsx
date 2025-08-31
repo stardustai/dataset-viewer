@@ -4,6 +4,8 @@ import { Loader2 } from 'lucide-react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
 import { LazyComponentWrapper } from './common';
+import { pluginManager } from '../../services/plugin/pluginManager';
+import { PluginViewer } from './PluginViewer';
 import {
   VirtualizedTextViewer,
   WordViewer,
@@ -123,6 +125,20 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
             <p className="text-sm">{error}</p>
           </div>
         </div>
+      );
+    }
+
+    // 检查是否有插件可以处理此文件
+    if (pluginManager.findViewerForFile(file.basename)) {
+      return (
+        <PluginViewer
+          file={file}
+          filePath={filePath}
+          content={content}
+          storageClient={storageClient}
+          containerHeight={containerHeight}
+          isLargeFile={isLargeFile}
+        />
       );
     }
 

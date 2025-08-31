@@ -108,7 +108,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   // 渲染文件图标
   const renderFileIcon = (file: StorageFile) => {
     const fileType = file.type === 'directory' ? 'directory' : getFileType(file.filename);
-    return <FileIcon fileType={fileType} size="md" className="mr-3" />;
+    return <FileIcon fileType={fileType} size="md" className="mr-3" filename={file.filename} />;
   };
 
   // 格式化日期 - 移动端显示简洁格式

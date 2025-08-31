@@ -1,0 +1,185 @@
+import React from 'react';
+import { PluginBundle, PluginInstance } from '../../types/plugin-framework';
+import i18n from '../../i18n';
+
+/**
+ * 插件框架 - 负责插件的管理和动态加载
+ */
+export class PluginFramework {
+  private static instance: PluginFramework;
+  private plugins = new Map<string, PluginInstance>();
+  private loadedBundles = new Map<string, PluginBundle>();
+  private dependencyCache = new Map<string, any>();
+
+  static getInstance(): PluginFramework {
+    if (!PluginFramework.instance) {
+      PluginFramework.instance = new PluginFramework();
+    }
+    return PluginFramework.instance;
+  }
+
+  /**
+   * 从插件目录动态加载插件
+   */
+  async loadPlugin(pluginPath: string): Promise<PluginInstance> {
+    try {
+      // 动态导入插件包
+      const pluginModule = await import(/* @vite-ignore */ pluginPath);
+      const bundle: PluginBundle = pluginModule.default || pluginModule;
+
+      // 验证插件包格式
+      if (!this.validatePluginBundle(bundle)) {
+        throw new Error('Invalid plugin bundle format');
+      }
+
+      // 执行插件初始化
+      if (bundle.initialize) {
+        await bundle.initialize();
+      }
+
+      // 如果插件有翻译资源，合并到主应用的 i18n 系统
+      if (bundle.i18nResources) {
+        for (const [lang, resources] of Object.entries(bundle.i18nResources)) {
+          if (!i18n.hasResourceBundle(lang, 'translation')) {
+            i18n.addResourceBundle(lang, 'translation', resources.translation, true, true);
+          } else {
+            // 如果已存在，则合并翻译资源
+            i18n.addResources(lang, 'translation', resources.translation);
+          }
+        }
+      }
+
+      // 创建插件实例
+      const instance: PluginInstance = {
+        metadata: bundle.metadata,
+        component: bundle.component,
+        canHandle: (filename: string) => {
+          const ext = filename.split('.').pop()?.toLowerCase();
+          if (!ext) return false;
+
+          // 检查插件支持的扩展名，支持带点和不带点的格式
+          return bundle.metadata.supportedExtensions.some(supportedExt => {
+            const normalizedExt = supportedExt.startsWith('.')
+              ? supportedExt.slice(1)
+              : supportedExt;
+            return normalizedExt.toLowerCase() === ext;
+          });
+        },
+        getFileType: () => bundle.metadata.id, // 使用插件ID作为文件类型标识符
+        getFileIcon: () => bundle.metadata.icon || '',
+      };
+
+      // 缓存插件
+      this.loadedBundles.set(bundle.metadata.id, bundle);
+      this.plugins.set(bundle.metadata.id, instance);
+
+      return instance;
+    } catch (error) {
+      console.error(`Failed to load plugin from ${pluginPath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 卸载插件
+   */
+  async unloadPlugin(pluginId: string): Promise<void> {
+    const bundle = this.loadedBundles.get(pluginId);
+    if (bundle?.cleanup) {
+      await bundle.cleanup();
+    }
+
+    this.plugins.delete(pluginId);
+    this.loadedBundles.delete(pluginId);
+  }
+
+  /**
+   * 获取可以处理指定文件的插件
+   */
+  findPluginForFile(filename: string): PluginInstance | null {
+    for (const plugin of this.plugins.values()) {
+      if (plugin.canHandle(filename)) {
+        return plugin;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 获取所有已加载的插件
+   */
+  getAllPlugins(): PluginInstance[] {
+    return Array.from(this.plugins.values());
+  }
+
+  /**
+   * 根据插件 ID 获取插件实例
+   */
+  getPlugin(pluginId: string): PluginInstance | null {
+    return this.plugins.get(pluginId) || null;
+  }
+
+  /**
+   * 验证插件包格式
+   */
+  private validatePluginBundle(bundle: any): bundle is PluginBundle {
+    return (
+      bundle &&
+      typeof bundle === 'object' &&
+      bundle.metadata &&
+      typeof bundle.metadata === 'object' &&
+      typeof bundle.metadata.id === 'string' &&
+      typeof bundle.metadata.name === 'string' &&
+      Array.isArray(bundle.metadata.supportedExtensions) &&
+      typeof bundle.component === 'function'
+    );
+  }
+
+  /**
+   * 获取插件的文件类型映射
+   */
+  getFileTypeMapping(): Map<string, string> {
+    const mapping = new Map<string, string>();
+
+    for (const plugin of this.plugins.values()) {
+      for (const ext of plugin.metadata.supportedExtensions) {
+        mapping.set(ext, plugin.getFileType());
+      }
+    }
+
+    return mapping;
+  }
+
+  /**
+   * 获取插件的图标映射
+   */
+  getIconMapping(): Map<string, React.ReactNode> {
+    const mapping = new Map<string, React.ReactNode>();
+
+    for (const plugin of this.plugins.values()) {
+      const icon = plugin.getFileIcon?.();
+      if (icon) {
+        for (const ext of plugin.metadata.supportedExtensions) {
+          mapping.set(ext, icon);
+        }
+      }
+    }
+
+    return mapping;
+  }
+
+  /**
+   * 清理所有插件
+   */
+  async cleanup(): Promise<void> {
+    const cleanupPromises = Array.from(this.loadedBundles.values())
+      .filter(bundle => bundle.cleanup)
+      .map(bundle => bundle.cleanup!());
+
+    await Promise.all(cleanupPromises);
+
+    this.plugins.clear();
+    this.loadedBundles.clear();
+    this.dependencyCache.clear();
+  }
+}

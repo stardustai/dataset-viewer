@@ -252,4 +252,10 @@ export const fileViewer = {
   // Code folding
   'fold.range': 'Fold range',
   'unfold.range': 'Unfold range',
+
+  // Plugin related
+  'plugin.loading': 'Loading plugin...',
+  'plugin.loading.component': 'Loading plugin component...',
+  'plugin.notFound': 'No plugin found for file "{{filename}}"',
+  'plugin.noSuitablePlugin': 'No suitable plugin found for this file type',
 };

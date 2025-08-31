@@ -1,0 +1,47 @@
+{
+  "name": "@dataset-viewer/plugin-cad",
+  "version": "1.0.0",
+  "description": "CAD文件查看插件，支持DWG、DXF、STEP等格式",
+  "main": "dist/index.esm.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "dataset-viewer",
+    "plugin",
+    "cad",
+    "dwg",
+    "dxf",
+    "step",
+    "autocad"
+  ],
+  "author": "DatasetViewer Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/datasetviewer/cad-plugin.git"
+  },
+  "peerDependencies": {
+    "lucide-react": "^0.263.1",
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.5",
+    "@types/react": "^18.2.15",
+    "terser": "^5.43.1",
+    "typescript": "^5.1.6",
+    "vite": "^4.4.0",
+    "vite-plugin-dts": "^3.3.1"
+  },
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "dev": "vite build --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

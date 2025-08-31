@@ -10,6 +10,7 @@ import { StorageFile } from './types';
 import { StorageServiceManager } from './services/storage';
 import { navigationHistoryService } from './services/navigationHistory';
 import { fileAssociationService } from './services/fileAssociationService';
+import { pluginInitialization } from './services/plugin/pluginInitialization';
 import { useTheme } from './hooks/useTheme';
 import './i18n';
 import './App.css';
@@ -71,6 +72,18 @@ function App() {
   };
 
   useEffect(() => {
+    // 初始化插件系统
+    const initializePlugins = async () => {
+      try {
+        await pluginInitialization.initialize();
+        console.log('Plugin system ready');
+      } catch (error) {
+        console.error('Failed to initialize plugin system:', error);
+      }
+    };
+
+    initializePlugins();
+
     // 如果是文件查看模式且URL中有文件参数，直接处理
     if (isFileViewerMode) {
       const filePathFromUrl = urlParams.get('file');
