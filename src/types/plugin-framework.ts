@@ -74,3 +74,26 @@ export interface PluginInstance {
   getFileType: () => string;
   getFileIcon?: () => string | React.ReactNode;
 }
+
+/**
+ * 插件安装状态
+ */
+export type PluginInstallStatus =
+  | 'installing'
+  | 'installed'
+  | 'failed'
+  | 'uninstalling'
+  | 'updating';
+
+/**
+ * 插件安装信息
+ */
+export interface PluginInstallInfo {
+  pluginId: string;
+  status: PluginInstallStatus;
+  progress?: number;
+  error?: string;
+  installedAt?: Date;
+  source: 'npm' | 'local' | 'url';
+  sourcePath: string;
+}
