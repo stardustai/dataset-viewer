@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm prebuild && tsc && vite build",
-    "prebuild": "cd src-tauri && cargo run --bin export-bindings",
+    "prebuild": "cd src-tauri && cargo run --bin export-bindings --features export-bindings",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

@@ -135,12 +135,21 @@ jobs:
       - name: Setup macOS signing (macOS only)
         if: matrix.platform == 'macos-latest'
         run: |
+          # 解码并导入证书
           echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
           security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
           security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+
+          # 验证签名身份
+          echo "Available code signing identities:"
+          security find-identity -v -p codesigning build.keychain || echo "No code signing identities found"
+
+          # 清理可能存在的二进制文件避免签名冲突
+          rm -rf src-tauri/target/*/release/export-bindings* 2>/dev/null || true
+          rm -rf src-tauri/target/*/debug/export-bindings* 2>/dev/null || true
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -196,26 +205,20 @@ jobs:
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
+          includeUpdaterJson: false
 
       - name: Build only (manual trigger)
         if: github.event_name == 'workflow_dispatch'
-        run: |
-          pnpm tauri build ${{ matrix.args }}
+        run: pnpm tauri build ${{ matrix.args }}
 
-      - name: List build artifacts (manual trigger)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "Build artifacts:"
-          find src-tauri/target -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" -o -name "*.exe" 2>/dev/null || echo "No bundle files found"
-        shell: bash
-
-      - name: Upload artifacts (manual trigger)
+      - name: Upload installer packages (manual trigger)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: dataset-viewer-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
-            src-tauri/target/**/bundle/**/*
-          include-hidden-files: false
+            src-tauri/target/**/bundle/**/*.dmg
+            src-tauri/target/**/bundle/**/*.msi
+            src-tauri/target/**/bundle/**/*.AppImage
           retention-days: 1
           if-no-files-found: warn

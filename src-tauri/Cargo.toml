@@ -20,10 +20,16 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "dataset-viewer"
 path = "src/main.rs"
 
-# Binary for exporting TypeScript bindings
+# Binary for exporting TypeScript bindings (development only)
 [[bin]]
 name = "export-bindings"
 path = "src/bin/export-bindings.rs"
+required-features = ["export-bindings"]
+
+[features]
+# Feature for development bindings export
+export-bindings = []
+default = []
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
