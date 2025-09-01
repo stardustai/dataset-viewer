@@ -38,6 +38,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
+      "signingIdentity": "Dataset Viewer",
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist"
     },

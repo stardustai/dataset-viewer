@@ -132,10 +132,9 @@ jobs:
           rustup target add aarch64-apple-darwin
           rustup target add x86_64-apple-darwin
 
-      - name: Setup macOS signing (macOS ARM only)
-        if: matrix.platform == 'macos-latest' && matrix.arch == 'arm64'
+      - name: Setup macOS signing (macOS only)
+        if: matrix.platform == 'macos-latest'
         run: |
-          # 解码并导入证书
           echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
           security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
@@ -188,18 +187,7 @@ jobs:
         shell: pwsh
 
       - uses: tauri-apps/tauri-action@v0
-        if: github.event_name != 'workflow_dispatch' && !(matrix.platform == 'macos-latest' && matrix.arch == 'arm64')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }} --bin dataset-viewer
-          includeUpdaterJson: false
-
-      - uses: tauri-apps/tauri-action@v0
-        if: github.event_name != 'workflow_dispatch' && matrix.platform == 'macos-latest' && matrix.arch == 'arm64'
+        if: github.event_name != 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
