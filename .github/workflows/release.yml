@@ -146,10 +146,6 @@ jobs:
           # 验证签名身份
           echo "Available code signing identities:"
           security find-identity -v -p codesigning build.keychain || echo "No code signing identities found"
-
-          # 清理可能存在的二进制文件避免签名冲突
-          rm -rf src-tauri/target/*/release/export-bindings* 2>/dev/null || true
-          rm -rf src-tauri/target/*/debug/export-bindings* 2>/dev/null || true
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -204,12 +200,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --bin dataset-viewer
           includeUpdaterJson: false
 
       - name: Build only (manual trigger)
         if: github.event_name == 'workflow_dispatch'
-        run: pnpm tauri build ${{ matrix.args }}
+        run: pnpm tauri build ${{ matrix.args }} -- --bin dataset-viewer
 
       - name: Upload installer packages (manual trigger)
         if: github.event_name == 'workflow_dispatch'
