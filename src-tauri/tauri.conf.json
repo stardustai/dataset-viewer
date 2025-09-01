@@ -37,6 +37,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "signingIdentity": "-",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.plist"
+    },
     "publisher": "Stardust AI",
     "copyright": "Copyright © 2025 Stardust AI. All rights reserved.",
     "category": "Productivity",
