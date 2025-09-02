@@ -143,7 +143,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
               currentSearchIndex={currentSearchIndex}
               searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
               fileName={file.basename}
-              isMarkdown={fileInfo.isMarkdown}
+              isMarkdown={fileInfo.isMarkdown && !openAsText}
               height={containerHeight}
               isMarkdownPreviewOpen={isMarkdownPreviewOpen}
               setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
@@ -272,43 +272,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       );
     }
 
-    // 如果用户选择以文本格式打开不支持的文件
-    if (openAsText) {
-      return (
-        <>
-          <div
-            className="flex-1 relative overflow-hidden"
-            style={{ height: `${containerHeight}px` }}
-          >
-            <VirtualizedTextViewer
-              ref={ref}
-              content={content}
-              searchTerm={searchTerm}
-              onSearchResults={handleSearchResults}
-              onScrollToBottom={handleScrollToBottom}
-              startLineNumber={calculateStartLineNumber ? calculateStartLineNumber(0) : 1}
-              currentSearchIndex={currentSearchIndex}
-              searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
-              fileName={file.basename}
-              isMarkdown={false}
-              height={containerHeight}
-              isMarkdownPreviewOpen={isMarkdownPreviewOpen}
-              setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
-            />
-          </div>
 
-          {/* 底部加载状态指示器 */}
-          {isLargeFile && loadingMore && (
-            <div className="flex justify-center py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('loading')}</span>
-              </div>
-            </div>
-          )}
-        </>
-      );
-    }
 
     return (
       <UnsupportedFormatDisplay
