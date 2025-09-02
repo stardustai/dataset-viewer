@@ -195,7 +195,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }} --bin dataset-viewer
+          args: ${{ matrix.args }} -- --bin dataset-viewer
           includeUpdaterJson: false
 
       - name: Build only (manual trigger)
