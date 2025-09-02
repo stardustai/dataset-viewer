@@ -135,16 +135,27 @@ jobs:
       - name: Setup macOS signing (macOS only)
         if: matrix.platform == 'macos-latest'
         run: |
-          echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+          # decode base64 -> p12 (use BSD compatible -D)
+          printf '%s' "$APPLE_CERTIFICATE" | base64 -D > certificate.p12
           security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
           security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+          # cleanup certificate file
+          rm -f certificate.p12
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+
+      - name: Set signing identity for ARM64 (macOS ARM only)
+        if: matrix.platform == 'macos-latest' && matrix.arch == 'arm64'
+        run: |
+          # Update signingIdentity for ARM builds
+          jq '.bundle.macOS.signingIdentity = env.APPLE_SIGNING_IDENTITY' src-tauri/tauri.conf.json > tmp.json && mv tmp.json src-tauri/tauri.conf.json
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
