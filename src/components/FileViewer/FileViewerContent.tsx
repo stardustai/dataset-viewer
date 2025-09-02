@@ -66,6 +66,7 @@ interface FileViewerContentProps {
   setPresentationMetadata: (metadata: any) => void;
   setDataMetadata: (metadata: any) => void;
   loadFileContent: (forceLoad?: boolean) => Promise<void>;
+  forceTextMode?: boolean; // 新增属性，用于强制以文本格式打开
 }
 
 export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewerContentProps>(
@@ -96,11 +97,12 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       isMarkdownPreviewOpen,
       setIsMarkdownPreviewOpen,
       loadFileContent,
+      forceTextMode,
     },
     ref
   ) => {
     const { t } = useTranslation();
-    const [openAsText, setOpenAsText] = useState(false);
+    const [openAsText, setOpenAsText] = useState(!!forceTextMode);
 
     // 处理加载状态
     if (loading) {
@@ -126,7 +128,8 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       );
     }
 
-    if (fileInfo.isText || fileInfo.isMarkdown) {
+    // 如果强制文本模式或用户选择以文本格式打开，或者是文本/Markdown文件
+    if (forceTextMode || openAsText || fileInfo.isText || fileInfo.isMarkdown) {
       return (
         <div className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 min-h-0">
@@ -140,7 +143,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
               currentSearchIndex={currentSearchIndex}
               searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
               fileName={file.basename}
-              isMarkdown={fileInfo.isMarkdown}
+              isMarkdown={fileInfo.isMarkdown && !openAsText}
               height={containerHeight}
               isMarkdownPreviewOpen={isMarkdownPreviewOpen}
               setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
@@ -269,43 +272,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       );
     }
 
-    // 如果用户选择以文本格式打开不支持的文件
-    if (openAsText) {
-      return (
-        <>
-          <div
-            className="flex-1 relative overflow-hidden"
-            style={{ height: `${containerHeight}px` }}
-          >
-            <VirtualizedTextViewer
-              ref={ref}
-              content={content}
-              searchTerm={searchTerm}
-              onSearchResults={handleSearchResults}
-              onScrollToBottom={handleScrollToBottom}
-              startLineNumber={calculateStartLineNumber ? calculateStartLineNumber(0) : 1}
-              currentSearchIndex={currentSearchIndex}
-              searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
-              fileName={file.basename}
-              isMarkdown={false}
-              height={containerHeight}
-              isMarkdownPreviewOpen={isMarkdownPreviewOpen}
-              setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
-            />
-          </div>
 
-          {/* 底部加载状态指示器 */}
-          {isLargeFile && loadingMore && (
-            <div className="flex justify-center py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('loading')}</span>
-              </div>
-            </div>
-          )}
-        </>
-      );
-    }
 
     return (
       <UnsupportedFormatDisplay

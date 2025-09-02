@@ -17,7 +17,7 @@ import { compareFileSize } from '../../utils/typeUtils';
 
 interface ArchiveFileBrowserProps {
   archiveInfo: ArchiveInfo;
-  onFileSelect: (entry: any, path: string) => void;
+  onFileSelect: (entry: any, path: string, forceTextMode?: boolean) => void;
   onBack: () => void;
   loading?: boolean;
   error?: string;
@@ -95,10 +95,18 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
       setCurrentPath(file.filename);
     } else {
       // 找到对应的ArchiveEntry
-      const entry = archiveInfo.entries.find(e => e.path === file.filename);
+      const entry = archiveInfo.entries.find((e: any) => e.path === file.filename);
       if (entry) {
         onFileSelect(entry, file.filename);
       }
+    }
+  };
+
+  const handleOpenAsText = (file: StorageFile) => {
+    // 找到对应的ArchiveEntry并强制以文本格式打开
+    const entry = archiveInfo.entries.find((e: any) => e.path === file.filename);
+    if (entry) {
+      onFileSelect(entry, file.filename, true);
     }
   };
 
@@ -265,6 +273,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
                 <VirtualizedFileList
                   files={filteredAndSortedFiles}
                   onFileClick={handleItemClick}
+                  onFileOpenAsText={handleOpenAsText}
                   height={undefined} // 让组件自适应高度
                 />
               </div>

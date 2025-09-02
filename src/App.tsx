@@ -36,6 +36,7 @@ function App() {
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
   const [isReturningFromViewer, setIsReturningFromViewer] = useState(false);
   const [isFileAssociationMode, setIsFileAssociationMode] = useState(false);
+  const [forceTextMode, setForceTextMode] = useState(false);
 
   // 监听状态变化，立即移除loading以避免空白闪烁
   useEffect(() => {
@@ -50,11 +51,13 @@ function App() {
     file: StorageFile,
     path: string,
     storageClient?: any,
-    files?: StorageFile[]
+    files?: StorageFile[],
+    isForceTextMode?: boolean
   ) => {
     setSelectedFile(file);
     setSelectedFilePath(path);
     setSelectedStorageClient(storageClient); // 保存存储客户端引用
+    setForceTextMode(!!isForceTextMode); // 设置强制文本模式
 
     // 检查是否存在关联文件（如YOLO标注的txt文件）
     if (files && file.basename) {
@@ -215,6 +218,7 @@ function App() {
     setSelectedFile(null);
     setSelectedFilePath('');
     setSelectedStorageClient(null);
+    setForceTextMode(false); // 重置强制文本模式
 
     // 只有当是文件关联模式时，才需要刷新列表
     if (isFileAssociationMode) {
@@ -268,6 +272,7 @@ function App() {
               hasAssociatedFiles={hasAssociatedFiles}
               onBack={handleBackToBrowser}
               hideBackButton={isFileViewerMode} // 如果是文件查看模式则隐藏返回按钮
+              forceTextMode={forceTextMode}
             />
           </div>
         )}

@@ -44,7 +44,8 @@ interface FileBrowserProps {
     file: StorageFile,
     path: string,
     storageClient?: IStorageClient,
-    files?: StorageFile[]
+    files?: StorageFile[],
+    forceTextMode?: boolean
   ) => void;
   onDisconnect: () => void;
   initialPath?: string;
@@ -841,6 +842,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
   };
 
+  const handleOpenAsText = (file: StorageFile) => {
+    // 强制以文本格式打开文件
+    const currentStorageClient = StorageServiceManager.getCurrentClient();
+    const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
+    // 通过forceTextMode参数告诉FileViewer强制以文本格式打开
+    onFileSelect(file, fullPath, currentStorageClient, files, true);
+  };
+
   const connection = StorageServiceManager.getConnection();
 
   const navigateToSegment = (index: number) => {
@@ -1180,6 +1189,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     <VirtualizedFileList
                       files={getDisplayFiles()}
                       onFileClick={handleItemClick}
+                      onFileOpenAsText={handleOpenAsText}
                       height={containerHeight - tableHeaderHeight} // 恢复原来的高度
                       onScrollToBottom={handleScrollToBottom}
                     />
