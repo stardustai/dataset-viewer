@@ -1,14 +1,16 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { StorageFile } from '../../types';
 import { getFileType } from '../../utils/fileTypes';
 import { FileIcon } from '../../utils/fileIcons';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { formatFileSize } from '../../utils/fileUtils';
+import { ContextMenu } from '../common/ContextMenu';
 
 interface VirtualizedFileListProps {
   files: StorageFile[];
   onFileClick: (file: StorageFile) => void;
+  onFileOpenAsText?: (file: StorageFile) => void;
   height?: number;
   onScrollToBottom?: () => void;
 }
@@ -16,11 +18,25 @@ interface VirtualizedFileListProps {
 export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   files,
   onFileClick,
+  onFileOpenAsText,
   height,
   onScrollToBottom,
 }) => {
   // Use custom hook for responsive behavior
   const isMobile = useIsMobile();
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    file: StorageFile | null;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    file: null,
+  });
 
   // 直接使用传入的文件列表，不进行过滤和排序（由调用方处理）
   const processedFiles = files;
@@ -111,7 +127,38 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     return <FileIcon fileType={fileType} size="md" className="mr-3" />;
   };
 
-  // 格式化日期 - 移动端显示简洁格式
+  // Handle right-click context menu
+  const handleContextMenu = (e: React.MouseEvent, file: StorageFile) => {
+    // Only show context menu for files, not directories
+    if (file.type !== 'file' || !onFileOpenAsText) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      file,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu({
+      visible: false,
+      x: 0,
+      y: 0,
+      file: null,
+    });
+  };
+
+  const handleOpenAsText = () => {
+    if (contextMenu.file && onFileOpenAsText) {
+      onFileOpenAsText(contextMenu.file);
+    }
+  };
   const formatDate = (dateString: string): string => {
     // 如果日期字符串为空或无效，返回横杠
     if (!dateString || dateString.trim() === '') {
@@ -145,64 +192,77 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   };
 
   return (
-    <div
-      ref={parentRef}
-      style={{ height: height ? `${height}px` : '100%' }}
-      className="h-full overflow-auto"
-      data-virtualized-container
-    >
+    <>
       <div
-        style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
-        }}
+        ref={parentRef}
+        style={{ height: height ? `${height}px` : '100%' }}
+        className="h-full overflow-auto"
+        data-virtualized-container
       >
-        {virtualizer.getVirtualItems().map(virtualItem => {
-          const file = processedFiles[virtualItem.index];
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {virtualizer.getVirtualItems().map(virtualItem => {
+            const file = processedFiles[virtualItem.index];
 
-          return (
-            <div
-              key={virtualItem.key}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${virtualItem.size}px`,
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-              className="border-b border-gray-200 dark:border-gray-700"
-            >
+            return (
               <div
-                onClick={() => onFileClick(file)}
-                className="flex items-center px-4 lg:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
+                key={virtualItem.key}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualItem.size}px`,
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+                className="border-b border-gray-200 dark:border-gray-700"
               >
-                {/* 文件图标和名称 */}
-                <div className="flex items-center flex-1 min-w-0 pr-2 lg:pr-4">
-                  {renderFileIcon(file)}
-                  <span
-                    className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
-                    title={file.basename}
-                  >
-                    {file.basename}
-                  </span>
-                </div>
+                <div
+                  onClick={() => onFileClick(file)}
+                  onContextMenu={(e) => handleContextMenu(e, file)}
+                  className="flex items-center px-4 lg:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
+                >
+                  {/* 文件图标和名称 */}
+                  <div className="flex items-center flex-1 min-w-0 pr-2 lg:pr-4">
+                    {renderFileIcon(file)}
+                    <span
+                      className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
+                      title={file.basename}
+                    >
+                      {file.basename}
+                    </span>
+                  </div>
 
-                {/* 文件大小 */}
-                <div className="w-16 sm:w-20 lg:w-24 text-sm text-gray-500 dark:text-gray-400 text-right pr-2 lg:pr-4 flex-shrink-0">
-                  {file.type === 'file' ? formatFileSize(file.size) : '—'}
-                </div>
+                  {/* 文件大小 */}
+                  <div className="w-16 sm:w-20 lg:w-24 text-sm text-gray-500 dark:text-gray-400 text-right pr-2 lg:pr-4 flex-shrink-0">
+                    {file.type === 'file' ? formatFileSize(file.size) : '—'}
+                  </div>
 
-                {/* 修改时间 */}
-                <div className="w-24 sm:w-32 lg:w-48 text-sm text-gray-500 dark:text-gray-400 text-right flex-shrink-0">
-                  {formatDate(file.lastmod)}
+                  {/* 修改时间 */}
+                  <div className="w-24 sm:w-32 lg:w-48 text-sm text-gray-500 dark:text-gray-400 text-right flex-shrink-0">
+                    {formatDate(file.lastmod)}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* Context Menu */}
+      {contextMenu.visible && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onOpenAsText={handleOpenAsText}
+          onClose={handleCloseContextMenu}
+        />
+      )}
+    </>
   );
 };

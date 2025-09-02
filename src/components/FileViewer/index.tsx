@@ -19,6 +19,7 @@ interface FileViewerProps {
   hasAssociatedFiles?: boolean;
   onBack: () => void;
   hideBackButton?: boolean; // 新增属性，用于隐藏返回按钮
+  forceTextMode?: boolean; // 新增属性，用于强制以文本格式打开
 }
 
 export const FileViewer: React.FC<FileViewerProps> = ({
@@ -28,8 +29,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({
   hasAssociatedFiles,
   onBack,
   hideBackButton,
+  forceTextMode,
 }) => {
-  const fileLoader = useFileLoader(file, filePath);
+  const fileLoader = useFileLoader(file, filePath, forceTextMode);
 
   // 创建需要的refs
   const textViewerRef = useRef<VirtualizedTextViewerRef>(null);
@@ -227,6 +229,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
         isMarkdownPreviewOpen={isMarkdownPreviewOpen}
         setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
         loadFileContent={loadFileContent}
+        forceTextMode={forceTextMode}
       />
     </div>
   );
