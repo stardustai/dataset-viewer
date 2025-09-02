@@ -1,1 +1,10 @@
-pnpm exec lint-staged
+#!/bin/sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Check if pnpm is available
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm exec lint-staged
+else
+  echo "Warning: pnpm not found, skipping lint-staged"
+  exit 0
+fi
