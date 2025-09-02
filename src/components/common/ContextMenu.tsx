@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ContextMenuProps {
   x: number;
@@ -9,12 +10,7 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({
-  x,
-  y,
-  onOpenAsText,
-  onClose,
-}) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onOpenAsText, onClose }) => {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +51,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       }}
     >
       <button
+        type="button"
         onClick={handleOpenAsText}
         className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors"
       >

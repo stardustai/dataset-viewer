@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { StorageFile } from '../../types';
-import { getFileType } from '../../utils/fileTypes';
-import { FileIcon } from '../../utils/fileIcons';
+import React, { useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import type { StorageFile } from '../../types';
+import { FileIcon } from '../../utils/fileIcons';
+import { getFileType } from '../../utils/fileTypes';
 import { formatFileSize } from '../../utils/fileUtils';
 import { ContextMenu } from '../common/ContextMenu';
 
@@ -136,7 +136,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
 
     e.preventDefault();
     e.stopPropagation();
-    
+
     setContextMenu({
       visible: true,
       x: e.clientX,
@@ -168,7 +168,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     const date = new Date(dateString);
 
     // 如果日期无效，返回横杠
-    if (isNaN(date.getTime())) {
+    if (Number.isNaN(date.getTime())) {
       return '—';
     }
 
@@ -223,8 +223,16 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
                 className="border-b border-gray-200 dark:border-gray-700"
               >
                 <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onFileClick(file)}
-                  onContextMenu={(e) => handleContextMenu(e, file)}
+                  onContextMenu={e => handleContextMenu(e, file)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onFileClick(file);
+                    }
+                  }}
                   className="flex items-center px-4 lg:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
                 >
                   {/* 文件图标和名称 */}
