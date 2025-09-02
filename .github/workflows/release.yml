@@ -152,10 +152,8 @@ jobs:
       - name: Set signing identity for ARM64 (macOS ARM only)
         if: matrix.platform == 'macos-latest' && matrix.arch == 'arm64'
         run: |
-          # Update signingIdentity for ARM builds
-          jq '.bundle.macOS.signingIdentity = env.APPLE_SIGNING_IDENTITY' src-tauri/tauri.conf.json > tmp.json && mv tmp.json src-tauri/tauri.conf.json
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Add signingIdentity field with "-" value for ARM64
+          jq '.bundle.macOS.signingIdentity = "-"' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -201,7 +199,6 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
