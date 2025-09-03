@@ -49,7 +49,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     count: processedFiles.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 60, // 每行高度
-    overscan: 5, // 减少预渲染的行数以提升性能
+    overscan: 10, // 预渲染行数以提升滚动体验
   });
 
   // 添加滚动到底部检测逻辑

@@ -35,23 +35,21 @@ class ConnectionStorageService {
   }
 
   // 保存连接配置
-  async saveConnection(
-    config: ConnectionConfig,
-    name?: string,
-    savePassword: boolean = false
-  ): Promise<string> {
+  async saveConnection(config: ConnectionConfig, name?: string): Promise<string> {
     const connections = this.getStoredConnections();
 
     // 检查是否已存在相同的连接
     const existingConnection = this.findConnection(config);
     if (existingConnection) {
-      // 更新现有连接
-      this.updateLastConnected(existingConnection.id);
-      if (savePassword && (config.password || config.apiToken)) {
-        existingConnection.config.password = config.password;
-        existingConnection.config.apiToken = config.apiToken;
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(connections));
+      // 重新获取最新的连接列表并更新
+      const updatedConnections = this.getStoredConnections();
+      const targetConnection = updatedConnections.find(c => c.id === existingConnection.id);
+      if (targetConnection) {
+        targetConnection.config = { ...config };
+        targetConnection.lastConnected = new Date().toISOString();
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedConnections));
       }
+
       return existingConnection.id;
     }
 
@@ -63,17 +61,11 @@ class ConnectionStorageService {
       connectionName = this.generateConnectionName(config);
     }
 
-    // 创建连接配置副本，根据保存选项决定是否包含敏感信息
-    const configToSave = { ...config };
-    if (!savePassword) {
-      delete configToSave.password;
-      delete configToSave.apiToken;
-    }
-
+    // 直接保存完整的连接配置（包含密码信息）
     const storedConnection: StoredConnection = {
       id,
       name: connectionName,
-      config: configToSave,
+      config: { ...config },
       lastConnected: new Date().toISOString(),
     };
 
@@ -106,8 +98,11 @@ class ConnectionStorageService {
             return storedConfig.rootPath === config.rootPath;
 
           case 'oss':
+            // 对于 OSS 连接，基于 bucket 基础名称（不包含路径）进行匹配
+            const storedBucketBase = (storedConfig.bucket || '').split('/')[0];
+            const configBucketBase = (config.bucket || '').split('/')[0];
             return (
-              storedConfig.bucket === config.bucket &&
+              storedBucketBase === configBucketBase &&
               storedConfig.region === config.region &&
               storedConfig.endpoint === config.endpoint &&
               storedConfig.username === config.username

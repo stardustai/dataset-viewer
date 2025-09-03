@@ -36,14 +36,19 @@ export const ossStorageAdapter: StorageAdapter = {
       throw new Error('OSS bucket is required');
     }
 
-    // 从 oss:// URL 构建正确的虚拟主机风格端点
-    if (!config.url || !config.url.startsWith('oss://')) {
-      throw new Error('OSS requires a valid oss:// URL');
+    // 从端点 URL 中提取主机名，而不是从 oss:// URL
+    if (!config.url) {
+      throw new Error('OSS endpoint URL is required');
     }
 
-    // 解析 oss:// URL: oss://hostname/bucket
-    const ossUrl = config.url.replace('oss://', '');
-    const [hostname] = ossUrl.split('/');
+    // 从 HTTP/HTTPS 端点 URL 中提取主机名
+    let hostname = '';
+    try {
+      const parsedUrl = new URL(config.url);
+      hostname = parsedUrl.hostname;
+    } catch (error) {
+      throw new Error('Invalid OSS endpoint URL format');
+    }
 
     // 根据云服务商平台构建正确的虚拟主机风格端点
     let endpoint = '';
@@ -74,9 +79,9 @@ export const ossStorageAdapter: StorageAdapter = {
     }
 
     return {
-      url: endpoint, // 标准化后的正确 URL
+      url: endpoint, // 使用计算出的正确端点
       endpoint,
-      bucket,
+      bucket: config.bucket, // 保留原始的 bucket 字段（包含路径），让后端解析
       pathPrefix,
       accessKey: config.username,
       secretKey: config.password,
@@ -89,20 +94,26 @@ export const ossStorageAdapter: StorageAdapter = {
       throw new Error('Not connected to OSS');
     }
 
-    // 处理路径前缀
+    // 获取实际的桶名（不包含路径前缀）
+    const actualBucket = connection.bucket.split('/')[0];
+
+    // 处理路径前缀 - 从原始 bucket 配置中提取
     let objectKey = path.replace(/^\/+/, '');
-    if (connection.pathPrefix && objectKey) {
-      objectKey = connection.pathPrefix + objectKey;
-    } else if (connection.pathPrefix) {
-      objectKey = connection.pathPrefix.replace(/\/+$/, '');
+
+    // 从 bucket 字段中提取路径前缀
+    const bucketParts = connection.bucket.split('/');
+    const pathPrefix = bucketParts.length > 1 ? bucketParts.slice(1).join('/') + '/' : '';
+
+    if (pathPrefix && objectKey) {
+      objectKey = pathPrefix + objectKey;
+    } else if (pathPrefix) {
+      objectKey = pathPrefix.replace(/\/+$/, '');
     }
 
-    const cleanBucket = connection.bucket.replace(/\/+$/, '');
-
     if (objectKey) {
-      return `oss://${cleanBucket}/${objectKey}`;
+      return `oss://${actualBucket}/${objectKey}`;
     } else {
-      return `oss://${cleanBucket}`;
+      return `oss://${actualBucket}`;
     }
   },
 

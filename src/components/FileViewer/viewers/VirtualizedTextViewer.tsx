@@ -49,6 +49,7 @@ interface VirtualizedTextViewerRef {
 const MAX_SEARCH_RESULTS = 1000;
 const MAX_LINE_LENGTH = 10000;
 const TRUNCATE_LENGTH = 200;
+const LONG_LINE_THRESHOLD = 300;
 
 export const VirtualizedTextViewer = forwardRef<
   VirtualizedTextViewerRef,
@@ -188,7 +189,7 @@ export const VirtualizedTextViewer = forwardRef<
       count: visibleLines.length,
       getScrollElement: () => containerRef.current,
       estimateSize: () => 24, // 固定行高
-      overscan: 3,
+      overscan: 30,
       measureElement: undefined,
     });
 
@@ -284,7 +285,7 @@ export const VirtualizedTextViewer = forwardRef<
     const renderLineWithHighlight = useCallback(
       (line: string, _lineIndex: number, originalLineIndex: number) => {
         const currentLineNumber = startLineNumber + originalLineIndex;
-        const isLongLine = line.length > 500;
+        const isLongLine = line.length > LONG_LINE_THRESHOLD;
         const isExpanded = expandedLongLines.has(originalLineIndex);
 
         // 性能优化：只在支持折叠时检查折叠范围
@@ -599,7 +600,7 @@ export const VirtualizedTextViewer = forwardRef<
             if (column && column > 0) {
               // 检查这行是否是长行且被折叠了（使用正确的长行判断逻辑）
               const targetLine = lines[targetOriginalIndex] || '';
-              const isLongLine = targetLine.length > 500; // 使用实际的长行阈值
+              const isLongLine = targetLine.length > LONG_LINE_THRESHOLD; // 使用长行阈值常量
               const isCurrentlyExpanded = expandedLongLines.has(targetOriginalIndex);
               const needsExpansion = isLongLine && !isCurrentlyExpanded;
 
@@ -662,7 +663,7 @@ export const VirtualizedTextViewer = forwardRef<
               // 检查是否需要展开长行
               if (targetOriginalIndex >= 0 && targetOriginalIndex < lines.length) {
                 const targetLine = lines[targetOriginalIndex];
-                const isLongLine = targetLine.length > 500; // 使用正确的长行阈值
+                const isLongLine = targetLine.length > LONG_LINE_THRESHOLD; // 使用长行阈值常量
                 const isCurrentlyExpanded = expandedLongLines.has(targetOriginalIndex);
                 const needsExpansion = isLongLine && !isCurrentlyExpanded;
 
