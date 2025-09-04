@@ -113,7 +113,13 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         setLoading(false);
       }
     },
-    [filePath, isTextBased, config.streaming.maxInitialLoad, config.streaming.chunkSize, forceTextMode]
+    [
+      filePath,
+      isTextBased,
+      config.streaming.maxInitialLoad,
+      config.streaming.chunkSize,
+      forceTextMode,
+    ]
   );
 
   const handleScrollToBottom = useCallback(async () => {

@@ -30,7 +30,6 @@ interface VirtualizedTextViewerProps {
   ) => void;
   onScrollToBottom?: () => void;
   className?: string;
-  height?: number;
   startLineNumber?: number;
   currentSearchIndex?: number;
   searchResults?: Array<{ line: number; column: number; text: string; match: string }>;

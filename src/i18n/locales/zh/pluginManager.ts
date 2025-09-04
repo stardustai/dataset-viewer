@@ -1,0 +1,39 @@
+export const pluginManager = {
+  // 插件管理器标题和标签
+  'plugin.manager.title': '插件管理器',
+  'plugin.manager.installed': '已安装插件',
+  'plugin.manager.available': '插件市场',
+  'plugin.manager.search.placeholder': '搜索插件...',
+  'plugin.manager.custom.placeholder': '插件名称或完整包名',
+
+  // 插件状态
+  'plugin.status.official': '官方',
+  'plugin.status.installed': '已安装',
+  'plugin.status.enabled': '已启用',
+  'plugin.status.disabled': '已禁用',
+
+  // 插件操作
+  'plugin.action.install': '安装',
+  'plugin.action.uninstall': '卸载插件',
+  'plugin.action.refresh': '刷新',
+  'plugin.action.toggle': '切换状态',
+
+  // 插件信息
+  'plugin.info.author': '作者: {{author}}',
+  'plugin.info.version': 'v{{version}}',
+  'plugin.info.supports': '支持: {{extensions}}',
+  'plugin.info.path': '路径: {{path}}',
+
+  // 状态消息
+  'plugin.loading': '加载中...',
+  'plugin.empty.installed': '还没有安装任何插件',
+  'plugin.empty.available': '暂无可用插件',
+  'plugin.empty.search': '没有找到匹配的插件',
+
+  // 底部提示
+  'plugin.security.notice': '插件从npm registry或本地路径安装，请确保来源可信',
+  'plugin.naming.convention': '命名规范:',
+
+  // 描述
+  'plugin.description': '安装和管理文件查看器插件，扩展更多文件格式支持',
+};

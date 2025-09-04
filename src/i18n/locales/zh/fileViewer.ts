@@ -235,4 +235,10 @@ export const fileViewer = {
   'fold.range': '折叠区间',
   'unfold.range': '展开区间',
   'large.node': '大节点',
+
+  // 插件相关
+  'plugin.loading': '正在加载插件...',
+  'plugin.loading.component': '正在加载插件组件...',
+  'plugin.notFound': '未找到适用于文件 "{{filename}}" 的插件',
+  'plugin.noSuitablePlugin': '未找到适合此文件类型的插件',
 };

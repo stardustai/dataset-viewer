@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { StorageFile } from '../../types';
 import { FileViewerHeader } from './FileViewerHeader';
 import { FileViewerSearchBar } from './FileViewerSearchBar';
@@ -40,34 +40,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({
   const loadMoreSectionRef = useRef<HTMLDivElement>(null);
   const mainDivRef = useRef<HTMLDivElement>(null);
 
-  // 动态计算容器高度
-  const [containerHeight, setContainerHeight] = useState<number>(600);
-
   // Markdown 预览状态
   const [isMarkdownPreviewOpen, setIsMarkdownPreviewOpen] = useState(false);
 
-  useEffect(() => {
-    const updateHeight = () => {
-      if (mainDivRef.current) {
-        const rect = mainDivRef.current.getBoundingClientRect();
-        const headerHeight = 60; // 估算 header 高度
-        const searchBarHeight = 50; // 估算搜索栏高度
-        const availableHeight = rect.height - headerHeight - searchBarHeight;
-        setContainerHeight(Math.max(400, availableHeight));
-      }
-    };
-
-    updateHeight();
-
-    const resizeObserver = new ResizeObserver(updateHeight);
-    if (mainDivRef.current) {
-      resizeObserver.observe(mainDivRef.current);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
   const {
     content,
     loading,
@@ -211,7 +186,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({
         searchTerm={searchTerm}
         handleSearchResults={handleSearchResults}
         handleScrollToBottom={handleScrollToBottom}
-        containerHeight={containerHeight}
         calculateStartLineNumber={calculateStartLineNumber}
         currentSearchIndex={currentSearchIndex}
         fullFileSearchMode={fullFileSearchMode}

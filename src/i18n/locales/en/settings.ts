@@ -4,6 +4,7 @@ export const settings = {
   'settings.theme': 'Theme Settings',
   'settings.update': 'Update Settings',
   'settings.cache': 'Cache Management',
+  'pure.black.bg': 'Pure Black Background',
 
   // Update functionality
   'auto.check.updates': 'Auto check updates',
@@ -25,6 +26,12 @@ export const settings = {
   'clearing.cache': 'Clearing...',
   'cache.cleared.success': 'Cache and connections cleared successfully',
   'cache.clear.failed': 'Failed to clear cache',
+
+  // Plugin management
+  'settings.plugins': 'Plugin Management',
+  'plugins.description':
+    'Install and manage file viewer plugins to extend support for more file formats',
+  'manage.plugins': 'Manage Plugins',
 
   // About
   about: 'About',
