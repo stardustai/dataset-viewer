@@ -255,4 +255,5 @@ export const fileViewer = {
   // Code folding
   'fold.range': 'Fold range',
   'unfold.range': 'Unfold range',
+  'large.node': 'Large Node',
 };

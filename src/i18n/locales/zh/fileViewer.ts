@@ -234,4 +234,5 @@ export const fileViewer = {
   // 代码折叠
   'fold.range': '折叠区间',
   'unfold.range': '展开区间',
+  'large.node': '大节点',
 };
