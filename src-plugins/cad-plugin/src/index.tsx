@@ -5,7 +5,7 @@ import { resources } from './i18n';
 
 const pluginBundle: PluginBundle = {
   metadata: {
-    id: 'cad-viewer',
+    id: 'cad',
     name: 'CAD Viewer',
     version: '1.0.0',
     description: 'Viewer for CAD files including DWG, DXF, STEP, and IGES formats',
@@ -19,7 +19,7 @@ const pluginBundle: PluginBundle = {
       '.iges': 'application/iges',
       '.igs': 'application/iges',
     },
-    icon: <Layers className="w-4 h-4 text-purple-600" />,
+    icon: <Layers className="text-purple-600" />,
     official: true,
     category: 'viewer' as const,
     minAppVersion: '1.0.0',

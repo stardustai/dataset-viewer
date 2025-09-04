@@ -32,6 +32,11 @@ export class PluginFramework {
         throw new Error('Invalid plugin bundle format');
       }
 
+      // 在开发模式下验证插件 ID 与路径的一致性
+      if (import.meta.env.DEV) {
+        this.validatePluginIdConsistency(bundle.metadata.id, pluginPath);
+      }
+
       // 执行插件初始化
       if (bundle.initialize) {
         await bundle.initialize();
@@ -133,6 +138,38 @@ export class PluginFramework {
       Array.isArray(bundle.metadata.supportedExtensions) &&
       typeof bundle.component === 'function'
     );
+  }
+
+  /**
+   * 验证插件 ID 与包名的一致性
+   */
+  private validatePluginIdConsistency(pluginId: string, pluginPath: string): void {
+    try {
+      // 从路径推导出预期的插件 ID
+      // 例如：/path/to/@dataset-viewer/plugin-cad/dist/index.js -> cad
+      const pathParts = pluginPath.split('/');
+      let packageName = '';
+
+      // 查找包含 @dataset-viewer/plugin- 的路径段
+      for (const part of pathParts) {
+        if (part.includes('@dataset-viewer/plugin-')) {
+          packageName = part;
+          break;
+        }
+      }
+
+      if (packageName.startsWith('@dataset-viewer/plugin-')) {
+        const expectedId = packageName.replace('@dataset-viewer/plugin-', '');
+        if (pluginId !== expectedId) {
+          console.warn(
+            `Plugin ID mismatch: package name "${packageName}" suggests ID should be "${expectedId}", but plugin defines ID as "${pluginId}"`
+          );
+        }
+      }
+    } catch (error) {
+      // 验证失败不影响插件加载，只是警告
+      console.warn('Failed to validate plugin ID consistency:', error);
+    }
   }
 
   /**

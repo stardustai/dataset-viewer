@@ -3,10 +3,111 @@ import { useTranslation } from 'react-i18next';
 import { Package, Download, Trash2, Search, AlertCircle, Loader, RefreshCw, X } from 'lucide-react';
 import { commands } from '../../types/tauri-commands';
 import type { LocalPluginInfo } from '../../types/tauri-commands';
+import { pluginManager } from '../../services/plugin/pluginManager';
+import { showToast, showErrorToast } from '../../utils/clipboard';
 
 interface PluginManagerProps {
   onClose: () => void;
 }
+
+interface PluginCardProps {
+  plugin: LocalPluginInfo;
+  isInstalled: boolean;
+  onToggle: (pluginId: string, enabled: boolean) => void;
+  onUninstall: (pluginId: string) => void;
+  onInstall: (packageName: string) => void;
+}
+
+const PluginCard: React.FC<PluginCardProps> = ({
+  plugin,
+  isInstalled,
+  onToggle,
+  onUninstall,
+  onInstall,
+}) => {
+  const { t } = useTranslation();
+  const pluginId = plugin.id;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start space-x-3 flex-1">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xl">
+            📦
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <h3 className="font-medium text-gray-900 dark:text-white">{plugin.name}</h3>
+              <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                {t('plugin.info.version', { version: plugin.version })}
+              </span>
+              {plugin.official && (
+                <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded">
+                  {t('plugin.status.official')}
+                </span>
+              )}
+              {plugin.local && (
+                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded">
+                  {t('plugin.status.installed')}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{plugin.description}</p>
+            <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <span>{t('plugin.info.author', { author: plugin.author })}</span>
+              <span>
+                {t('plugin.info.supports', {
+                  extensions: plugin.supported_extensions.join(', '),
+                })}
+              </span>
+              {plugin.local && plugin.local_path && (
+                <span className="truncate">
+                  {t('plugin.info.path', { path: plugin.local_path })}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {isInstalled ? (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => onToggle(pluginId, !plugin.enabled)}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  plugin.enabled
+                    ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                }`}
+              >
+                {plugin.enabled ? t('plugin.status.enabled') : t('plugin.status.disabled')}
+              </button>
+              <button
+                onClick={() => onUninstall(pluginId)}
+                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                title={t('plugin.action.uninstall')}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                // 使用统一的包名格式
+                const packageName = `@dataset-viewer/plugin-${plugin.id}`;
+                onInstall(packageName);
+              }}
+              className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center space-x-1 text-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span>{t('plugin.action.install')}</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   const { t } = useTranslation();
@@ -41,12 +142,35 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     }
   };
 
+  // 统一的刷新函数：数据 + 状态同步
+  const refreshPluginData = async () => {
+    setLoading(true);
+    try {
+      console.log('刷新插件数据并同步状态...');
+
+      // 同步插件状态
+      await pluginManager.syncPluginState();
+
+      // 重新加载数据
+      await loadPluginData();
+    } catch (error) {
+      console.error('Failed to refresh plugin data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 刷新插件数据（包含状态同步）
+  const handleRefresh = async () => {
+    await refreshPluginData();
+  };
+
   // 获取已安装的插件
   const getInstalledPlugins = (): LocalPluginInfo[] => {
     return allPlugins.filter(plugin => plugin.local);
   };
 
-  // 获取可用的插件
+  // 获取可用的插件（未安装的插件）
   const getAvailablePlugins = (): LocalPluginInfo[] => {
     return allPlugins.filter(plugin => !plugin.local);
   };
@@ -58,20 +182,23 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
       // 调用统一的后端安装接口
       const result = await commands.installPlugin(packageName);
-
       console.log('Plugin installation result:', result);
 
       if (result.status === 'ok' && result.data.success) {
         console.log(
           `Plugin ${result.data.plugin_id} installed successfully from ${result.data.source}`
         );
-        await loadPluginData();
+        showToast(`插件 ${result.data.plugin_id} 安装成功`, 'success');
+
+        // 重新加载插件列表（包含自动激活）
+        await refreshPluginData();
       } else {
         const errorMsg = result.status === 'error' ? result.error : 'Unknown error';
-        throw new Error(`Failed to install plugin: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('Failed to install plugin:', error);
+      showErrorToast(`安装插件失败: ${error}`);
       throw error;
     }
   };
@@ -86,13 +213,15 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
 
       if (result.status === 'ok' && result.data.success) {
         console.log(`Plugin ${pluginId} uninstalled successfully`);
-        await loadPluginData();
+        showToast(`插件 ${pluginId} 卸载成功`, 'success');
+        await refreshPluginData();
       } else {
         const errorMsg = result.status === 'error' ? result.error : 'Unknown error';
-        throw new Error(`Failed to uninstall plugin: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('Failed to uninstall plugin:', error);
+      showErrorToast(`卸载插件失败: ${error}`);
     }
   };
 
@@ -101,18 +230,21 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     try {
       console.log('Toggling plugin:', pluginId, 'to', enabled);
 
-      // 调用后端禁用/启用接口
-      const result = await commands.togglePlugin(pluginId, enabled);
-
-      if (result.status === 'ok' && result.data) {
-        console.log(`Plugin ${pluginId} ${enabled ? 'enabled' : 'disabled'} successfully`);
-        await loadPluginData();
+      if (enabled) {
+        // 启用插件：调用 pluginManager 的激活方法（包含热加载）
+        await pluginManager.activatePlugin(pluginId);
+        showToast(`插件 ${pluginId} 启用成功`, 'success');
       } else {
-        const errorMsg = result.status === 'error' ? result.error : 'Unknown error';
-        throw new Error(`Failed to toggle plugin: ${errorMsg}`);
+        // 禁用插件：调用 pluginManager 的停用方法（包含热卸载）
+        await pluginManager.deactivatePlugin(pluginId);
+        showToast(`插件 ${pluginId} 禁用成功`, 'success');
       }
+
+      // 重新加载数据
+      await refreshPluginData();
     } catch (error) {
       console.error('Failed to toggle plugin:', error);
+      showErrorToast(`${enabled ? '启用' : '禁用'}插件失败: ${error}`);
     }
   };
 
@@ -133,96 +265,6 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       plugin =>
         plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         plugin.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  };
-
-  // 渲染插件卡片
-  const renderPluginCard = (plugin: LocalPluginInfo, isInstalled: boolean) => {
-    const pluginId = plugin.id;
-    // 使用插件的 enabled 字段，如果没有该字段则默认为 true（已安装的插件）
-    const isEnabled = plugin.enabled !== undefined ? plugin.enabled : isInstalled;
-
-    return (
-      <div
-        key={pluginId}
-        className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-3 flex-1">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xl">
-              📦
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-1">
-                <h3 className="font-medium text-gray-900 dark:text-white">{plugin.name}</h3>
-                <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                  {t('plugin.info.version', { version: plugin.version })}
-                </span>
-                {plugin.official && (
-                  <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded">
-                    {t('plugin.status.official')}
-                  </span>
-                )}
-                {plugin.local && (
-                  <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded">
-                    {t('plugin.status.installed')}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{plugin.description}</p>
-              <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-400">
-                <span>{t('plugin.info.author', { author: plugin.author })}</span>
-                <span>
-                  {t('plugin.info.supports', {
-                    extensions: plugin.supported_extensions.join(', '),
-                  })}
-                </span>
-                {plugin.local && plugin.local_path && (
-                  <span className="truncate">
-                    {t('plugin.info.path', { path: plugin.local_path })}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            {isInstalled ? (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleTogglePlugin(pluginId, !isEnabled)}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                    isEnabled
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200'
-                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  {isEnabled ? t('plugin.status.enabled') : t('plugin.status.disabled')}
-                </button>
-                <button
-                  onClick={() => handleUninstallPlugin(pluginId)}
-                  className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                  title={t('plugin.action.uninstall')}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  // 使用统一的包名格式
-                  const packageName = `@dataset-viewer/plugin-${plugin.id}`;
-                  handleInstallPlugin(packageName);
-                }}
-                className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center space-x-1 text-sm"
-              >
-                <Download className="w-4 h-4" />
-                <span>{t('plugin.action.install')}</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
     );
   };
 
@@ -263,8 +305,8 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           <button
             onClick={() => {
               setActiveTab('available');
-              // 切换到插件市场时总是刷新插件列表
-              loadPluginData();
+              // 切换到插件市场时刷新插件列表
+              handleRefresh();
             }}
             className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'available'
@@ -311,7 +353,7 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             )}
 
             <button
-              onClick={loadPluginData}
+              onClick={handleRefresh}
               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
               title={t('plugin.action.refresh')}
             >
@@ -337,9 +379,16 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                   </p>
                 </div>
               ) : (
-                filterInstalledPlugins(getInstalledPlugins()).map(plugin =>
-                  renderPluginCard(plugin, true)
-                )
+                filterInstalledPlugins(getInstalledPlugins()).map(plugin => (
+                  <PluginCard
+                    key={`${plugin.id}-${plugin.local}-${plugin.enabled}`}
+                    plugin={plugin}
+                    isInstalled={true}
+                    onToggle={handleTogglePlugin}
+                    onUninstall={handleUninstallPlugin}
+                    onInstall={handleInstallPlugin}
+                  />
+                ))
               )}
             </div>
           ) : (
@@ -352,12 +401,16 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                   </p>
                 </div>
               ) : (
-                filterAvailablePlugins(getAvailablePlugins()).map(plugin =>
-                  renderPluginCard(
-                    plugin,
-                    getInstalledPlugins().some(p => p.id === plugin.id)
-                  )
-                )
+                filterAvailablePlugins(getAvailablePlugins()).map(plugin => (
+                  <PluginCard
+                    key={`${plugin.id}-${plugin.local}-${plugin.enabled}`}
+                    plugin={plugin}
+                    isInstalled={getInstalledPlugins().some(p => p.id === plugin.id)}
+                    onToggle={handleTogglePlugin}
+                    onUninstall={handleUninstallPlugin}
+                    onInstall={handleInstallPlugin}
+                  />
+                ))
               )}
             </div>
           )}

@@ -34,7 +34,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
   });
 
   // 基于 mlight-lee/cad-viewer 的高DPI设置方法
-  const setupHighDPICanvas = useCallback((canvas: HTMLCanvasElement) => {
+  const setupHighDPICanvas = (canvas: HTMLCanvasElement) => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -56,10 +56,10 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       devicePixelRatio: window.devicePixelRatio,
       usedPixelRatio: pixelRatio
     });
-  }, []);
+  };
 
   // 优化的转换器注册
-  const registerConverters = useCallback(async () => {
+  const registerConverters = async () => {
     try {
       setState(prev => ({
         ...prev,
@@ -79,7 +79,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
     } catch (error) {
       console.warn('Failed to initialize CAD converters:', error);
     }
-  }, []);
+  };
 
   // 初始化 CAD 查看器
   const initializeViewer = useCallback(async () => {
@@ -179,10 +179,10 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       onError?.((error as Error).message);
       console.error('Failed to initialize CAD viewer:', error);
     }
-  }, [setupHighDPICanvas, registerConverters, t, onError]);
+  }, []);
 
   // 读取文件内容
-  const readFileContent = useCallback(async (fileData: ArrayBuffer | string): Promise<string | ArrayBuffer> => {
+  const readFileContent = async (fileData: ArrayBuffer | string): Promise<string | ArrayBuffer> => {
     if (typeof fileData === 'string') {
       return fileData;
     }
@@ -196,7 +196,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
     }
 
     throw new Error(t('cad.unsupportedFile'));
-  }, [file.filename, t]);
+  };
 
   // 加载 CAD 文件
   const loadFile = useCallback(async () => {
@@ -305,10 +305,10 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       onError?.((error as Error).message);
       console.error('Error loading CAD file:', error);
     }
-  }, [file.filename, file.path, content, storageClient, readFileContent, isLargeFile, state.loadedFile, t, onError]);
+  }, [file.filename, file.path, content, storageClient, isLargeFile]); // 移除 state.loadedFile 依赖
 
   // 设置平移模式 - 基于 mlight-lee 官方实现
-  const enablePanMode = useCallback(() => {
+  const enablePanMode = () => {
     try {
       if (AcApDocManager.instance && state.loadedFile) {
         console.log('Enabling pan mode...');
@@ -328,7 +328,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
     } catch (error) {
       console.warn('Failed to enable pan mode:', error);
     }
-  }, [state.loadedFile]);
+  };
 
   // 初始化
   useEffect(() => {
@@ -336,16 +336,14 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
 
     const timeoutId = setTimeout(() => initializeViewer(), 100);
     return () => clearTimeout(timeoutId);
-  }, [initializeViewer]);
+  }, []);
 
-  // 加载文件
   useEffect(() => {
-    if (state.isInitialized && !state.isLoading && !state.loadedFile) {
+    if (state.isInitialized && !state.isLoading && !state.loadedFile && file) {
       loadFile();
     }
-  }, [state.isInitialized, state.isLoading, state.loadedFile, loadFile]);
+  }, [state.isInitialized, file.filename, file.path]); // 只监听关键状态和文件标识符
 
-  // 在文件加载后配置拖拽模式
   useEffect(() => {
     if (state.loadedFile) {
       // 延迟配置，确保 CAD 系统完全初始化
@@ -392,7 +390,6 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
     }
   }, [state.loadedFile]);
 
-  // 处理canvas尺寸变化
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current || !state.isInitialized) return;
 
@@ -409,7 +406,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
     resizeObserver.observe(containerRef.current);
 
     return () => resizeObserver.disconnect();
-  }, [state.isInitialized, setupHighDPICanvas]);
+  }, [state.isInitialized]);
 
   // 渲染错误状态
   if (state.error) {

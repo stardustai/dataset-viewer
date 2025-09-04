@@ -20,6 +20,11 @@ export interface PluginBundle {
  * 插件元数据
  */
 export interface PluginMetadata {
+  /**
+   * 插件 ID，必须与包名保持一致
+   * 例如：包名 @dataset-viewer/plugin-cad 对应插件 ID "cad"
+   * 包名 @dataset-viewer/plugin-pdf-viewer 对应插件 ID "pdf-viewer"
+   */
   id: string;
   name: string;
   version: string;
@@ -27,6 +32,11 @@ export interface PluginMetadata {
   author: string;
   supportedExtensions: string[];
   mimeTypes: Record<string, string>;
+  /**
+   * 插件图标，可以是字符串（如 emoji）或 React 组件
+   * 注意：如果是 React 组件，不要包含尺寸样式（如 w-4 h-4），
+   * 系统会根据使用场景自动应用合适的尺寸
+   */
   icon?: string | React.ReactNode;
   official: boolean;
   category: 'viewer' | 'editor' | 'converter' | 'analyzer';
@@ -71,6 +81,11 @@ export interface PluginInstance {
   component: React.ComponentType<PluginViewerProps>;
   canHandle: (filename: string) => boolean;
   getFileType: () => string;
+  /**
+   * 获取文件图标，可以返回字符串（如 emoji）或 React 组件
+   * 注意：如果返回 React 组件，不要包含尺寸样式（如 w-4 h-4），
+   * 系统会根据使用场景自动应用合适的尺寸
+   */
   getFileIcon?: () => string | React.ReactNode;
 }
 

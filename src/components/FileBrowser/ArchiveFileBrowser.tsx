@@ -262,11 +262,7 @@ export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
               />
             ) : (
               <div className="bg-white dark:bg-gray-800 flex-1 min-h-0">
-                <VirtualizedFileList
-                  files={filteredAndSortedFiles}
-                  onFileClick={handleItemClick}
-                  height={undefined} // 让组件自适应高度
-                />
+                <VirtualizedFileList files={filteredAndSortedFiles} onFileClick={handleItemClick} />
               </div>
             )
           ) : (

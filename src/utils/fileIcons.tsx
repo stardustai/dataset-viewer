@@ -81,9 +81,20 @@ export const FileIcon: React.FC<FileIconProps> = ({
 
   // 如果有插件图标
   if (pluginIcon) {
-    // 如果是 React 节点，直接返回
+    // 如果是 React 节点，应用正确的尺寸样式
     if (React.isValidElement(pluginIcon)) {
-      return <div className={`flex-shrink-0 ${className}`}>{pluginIcon}</div>;
+      const sizeClasses = {
+        sm: 'w-4 h-4',
+        md: 'w-5 h-5',
+        lg: 'w-5 h-5 lg:w-6 lg:h-6',
+      };
+
+      // 克隆组件并应用尺寸样式（保留原有颜色等样式）
+      const clonedIcon = React.cloneElement(pluginIcon as React.ReactElement<any>, {
+        className: `${sizeClasses[size]} ${pluginIcon.props.className || ''} flex-shrink-0`.trim(),
+      });
+
+      return <div className={`flex-shrink-0 ${className}`}>{clonedIcon}</div>;
     }
 
     // 如果是字符串（表情符号），显示为文本

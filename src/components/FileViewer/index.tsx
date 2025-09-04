@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { StorageFile } from '../../types';
 import { FileViewerHeader } from './FileViewerHeader';
 import { FileViewerSearchBar } from './FileViewerSearchBar';

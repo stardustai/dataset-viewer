@@ -8,6 +8,37 @@ use tauri::command;
 use super::plugin_installer::get_plugin_cache_dir;
 
 /**
+ * 计算插件的入口文件路径
+ */
+fn calculate_entry_path(
+    package_json_path: &Path,
+    package_info: &PluginPackageInfo,
+) -> Option<String> {
+    let plugin_dir = package_json_path.parent()?;
+    let dist_dir = plugin_dir.join("dist");
+
+    // 如果 package.json 中指定了 main 字段，优先使用
+    if let Some(main) = &package_info.main {
+        let entry_path = plugin_dir.join(main);
+        if entry_path.exists() {
+            return Some(entry_path.to_string_lossy().to_string());
+        }
+    }
+
+    // 否则按优先级查找常见的入口文件
+    let possible_entries = ["index.esm.js", "index.js", "index.mjs"];
+    for entry in possible_entries.iter() {
+        let entry_path = dist_dir.join(entry);
+        if entry_path.exists() {
+            return Some(entry_path.to_string_lossy().to_string());
+        }
+    }
+
+    // 如果都没找到，返回 None
+    None
+}
+
+/**
  * 检查插件是否被永久禁用
  */
 fn is_plugin_disabled(plugin_id: &str) -> bool {
@@ -81,7 +112,8 @@ pub struct LocalPluginInfo {
     pub keywords: Vec<String>,
     pub local: bool,
     pub local_path: String,
-    pub enabled: bool, // 插件是否启用
+    pub enabled: bool,              // 插件是否启用
+    pub entry_path: Option<String>, // 插件的入口文件路径
 }
 
 /**
@@ -100,18 +132,16 @@ pub async fn discover_plugins() -> Result<Vec<LocalPluginInfo>, String> {
         Ok(mut linked_plugins) => {
             println!("Found {} npm linked plugins", linked_plugins.len());
 
-            // 标记每个 npm link 插件的安装状态
+            // 所有 npm link 的插件都标记为已安装（local = true）
+            // 通过 enabled 字段来区分是否启用
             for plugin in &mut linked_plugins {
-                // 如果插件在禁用列表中，则标记为未安装（local = false）
-                if is_plugin_disabled(&plugin.id) {
-                    plugin.local = false; // 标记为可安装状态
-                    println!(
-                        "Plugin {} is disabled, marking as available for installation",
-                        plugin.id
-                    );
+                plugin.local = true; // npm link 的插件都算已安装
+                plugin.enabled = !is_plugin_disabled(&plugin.id); // 根据禁用列表设置启用状态
+
+                if plugin.enabled {
+                    println!("Plugin {} is installed and enabled", plugin.id);
                 } else {
-                    plugin.local = true; // 标记为已安装状态
-                    println!("Plugin {} is enabled, marking as installed", plugin.id);
+                    println!("Plugin {} is installed but disabled", plugin.id);
                 }
             }
 
@@ -175,7 +205,7 @@ fn parse_plugin_package_for_validation(
     }
 
     // 检查是否包含插件相关关键字
-    let keywords = package_info.keywords.unwrap_or_default();
+    let keywords = package_info.keywords.clone().unwrap_or_default();
     let is_plugin = keywords.iter().any(|k| {
         let kw = k.to_lowercase();
         kw.contains("dataset-viewer") || kw.contains("plugin")
@@ -206,6 +236,9 @@ fn parse_plugin_package_for_validation(
                 || author_lower.contains("dataset-viewer-team")
         })
         .unwrap_or(false);
+
+    // 先计算入口路径，避免后面借用冲突
+    let entry_path = calculate_entry_path(&package_json_path, &package_info);
 
     Ok(LocalPluginInfo {
         id: plugin_id.clone(),
@@ -238,6 +271,7 @@ fn parse_plugin_package_for_validation(
             .to_string_lossy()
             .to_string(),
         enabled: !is_plugin_disabled(&plugin_id), // 检查插件是否被禁用
+        entry_path,
     })
 }
 
@@ -385,7 +419,7 @@ fn parse_npm_linked_plugin(
     }
 
     // 检查是否包含插件相关关键字
-    let keywords = package_info.keywords.unwrap_or_default();
+    let keywords = package_info.keywords.clone().unwrap_or_default();
     let is_plugin = keywords.iter().any(|k| {
         let kw = k.to_lowercase();
         kw.contains("dataset-viewer") || kw.contains("plugin")
@@ -417,6 +451,9 @@ fn parse_npm_linked_plugin(
         })
         .unwrap_or(false);
 
+    // 先计算入口路径，避免后面借用冲突
+    let entry_path = calculate_entry_path(&package_json_path, &package_info);
+
     Ok(LocalPluginInfo {
         id: plugin_id.clone(),
         name: plugin_id
@@ -444,6 +481,7 @@ fn parse_npm_linked_plugin(
         local: true,
         local_path: link_path.to_string(),
         enabled: !is_plugin_disabled(&plugin_id), // 检查插件是否被禁用
+        entry_path,
     })
 }
 

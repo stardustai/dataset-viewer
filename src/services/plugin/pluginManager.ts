@@ -80,8 +80,52 @@ export class PluginManager {
   }
 
   /**
-   * 安装插件
+   * 重新同步插件状态
+   * 确保前端插件状态与后端一致
    */
+  async syncPluginState(): Promise<void> {
+    try {
+      console.log('Syncing plugin state...');
+
+      // 获取后端所有插件状态
+      const result = await invoke('discover_plugins');
+      const allPlugins = Array.isArray(result) ? result : [];
+      const activePlugins = allPlugins.filter(p => p.local && p.enabled);
+
+      // 获取当前前端已加载的插件
+      const loadedPlugins = this.framework.getAllPlugins();
+      const loadedPluginIds = new Set(loadedPlugins.map(p => p.metadata.id));
+
+      // 卸载不应该激活的插件
+      for (const plugin of loadedPlugins) {
+        const shouldBeActive = activePlugins.some(p => p.id === plugin.metadata.id);
+        if (!shouldBeActive) {
+          await this.framework.unloadPlugin(plugin.metadata.id);
+          console.log(`Plugin unloaded during sync: ${plugin.metadata.name}`);
+        }
+      }
+
+      // 加载应该激活但未加载的插件
+      for (const pluginInfo of activePlugins) {
+        if (!loadedPluginIds.has(pluginInfo.id) && pluginInfo.entry_path) {
+          try {
+            await this.framework.loadPlugin(pluginInfo.entry_path);
+            console.log(`Plugin loaded during sync: ${pluginInfo.name}`);
+          } catch (error) {
+            console.error(`Failed to load plugin ${pluginInfo.name} during sync:`, error);
+          }
+        }
+      }
+
+      console.log(`Plugin state synced: ${activePlugins.length} active plugins`);
+    } catch (error) {
+      console.error('Failed to sync plugin state:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 安装插件
   async installPlugin(source: 'local' | 'url', path: string): Promise<void> {
     try {
       let pluginInfo: PluginInfo;
@@ -104,15 +148,22 @@ export class PluginManager {
    */
   async activatePlugin(pluginId: string): Promise<void> {
     try {
+      // 调用后端激活插件
       await invoke('activate_plugin', { pluginId });
 
-      // 获取插件信息并加载
-      const plugins: PluginInfo[] = await invoke('discover_plugins');
-      const pluginInfo = plugins.find(p => p.metadata.id === pluginId);
+      // 获取所有插件信息找到激活的插件
+      const result = await invoke('discover_plugins');
+      const plugins = Array.isArray(result) ? result : [];
+      const pluginInfo = plugins.find(p => p.id === pluginId && p.local && p.enabled);
 
       if (pluginInfo?.entry_path) {
+        // 使用后端提供的准确入口文件路径
         await this.framework.loadPlugin(pluginInfo.entry_path);
-        console.log(`Plugin activated: ${pluginInfo.metadata.name}`);
+        console.log(`Plugin activated and loaded: ${pluginInfo.name}`);
+      } else {
+        throw new Error(
+          `Plugin ${pluginId} not found, not enabled, or missing entry path after activation`
+        );
       }
     } catch (error) {
       console.error('Failed to activate plugin:', error);

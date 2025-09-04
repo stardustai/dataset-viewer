@@ -414,31 +414,38 @@ pub async fn toggle_plugin(plugin_id: String, enabled: bool) -> Result<bool, Str
     let cache_dir =
         get_plugin_cache_dir().map_err(|e| format!("Failed to get cache directory: {}", e))?;
 
-    let package_name = if plugin_id.starts_with("@dataset-viewer/plugin-") {
-        plugin_id.clone()
+    let disabled_plugins_file = cache_dir.join("disabled_plugins.json");
+
+    // 读取现有的禁用列表
+    let mut disabled_plugins: Vec<String> = if disabled_plugins_file.exists() {
+        match fs::read_to_string(&disabled_plugins_file) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+            Err(_) => Vec::new(),
+        }
     } else {
-        format!("@dataset-viewer/plugin-{}", plugin_id)
+        Vec::new()
     };
 
-    let disabled_file = cache_dir.join(&package_name).join(".disabled");
-
     if enabled {
-        // 启用插件：删除禁用标记文件
-        if disabled_file.exists() {
-            fs::remove_file(&disabled_file)
-                .map_err(|e| format!("Failed to remove disabled marker: {}", e))?;
+        // 启用插件：从禁用列表中移除
+        if let Some(index) = disabled_plugins.iter().position(|x| x == &plugin_id) {
+            disabled_plugins.remove(index);
+            println!("Plugin {} enabled (removed from disabled list)", plugin_id);
         }
-        println!("Plugin {} enabled", plugin_id);
     } else {
-        // 禁用插件：创建禁用标记文件
-        if let Some(parent) = disabled_file.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create plugin directory: {}", e))?;
+        // 禁用插件：添加到禁用列表
+        if !disabled_plugins.contains(&plugin_id) {
+            disabled_plugins.push(plugin_id.clone());
+            println!("Plugin {} disabled (added to disabled list)", plugin_id);
         }
-        fs::write(&disabled_file, "disabled")
-            .map_err(|e| format!("Failed to create disabled marker: {}", e))?;
-        println!("Plugin {} disabled", plugin_id);
     }
+
+    // 保存禁用列表
+    let json_content = serde_json::to_string_pretty(&disabled_plugins)
+        .map_err(|e| format!("Failed to serialize disabled plugins: {}", e))?;
+
+    fs::write(&disabled_plugins_file, json_content)
+        .map_err(|e| format!("Failed to write disabled plugins file: {}", e))?;
 
     Ok(enabled)
 }
