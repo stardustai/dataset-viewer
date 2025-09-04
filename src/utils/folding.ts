@@ -369,7 +369,12 @@ export class FoldingProvider {
     switch (ext) {
       case 'json':
       case 'jsonl':
-        return /[{\[]$/.test(trimmedLine) || /[{\[]\s*,?\s*$/.test(trimmedLine);
+        // 简化JSON折叠起始行的检测 - 只检查最常见的模式
+        return (
+          trimmedLine.endsWith('{') ||
+          trimmedLine.endsWith('[') ||
+          /[{\[]\s*,?\s*$/.test(trimmedLine)
+        );
       case 'xml':
       case 'svg':
       case 'html':
@@ -423,8 +428,12 @@ export class FoldingProvider {
       cacheManager.cacheSyntaxTokens(this.fileKey, tokens);
     }
 
-    // 基于语法标记快速计算折叠区间
-    for (let lineIndex = startLine; lineIndex <= endLine && lineIndex < lines.length; lineIndex++) {
+    // 简化折叠检测算法
+    for (
+      let lineIndex = expandedStart;
+      lineIndex <= expandedEnd && lineIndex < lines.length;
+      lineIndex++
+    ) {
       if (this.isLikelyFoldingStart(lines[lineIndex] || '')) {
         const range = this.getFoldingRangeAt(lines, lineIndex);
         if (range) {
@@ -433,7 +442,15 @@ export class FoldingProvider {
       }
     }
 
-    return ranges;
+    // 排序并去重
+    return ranges
+      .sort((a, b) => a.startLine - b.startLine)
+      .filter((range, index, arr) => {
+        // 去除重复的范围
+        if (index === 0) return true;
+        const prev = arr[index - 1];
+        return range.startLine !== prev.startLine || range.endLine !== prev.endLine;
+      });
   }
 
   private computeFoldingRange(lines: string[], startLine: number): FoldableRange | null {
@@ -514,10 +531,22 @@ export class FoldingProvider {
 
     if (depth === 0) return null;
 
-    // 查找结束行（优化版本 - 限制搜索范围）
-    const maxSearchLines = 1000; // 限制搜索范围避免性能问题
+    // 自适应搜索范围：根据文件大小调整
+    const totalLines = lines.length;
+    const remainingLines = totalLines - startLineIndex;
+
+    let maxSearchLines: number;
+    if (totalLines <= 1000) {
+      maxSearchLines = remainingLines;
+    } else if (totalLines <= 10000) {
+      maxSearchLines = Math.min(5000, remainingLines);
+    } else {
+      maxSearchLines = Math.min(10000, remainingLines);
+    }
+
     const endSearchLimit = Math.min(lines.length, startLineIndex + maxSearchLines);
 
+    // 搜索结束位置
     for (let lineIndex = startLineIndex + 1; lineIndex < endSearchLimit; lineIndex++) {
       const line = lines[lineIndex];
 

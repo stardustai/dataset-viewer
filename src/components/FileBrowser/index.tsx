@@ -44,12 +44,14 @@ interface FileBrowserProps {
     file: StorageFile,
     path: string,
     storageClient?: IStorageClient,
-    files?: StorageFile[]
+    files?: StorageFile[],
+    forceTextMode?: boolean
   ) => void;
   onDisconnect: () => void;
   initialPath?: string;
   onDirectoryChange?: (path: string) => void;
-  shouldRefresh?: boolean; // 新增：用于通知组件需要重新检查连接状态
+  shouldRefresh?: boolean; // 用于文件关联模式下从查看器返回时的刷新
+  isVisible?: boolean; // 组件是否可见，用于控制副作用的执行
 }
 
 // 类型适配函数：将 null 转换为 undefined
@@ -63,6 +65,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   initialPath = '',
   onDirectoryChange,
   shouldRefresh = false,
+  isVisible = true,
 }) => {
   const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState(initialPath);
@@ -490,6 +493,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 滚动到底部的处理函数
   const handleScrollToBottom = () => {
+    // 只有在组件可见时才允许滚动触发的分页加载
+    if (!isVisible) {
+      console.log('FileBrowser is hidden, skipping scroll-triggered pagination');
+      return;
+    }
+
     // Allow loading when hasMore is true, even if nextMarker is null
     // Some OSS implementations might not provide markers but still support pagination
     if (hasMore && !loadingMore) {
@@ -699,14 +708,17 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         clearTimeout(retryTimer);
       }
     };
-  }, [initialPath]); // 移除error依赖避免无限重试循环
+  }, [initialPath]);
 
-  // 响应从文件查看器返回的刷新请求
+  // 响应从文件查看器返回的刷新请求（文件关联模式）
   useEffect(() => {
     if (shouldRefresh && StorageServiceManager.isConnected()) {
-      console.log('Refreshing FileBrowser after returning from viewer');
+      console.log('File association mode: refreshing FileBrowser after returning from viewer');
       setError(''); // 清除可能存在的错误状态
-      loadDirectory(initialPath || currentPath, false, true);
+
+      // 文件关联模式下，需要重新加载目录以确保正确的状态
+      // 因为应用是直接打开文件的，FileBrowser可能没有正确的目录状态
+      loadDirectory(initialPath || currentPath, false, true); // 强制重新加载
     }
   }, [shouldRefresh]);
 
@@ -800,6 +812,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
       onFileSelect(file, fullPath, currentStorageClient, files);
     }
+  };
+
+  const handleOpenAsText = (file: StorageFile) => {
+    // 强制以文本格式打开文件
+    const currentStorageClient = StorageServiceManager.getCurrentClient();
+    const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
+    // 通过forceTextMode参数告诉FileViewer强制以文本格式打开
+    onFileSelect(file, fullPath, currentStorageClient, files, true);
   };
 
   const connection = StorageServiceManager.getConnection();
@@ -1144,6 +1164,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     <VirtualizedFileList
                       files={getDisplayFiles()}
                       onFileClick={handleItemClick}
+                      onFileOpenAsText={handleOpenAsText}
                       onScrollToBottom={handleScrollToBottom}
                     />
                     {/* Loading more indicator - 绝对定位覆盖层 */}

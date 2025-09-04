@@ -311,7 +311,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => 40,
-    overscan: 5, // 减少预渲染行数以提升性能
+    overscan: 20, // 预渲染行数以提升滚动体验
   });
 
   const virtualRows = virtualizer.getVirtualItems();

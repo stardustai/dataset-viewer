@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StorageServiceManager } from '../../services/storage/StorageManager';
-import { StoredConnection } from '../../services/connectionStorage';
+import { StoredConnection, connectionStorage } from '../../services/connectionStorage';
 import { ConnectionConfig, StorageClientType } from '../../services/storage/types';
 
 export default function useConnectionLogic(onConnectSuccess?: () => void) {
@@ -80,7 +80,26 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
   useEffect(() => {
     const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
 
-    if (!wasDisconnected) {
+    if (wasDisconnected) {
+      // 如果用户主动断开连接，仍然使用最近的连接信息预填表单，但不自动连接
+      const defaultConnection = StorageServiceManager.getDefaultConnection();
+      if (defaultConnection) {
+        const config = defaultConnection.config;
+        setStorageType(config.type);
+
+        switch (config.type) {
+          case 'local':
+            setDefaultLocalPath(config.rootPath || '');
+            break;
+          case 'oss':
+          case 'huggingface':
+          case 'webdav':
+            handleSelectStoredConnection(defaultConnection);
+            break;
+        }
+      }
+    } else {
+      // 如果不是主动断开，使用默认连接逻辑
       const defaultConnection = StorageServiceManager.getDefaultConnection();
       if (defaultConnection) {
         const config = defaultConnection.config;
@@ -115,8 +134,8 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
 
     const config: ConnectionConfig = {
       type: 'webdav',
-      url,
-      username,
+      url: url.trim().replace(/\/+$/, ''), // 标准化 URL，移除末尾斜杠
+      username: username.trim(),
       password: actualPassword,
       name: connectionName,
     };
@@ -151,6 +170,12 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     try {
       const success = await StorageServiceManager.connectWithConfig(config);
       if (success) {
+        // 连接成功后，将当前连接设为默认连接
+        const currentConnection = connectionStorage.findConnection(config);
+        if (currentConnection) {
+          connectionStorage.setDefaultConnection(currentConnection.id);
+        }
+
         onConnectSuccess?.();
         return;
       } else {

@@ -210,6 +210,9 @@ export const fileViewer = {
   'viewer.open.as.text': '以文本格式打开',
   'viewer.unsupported.format.message': '此文件格式不被直接支持，您可以尝试以文本格式查看。',
 
+  // 右键菜单
+  'context.menu.open.as.text': '以文本格式打开',
+
   // 长行优化
   'expand.long.line': '展开',
   'collapse.long.line': '收起',
@@ -231,6 +234,7 @@ export const fileViewer = {
   // 代码折叠
   'fold.range': '折叠区间',
   'unfold.range': '展开区间',
+  'large.node': '大节点',
 
   // 插件相关
   'plugin.loading': '正在加载插件...',

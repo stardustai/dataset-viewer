@@ -231,6 +231,9 @@ export const fileViewer = {
   'viewer.unsupported.format.message':
     'This file format is not directly supported, but you can try viewing it as text.',
 
+  // Context menu
+  'context.menu.open.as.text': 'Open as Text',
+
   // Long line optimization
   'expand.long.line': 'Expand',
   'collapse.long.line': 'Collapse',
@@ -252,6 +255,7 @@ export const fileViewer = {
   // Code folding
   'fold.range': 'Fold range',
   'unfold.range': 'Unfold range',
+  'large.node': 'Large Node',
 
   // Plugin related
   'plugin.loading': 'Loading plugin...',

@@ -132,6 +132,29 @@ jobs:
           rustup target add aarch64-apple-darwin
           rustup target add x86_64-apple-darwin
 
+      - name: Setup macOS signing (macOS only)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # decode base64 -> p12 (use BSD compatible -D)
+          printf '%s' "$APPLE_CERTIFICATE" | base64 -D > certificate.p12
+          security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+          # cleanup certificate file
+          rm -f certificate.p12
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+
+      - name: Set signing identity for ARM64 (macOS ARM only)
+        if: matrix.platform == 'macos-latest' && matrix.arch == 'arm64'
+        run: |
+          # Add signingIdentity field with "-" value for ARM64
+          jq '.bundle.macOS.signingIdentity = "-"' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
@@ -176,29 +199,25 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} -- --bin dataset-viewer
+          includeUpdaterJson: false
 
       - name: Build only (manual trigger)
         if: github.event_name == 'workflow_dispatch'
-        run: |
-          pnpm tauri build ${{ matrix.args }}
+        run: pnpm tauri build ${{ matrix.args }} -- --bin dataset-viewer
 
-      - name: List build artifacts (manual trigger)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "Build artifacts:"
-          find src-tauri/target -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" -o -name "*.exe" 2>/dev/null || echo "No bundle files found"
-        shell: bash
-
-      - name: Upload artifacts (manual trigger)
+      - name: Upload installer packages (manual trigger)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: dataset-viewer-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
-            src-tauri/target/**/bundle/**/*
-          include-hidden-files: false
+            src-tauri/target/**/bundle/**/*.dmg
+            src-tauri/target/**/bundle/**/*.msi
+            src-tauri/target/**/bundle/**/*.AppImage
           retention-days: 1
           if-no-files-found: warn

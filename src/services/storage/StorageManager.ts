@@ -138,50 +138,15 @@ export class StorageServiceManager {
    */
   private static async saveConnectionInfo(config: ConnectionConfig): Promise<void> {
     try {
-      // 查找匹配的已保存连接
-      const connections = connectionStorage.getStoredConnections();
-      const matchedConnection = this.findMatchingStoredConnection(connections, config);
-
-      if (matchedConnection) {
-        // 更新最后连接时间
-        connectionStorage.updateLastConnected(matchedConnection.id);
-      } else {
-        // 创建新的保存连接记录
-        await connectionStorage.saveConnection(
-          config,
-          this.currentClient!.generateConnectionName(config),
-          true
-        );
-      }
+      // 直接使用 connectionStorage.saveConnection，它会自动处理新建或更新逻辑
+      await connectionStorage.saveConnection(
+        config,
+        this.currentClient!.generateConnectionName(config)
+      );
     } catch (error) {
       console.warn('Failed to save connection info:', error);
       // 不抛出错误，允许连接继续
     }
-  }
-
-  /**
-   * 查找匹配的已保存连接
-   */
-  private static findMatchingStoredConnection(
-    connections: StoredConnection[],
-    config: ConnectionConfig
-  ): StoredConnection | undefined {
-    return connections.find(conn => {
-      switch (config.type) {
-        case 'webdav':
-          return conn.config.url === config.url && conn.config.username === config.username;
-        case 'local':
-          return conn.config.type === 'local' && conn.config.rootPath === config.rootPath;
-        case 'oss':
-          return conn.config.type === 'oss' && conn.config.username === config.username;
-        case 'huggingface':
-          const storedOrg = conn.config.organization;
-          const configOrg = config.organization;
-          return conn.config.type === 'huggingface' && storedOrg === configOrg;
-        default:
-          return false;
-      }
-    });
   }
 
   /**

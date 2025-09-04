@@ -247,13 +247,15 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     // 生成默认连接名称
     const hostname = hostWithPort;
     const platformName = OSS_PLATFORMS.find(p => p.id === selectedPlatform)?.name || 'OSS';
+    // 显示完整的桶名和路径信息
+    const bucketDisplayName = config.bucket || 'Unknown';
     const defaultName =
       selectedPlatform === 'custom'
         ? t('connection.name.oss', 'OSS({{host}}-{{bucket}})', {
             host: hostname,
-            bucket: config.bucket,
+            bucket: bucketDisplayName,
           })
-        : `${platformName}(${config.bucket})`;
+        : `${platformName}(${bucketDisplayName})`;
 
     // 如果密码是占位符（来自已保存的连接），使用真实密码
     const actualSecretKey =
@@ -265,10 +267,21 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     const cleanBucket = config.bucket.trim();
     const bucketWithPath = cleanBucket.replace(/\/+$/, ''); // 移除所有尾部斜杠
 
+    // 检查当前配置是否与选中的连接相同（只比较桶的基础名称）
+    const isConfigChanged =
+      selectedConnection &&
+      ((selectedConnection.config.bucket || '').split('/')[0] !== bucketWithPath.split('/')[0] ||
+        selectedConnection.config.region !== (config.region || selectedRegion) ||
+        selectedConnection.config.endpoint !== finalEndpoint ||
+        selectedConnection.config.username !== config.accessKey);
+
+    // 如果配置有变化，使用新生成的名称；否则保持原名称
+    const connectionName = isConfigChanged ? defaultName : selectedConnection?.name || defaultName;
+
     const connectionConfig: ConnectionConfig = {
       type: 'oss',
-      name: selectedConnection?.name || defaultName,
-      url: bucketWithPath ? `oss://${hostWithPort}/${bucketWithPath}` : `oss://${hostWithPort}`, // 没有路径时不加斜杠
+      name: connectionName,
+      url: finalEndpoint, // 保存实际的 HTTP 端点
       username: config.accessKey, // 使用 username 字段存储 accessKey
       password: actualSecretKey, // 使用 password 字段存储 secretKey
       bucket: bucketWithPath, // 添加 bucket 字段（清理后的）

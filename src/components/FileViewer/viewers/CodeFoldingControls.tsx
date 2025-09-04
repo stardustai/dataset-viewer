@@ -99,7 +99,7 @@ export const useFoldingLogic = ({
 
     const ranges = provider.getFoldingRangesInRange(lines, startLine, endLine);
     setFoldableRanges(ranges);
-  }, [provider, supportsFolding, visibleRange?.start, visibleRange?.end, lines.length]); // 分别依赖具体属性
+  }, [provider, supportsFolding, visibleRange?.start, visibleRange?.end, lines.length]);
 
   // 计算可见行（考虑折叠状态）
   const visibleLines = useMemo(() => {

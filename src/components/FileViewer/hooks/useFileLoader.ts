@@ -4,7 +4,7 @@ import { StorageServiceManager } from '../../../services/storage';
 import { configManager } from '../../../config';
 import { getFileType } from '../../../utils/fileTypes';
 
-export const useFileLoader = (file: StorageFile, filePath: string) => {
+export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode?: boolean) => {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,8 +67,8 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
         setLoading(true);
         setError(null);
 
-        // 对于非文本文件，不需要加载内容（除非强制加载）
-        if (!fileInfo.isTextBased && !forceLoad) {
+        // 对于非文本文件，不需要加载内容（除非强制加载或者启用了强制文本模式）
+        if (!fileInfo.isTextBased && !forceLoad && !forceTextMode) {
           // 清除之前的文本相关状态
           setContent('');
           setTotalSize(0);
@@ -113,7 +113,13 @@ export const useFileLoader = (file: StorageFile, filePath: string) => {
         setLoading(false);
       }
     },
-    [filePath, isTextBased, config.streaming.maxInitialLoad, config.streaming.chunkSize]
+    [
+      filePath,
+      isTextBased,
+      config.streaming.maxInitialLoad,
+      config.streaming.chunkSize,
+      forceTextMode,
+    ]
   );
 
   const handleScrollToBottom = useCallback(async () => {

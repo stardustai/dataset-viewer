@@ -48,6 +48,7 @@ interface VirtualizedTextViewerRef {
 const MAX_SEARCH_RESULTS = 1000;
 const MAX_LINE_LENGTH = 10000;
 const TRUNCATE_LENGTH = 200;
+const LONG_LINE_THRESHOLD = 300;
 
 export const VirtualizedTextViewer = forwardRef<
   VirtualizedTextViewerRef,
@@ -187,7 +188,7 @@ export const VirtualizedTextViewer = forwardRef<
       count: visibleLines.length,
       getScrollElement: () => containerRef.current,
       estimateSize: () => 24, // 固定行高
-      overscan: 3,
+      overscan: 30,
       measureElement: undefined,
     });
 
@@ -283,7 +284,7 @@ export const VirtualizedTextViewer = forwardRef<
     const renderLineWithHighlight = useCallback(
       (line: string, _lineIndex: number, originalLineIndex: number) => {
         const currentLineNumber = startLineNumber + originalLineIndex;
-        const isLongLine = line.length > 500;
+        const isLongLine = line.length > LONG_LINE_THRESHOLD;
         const isExpanded = expandedLongLines.has(originalLineIndex);
 
         // 性能优化：只在支持折叠时检查折叠范围
@@ -331,10 +332,25 @@ export const VirtualizedTextViewer = forwardRef<
               </span>
               {/* 代码折叠指示器 */}
               {foldableRange && (
-                <FoldingIndicator
-                  isCollapsed={isRangeCollapsed}
-                  onToggle={() => toggleFoldingRange(foldableRange.id)}
-                />
+                <div className="flex items-center">
+                  <FoldingIndicator
+                    isCollapsed={isRangeCollapsed}
+                    onToggle={() => toggleFoldingRange(foldableRange.id)}
+                  />
+                  {/* 显示折叠摘要信息 */}
+                  {isRangeCollapsed && (
+                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                      {foldableRange.summary}
+                    </span>
+                  )}
+                  {/* 大节点指示器 */}
+                  {!isRangeCollapsed && foldableRange.endLine - foldableRange.startLine > 100 && (
+                    <span className="ml-2 px-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 rounded">
+                      {t('large.node', 'Large Node')} (
+                      {foldableRange.endLine - foldableRange.startLine + 1} lines)
+                    </span>
+                  )}
+                </div>
               )}
               {showExpandButton && (
                 <button
@@ -372,10 +388,25 @@ export const VirtualizedTextViewer = forwardRef<
               </span>
               {/* 代码折叠指示器 */}
               {foldableRange && (
-                <FoldingIndicator
-                  isCollapsed={isRangeCollapsed}
-                  onToggle={() => toggleFoldingRange(foldableRange.id)}
-                />
+                <div className="flex items-center">
+                  <FoldingIndicator
+                    isCollapsed={isRangeCollapsed}
+                    onToggle={() => toggleFoldingRange(foldableRange.id)}
+                  />
+                  {/* 显示折叠摘要信息 */}
+                  {isRangeCollapsed && (
+                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                      {foldableRange.summary}
+                    </span>
+                  )}
+                  {/* 大节点指示器 */}
+                  {!isRangeCollapsed && foldableRange.endLine - foldableRange.startLine > 100 && (
+                    <span className="ml-2 px-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 rounded">
+                      {t('large.node', 'Large Node')} (
+                      {foldableRange.endLine - foldableRange.startLine + 1} lines)
+                    </span>
+                  )}
+                </div>
               )}
               {showExpandButton && (
                 <button
@@ -467,10 +498,25 @@ export const VirtualizedTextViewer = forwardRef<
                 <span dangerouslySetInnerHTML={{ __html: processedLine }} />
                 {/* 代码折叠指示器 */}
                 {foldableRange && (
-                  <FoldingIndicator
-                    isCollapsed={isRangeCollapsed}
-                    onToggle={() => toggleFoldingRange(foldableRange.id)}
-                  />
+                  <div className="flex items-center">
+                    <FoldingIndicator
+                      isCollapsed={isRangeCollapsed}
+                      onToggle={() => toggleFoldingRange(foldableRange.id)}
+                    />
+                    {/* 显示折叠摘要信息 */}
+                    {isRangeCollapsed && (
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                        {foldableRange.summary}
+                      </span>
+                    )}
+                    {/* 大节点指示器 */}
+                    {!isRangeCollapsed && foldableRange.endLine - foldableRange.startLine > 100 && (
+                      <span className="ml-2 px-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 rounded">
+                        {t('large.node', 'Large Node')} (
+                        {foldableRange.endLine - foldableRange.startLine + 1} lines)
+                      </span>
+                    )}
+                  </div>
                 )}
                 {showExpandButton && (
                   <button
@@ -502,10 +548,25 @@ export const VirtualizedTextViewer = forwardRef<
             <span>{renderSearchHighlight(searchDisplayLine)}</span>
             {/* 代码折叠指示器 */}
             {foldableRange && (
-              <FoldingIndicator
-                isCollapsed={isRangeCollapsed}
-                onToggle={() => toggleFoldingRange(foldableRange.id)}
-              />
+              <div className="flex items-center">
+                <FoldingIndicator
+                  isCollapsed={isRangeCollapsed}
+                  onToggle={() => toggleFoldingRange(foldableRange.id)}
+                />
+                {/* 显示折叠摘要信息 */}
+                {isRangeCollapsed && (
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                    {foldableRange.summary}
+                  </span>
+                )}
+                {/* 大节点指示器 */}
+                {!isRangeCollapsed && foldableRange.endLine - foldableRange.startLine > 100 && (
+                  <span className="ml-2 px-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 rounded">
+                    {t('large.node', 'Large Node')} (
+                    {foldableRange.endLine - foldableRange.startLine + 1} lines)
+                  </span>
+                )}
+              </div>
             )}
             {showExpandButton && (
               <button
@@ -598,7 +659,7 @@ export const VirtualizedTextViewer = forwardRef<
             if (column && column > 0) {
               // 检查这行是否是长行且被折叠了（使用正确的长行判断逻辑）
               const targetLine = lines[targetOriginalIndex] || '';
-              const isLongLine = targetLine.length > 500; // 使用实际的长行阈值
+              const isLongLine = targetLine.length > LONG_LINE_THRESHOLD; // 使用长行阈值常量
               const isCurrentlyExpanded = expandedLongLines.has(targetOriginalIndex);
               const needsExpansion = isLongLine && !isCurrentlyExpanded;
 
@@ -661,7 +722,7 @@ export const VirtualizedTextViewer = forwardRef<
               // 检查是否需要展开长行
               if (targetOriginalIndex >= 0 && targetOriginalIndex < lines.length) {
                 const targetLine = lines[targetOriginalIndex];
-                const isLongLine = targetLine.length > 500; // 使用正确的长行阈值
+                const isLongLine = targetLine.length > LONG_LINE_THRESHOLD; // 使用长行阈值常量
                 const isCurrentlyExpanded = expandedLongLines.has(targetOriginalIndex);
                 const needsExpansion = isLongLine && !isCurrentlyExpanded;
 
