@@ -41,6 +41,37 @@ const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; form
   return { isImage: false };
 };
 
+// 检测是否为 JSON 内容 - 高性能版本，避免 trim() 操作
+const isJSONContent = (text: string): boolean => {
+  if (text.length === 0) return false;
+
+  // 手动查找第一个非空白字符
+  let start = 0;
+  while (start < text.length && /\s/.test(text[start])) {
+    start++;
+  }
+
+  // 手动查找最后一个非空白字符
+  let end = text.length - 1;
+  while (end >= start && /\s/.test(text[end])) {
+    end--;
+  }
+
+  // 检查是否为空内容
+  if (start > end) return false;
+
+  // 检查首尾字符是否匹配 JSON 格式
+  const firstChar = text[start];
+  const lastChar = text[end];
+
+  return (firstChar === '{' && lastChar === '}') || (firstChar === '[' && lastChar === ']');
+};
+
+// 检测是否为 XML 内容
+const isXMLContent = (text: string): boolean => {
+  return !!text.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
+};
+
 // XML格式化函数
 const formatXML = (xml: string): string => {
   const PADDING = '  ';
@@ -127,11 +158,10 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
 
   // 检测逻辑 - 优先级：图片 > 结构化数据格式化 > 原始文本
   const imageInfo = isBase64Image(content);
-  const isJSONContent = !imageInfo.isImage && content.trim().match(/^[\[\{].*[\]\}]$/s);
-  const isXMLContent =
-    !imageInfo.isImage && !isJSONContent && content.trim().match(/^\s*<[^>]+>.*<\/[^>]+>\s*$/s);
+  const isJSON = !imageInfo.isImage && isJSONContent(content);
+  const isXML = !imageInfo.isImage && !isJSON && isXMLContent(content);
 
-  const shouldDefaultFormat = Boolean(isJSONContent || isXMLContent);
+  const shouldDefaultFormat = Boolean(isJSON || isXML);
   const [manualFormatState, setManualFormatState] = useState<boolean | null>(null);
   const isFormatted = manualFormatState !== null ? manualFormatState : shouldDefaultFormat;
 
@@ -144,7 +174,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
   const displayContent = (() => {
     if (imageInfo.isImage) return content; // 图片直接返回原始内容
 
-    if (isJSONContent && isFormatted) {
+    if (isJSON && isFormatted) {
       try {
         const parsed = JSON.parse(content);
         return JSON.stringify(parsed, null, 2);
@@ -153,7 +183,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
       }
     }
 
-    if (isXMLContent && isFormatted) {
+    if (isXML && isFormatted) {
       try {
         return formatXML(content.trim());
       } catch (error) {
@@ -218,12 +248,12 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
 
               {/* Content Type Indicators - 紧贴标题右侧 */}
-              {isFormatted && isJSONContent && (
+              {isFormatted && isJSON && (
                 <span className="text-sm px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
                   {t('formatted.json')}
                 </span>
               )}
-              {isFormatted && isXMLContent && (
+              {isFormatted && isXML && (
                 <span className="text-sm px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
                   {t('formatted.xml')}
                 </span>
@@ -243,7 +273,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
 
           <div className="flex items-center space-x-2">
             {/* JSON/XML格式化按钮 - 激活态保留背景色，未激活态无文本颜色 */}
-            {(isJSONContent || isXMLContent) && (
+            {(isJSON || isXML) && (
               <button
                 onClick={toggleFormatView}
                 className={`p-2 rounded-lg transition-colors ${
@@ -252,11 +282,7 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
                     : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
                 title={
-                  isFormatted
-                    ? t('original.content')
-                    : isJSONContent
-                      ? t('format.json')
-                      : t('format.xml')
+                  isFormatted ? t('original.content') : isJSON ? t('format.json') : t('format.xml')
                 }
               >
                 <Braces
@@ -303,12 +329,12 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
               filePath="data://content"
               hasAssociatedFiles={false}
             />
-          ) : (isJSONContent || isXMLContent) && isFormatted ? (
+          ) : (isJSON || isXML) && isFormatted ? (
             // 格式化的JSON/XML使用虚拟文本查看器，支持语法高亮
             <VirtualizedTextViewer
               content={displayContent}
               searchTerm={searchTerm}
-              fileName={fileName || (isJSONContent ? 'formatted.json' : 'formatted.xml')}
+              fileName={fileName || (isJSON ? 'formatted.json' : 'formatted.xml')}
               className="h-full"
               key="unified-modal-formatted-viewer"
             />
