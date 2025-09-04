@@ -147,8 +147,12 @@ impl StorageClient for WebDAVClient {
     async fn connect(&mut self, config: &ConnectionConfig) -> Result<(), StorageError> {
         self.validate_config(config)?;
 
-        // 更新配置
-        self.config = config.clone();
+        // 更新配置，确保 URL 没有末尾斜杠
+        let mut clean_config = config.clone();
+        if let Some(url) = &clean_config.url {
+            clean_config.url = Some(url.trim_end_matches('/').to_string());
+        }
+        self.config = clean_config;
 
         // 重新生成认证头
         self.auth_header =
@@ -163,7 +167,7 @@ impl StorageClient for WebDAVClient {
         // 测试连接
         let test_request = StorageRequest {
             method: "PROPFIND".to_string(),
-            url: config.url.clone().unwrap(),
+            url: self.config.url.clone().unwrap(),
             headers: {
                 let mut headers = HashMap::new();
                 headers.insert("Depth".to_string(), "0".to_string());

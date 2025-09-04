@@ -92,13 +92,18 @@ class ConnectionStorageService {
 
         switch (config.type) {
           case 'webdav':
-            return storedConfig.url === config.url && storedConfig.username === config.username;
+            // 标准化 URL 进行比较，移除末尾斜杠
+            const normalizeUrl = (url?: string) => url?.trim().replace(/\/+$/, '') || '';
+            return (
+              normalizeUrl(storedConfig.url) === normalizeUrl(config.url) &&
+              storedConfig.username === config.username
+            );
 
           case 'local':
             return storedConfig.rootPath === config.rootPath;
 
           case 'oss':
-            // 对于 OSS 连接，基于 bucket 基础名称（不包含路径）进行匹配
+            // 对于 OSS 连接，只比较桶的基础名称（不包含路径）
             const storedBucketBase = (storedConfig.bucket || '').split('/')[0];
             const configBucketBase = (config.bucket || '').split('/')[0];
             return (
