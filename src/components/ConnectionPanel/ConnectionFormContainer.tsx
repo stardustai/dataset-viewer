@@ -20,6 +20,8 @@ interface ConnectionFormContainerProps {
   error: string;
   isPasswordFromStorage: boolean;
   defaultLocalPath: string;
+  smbShare: string;
+  smbDomain: string;
   onStorageTypeChange: (type: StorageClientType) => void;
   onStoredConnectionSelect: (connection: StoredConnection) => void;
   onWebDAVConnect: (e: React.FormEvent) => void;
@@ -31,6 +33,8 @@ interface ConnectionFormContainerProps {
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onPasswordFocus: () => void;
+  onSmbShareChange: (value: string) => void;
+  onSmbDomainChange: (value: string) => void;
 }
 
 export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = ({
@@ -43,6 +47,8 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   error,
   isPasswordFromStorage,
   defaultLocalPath,
+  smbShare,
+  smbDomain,
   onStorageTypeChange,
   onStoredConnectionSelect,
   onWebDAVConnect,
@@ -54,6 +60,8 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   onUsernameChange,
   onPasswordChange,
   onPasswordFocus,
+  onSmbShareChange,
+  onSmbDomainChange,
 }) => {
   const { t } = useTranslation();
 
@@ -111,19 +119,37 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
             />
           ) : storageType === 'smb' ? (
             <SMBConnectionForm
-              config={selectedStoredConnection?.config || { type: 'smb' }}
-              onChange={() => {}} // Will be handled by the form internally
+              config={{
+                type: 'smb',
+                url,
+                username,
+                password,
+                share: smbShare,
+                domain: smbDomain,
+              }}
+              onChange={(config) => {
+                if (config.url !== undefined) onUrlChange(config.url);
+                if (config.username !== undefined) onUsernameChange(config.username);
+                if (config.password !== undefined) onPasswordChange(config.password);
+                if (config.share !== undefined) onSmbShareChange(config.share);
+                if (config.domain !== undefined) onSmbDomainChange(config.domain);
+              }}
               connecting={connecting}
               error={error}
               onConnect={() => {
                 // Create config and call onSMBConnect
                 const config: ConnectionConfig = {
                   type: 'smb',
-                  url,
-                  username,
-                  password,
-                  share: selectedStoredConnection?.config.share || '',
-                  domain: selectedStoredConnection?.config.domain || '',
+                  url: url.trim(),
+                  username: username.trim(),
+                  password: isPasswordFromStorage && selectedStoredConnection?.config.password
+                    ? selectedStoredConnection.config.password
+                    : password,
+                  share: smbShare.trim(),
+                  domain: smbDomain.trim() || undefined,
+                  name: selectedStoredConnection
+                    ? selectedStoredConnection.name
+                    : `SMB (${url.trim()}/${smbShare.trim()})`,
                 };
                 onSMBConnect(config);
               }}

@@ -35,9 +35,12 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
               error={connectionLogic.error}
               isPasswordFromStorage={connectionLogic.isPasswordFromStorage}
               defaultLocalPath={connectionLogic.defaultLocalPath}
+              smbShare={connectionLogic.smbShare}
+              smbDomain={connectionLogic.smbDomain}
               onStorageTypeChange={connectionLogic.handleStorageTypeChange}
               onStoredConnectionSelect={connectionLogic.handleSelectStoredConnection}
               onWebDAVConnect={connectionLogic.handleWebDAVConnect}
+              onSMBConnect={connectionLogic.handleSMBConnect}
               onLocalConnect={connectionLogic.handleLocalConnect}
               onOSSConnect={connectionLogic.handleOSSConnect}
               onHuggingFaceConnect={connectionLogic.handleHuggingFaceConnect}
@@ -45,6 +48,8 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
               onUsernameChange={connectionLogic.handleUsernameChange}
               onPasswordChange={connectionLogic.handlePasswordChange}
               onPasswordFocus={connectionLogic.handlePasswordFocus}
+              onSmbShareChange={connectionLogic.setSmbShare}
+              onSmbDomainChange={connectionLogic.setSmbDomain}
             />
           </div>
         </div>

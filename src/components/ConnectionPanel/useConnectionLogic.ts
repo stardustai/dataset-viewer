@@ -15,11 +15,15 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     null
   );
 
-  // WebDAV 状态
+  // WebDAV/SMB 状态 (共享这些字段)
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false);
+
+  // SMB 特定状态
+  const [smbShare, setSmbShare] = useState('');
+  const [smbDomain, setSmbDomain] = useState('');
 
   // 本地文件系统状态
   const [defaultLocalPath, setDefaultLocalPath] = useState('');
@@ -74,6 +78,20 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
           setIsPasswordFromStorage(false);
         }
         break;
+
+      case 'smb':
+        setUrl(config.url || '');
+        setUsername(config.username || '');
+        setSmbShare(config.share || '');
+        setSmbDomain(config.domain || '');
+        if (config.password) {
+          setPassword('••••••••');
+          setIsPasswordFromStorage(true);
+        } else {
+          setPassword('');
+          setIsPasswordFromStorage(false);
+        }
+        break;
     }
   };
 
@@ -94,6 +112,7 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
           case 'oss':
           case 'huggingface':
           case 'webdav':
+          case 'smb':
             handleSelectStoredConnection(defaultConnection);
             break;
         }
@@ -112,6 +131,7 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
           case 'oss':
           case 'huggingface':
           case 'webdav':
+          case 'smb':
             handleSelectStoredConnection(defaultConnection);
             break;
         }
@@ -221,6 +241,11 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     await handleConnect(config);
   };
 
+  // SMB连接处理
+  const handleSMBConnect = async (config: ConnectionConfig) => {
+    await handleConnect(config);
+  };
+
   const handleStorageTypeChange = (type: StorageClientType) => {
     setStorageType(type);
     setError('');
@@ -233,6 +258,18 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
         setUrl('');
         setUsername('');
         setPassword('');
+        setIsPasswordFromStorage(false);
+      }
+    } else if (type === 'smb') {
+      if (selectedStoredConnection && selectedStoredConnection.config.type === 'smb') {
+        // 保持 SMB 连接选择
+      } else {
+        setSelectedStoredConnection(null);
+        setUrl('');
+        setUsername('');
+        setPassword('');
+        setSmbShare('');
+        setSmbDomain('');
         setIsPasswordFromStorage(false);
       }
     } else if (type === 'local') {
@@ -275,6 +312,8 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     password,
     isPasswordFromStorage,
     defaultLocalPath,
+    smbShare,
+    smbDomain,
 
     // 状态设置函数
     setStorageType,
@@ -285,11 +324,14 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     setPassword,
     setIsPasswordFromStorage,
     setDefaultLocalPath,
+    setSmbShare,
+    setSmbDomain,
 
     // 处理函数
     handleStorageTypeChange,
     handleSelectStoredConnection,
     handleWebDAVConnect,
+    handleSMBConnect,
     handleLocalConnect,
     handleConnect,
     handleOSSConnect,
