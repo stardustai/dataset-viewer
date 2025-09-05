@@ -4,7 +4,7 @@ import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 // 重新导出从 tauri-commands 导入的类型，使其对外可用
 export type { DirectoryResult, ListOptions };
 
-export type StorageClientType = 'webdav' | 'oss' | 's3' | 'local' | 'huggingface' | 'smb';
+export type StorageClientType = 'webdav' | 'oss' | 's3' | 'local' | 'huggingface' | 'ssh' | 'smb';
 export interface StorageClient {
   connect(config: ConnectionConfig): Promise<boolean>;
   disconnect(): void;
@@ -34,6 +34,10 @@ export interface ConnectionConfig {
   // HuggingFace 特定配置
   apiToken?: string; // HF API token for private datasets
   organization?: string; // 组织名称 (可选)
+  // SSH 特定配置
+  port?: number; // SSH 端口 (默认22)
+  privateKeyPath?: string; // SSH 私钥文件路径
+  passphrase?: string; // 私钥密码
   // SMB 特定配置
   share?: string; // SMB 共享名称
   domain?: string; // SMB 域名或工作组

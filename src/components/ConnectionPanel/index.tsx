@@ -35,11 +35,16 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
               error={connectionLogic.error}
               isPasswordFromStorage={connectionLogic.isPasswordFromStorage}
               defaultLocalPath={connectionLogic.defaultLocalPath}
+              sshPort={connectionLogic.sshPort}
+              sshPrivateKeyPath={connectionLogic.sshPrivateKeyPath}
+              sshPassphrase={connectionLogic.sshPassphrase}
+              sshRemotePath={connectionLogic.sshRemotePath}
               smbShare={connectionLogic.smbShare}
               smbDomain={connectionLogic.smbDomain}
               onStorageTypeChange={connectionLogic.handleStorageTypeChange}
               onStoredConnectionSelect={connectionLogic.handleSelectStoredConnection}
               onWebDAVConnect={connectionLogic.handleWebDAVConnect}
+              onSSHConnect={connectionLogic.handleSSHConnect}
               onSMBConnect={connectionLogic.handleSMBConnect}
               onLocalConnect={connectionLogic.handleLocalConnect}
               onOSSConnect={connectionLogic.handleOSSConnect}
@@ -48,6 +53,10 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
               onUsernameChange={connectionLogic.handleUsernameChange}
               onPasswordChange={connectionLogic.handlePasswordChange}
               onPasswordFocus={connectionLogic.handlePasswordFocus}
+              onSshPortChange={connectionLogic.setSshPort}
+              onSshPrivateKeyPathChange={connectionLogic.setSshPrivateKeyPath}
+              onSshPassphraseChange={connectionLogic.setSshPassphrase}
+              onSshRemotePathChange={connectionLogic.setSshRemotePath}
               onSmbShareChange={connectionLogic.setSmbShare}
               onSmbDomainChange={connectionLogic.setSmbDomain}
             />

@@ -73,6 +73,14 @@ pub struct ConnectionConfig {
     pub endpoint: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
+    // SSH 特定字段
+    pub port: Option<u16>,
+    pub private_key_path: Option<String>,
+    pub passphrase: Option<String>,
+    pub root_path: Option<String>,
+    // SMB 特定字段
+    pub share: Option<String>,
+    pub domain: Option<String>,
     pub extra_options: Option<HashMap<String, String>>,
 }
 

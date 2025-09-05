@@ -25,6 +25,12 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
   const [smbShare, setSmbShare] = useState('');
   const [smbDomain, setSmbDomain] = useState('');
 
+  // SSH 特定状态
+  const [sshPort, setSshPort] = useState(22);
+  const [sshPrivateKeyPath, setSshPrivateKeyPath] = useState('');
+  const [sshPassphrase, setSshPassphrase] = useState('');
+  const [sshRemotePath, setSshRemotePath] = useState('/');
+
   // 本地文件系统状态
   const [defaultLocalPath, setDefaultLocalPath] = useState('');
 
@@ -70,6 +76,22 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
       case 'webdav':
         setUrl(config.url || '');
         setUsername(config.username || '');
+        if (config.password) {
+          setPassword('••••••••');
+          setIsPasswordFromStorage(true);
+        } else {
+          setPassword('');
+          setIsPasswordFromStorage(false);
+        }
+        break;
+
+      case 'ssh':
+        setUrl(config.url || '');
+        setUsername(config.username || '');
+        setSshPort(config.port || 22);
+        setSshPrivateKeyPath(config.privateKeyPath || '');
+        setSshPassphrase(config.passphrase || '');
+        setSshRemotePath(config.rootPath || '/');
         if (config.password) {
           setPassword('••••••••');
           setIsPasswordFromStorage(true);
@@ -246,6 +268,11 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     await handleConnect(config);
   };
 
+  // SSH连接处理
+  const handleSSHConnect = async (config: ConnectionConfig) => {
+    await handleConnect(config);
+  };
+
   const handleStorageTypeChange = (type: StorageClientType) => {
     setStorageType(type);
     setError('');
@@ -270,6 +297,20 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
         setPassword('');
         setSmbShare('');
         setSmbDomain('');
+        setIsPasswordFromStorage(false);
+      }
+    } else if (type === 'ssh') {
+      if (selectedStoredConnection && selectedStoredConnection.config.type === 'ssh') {
+        // 保持 SSH 连接选择
+      } else {
+        setSelectedStoredConnection(null);
+        setUrl('');
+        setUsername('');
+        setPassword('');
+        setSshPort(22);
+        setSshPrivateKeyPath('');
+        setSshPassphrase('');
+        setSshRemotePath('/');
         setIsPasswordFromStorage(false);
       }
     } else if (type === 'local') {
@@ -312,6 +353,10 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     password,
     isPasswordFromStorage,
     defaultLocalPath,
+    sshPort,
+    sshPrivateKeyPath,
+    sshPassphrase,
+    sshRemotePath,
     smbShare,
     smbDomain,
 
@@ -324,6 +369,10 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     setPassword,
     setIsPasswordFromStorage,
     setDefaultLocalPath,
+    setSshPort,
+    setSshPrivateKeyPath,
+    setSshPassphrase,
+    setSshRemotePath,
     setSmbShare,
     setSmbDomain,
 
@@ -331,6 +380,7 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     handleStorageTypeChange,
     handleSelectStoredConnection,
     handleWebDAVConnect,
+    handleSSHConnect,
     handleSMBConnect,
     handleLocalConnect,
     handleConnect,

@@ -83,7 +83,7 @@ export class StorageClientFactory {
    * 检查是否支持指定的存储类型
    */
   static isSupportedType(type: string): type is StorageClientType {
-    return ['webdav', 'local', 'oss', 'huggingface'].includes(type);
+    return ['webdav', 'local', 'oss', 'huggingface', 'ssh', 'smb'].includes(type);
   }
 
   /**

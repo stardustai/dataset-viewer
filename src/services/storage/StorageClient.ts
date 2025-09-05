@@ -18,6 +18,7 @@ import { webdavStorageAdapter } from './adapters/WebDAVAdapter';
 import { localStorageAdapter } from './adapters/LocalAdapter';
 import { ossStorageAdapter } from './adapters/OSSAdapter';
 import { huggingfaceStorageAdapter } from './adapters/HuggingFaceAdapter';
+import { sshStorageAdapter } from './adapters/SSHAdapter';
 import { smbStorageAdapter } from './adapters/SMBAdapter';
 
 /**
@@ -74,6 +75,7 @@ const STORAGE_ADAPTERS: Record<StorageClientType, StorageAdapter> = {
   oss: ossStorageAdapter,
   s3: ossStorageAdapter, // S3 使用 OSS 适配器（兼容）
   huggingface: huggingfaceStorageAdapter,
+  ssh: sshStorageAdapter,
   smb: smbStorageAdapter,
 };
 
@@ -471,6 +473,12 @@ export class StorageClient implements IStorageClient {
         bucket: config.bucket ?? null,
         endpoint: config.endpoint ?? null,
         extraOptions: config.extraOptions ?? null,
+        port: null,
+        privateKeyPath: null,
+        passphrase: null,
+        rootPath: null,
+        share: null,
+        domain: null,
       };
 
       const result = await commands.storageConnect(tauriConfig);
@@ -573,6 +581,14 @@ export class StorageClient implements IStorageClient {
       region: config.region || null,
       bucket: config.bucket || null,
       endpoint: config.endpoint || null,
+      // SSH 特定字段
+      port: config.port || null,
+      privateKeyPath: config.privateKeyPath || null,
+      passphrase: config.passphrase || null,
+      rootPath: config.rootPath || null,
+      // SMB 特定字段
+      share: config.share || null,
+      domain: config.domain || null,
       extraOptions: null,
     };
   }

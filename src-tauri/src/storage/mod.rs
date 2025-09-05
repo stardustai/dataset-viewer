@@ -4,6 +4,7 @@ pub mod manager;
 pub mod oss;
 pub mod oss_client;
 pub mod smb_client;
+pub mod ssh_client;
 pub mod traits;
 pub mod webdav_client;
 
