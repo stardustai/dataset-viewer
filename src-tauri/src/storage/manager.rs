@@ -1,6 +1,7 @@
 use super::huggingface_client::HuggingFaceClient;
 use super::local_client::LocalFileSystemClient;
 use super::oss_client::OSSClient;
+use super::smb_client::SMBClient;
 use super::traits::{ConnectionConfig, DirectoryResult, ListOptions, StorageClient, StorageError};
 use super::webdav_client::WebDAVClient;
 use std::collections::HashMap;
@@ -45,6 +46,11 @@ impl StorageManager {
             }
             "huggingface" => {
                 let mut client = HuggingFaceClient::new(config.clone())?;
+                client.connect(config).await?;
+                Arc::new(client)
+            }
+            "smb" => {
+                let mut client = SMBClient::new(config.clone())?;
                 client.connect(config).await?;
                 Arc::new(client)
             }

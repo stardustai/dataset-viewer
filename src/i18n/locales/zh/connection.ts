@@ -21,6 +21,8 @@ export const connection = {
   'storage.type.select': '选择数据源类型',
   'storage.type.webdav': 'WebDAV',
   'storage.type.webdav.description': 'WebDAV 服务器',
+  'storage.type.smb': 'SMB',
+  'storage.type.smb.description': 'SMB/CIFS 网络共享',
   'storage.type.local': '本机文件',
   'storage.type.local.description': '浏览本机文件系统',
   'storage.type.oss': 'OSS',
@@ -30,6 +32,7 @@ export const connection = {
 
   // 连接名称格式
   'connection.name.webdav': 'WebDAV({{host}})',
+  'connection.name.smb': 'SMB({{host}}/{{share}})',
   'connection.name.local': '本机文件({{path}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
   'connection.name.huggingface': 'Hugging Face({{org}})',
@@ -72,12 +75,27 @@ export const connection = {
   'oss.region.placeholder': '例如：cn-hangzhou、us-east-1',
   'oss.region.optional': '区域 (可选)',
 
+  // SMB 特定字段
+  'smb.server': 'SMB 服务器',
+  'smb.server.placeholder': '192.168.1.100 或 server.domain.com',
+  'smb.server.description': 'SMB 服务器的 IP 地址或主机名',
+  'smb.share': '共享名称',
+  'smb.share.placeholder': 'shared-folder',
+  'smb.share.description': '要连接的网络共享名称',
+  'smb.domain': '域',
+  'smb.domain.placeholder': 'WORKGROUP 或 DOMAIN',
+  'smb.domain.description': 'Windows 域或工作组（可选）',
+
   // 表单验证错误
   'error.endpoint.required': '请输入 OSS 端点地址',
   'error.endpoint.invalid': '请输入有效的端点地址',
   'error.access.key.required': '请输入 Access Key',
   'error.secret.key.required': '请输入 Secret Key',
   'error.bucket.required': '请输入 Bucket 名称',
+  'error.smb.server.required': '请输入 SMB 服务器地址',
+  'error.smb.share.required': '请输入共享名称',
+  'error.smb.username.required': '请输入用户名',
+  'error.smb.password.required': '请输入密码',
 
   // 连接管理
   'saved.connections': '已保存的连接',

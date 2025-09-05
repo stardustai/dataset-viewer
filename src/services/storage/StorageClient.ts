@@ -18,6 +18,7 @@ import { webdavStorageAdapter } from './adapters/WebDAVAdapter';
 import { localStorageAdapter } from './adapters/LocalAdapter';
 import { ossStorageAdapter } from './adapters/OSSAdapter';
 import { huggingfaceStorageAdapter } from './adapters/HuggingFaceAdapter';
+import { smbStorageAdapter } from './adapters/SMBAdapter';
 
 /**
  * 存储客户端排序选项
@@ -73,6 +74,7 @@ const STORAGE_ADAPTERS: Record<StorageClientType, StorageAdapter> = {
   oss: ossStorageAdapter,
   s3: ossStorageAdapter, // S3 使用 OSS 适配器（兼容）
   huggingface: huggingfaceStorageAdapter,
+  smb: smbStorageAdapter,
 };
 
 /**

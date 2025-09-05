@@ -21,6 +21,8 @@ export const connection = {
   'storage.type.select': 'Select Data Source Type',
   'storage.type.webdav': 'WebDAV',
   'storage.type.webdav.description': 'WebDAV Server',
+  'storage.type.smb': 'SMB',
+  'storage.type.smb.description': 'SMB/CIFS Network Share',
   'storage.type.local': 'Local Files',
   'storage.type.local.description': 'Browse local file system',
   'storage.type.oss': 'OSS',
@@ -30,6 +32,7 @@ export const connection = {
 
   // Connection name formats
   'connection.name.webdav': 'WebDAV({{host}})',
+  'connection.name.smb': 'SMB({{host}}/{{share}})',
   'connection.name.local': 'Local Files({{path}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
   'connection.name.huggingface': 'Hugging Face({{org}})',
@@ -73,12 +76,27 @@ export const connection = {
   'oss.region.placeholder': 'e.g.: cn-hangzhou, us-east-1',
   'oss.region.optional': 'Region (Optional)',
 
+  // SMB specific fields
+  'smb.server': 'SMB Server',
+  'smb.server.placeholder': '192.168.1.100 or server.domain.com',
+  'smb.server.description': 'IP address or hostname of the SMB server',
+  'smb.share': 'Share Name',
+  'smb.share.placeholder': 'shared-folder',
+  'smb.share.description': 'Name of the network share to connect to',
+  'smb.domain': 'Domain',
+  'smb.domain.placeholder': 'WORKGROUP or DOMAIN',
+  'smb.domain.description': 'Windows domain or workgroup (optional)',
+
   // Form validation errors
   'error.endpoint.required': 'Please enter OSS endpoint',
   'error.endpoint.invalid': 'Please enter a valid endpoint',
   'error.access.key.required': 'Please enter Access Key',
   'error.secret.key.required': 'Please enter Secret Key',
   'error.bucket.required': 'Please enter Bucket name',
+  'error.smb.server.required': 'Please enter SMB server address',
+  'error.smb.share.required': 'Please enter share name',
+  'error.smb.username.required': 'Please enter username',
+  'error.smb.password.required': 'Please enter password',
 
   // Connection management
   'saved.connections': 'Saved Connections',

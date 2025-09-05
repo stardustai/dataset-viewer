@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Server, Folder, Cloud, Bot } from 'lucide-react';
+import { Server, Folder, Cloud, Bot, Share } from 'lucide-react';
 import { StorageClientType } from '../services/storage/types';
 
 interface StorageTypeSelectorProps {
@@ -20,6 +20,12 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
       label: t('storage.type.webdav'),
       icon: Server,
       description: t('storage.type.webdav.description'),
+    },
+    {
+      type: 'smb' as StorageClientType,
+      label: t('storage.type.smb'),
+      icon: Share,
+      description: t('storage.type.smb.description'),
     },
     {
       type: 'oss' as StorageClientType,
@@ -47,7 +53,7 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
         {t('storage.type.select')}
       </label>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {storageTypes.map(({ type, label, icon: Icon, description }) => (
           <button
             key={type}

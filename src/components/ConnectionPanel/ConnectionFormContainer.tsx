@@ -8,6 +8,7 @@ import { LocalConnectionForm } from './LocalConnectionForm';
 import { OSSConnectionForm } from './OSSConnectionForm';
 import { WebDAVConnectionForm } from './WebDAVConnectionForm';
 import { HuggingFaceConnectionForm } from './HuggingFaceConnectionForm';
+import { SMBConnectionForm } from './SMBConnectionForm';
 
 interface ConnectionFormContainerProps {
   storageType: StorageClientType;
@@ -22,6 +23,7 @@ interface ConnectionFormContainerProps {
   onStorageTypeChange: (type: StorageClientType) => void;
   onStoredConnectionSelect: (connection: StoredConnection) => void;
   onWebDAVConnect: (e: React.FormEvent) => void;
+  onSMBConnect: (config: ConnectionConfig) => Promise<void>;
   onLocalConnect: (rootPath: string) => void;
   onOSSConnect: (config: ConnectionConfig) => Promise<void>;
   onHuggingFaceConnect: (config: ConnectionConfig) => Promise<void>;
@@ -44,6 +46,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   onStorageTypeChange,
   onStoredConnectionSelect,
   onWebDAVConnect,
+  onSMBConnect,
   onLocalConnect,
   onOSSConnect,
   onHuggingFaceConnect,
@@ -105,6 +108,27 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               onPasswordChange={onPasswordChange}
               onPasswordFocus={onPasswordFocus}
               onSubmit={onWebDAVConnect}
+            />
+          ) : storageType === 'smb' ? (
+            <SMBConnectionForm
+              config={selectedStoredConnection?.config || { type: 'smb' }}
+              onChange={() => {}} // Will be handled by the form internally
+              connecting={connecting}
+              error={error}
+              onConnect={() => {
+                // Create config and call onSMBConnect
+                const config: ConnectionConfig = {
+                  type: 'smb',
+                  url,
+                  username,
+                  password,
+                  share: selectedStoredConnection?.config.share || '',
+                  domain: selectedStoredConnection?.config.domain || '',
+                };
+                onSMBConnect(config);
+              }}
+              isPasswordFromStorage={isPasswordFromStorage}
+              onPasswordFocus={onPasswordFocus}
             />
           ) : storageType === 'local' ? (
             <LocalConnectionForm
