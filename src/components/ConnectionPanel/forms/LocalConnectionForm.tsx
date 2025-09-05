@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Folder, FolderOpen, FolderSearch } from 'lucide-react';
-import { commands } from '../../types/tauri-commands';
+import { commands } from '../../../types/tauri-commands';
+import { ConnectButton, ErrorDisplay } from '../common';
 
 interface LocalConnectionFormProps {
   onConnect: (rootPath: string) => void;
@@ -48,7 +49,7 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
   const handleSelectDirectory = async () => {
     try {
       // 使用 Tauri 的对话框 API 选择目录
-      const result = await commands.systemSelectFolder();
+      const result = await commands.systemSelectFolder(t('local.select.directory'));
       if (result.status === 'ok' && result.data) {
         setRootPath(result.data);
       }
@@ -111,22 +112,9 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
+      <ErrorDisplay error={error || ''} />
 
-      <button
-        type="submit"
-        disabled={connecting || !rootPath.trim()}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
-                 text-white font-medium py-2 px-4 rounded-md transition-colors
-                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                 disabled:cursor-not-allowed"
-      >
-        {connecting ? t('connecting') : t('local.connect')}
-      </button>
+      <ConnectButton connecting={connecting} connectText={t('local.connect')} />
 
       {/* 权限说明 */}
       <div className="text-xs text-gray-500 dark:text-gray-400">

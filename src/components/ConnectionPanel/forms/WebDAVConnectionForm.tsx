@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Lock } from 'lucide-react';
+import { ConnectButton, ErrorDisplay } from '../common';
 
 interface WebDAVConnectionFormProps {
   url: string;
@@ -109,19 +110,9 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
+      <ErrorDisplay error={error} />
 
-      <button
-        type="submit"
-        disabled={connecting}
-        className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {connecting ? t('connecting') : t('connect')}
-      </button>
+      <ConnectButton connecting={connecting} />
     </form>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lock, Bot, Loader2 } from 'lucide-react';
-import { ConnectionConfig } from '../../services/storage/types';
-import { StoredConnection } from '../../services/connectionStorage';
+import { Lock, Bot } from 'lucide-react';
+import { ConnectionConfig } from '../../../services/storage/types';
+import { StoredConnection } from '../../../services/connectionStorage';
+import { ConnectButton } from '../common';
 
 interface HuggingFaceConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;
@@ -116,23 +117,7 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
       </div>
 
       {/* 连接按钮 */}
-      <button
-        type="submit"
-        disabled={isConnecting}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
-                 text-white font-medium py-2 px-4 rounded-md transition-colors
-                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                 disabled:cursor-not-allowed"
-      >
-        {isConnecting ? (
-          <div className="flex items-center justify-center">
-            <Loader2 className="w-4 h-4 animate-spin text-white mr-2" />
-            {t('connecting')}
-          </div>
-        ) : (
-          t('connect')
-        )}
-      </button>
+      <ConnectButton connecting={isConnecting} />
 
       {/* 帮助信息 */}
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">

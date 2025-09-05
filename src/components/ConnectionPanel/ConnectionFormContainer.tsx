@@ -4,12 +4,14 @@ import { StorageClientType, ConnectionConfig } from '../../services/storage/type
 import { StoredConnection } from '../../services/connectionStorage';
 import { ConnectionSelector } from './ConnectionSelector';
 import { StorageTypeSelector } from '../StorageTypeSelector';
-import { LocalConnectionForm } from './LocalConnectionForm';
-import { OSSConnectionForm } from './OSSConnectionForm';
-import { WebDAVConnectionForm } from './WebDAVConnectionForm';
-import { HuggingFaceConnectionForm } from './HuggingFaceConnectionForm';
-import { SSHConnectionForm } from './SSHConnectionForm';
-import { SMBConnectionForm } from './SMBConnectionForm';
+import {
+  LocalConnectionForm,
+  OSSConnectionForm,
+  WebDAVConnectionForm,
+  HuggingFaceConnectionForm,
+  SSHConnectionForm,
+  SMBConnectionForm,
+} from './forms';
 
 interface ConnectionFormContainerProps {
   storageType: StorageClientType;

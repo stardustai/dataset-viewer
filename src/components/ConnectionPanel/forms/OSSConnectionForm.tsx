@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConnectionConfig } from '../../services/storage/types';
-import { StoredConnection } from '../../services/connectionStorage';
-import { OSSPlatformSelector, OSS_PLATFORMS } from './OSSPlatformSelector';
+import { ConnectionConfig } from '../../../services/storage/types';
+import { StoredConnection } from '../../../services/connectionStorage';
+import { OSSPlatformSelector, OSS_PLATFORMS } from '../OSSPlatformSelector';
+import { ConnectButton, ErrorDisplay } from '../common';
 
 interface OSSConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;
@@ -329,11 +330,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {externalError && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{externalError}</p>
-          </div>
-        )}
+        <ErrorDisplay error={externalError || ''} />
 
         {/* 平台选择器 */}
         <OSSPlatformSelector
@@ -345,11 +342,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           onCustomEndpointChange={handleCustomEndpointChange}
           disabled={connecting}
         />
-        {errors.endpoint && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-2">
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.endpoint}</p>
-          </div>
-        )}
+        {errors.endpoint && <ErrorDisplay error={errors.endpoint} />}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -369,6 +362,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
               }`}
               placeholder={t('oss.access.key.placeholder')}
               disabled={connecting}
+              required
             />
             {errors.accessKey && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.accessKey}</p>
@@ -392,6 +386,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
               }`}
               placeholder={t('oss.secret.key.placeholder')}
               disabled={connecting}
+              required
             />
             {errors.secretKey && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.secretKey}</p>
@@ -419,6 +414,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
                 }`}
                 placeholder={t('oss.bucket.placeholder')}
                 disabled={connecting}
+                required
               />
               {errors.bucket && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.bucket}</p>
@@ -462,6 +458,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
               }`}
               placeholder={t('oss.bucket.placeholder')}
               disabled={connecting}
+              required
             />
             {errors.bucket && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.bucket}</p>
@@ -469,41 +466,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={connecting}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
-                   text-white font-medium py-2 px-4 rounded-md transition-colors
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                   disabled:cursor-not-allowed flex items-center justify-center"
-        >
-          {connecting ? (
-            <>
-              <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              {t('connecting')}
-            </>
-          ) : (
-            t('connect')
-          )}
-        </button>
+        <ConnectButton connecting={connecting} />
 
         {/* 帮助信息 */}
         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">

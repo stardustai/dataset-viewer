@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Share, Eye, EyeOff, Loader2 } from 'lucide-react';
-import type { ConnectionConfig } from '../../services/storage/types';
+import { Eye, EyeOff } from 'lucide-react';
+import type { ConnectionConfig } from '../../../services/storage/types';
+import { ConnectButton, ErrorDisplay } from '../common';
 
 interface SMBConnectionFormProps {
   config: Partial<ConnectionConfig>;
@@ -69,62 +70,52 @@ export const SMBConnectionForm: React.FC<SMBConnectionFormProps> = ({
     });
   };
 
-  const isFormValid = server && username && password && share;
-
   return (
     <form
       onSubmit={e => {
         e.preventDefault();
-        if (isFormValid) {
-          onConnect();
-        }
+        onConnect();
       }}
       className="space-y-4"
     >
-      {/* 服务器地址 */}
-      <div>
-        <label
-          htmlFor="smb-server"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          {t('smb.server')}
-        </label>
-        <input
-          id="smb-server"
-          type="text"
-          value={server}
-          onChange={e => handleServerChange(e.target.value)}
-          placeholder={t('smb.server.placeholder')}
-          className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          disabled={connecting}
-          required
-        />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {t('smb.server.description')}
-        </p>
-      </div>
-
-      {/* 共享名称 */}
-      <div>
-        <label
-          htmlFor="smb-share"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          {t('smb.share')}
-        </label>
-        <input
-          id="smb-share"
-          type="text"
-          value={share}
-          onChange={e => handleShareChange(e.target.value)}
-          placeholder={t('smb.share.placeholder')}
-          className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          disabled={connecting}
-          required
-        />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {t('smb.share.description')}
-        </p>
+      {/* SMB服务器和共享名称 - 在同一行 */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2">
+          <label
+            htmlFor="smb-server"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            {t('smb.server')}
+          </label>
+          <input
+            id="smb-server"
+            type="text"
+            value={server}
+            onChange={e => handleServerChange(e.target.value)}
+            placeholder={t('smb.server.placeholder')}
+            className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            disabled={connecting}
+            required
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="smb-share"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            {t('smb.share')}
+          </label>
+          <input
+            id="smb-share"
+            type="text"
+            value={share}
+            onChange={e => handleShareChange(e.target.value)}
+            placeholder={t('smb.share.placeholder')}
+            className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            disabled={connecting}
+            required
+          />
+        </div>
       </div>
 
       {/* 用户名 */}
@@ -209,30 +200,10 @@ export const SMBConnectionForm: React.FC<SMBConnectionFormProps> = ({
       )}
 
       {/* 错误消息 */}
-      {error && (
-        <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-          <div className="text-sm text-red-700 dark:text-red-400">{error}</div>
-        </div>
-      )}
+      <ErrorDisplay error={error || ''} />
 
       {/* 连接按钮 */}
-      <button
-        type="submit"
-        disabled={connecting || !isFormValid}
-        className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-800"
-      >
-        {connecting ? (
-          <>
-            <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-            {t('connecting')}
-          </>
-        ) : (
-          <>
-            <Share className="w-4 h-4 mr-2" />
-            {t('connect')}
-          </>
-        )}
-      </button>
+      <ConnectButton connecting={connecting} />
     </form>
   );
 };

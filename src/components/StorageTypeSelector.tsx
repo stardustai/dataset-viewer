@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Server, Folder, Cloud, Bot, Share, Terminal, ChevronDown } from 'lucide-react';
+import { Server, Folder, Cloud, Bot, Network, Terminal, ChevronDown } from 'lucide-react';
 import { StorageClientType } from '../services/storage/types';
 
 interface StorageTypeSelectorProps {
@@ -25,9 +25,9 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
     },
     {
       type: 'oss' as StorageClientType,
-      label: t('storage.type.oss'),
+      label: t('storage.type.s3'),
       icon: Cloud,
-      description: t('storage.type.oss.description'),
+      description: t('storage.type.s3.description'),
     },
     {
       type: 'huggingface' as StorageClientType,
@@ -54,7 +54,7 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
     {
       type: 'smb' as StorageClientType,
       label: t('storage.type.smb'),
-      icon: Share,
+      icon: Network,
       description: t('storage.type.smb.description'),
     },
   ];
