@@ -34,18 +34,15 @@ pub async fn system_select_folder(
                     .into_path()
                     .map_err(|e| format!("Failed to get path: {}", e))?;
 
-                // 确保返回正确的绝对路径
-                let path_str = if cfg!(target_os = "windows") {
-                    path_buf.to_string_lossy().to_string()
+                // 规范为绝对路径
+                let abs_path = if path_buf.is_absolute() {
+                    path_buf
                 } else {
-                    // 对于 Unix 系统，确保路径以 / 开头
-                    let path_str = path_buf.to_string_lossy().to_string();
-                    if path_str.starts_with('/') {
-                        path_str
-                    } else {
-                        format!("/{}", path_str)
-                    }
+                    std::env::current_dir()
+                        .map_err(|e| format!("Failed to get current dir: {}", e))?
+                        .join(path_buf)
                 };
+                let path_str = abs_path.to_string_lossy().to_string();
 
                 println!("Selected folder path: {}", path_str);
                 Ok(Some(path_str))
@@ -89,18 +86,15 @@ pub async fn system_select_file(
                     .into_path()
                     .map_err(|e| format!("Failed to get path: {}", e))?;
 
-                // 确保返回正确的绝对路径
-                let path_str = if cfg!(target_os = "windows") {
-                    path_buf.to_string_lossy().to_string()
+                // 规范为绝对路径
+                let abs_path = if path_buf.is_absolute() {
+                    path_buf
                 } else {
-                    // 对于 Unix 系统，确保路径以 / 开头
-                    let path_str = path_buf.to_string_lossy().to_string();
-                    if path_str.starts_with('/') {
-                        path_str
-                    } else {
-                        format!("/{}", path_str)
-                    }
+                    std::env::current_dir()
+                        .map_err(|e| format!("Failed to get current dir: {}", e))?
+                        .join(path_buf)
                 };
+                let path_str = abs_path.to_string_lossy().to_string();
 
                 println!("Selected file path: {}", path_str);
                 Ok(Some(path_str))

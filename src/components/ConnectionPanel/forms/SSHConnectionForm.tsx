@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, FolderSearch } from 'lucide-react';
+import { FolderSearch } from 'lucide-react';
 import type { ConnectionConfig } from '../../../services/storage/types';
 import { commands } from '../../../types/tauri-commands';
 import { ConnectButton, ErrorDisplay } from '../common';
+import { PasswordInput } from '../../common';
 
 interface SSHConnectionFormProps {
   config: Partial<ConnectionConfig>;
@@ -12,7 +13,6 @@ interface SSHConnectionFormProps {
   error?: string;
   onConnect: () => void;
   isPasswordFromStorage?: boolean;
-  onPasswordFocus?: () => void;
 }
 
 export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({
@@ -22,10 +22,8 @@ export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({
   error,
   onConnect,
   isPasswordFromStorage,
-  onPasswordFocus,
 }) => {
   const { t } = useTranslation();
-  const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState<'password' | 'privateKey'>('password');
 
   // 提取 SSH 特定配置
@@ -37,13 +35,17 @@ export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({
   const remotePath = config.rootPath || '/';
 
   // 根据现有配置自动选择认证方式
+  // 初始化认证模式，只在组件初始化时执行
   useEffect(() => {
+    // 如果配置中有私钥路径且没有密码，默认使用私钥认证
     if (privateKeyPath && !password) {
       setAuthMode('privateKey');
-    } else {
+    } else if (!privateKeyPath && password) {
+      // 如果有密码但没有私钥路径，使用密码认证
       setAuthMode('password');
     }
-  }, [privateKeyPath, password]);
+    // 如果都有或都没有，保持当前模式不变
+  }, []); // 空依赖数组，只在初始化时执行
 
   const handleServerChange = (value: string) => {
     onChange({
@@ -60,10 +62,15 @@ export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({
   };
 
   const handlePasswordChange = (value: string) => {
+    // 通过 onChange 更新配置
     onChange({
       ...config,
       password: value,
     });
+
+    // 如果密码为空且之前是从存储来的，需要额外处理
+    // 这通常发生在用户点击存储的密码输入框时
+    // PasswordInput 组件会自动调用 onChange('') 来清空密码
   };
 
   const handlePortChange = (value: string) => {
@@ -237,36 +244,14 @@ export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({
 
         {authMode === 'password' ? (
           /* 密码认证 */
-          <div className="mt-1 relative">
-            <input
-              id="ssh-password"
-              type={showPassword ? 'text' : 'password'}
+          <div className="mt-1">
+            <PasswordInput
+              id="password"
               value={password}
-              onChange={e => handlePasswordChange(e.target.value)}
-              onFocus={onPasswordFocus}
-              placeholder={
-                isPasswordFromStorage ? t('password.saved') : t('ssh.password.placeholder')
-              }
-              className="block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              disabled={connecting}
-              required
+              onChange={handlePasswordChange}
+              placeholder={t('ssh.password.placeholder')}
+              isFromStorage={isPasswordFromStorage}
             />
-            <button
-              type="button"
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5 text-gray-400" />
-              ) : (
-                <Eye className="h-5 w-5 text-gray-400" />
-              )}
-            </button>
-            {isPasswordFromStorage && (
-              <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                {t('password.click.new')}
-              </p>
-            )}
           </div>
         ) : (
           /* 私钥认证 */

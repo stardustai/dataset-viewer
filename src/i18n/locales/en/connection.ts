@@ -14,7 +14,7 @@ export const connection = {
   'features.virtual_scrolling': 'Virtual Scrolling',
   'features.virtual_scrolling.desc': 'Efficiently handle millions of data records',
   'features.multi_storage': 'Multi Data Source Support',
-  'features.multi_storage.desc': 'Support WebDAV, OSS and local file systems as data sources',
+  'features.multi_storage.desc': 'Support WebDAV, S3 and local file systems as data sources',
   'tech.stack': 'Tech Stack',
 
   // Storage types
@@ -37,6 +37,7 @@ export const connection = {
   'connection.name.ssh': 'SSH({{host}})',
   'connection.name.smb': 'SMB({{host}}/{{share}})',
   'connection.name.local': 'Local Files({{path}})',
+  'connection.name.s3': 'S3({{host}}-{{bucket}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
   'connection.name.huggingface': 'Hugging Face({{org}})',
 
@@ -48,7 +49,7 @@ export const connection = {
   password: 'Password',
   'password.placeholder': 'Your password',
   'password.saved': 'Using saved password',
-  'password.click.new': 'Click to enter new password',
+  'password.click.to.edit': 'Click to edit password',
   connecting: 'Connecting...',
   connect: 'Connect',
   optional: '(Optional)',

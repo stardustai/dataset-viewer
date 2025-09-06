@@ -908,9 +908,9 @@ impl StorageClient for HuggingFaceClient {
 
         // 准备认证头（如果有 API token）
         let auth_header = self
-            .config
-            .access_key
+            .api_token
             .as_ref()
+            .filter(|t| !t.trim().is_empty())
             .map(|token| format!("Bearer {}", token));
 
         // 使用通用HTTP下载工具

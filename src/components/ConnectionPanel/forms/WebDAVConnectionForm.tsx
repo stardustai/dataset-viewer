@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, Lock } from 'lucide-react';
+import { User } from 'lucide-react';
 import { ConnectButton, ErrorDisplay } from '../common';
+import { PasswordInput } from '../../common';
 
 interface WebDAVConnectionFormProps {
   url: string;
@@ -13,7 +14,6 @@ interface WebDAVConnectionFormProps {
   onUrlChange: (value: string) => void;
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
-  onPasswordFocus: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -27,7 +27,6 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
   onUrlChange,
   onUsernameChange,
   onPasswordChange,
-  onPasswordFocus,
   onSubmit,
 }) => {
   const { t } = useTranslation();
@@ -85,29 +84,14 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
             </span>
           )}
         </label>
-        <div className="relative">
-          <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400 dark:text-gray-500" />
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={e => {
-              if (!isPasswordFromStorage) {
-                onPasswordChange(e.target.value);
-              }
-            }}
-            onFocus={onPasswordFocus}
-            placeholder={
-              isPasswordFromStorage ? t('password.click.new') : t('password.placeholder')
-            }
-            className={`w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-              isPasswordFromStorage
-                ? 'bg-gray-50 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
-                : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
-            } placeholder-gray-500 dark:placeholder-gray-400`}
-            required
-          />
-        </div>
+        <PasswordInput
+          id="password"
+          value={password}
+          onChange={onPasswordChange}
+          placeholder={t('password.placeholder')}
+          isFromStorage={isPasswordFromStorage}
+          required
+        />
       </div>
 
       <ErrorDisplay error={error} />

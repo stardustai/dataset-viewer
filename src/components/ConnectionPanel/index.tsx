@@ -36,7 +36,6 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
               onStoredConnectionSelect={connectionLogic.handleSelectStoredConnection}
               onConnect={connectionLogic.handleConnectWithCurrentForm}
               onFormDataChange={connectionLogic.handleFormDataChange}
-              onPasswordFocus={connectionLogic.handlePasswordFocus}
             />
           </div>
         </div>

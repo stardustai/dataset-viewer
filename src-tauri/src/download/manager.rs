@@ -29,8 +29,14 @@ impl DownloadManager {
         // 获取合适的下载提供者
         let provider = DownloadProviderFactory::get_provider(&request.url).await?;
 
-        // 获取文件大小
-        let file_size = provider.get_file_size(&request).await?;
+        // 尝试获取文件大小，失败时回退到流式下载
+        let file_size = provider.get_file_size(&request).await.unwrap_or_else(|e| {
+            println!(
+                "Warning: Failed to get file size for {}: {}. Falling back to streaming download.",
+                request.filename, e
+            );
+            0 // 使用 0 表示未知大小
+        });
 
         // 设置下载（文件对话框、取消信号、进度跟踪器）
         let (save_path, _cancel_tx, mut cancel_rx, progress_tracker) =

@@ -14,7 +14,7 @@ export const connection = {
   'features.virtual_scrolling': '虚拟滚动',
   'features.virtual_scrolling.desc': '高效处理数百万行数据记录',
   'features.multi_storage': '多数据源支持',
-  'features.multi_storage.desc': '支持 WebDAV、OSS 和本地文件系统等多种数据源',
+  'features.multi_storage.desc': '支持 WebDAV、S3 和本地文件系统等多种数据源',
   'tech.stack': '技术栈',
 
   // 存储类型
@@ -37,6 +37,7 @@ export const connection = {
   'connection.name.ssh': 'SSH({{host}})',
   'connection.name.smb': 'SMB({{host}}/{{share}})',
   'connection.name.local': '本机文件({{path}})',
+  'connection.name.s3': 'S3({{host}}-{{bucket}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
   'connection.name.huggingface': 'Hugging Face({{org}})',
 
@@ -46,9 +47,9 @@ export const connection = {
   username: '用户名',
   'username.placeholder': '您的用户名',
   password: '密码',
-  'password.placeholder': '您的密码',
+  'password.placeholder': '请输入密码',
   'password.saved': '使用已保存的密码',
-  'password.click.new': '点击输入新密码',
+  'password.click.to.edit': '点击修改密码',
   connecting: '连接中...',
   connect: '连接',
   optional: '(可选)',

@@ -115,7 +115,7 @@ pub async fn storage_get_file_info(path: String) -> Result<FileInfo, String> {
 }
 
 /// 连接到存储服务
-/// 支持本地文件系统、WebDAV、OSS、HuggingFace 等多种协议
+/// 支持本地文件系统、WebDAV、S3、HuggingFace 等多种协议
 #[tauri::command]
 #[specta::specta]
 pub async fn storage_connect(config: ConnectionConfig) -> Result<bool, String> {

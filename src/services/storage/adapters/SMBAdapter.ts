@@ -18,19 +18,27 @@ export const smbStorageAdapter: StorageAdapter = {
       throw new Error('Not connected to SMB server');
     }
 
-    const cleanPath = path.replace(/^\/+/, '');
-    const server = connection.url;
-    const share = connection.share || '';
+    const rawPath = (path ?? '').toString();
+    const cleanPath = rawPath.replace(/^\/+/, '');
+    const server = String(connection.url)
+      .replace(/^smb:\/\//i, '')
+      .replace(/^\/+|\/+$/g, '');
+    let share = String(connection.share || '')
+      .trim()
+      .replace(/^[\/\\]+|[\/\\]+$/g, '');
 
     if (!share) {
       throw new Error('SMB share name is required');
     }
-
-    if (cleanPath) {
-      return `smb://${server}/${share}/${cleanPath}`;
-    } else {
-      return `smb://${server}/${share}`;
+    if (share.includes('/')) {
+      throw new Error('Invalid SMB share name');
     }
+    const encodedShare = encodeURIComponent(share);
+    const encodedPath = cleanPath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+
+    return encodedPath
+      ? `smb://${server}/${encodedShare}/${encodedPath}`
+      : `smb://${server}/${encodedShare}`;
   },
 
   generateConnectionName: (config: ConnectionConfig) => {

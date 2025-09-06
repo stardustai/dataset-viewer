@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff } from 'lucide-react';
 import type { ConnectionConfig } from '../../../services/storage/types';
 import { ConnectButton, ErrorDisplay } from '../common';
+import { PasswordInput } from '../../common';
 
 interface SMBConnectionFormProps {
   config: Partial<ConnectionConfig>;
@@ -11,7 +12,6 @@ interface SMBConnectionFormProps {
   error?: string;
   onConnect: () => void;
   isPasswordFromStorage?: boolean;
-  onPasswordFocus?: () => void;
   showAdvancedOptions?: boolean;
 }
 
@@ -22,7 +22,6 @@ export const SMBConnectionForm: React.FC<SMBConnectionFormProps> = ({
   error,
   onConnect,
   isPasswordFromStorage,
-  onPasswordFocus,
   showAdvancedOptions,
 }) => {
   const { t } = useTranslation();
@@ -147,15 +146,13 @@ export const SMBConnectionForm: React.FC<SMBConnectionFormProps> = ({
           {t('password')}
         </label>
         <div className="mt-1 relative">
-          <input
-            id="smb-password"
-            type={showPassword ? 'text' : 'password'}
+          <PasswordInput
+            id="password"
             value={password}
-            onChange={e => handlePasswordChange(e.target.value)}
-            onFocus={onPasswordFocus}
-            placeholder={isPasswordFromStorage ? t('password.saved') : t('password.placeholder')}
+            onChange={handlePasswordChange}
+            placeholder={t('password.placeholder')}
+            isFromStorage={isPasswordFromStorage}
             className="block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            disabled={connecting}
             required
           />
           <button
@@ -170,9 +167,6 @@ export const SMBConnectionForm: React.FC<SMBConnectionFormProps> = ({
             )}
           </button>
         </div>
-        {isPasswordFromStorage && (
-          <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">{t('password.click.new')}</p>
-        )}
       </div>
 
       {/* 高级选项 */}

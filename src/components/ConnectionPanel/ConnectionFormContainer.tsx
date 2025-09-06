@@ -24,7 +24,6 @@ interface ConnectionFormContainerProps {
   onStoredConnectionSelect: (connection: StoredConnection) => void;
   onConnect: () => void;
   onFormDataChange: (updates: Partial<Record<string, any>>) => void;
-  onPasswordFocus: () => void;
 }
 
 export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = ({
@@ -38,7 +37,6 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   onStoredConnectionSelect,
   onConnect,
   onFormDataChange,
-  onPasswordFocus,
 }) => {
   const { t } = useTranslation();
 
@@ -101,8 +99,13 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               isPasswordFromStorage={isPasswordFromStorage}
               onUrlChange={value => handleFormUpdate('url', value)}
               onUsernameChange={value => handleFormUpdate('username', value)}
-              onPasswordChange={value => handleFormUpdate('password', value)}
-              onPasswordFocus={onPasswordFocus}
+              onPasswordChange={value => {
+                handleFormUpdate('password', value);
+                // 当密码被清空时，标记为不再来自存储
+                if (value === '') {
+                  handleFormUpdate('isPasswordFromStorage', false);
+                }
+              }}
               onSubmit={handleSubmit}
             />
           ) : storageType === 'ssh' ? (
@@ -121,7 +124,13 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
                 const updates: Record<string, any> = {};
                 if (config.url !== undefined) updates.url = config.url;
                 if (config.username !== undefined) updates.username = config.username;
-                if (config.password !== undefined) updates.password = config.password;
+                if (config.password !== undefined) {
+                  updates.password = config.password;
+                  // 当密码被清空时，标记为不再来自存储
+                  if (config.password === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
                 if (config.port !== undefined) updates.port = config.port;
                 if (config.privateKeyPath !== undefined)
                   updates.privateKeyPath = config.privateKeyPath;
@@ -133,7 +142,6 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               error={error}
               onConnect={handleSubmit}
               isPasswordFromStorage={isPasswordFromStorage}
-              onPasswordFocus={onPasswordFocus}
             />
           ) : storageType === 'smb' ? (
             <SMBConnectionForm
@@ -149,7 +157,13 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
                 const updates: Record<string, any> = {};
                 if (config.url !== undefined) updates.url = config.url;
                 if (config.username !== undefined) updates.username = config.username;
-                if (config.password !== undefined) updates.password = config.password;
+                if (config.password !== undefined) {
+                  updates.password = config.password;
+                  // 当密码被清空时，标记为不再来自存储
+                  if (config.password === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
                 if (config.share !== undefined) updates.share = config.share;
                 if (config.domain !== undefined) updates.domain = config.domain;
                 onFormDataChange(updates);
@@ -158,7 +172,6 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               error={error}
               onConnect={handleSubmit}
               isPasswordFromStorage={isPasswordFromStorage}
-              onPasswordFocus={onPasswordFocus}
             />
           ) : storageType === 'local' ? (
             <LocalConnectionForm

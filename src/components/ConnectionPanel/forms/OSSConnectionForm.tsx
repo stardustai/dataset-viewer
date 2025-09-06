@@ -4,6 +4,7 @@ import { ConnectionConfig } from '../../../services/storage/types';
 import { StoredConnection } from '../../../services/connectionStorage';
 import { OSSPlatformSelector, OSS_PLATFORMS } from '../OSSPlatformSelector';
 import { ConnectButton, ErrorDisplay } from '../common';
+import { PasswordInput } from '../../common';
 
 interface OSSConnectionFormProps {
   onConnect: (config: ConnectionConfig) => Promise<void>;
@@ -376,16 +377,15 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
             >
               {t('oss.secret.key')}
             </label>
-            <input
-              type="password"
+            <PasswordInput
               id="secretKey"
               value={config.secretKey}
-              onChange={e => handleInputChange('secretKey', e.target.value)}
+              onChange={value => handleInputChange('secretKey', value)}
+              placeholder={t('oss.secret.key.placeholder')}
+              isFromStorage={config.secretKey === '••••••••'}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.secretKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
               }`}
-              placeholder={t('oss.secret.key.placeholder')}
-              disabled={connecting}
               required
             />
             {errors.secretKey && (

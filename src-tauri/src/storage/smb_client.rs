@@ -38,44 +38,32 @@ impl SMBClient {
         let share = self.config.share.clone().unwrap_or_default();
         let username = self.config.username.clone().unwrap_or_default();
         let password = self.config.password.clone().unwrap_or_default();
-        let client_arc = self.client.clone();
-        let connected = Arc::new(AtomicBool::new(false));
-        let connected_clone = connected.clone();
 
-        spawn_blocking(move || -> Result<(), StorageError> {
-            tokio::runtime::Handle::current().block_on(async {
-                // 创建客户端配置
-                let client_config = ClientConfig::default();
-                let mut client = Client::new(client_config);
+        // 创建客户端配置
+        let client_config = ClientConfig::default();
+        let mut client = Client::new(client_config);
 
-                // 构建 UNC 路径
-                let unc_path_str = format!("\\\\{}\\{}", server, share);
-                let unc_path = UncPath::from_str(&unc_path_str)
-                    .map_err(|e| StorageError::InvalidConfig(format!("Invalid UNC path: {}", e)))?;
+        // 构建 UNC 路径
+        let unc_path_str = format!("\\\\{}\\{}", server, share);
+        let unc_path = UncPath::from_str(&unc_path_str)
+            .map_err(|e| StorageError::InvalidConfig(format!("Invalid UNC path: {}", e)))?;
 
-                // 连接到共享
-                client
-                    .share_connect(&unc_path, &username, password)
-                    .await
-                    .map_err(|e| {
-                        StorageError::ConnectionFailed(format!(
-                            "Failed to connect to SMB share {}: {}",
-                            share, e
-                        ))
-                    })?;
+        // 连接到共享
+        client
+            .share_connect(&unc_path, &username, password)
+            .await
+            .map_err(|e| {
+                StorageError::ConnectionFailed(format!(
+                    "Failed to connect to SMB share {}: {}",
+                    share, e
+                ))
+            })?;
 
-                // 存储客户端
-                {
-                    let mut client_guard = client_arc.lock().unwrap();
-                    *client_guard = Some(client);
-                }
-
-                connected_clone.store(true, Ordering::Release);
-                Ok(())
-            })
-        })
-        .await
-        .map_err(|e| StorageError::ConnectionFailed(format!("Task join error: {}", e)))??;
+        // 存储客户端
+        {
+            let mut client_guard = self.client.lock().unwrap();
+            *client_guard = Some(client);
+        }
 
         self.connected.store(true, Ordering::Release);
         Ok(())

@@ -44,9 +44,9 @@ impl ProgressTracker {
 
         // 检查是否有显著的进度变化（至少1%的变化或每64KB）
         if let Ok(last_progress) = self.last_emitted_progress.lock() {
-            // 进度变化至少1%，或者每64KB发送一次，或者是最后的数据块
+            // 进度变化至少1%，或者每64KB发送一次（但避免在开始时重复发送0%），或者是最后的数据块
             current_progress > *last_progress
-                || downloaded % (64 * 1024) == 0
+                || (downloaded > 0 && downloaded % (64 * 1024) == 0)
                 || (total_size > 0 && downloaded == total_size)
         } else {
             true // 如果无法获取锁，就发送进度

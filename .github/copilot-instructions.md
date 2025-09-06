@@ -23,7 +23,7 @@ Cross-platform Tauri application for unified dataset browsing with massive file 
 - **Build**: Vite 6 + PNPM
 
 ## Key Features
-- **Multi-Protocol Support**: WebDAV, OSS, Local Files, HuggingFace Hub
+- **Multi-Protocol Support**: WebDAV, S3, Local Files, HuggingFace Hub
 - **Large File Support**: Stream 100GB+ files with chunked loading
 - **Archive Preview**: Stream ZIP/TAR files without extraction
 - **Virtual Scrolling**: Handle millions of lines efficiently
@@ -32,7 +32,7 @@ Cross-platform Tauri application for unified dataset browsing with massive file 
 
 ## Storage Architecture
 - **BaseStorageClient**: Abstract base class with unified `toProtocolUrl()` method
-- **Protocol-specific clients**: WebDAV, OSS, Local, HuggingFace implementations
+- **Protocol-specific clients**: WebDAV, S3, Local, HuggingFace implementations
 - **Protocol URL Standards**:
   - OSS: `oss://bucket/path`
   - WebDAV: `webdav://host/path`
