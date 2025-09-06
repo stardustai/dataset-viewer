@@ -84,4 +84,45 @@ export const sshStorageAdapter: StorageAdapter = {
       connected: true,
     };
   },
+
+  // === 新增的标准方法实现 ===
+
+  getDefaultConfig: () => ({
+    port: 22,
+    rootPath: '/',
+    privateKeyPath: '',
+    passphrase: '',
+  }),
+
+  buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
+    const config: ConnectionConfig = {
+      type: 'ssh',
+      url: formData.url?.trim(),
+      username: formData.username?.trim(),
+      password:
+        formData.isPasswordFromStorage && existingConnection?.config.password
+          ? existingConnection.config.password
+          : formData.password,
+      port: formData.port || 22,
+      privateKeyPath: formData.privateKeyPath?.trim() || undefined,
+      passphrase: formData.passphrase?.trim() || undefined,
+      rootPath: formData.rootPath?.trim() || '/',
+      name: existingConnection
+        ? existingConnection.name
+        : `SSH (${formData.url?.trim() || 'unknown'}${formData.port && formData.port !== 22 ? `:${formData.port}` : ''})`,
+    };
+
+    return config;
+  },
+
+  extractFormData: (config: ConnectionConfig) => ({
+    url: config.url || '',
+    username: config.username || '',
+    password: config.password || '',
+    port: config.port || 22,
+    privateKeyPath: config.privateKeyPath || '',
+    passphrase: config.passphrase || '',
+    rootPath: config.rootPath || '/',
+    isPasswordFromStorage: !!config.password, // 如果有密码，标记为来自存储
+  }),
 };

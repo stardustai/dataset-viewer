@@ -64,6 +64,20 @@ export interface StorageAdapter {
   ) => { showWelcome?: boolean; customMessage?: string };
   /** 特定的连接后处理 */
   postConnect?: (connection: any, config: ConnectionConfig) => any;
+
+  // === 新增的标准方法（用于重构连接管理逻辑） ===
+
+  /** 获取默认配置 */
+  getDefaultConfig?: () => Partial<ConnectionConfig>;
+
+  /** 构建完整的连接配置（用于替代组件中的配置构建逻辑） */
+  buildConnectionConfig?: (
+    formData: Record<string, any>,
+    existingConnection?: any
+  ) => ConnectionConfig;
+
+  /** 从存储的连接中提取表单数据（用于表单回填） */
+  extractFormData?: (config: ConnectionConfig) => Record<string, any>;
 }
 
 /**
@@ -462,26 +476,8 @@ export class StorageClient implements IStorageClient {
   }): Promise<boolean> {
     try {
       // 构建符合 Tauri 后端 ConnectionConfig 的对象
-      const tauriConfig: TauriConnectionConfig = {
-        protocol: config.protocol,
-        url: config.url ?? null,
-        username: config.username ?? null,
-        password: config.password ?? null,
-        accessKey: config.accessKey ?? null,
-        secretKey: config.secretKey ?? null,
-        region: config.region ?? null,
-        bucket: config.bucket ?? null,
-        endpoint: config.endpoint ?? null,
-        extraOptions: config.extraOptions ?? null,
-        port: null,
-        privateKeyPath: null,
-        passphrase: null,
-        rootPath: null,
-        share: null,
-        domain: null,
-      };
-
-      const result = await commands.storageConnect(tauriConfig);
+      const backendConfig = this.buildBackendConfig(config);
+      const result = await commands.storageConnect(backendConfig);
 
       if (result.status === 'error') {
         console.error(`${config.protocol} connection failed:`, result.error);
@@ -570,7 +566,7 @@ export class StorageClient implements IStorageClient {
   /**
    * 构建后端连接配置
    */
-  private buildBackendConfig(config: any): any {
+  private buildBackendConfig(config: any): TauriConnectionConfig {
     return {
       protocol: this.protocol,
       url: config.url || null,
@@ -596,3 +592,10 @@ export class StorageClient implements IStorageClient {
 
 // 导出适配器映射，供外部使用
 export { STORAGE_ADAPTERS };
+
+/**
+ * 获取指定存储类型的适配器
+ */
+export function getStorageAdapter(storageType: StorageClientType): StorageAdapter {
+  return STORAGE_ADAPTERS[storageType];
+}

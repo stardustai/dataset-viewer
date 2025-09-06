@@ -21,7 +21,7 @@ export const smbStorageAdapter: StorageAdapter = {
     const cleanPath = path.replace(/^\/+/, '');
     const server = connection.url;
     const share = connection.share || '';
-    
+
     if (!share) {
       throw new Error('SMB share name is required');
     }
@@ -55,4 +55,39 @@ export const smbStorageAdapter: StorageAdapter = {
       connected: true,
     };
   },
+
+  // === 新增的标准方法实现 ===
+
+  getDefaultConfig: () => ({
+    share: '',
+    domain: '',
+  }),
+
+  buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
+    const config: ConnectionConfig = {
+      type: 'smb',
+      url: formData.url?.trim(),
+      username: formData.username?.trim(),
+      password:
+        formData.isPasswordFromStorage && existingConnection?.config.password
+          ? existingConnection.config.password
+          : formData.password,
+      share: formData.share?.trim(),
+      domain: formData.domain?.trim() || undefined,
+      name: existingConnection
+        ? existingConnection.name
+        : `SMB (${formData.url?.trim() || 'unknown'}/${formData.share?.trim() || 'share'})`,
+    };
+
+    return config;
+  },
+
+  extractFormData: (config: ConnectionConfig) => ({
+    url: config.url || '',
+    username: config.username || '',
+    password: config.password || '',
+    share: config.share || '',
+    domain: config.domain || '',
+    isPasswordFromStorage: !!config.password, // 如果有密码，标记为来自存储
+  }),
 };

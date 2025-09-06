@@ -18,9 +18,9 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
         <LanguageSwitcher />
       </div>
 
-      <div className="min-h-screen flex items-center justify-center p-0 sm:p-4 lg:p-8">
+      <div className="min-h-screen flex items-stretch sm:items-center justify-center p-0 sm:p-4 lg:p-8">
         <div className="w-full max-w-none sm:max-w-6xl h-full">
-          <div className="grid lg:grid-cols-2 gap-0 sm:gap-8 items-center px-0 sm:px-4 lg:px-0 h-full">
+          <div className="grid lg:grid-cols-2 gap-0 sm:gap-8 items-stretch sm:items-center px-0 sm:px-4 lg:px-0 h-full min-h-screen sm:min-h-0">
             {/* 左侧：功能介绍和品牌展示 */}
             <FeatureShowcase />
 
@@ -28,37 +28,15 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) =
             <ConnectionFormContainer
               storageType={connectionLogic.storageType}
               selectedStoredConnection={connectionLogic.selectedStoredConnection}
-              url={connectionLogic.url}
-              username={connectionLogic.username}
-              password={connectionLogic.password}
+              formData={connectionLogic.formData}
               connecting={connectionLogic.connecting}
               error={connectionLogic.error}
               isPasswordFromStorage={connectionLogic.isPasswordFromStorage}
-              defaultLocalPath={connectionLogic.defaultLocalPath}
-              sshPort={connectionLogic.sshPort}
-              sshPrivateKeyPath={connectionLogic.sshPrivateKeyPath}
-              sshPassphrase={connectionLogic.sshPassphrase}
-              sshRemotePath={connectionLogic.sshRemotePath}
-              smbShare={connectionLogic.smbShare}
-              smbDomain={connectionLogic.smbDomain}
               onStorageTypeChange={connectionLogic.handleStorageTypeChange}
               onStoredConnectionSelect={connectionLogic.handleSelectStoredConnection}
-              onWebDAVConnect={connectionLogic.handleWebDAVConnect}
-              onSSHConnect={connectionLogic.handleSSHConnect}
-              onSMBConnect={connectionLogic.handleSMBConnect}
-              onLocalConnect={connectionLogic.handleLocalConnect}
-              onOSSConnect={connectionLogic.handleOSSConnect}
-              onHuggingFaceConnect={connectionLogic.handleHuggingFaceConnect}
-              onUrlChange={connectionLogic.handleUrlChange}
-              onUsernameChange={connectionLogic.handleUsernameChange}
-              onPasswordChange={connectionLogic.handlePasswordChange}
+              onConnect={connectionLogic.handleConnectWithCurrentForm}
+              onFormDataChange={connectionLogic.handleFormDataChange}
               onPasswordFocus={connectionLogic.handlePasswordFocus}
-              onSshPortChange={connectionLogic.setSshPort}
-              onSshPrivateKeyPathChange={connectionLogic.setSshPrivateKeyPath}
-              onSshPassphraseChange={connectionLogic.setSshPassphrase}
-              onSshRemotePathChange={connectionLogic.setSshRemotePath}
-              onSmbShareChange={connectionLogic.setSmbShare}
-              onSmbDomainChange={connectionLogic.setSmbDomain}
             />
           </div>
         </div>

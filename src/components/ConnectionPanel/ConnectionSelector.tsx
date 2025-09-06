@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
 import { StoredConnection } from '../../services/connectionStorage';
@@ -79,6 +79,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   const [editName, setEditName] = useState('');
   const [deletedConnection, setDeletedConnection] = useState<StoredConnection | null>(null);
   const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const loadConnections = () => {
     setConnections(StorageServiceManager.getStoredConnections());
@@ -87,6 +88,27 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   useEffect(() => {
     loadConnections();
   }, []);
+
+  // 点击外部区域关闭下拉框
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        // 如果正在编辑，也取消编辑状态
+        if (editingId) {
+          handleCancelEdit();
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, editingId]);
 
   // 组件卸载时清理计时器
   useEffect(() => {
@@ -190,7 +212,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}

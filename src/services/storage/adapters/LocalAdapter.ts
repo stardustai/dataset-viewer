@@ -65,4 +65,27 @@ export const localStorageAdapter: StorageAdapter = {
       displayPath: rootPath.split('/').pop() || rootPath,
     };
   },
+
+  // === 新增的标准方法实现 ===
+
+  getDefaultConfig: () => ({}),
+
+  buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
+    const rootPath = formData.rootPath?.trim() || formData.url?.trim();
+
+    const config: ConnectionConfig = {
+      type: 'local',
+      url: rootPath,
+      rootPath: rootPath,
+      name: existingConnection
+        ? existingConnection.name
+        : `Local (${rootPath?.split('/').pop() || 'unknown'})`,
+    };
+
+    return config;
+  },
+
+  extractFormData: (config: ConnectionConfig) => ({
+    rootPath: config.rootPath || config.url || '',
+  }),
 };

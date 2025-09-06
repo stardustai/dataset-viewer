@@ -124,4 +124,38 @@ export const ossStorageAdapter: StorageAdapter = {
     const cleanBucket = bucket.split('/')[0]; // 只显示 bucket 名称，不包含路径
     return `OSS (${cleanBucket})`;
   },
+
+  // === 新增的标准方法实现 ===
+
+  getDefaultConfig: () => ({
+    region: 'us-east-1',
+  }),
+
+  buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
+    const config: ConnectionConfig = {
+      type: 'oss',
+      url: formData.url?.trim(),
+      region: formData.region?.trim() || 'us-east-1',
+      bucket: formData.bucket?.trim(),
+      username: formData.username?.trim(),
+      password:
+        formData.isPasswordFromStorage && existingConnection?.config.password
+          ? existingConnection.config.password
+          : formData.password,
+      name: existingConnection
+        ? existingConnection.name
+        : `OSS (${formData.bucket?.trim()?.split('/')[0] || 'unknown'})`,
+    };
+
+    return config;
+  },
+
+  extractFormData: (config: ConnectionConfig) => ({
+    url: config.url || '',
+    region: config.region || 'us-east-1',
+    bucket: config.bucket || '',
+    username: config.username || '',
+    password: config.password || '',
+    isPasswordFromStorage: !!config.password, // 如果有密钥，标记为来自存储
+  }),
 };

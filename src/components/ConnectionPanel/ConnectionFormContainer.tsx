@@ -16,75 +16,42 @@ import {
 interface ConnectionFormContainerProps {
   storageType: StorageClientType;
   selectedStoredConnection: StoredConnection | null;
-  url: string;
-  username: string;
-  password: string;
+  formData: Record<string, any>;
   connecting: boolean;
   error: string;
   isPasswordFromStorage: boolean;
-  defaultLocalPath: string;
-  sshPort: number;
-  sshPrivateKeyPath: string;
-  sshPassphrase: string;
-  sshRemotePath: string;
-  smbShare: string;
-  smbDomain: string;
   onStorageTypeChange: (type: StorageClientType) => void;
   onStoredConnectionSelect: (connection: StoredConnection) => void;
-  onWebDAVConnect: (e: React.FormEvent) => void;
-  onSSHConnect: (config: ConnectionConfig) => Promise<void>;
-  onSMBConnect: (config: ConnectionConfig) => Promise<void>;
-  onLocalConnect: (rootPath: string) => void;
-  onOSSConnect: (config: ConnectionConfig) => Promise<void>;
-  onHuggingFaceConnect: (config: ConnectionConfig) => Promise<void>;
-  onUrlChange: (value: string) => void;
-  onUsernameChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
+  onConnect: () => void;
+  onFormDataChange: (updates: Partial<Record<string, any>>) => void;
   onPasswordFocus: () => void;
-  onSshPortChange: (value: number) => void;
-  onSshPrivateKeyPathChange: (value: string) => void;
-  onSshPassphraseChange: (value: string) => void;
-  onSshRemotePathChange: (value: string) => void;
-  onSmbShareChange: (value: string) => void;
-  onSmbDomainChange: (value: string) => void;
 }
 
 export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = ({
   storageType,
   selectedStoredConnection,
-  url,
-  username,
-  password,
+  formData,
   connecting,
   error,
   isPasswordFromStorage,
-  defaultLocalPath,
-  sshPort,
-  sshPrivateKeyPath,
-  sshPassphrase,
-  sshRemotePath,
-  smbShare,
-  smbDomain,
   onStorageTypeChange,
   onStoredConnectionSelect,
-  onWebDAVConnect,
-  onSSHConnect,
-  onSMBConnect,
-  onLocalConnect,
-  onOSSConnect,
-  onHuggingFaceConnect,
-  onUrlChange,
-  onUsernameChange,
-  onPasswordChange,
+  onConnect,
+  onFormDataChange,
   onPasswordFocus,
-  onSshPortChange,
-  onSshPrivateKeyPathChange,
-  onSshPassphraseChange,
-  onSshRemotePathChange,
-  onSmbShareChange,
-  onSmbDomainChange,
 }) => {
   const { t } = useTranslation();
+
+  // 创建表单更新助手函数
+  const handleFormUpdate = (field: string, value: any) => {
+    onFormDataChange({ [field]: value });
+  };
+
+  // 创建表单提交处理器
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    onConnect();
+  };
 
   return (
     <div className="w-full max-w-none sm:max-w-md mx-0 sm:mx-auto lg:mx-0 h-full sm:h-auto">
@@ -104,8 +71,8 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               {t('saved.connections')}
             </label>
             <ConnectionSelector
-              onSelect={onStoredConnectionSelect}
               selectedConnection={selectedStoredConnection}
+              onSelect={onStoredConnectionSelect}
             />
           </div>
 
@@ -126,62 +93,45 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
           {/* 根据存储类型显示不同的表单 */}
           {storageType === 'webdav' ? (
             <WebDAVConnectionForm
-              url={url}
-              username={username}
-              password={password}
+              url={formData.url || ''}
+              username={formData.username || ''}
+              password={formData.password || ''}
               connecting={connecting}
               error={error}
               isPasswordFromStorage={isPasswordFromStorage}
-              onUrlChange={onUrlChange}
-              onUsernameChange={onUsernameChange}
-              onPasswordChange={onPasswordChange}
+              onUrlChange={value => handleFormUpdate('url', value)}
+              onUsernameChange={value => handleFormUpdate('username', value)}
+              onPasswordChange={value => handleFormUpdate('password', value)}
               onPasswordFocus={onPasswordFocus}
-              onSubmit={onWebDAVConnect}
+              onSubmit={handleSubmit}
             />
           ) : storageType === 'ssh' ? (
             <SSHConnectionForm
               config={{
                 type: 'ssh',
-                url,
-                username,
-                password,
-                port: sshPort,
-                privateKeyPath: sshPrivateKeyPath,
-                passphrase: sshPassphrase,
-                rootPath: sshRemotePath,
+                url: formData.url || '',
+                username: formData.username || '',
+                password: formData.password || '',
+                port: formData.port || 22,
+                privateKeyPath: formData.privateKeyPath || '~/.ssh/id_rsa',
+                passphrase: formData.passphrase || '',
+                rootPath: formData.rootPath || '/',
               }}
               onChange={config => {
-                if (config.url !== undefined) onUrlChange(config.url);
-                if (config.username !== undefined) onUsernameChange(config.username);
-                if (config.password !== undefined) onPasswordChange(config.password);
-                if (config.port !== undefined) onSshPortChange(config.port);
+                const updates: Record<string, any> = {};
+                if (config.url !== undefined) updates.url = config.url;
+                if (config.username !== undefined) updates.username = config.username;
+                if (config.password !== undefined) updates.password = config.password;
+                if (config.port !== undefined) updates.port = config.port;
                 if (config.privateKeyPath !== undefined)
-                  onSshPrivateKeyPathChange(config.privateKeyPath);
-                if (config.passphrase !== undefined) onSshPassphraseChange(config.passphrase);
-                if (config.rootPath !== undefined) onSshRemotePathChange(config.rootPath);
+                  updates.privateKeyPath = config.privateKeyPath;
+                if (config.passphrase !== undefined) updates.passphrase = config.passphrase;
+                if (config.rootPath !== undefined) updates.rootPath = config.rootPath;
+                onFormDataChange(updates);
               }}
               connecting={connecting}
               error={error}
-              onConnect={() => {
-                // Create config and call onSSHConnect
-                const config: ConnectionConfig = {
-                  type: 'ssh',
-                  url: url.trim(),
-                  username: username.trim(),
-                  password:
-                    isPasswordFromStorage && selectedStoredConnection?.config.password
-                      ? selectedStoredConnection.config.password
-                      : password,
-                  port: sshPort,
-                  privateKeyPath: sshPrivateKeyPath.trim() || undefined,
-                  passphrase: sshPassphrase.trim() || undefined,
-                  rootPath: sshRemotePath.trim() || '/',
-                  name: selectedStoredConnection
-                    ? selectedStoredConnection.name
-                    : `SSH (${url.trim()})`,
-                };
-                onSSHConnect(config);
-              }}
+              onConnect={handleSubmit}
               isPasswordFromStorage={isPasswordFromStorage}
               onPasswordFocus={onPasswordFocus}
             />
@@ -189,65 +139,67 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
             <SMBConnectionForm
               config={{
                 type: 'smb',
-                url,
-                username,
-                password,
-                share: smbShare,
-                domain: smbDomain,
+                url: formData.url || '',
+                username: formData.username || '',
+                password: formData.password || '',
+                share: formData.share || '',
+                domain: formData.domain || '',
               }}
               onChange={config => {
-                if (config.url !== undefined) onUrlChange(config.url);
-                if (config.username !== undefined) onUsernameChange(config.username);
-                if (config.password !== undefined) onPasswordChange(config.password);
-                if (config.share !== undefined) onSmbShareChange(config.share);
-                if (config.domain !== undefined) onSmbDomainChange(config.domain);
+                const updates: Record<string, any> = {};
+                if (config.url !== undefined) updates.url = config.url;
+                if (config.username !== undefined) updates.username = config.username;
+                if (config.password !== undefined) updates.password = config.password;
+                if (config.share !== undefined) updates.share = config.share;
+                if (config.domain !== undefined) updates.domain = config.domain;
+                onFormDataChange(updates);
               }}
               connecting={connecting}
               error={error}
-              onConnect={() => {
-                // Create config and call onSMBConnect
-                const config: ConnectionConfig = {
-                  type: 'smb',
-                  url: url.trim(),
-                  username: username.trim(),
-                  password:
-                    isPasswordFromStorage && selectedStoredConnection?.config.password
-                      ? selectedStoredConnection.config.password
-                      : password,
-                  share: smbShare.trim(),
-                  domain: smbDomain.trim() || undefined,
-                  name: selectedStoredConnection
-                    ? selectedStoredConnection.name
-                    : `SMB (${url.trim()}/${smbShare.trim()})`,
-                };
-                onSMBConnect(config);
-              }}
+              onConnect={handleSubmit}
               isPasswordFromStorage={isPasswordFromStorage}
               onPasswordFocus={onPasswordFocus}
             />
           ) : storageType === 'local' ? (
             <LocalConnectionForm
-              onConnect={onLocalConnect}
+              defaultPath={formData.rootPath || ''}
               connecting={connecting}
               error={error}
-              defaultPath={
-                selectedStoredConnection?.config.type === 'local'
-                  ? selectedStoredConnection.config.rootPath || ''
-                  : defaultLocalPath
-              }
+              onConnect={(rootPath: string) => {
+                handleFormUpdate('rootPath', rootPath);
+                handleSubmit();
+              }}
             />
           ) : storageType === 'oss' ? (
             <OSSConnectionForm
-              onConnect={onOSSConnect}
+              selectedConnection={selectedStoredConnection}
               connecting={connecting}
               error={error}
-              selectedConnection={selectedStoredConnection}
+              onConnect={async (config: ConnectionConfig) => {
+                // 更新formData以保存配置
+                onFormDataChange({
+                  endpoint: config.endpoint,
+                  bucket: config.bucket,
+                  region: config.region,
+                  platform: config.platform,
+                });
+                // 触发连接
+                handleSubmit();
+              }}
             />
           ) : storageType === 'huggingface' ? (
             <HuggingFaceConnectionForm
-              onConnect={onHuggingFaceConnect}
-              isConnecting={connecting}
               selectedConnection={selectedStoredConnection}
+              isConnecting={connecting}
+              onConnect={async (config: ConnectionConfig) => {
+                // 更新formData以保存配置
+                onFormDataChange({
+                  apiToken: config.apiToken,
+                  organization: config.organization,
+                });
+                // 触发连接
+                handleSubmit();
+              }}
             />
           ) : null}
         </div>

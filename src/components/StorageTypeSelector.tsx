@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Server, Folder, Cloud, Bot, Network, Terminal, ChevronDown } from 'lucide-react';
 import { StorageClientType } from '../services/storage/types';
@@ -58,6 +58,14 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
       description: t('storage.type.smb.description'),
     },
   ];
+
+  // 当选择的类型在第二行时，自动展开选择器
+  useEffect(() => {
+    const isSecondaryType = secondaryStorageTypes.some(type => type.type === selectedType);
+    if (isSecondaryType) {
+      setIsExpanded(true);
+    }
+  }, [selectedType]);
 
   const renderStorageButton = ({ type, label, icon: Icon, description }: any) => (
     <button
