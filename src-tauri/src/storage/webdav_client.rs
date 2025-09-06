@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use base64::engine::general_purpose;
 use base64::Engine;
-use futures_util::StreamExt;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use reqwest::Client;
@@ -13,6 +12,7 @@ use crate::storage::traits::{
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
     StorageFile, StorageRequest, StorageResponse,
 };
+use crate::utils::http_downloader::HttpDownloader;
 
 pub struct WebDAVClient {
     client: Client,
@@ -310,6 +310,8 @@ impl StorageClient for WebDAVClient {
         progress_callback: Option<ProgressCallback>,
         mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
+        use futures_util::StreamExt; // 这里需要StreamExt用于内存读取
+
         if !self.connected.load(Ordering::Relaxed) {
             return Err(StorageError::NotConnected);
         }
@@ -486,15 +488,25 @@ impl StorageClient for WebDAVClient {
         Ok(download_url)
     }
 
-    fn get_download_headers(&self) -> HashMap<String, String> {
-        let mut headers = HashMap::new();
+    async fn download_file(
+        &self,
+        path: &str,
+        save_path: &std::path::Path,
+        progress_callback: Option<ProgressCallback>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<(), StorageError> {
+        let url = self.parse_path_to_url(path)?;
 
-        // 添加 WebDAV 认证头
-        if let Some(ref auth) = self.auth_header {
-            headers.insert("Authorization".to_string(), auth.clone());
-        }
-
-        headers
+        // 使用通用HTTP下载工具
+        HttpDownloader::download_with_auth(
+            &self.client,
+            &url,
+            self.auth_header.as_deref(),
+            save_path,
+            progress_callback,
+            cancel_rx,
+        )
+        .await
     }
 }
 

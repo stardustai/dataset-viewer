@@ -90,8 +90,14 @@ pub enum StorageError {
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),
 
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+
     #[error("Request failed: {0}")]
     RequestFailed(String),
+
+    #[error("File not found: {0}")]
+    NotFound(String),
 
     #[error("Invalid configuration: {0}")]
     InvalidConfig(String),
@@ -183,11 +189,16 @@ pub trait StorageClient: Send + Sync {
         Ok(path.to_string())
     }
 
-    /// 获取下载时需要的认证头（用于需要认证的存储如 WebDAV）
-    fn get_download_headers(&self) -> HashMap<String, String> {
-        // 默认实现：返回空的 headers，适用于不需要认证头的存储
-        HashMap::new()
-    }
+    /// 下载文件到指定路径，支持进度回调和取消
+    /// 各个存储客户端应该实现高效的流式下载策略
+    /// 默认实现使用分块读取，但建议各客户端根据协议特性优化
+    async fn download_file(
+        &self,
+        path: &str,
+        save_path: &std::path::Path,
+        progress_callback: Option<ProgressCallback>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<(), StorageError>;
 
     /// 获取协议名称
     fn protocol(&self) -> &str;

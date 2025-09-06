@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use smb::packets::fscc::FileAccessMask;
 use smb::resource::Resource;
 use smb::{Client, ClientConfig, FileCreateArgs, UncPath};
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -11,7 +10,7 @@ use std::sync::{
 use tokio::task::spawn_blocking;
 
 use crate::storage::traits::{
-    ConnectionConfig, DirectoryResult, ListOptions, StorageClient, StorageError,
+    ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
 };
 
 pub struct SMBClient {
@@ -279,8 +278,70 @@ impl StorageClient for SMBClient {
         Ok(full_path)
     }
 
-    fn get_download_headers(&self) -> HashMap<String, String> {
-        // SMB doesn't use HTTP headers for authentication
-        HashMap::new()
+    /// SMB 文件下载实现，使用分块读取（待实现完整 SMB 流式支持）
+    async fn download_file(
+        &self,
+        path: &str,
+        save_path: &std::path::Path,
+        progress_callback: Option<ProgressCallback>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<(), StorageError> {
+        use tokio::io::AsyncWriteExt;
+
+        // 获取文件大小
+        let file_size = self.get_file_size(path).await?;
+
+        // 创建本地文件
+        let mut file = tokio::fs::File::create(save_path)
+            .await
+            .map_err(|e| StorageError::IoError(format!("Failed to create file: {}", e)))?;
+
+        // 使用较大的块大小减少网络请求次数
+        let chunk_size = std::cmp::max(
+            crate::utils::chunk_size::calculate_optimal_chunk_size(file_size),
+            1024 * 1024, // 至少 1MB
+        );
+        let mut written = 0u64;
+
+        while written < file_size {
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if cancel_rx.try_recv().is_ok() {
+                    let _ = tokio::fs::remove_file(save_path).await;
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
+                }
+            }
+
+            let remaining = file_size - written;
+            let current_chunk_size = std::cmp::min(chunk_size as u64, remaining);
+
+            let chunk_data = self
+                .read_file_range(path, written, current_chunk_size)
+                .await?;
+
+            file.write_all(&chunk_data)
+                .await
+                .map_err(|e| StorageError::IoError(format!("Failed to write data: {}", e)))?;
+
+            written += chunk_data.len() as u64;
+
+            // 调用进度回调
+            if let Some(ref callback) = progress_callback {
+                callback(written, file_size);
+            }
+
+            // 如果读取的数据少于请求的数据，说明文件结束了
+            if chunk_data.len() < current_chunk_size as usize {
+                break;
+            }
+        }
+
+        file.flush()
+            .await
+            .map_err(|e| StorageError::IoError(format!("Failed to flush file: {}", e)))?;
+
+        Ok(())
     }
 }

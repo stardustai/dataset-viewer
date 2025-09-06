@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use futures_util::StreamExt;
 use reqwest::Client;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -14,6 +13,7 @@ use crate::storage::oss::{
 use crate::storage::traits::{
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
 };
+use crate::utils::http_downloader::HttpDownloader;
 
 #[derive(Debug, Clone, PartialEq)]
 enum OSSPlatform {
@@ -486,6 +486,8 @@ impl StorageClient for OSSClient {
         progress_callback: Option<ProgressCallback>,
         mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
+        use futures_util::StreamExt; // 这里需要StreamExt用于内存读取
+
         if !self.is_connected().await {
             return Err(StorageError::NotConnected);
         }
@@ -806,5 +808,36 @@ impl StorageClient for OSSClient {
 
         // 生成 1 小时有效期的预签名下载 URL
         self.generate_download_url(&object_key, 3600)
+    }
+
+    /// 高效的 OSS 文件下载实现，使用 HTTP 流式下载
+    async fn download_file(
+        &self,
+        path: &str,
+        save_path: &std::path::Path,
+        progress_callback: Option<ProgressCallback>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<(), StorageError> {
+        // 从路径中提取对象键
+        let object_key = extract_object_key(
+            path,
+            &self.endpoint,
+            &self.config.bucket.as_ref().unwrap_or(&String::new()),
+            &self.prefix,
+        )?;
+
+        // 构建下载 URL
+        let download_url = self.generate_download_url(&object_key, 3600)?;
+
+        // 使用通用HTTP下载工具
+        HttpDownloader::download_with_auth(
+            &self.client,
+            &download_url,
+            None, // OSS使用预签名URL，不需要额外认证头
+            save_path,
+            progress_callback,
+            cancel_rx,
+        )
+        .await
     }
 }
