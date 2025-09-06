@@ -1,58 +1,50 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageClientType, ConnectionConfig } from '../../services/storage/types';
+import { StorageClientType } from '../../services/storage/types';
 import { StoredConnection } from '../../services/connectionStorage';
 import { ConnectionSelector } from './ConnectionSelector';
 import { StorageTypeSelector } from '../StorageTypeSelector';
-import { LocalConnectionForm } from './LocalConnectionForm';
-import { OSSConnectionForm } from './OSSConnectionForm';
-import { WebDAVConnectionForm } from './WebDAVConnectionForm';
-import { HuggingFaceConnectionForm } from './HuggingFaceConnectionForm';
+import {
+  LocalConnectionForm,
+  OSSConnectionForm,
+  WebDAVConnectionForm,
+  HuggingFaceConnectionForm,
+  SSHConnectionForm,
+  SMBConnectionForm,
+} from './forms';
 
 interface ConnectionFormContainerProps {
   storageType: StorageClientType;
   selectedStoredConnection: StoredConnection | null;
-  url: string;
-  username: string;
-  password: string;
+  formData: Record<string, any>;
   connecting: boolean;
   error: string;
   isPasswordFromStorage: boolean;
-  defaultLocalPath: string;
   onStorageTypeChange: (type: StorageClientType) => void;
   onStoredConnectionSelect: (connection: StoredConnection) => void;
-  onWebDAVConnect: (e: React.FormEvent) => void;
-  onLocalConnect: (rootPath: string) => void;
-  onOSSConnect: (config: ConnectionConfig) => Promise<void>;
-  onHuggingFaceConnect: (config: ConnectionConfig) => Promise<void>;
-  onUrlChange: (value: string) => void;
-  onUsernameChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onPasswordFocus: () => void;
+  onConnect: () => void;
+  onFormDataChange: (updates: Partial<Record<string, any>>) => void;
 }
 
 export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = ({
   storageType,
   selectedStoredConnection,
-  url,
-  username,
-  password,
+  formData,
   connecting,
   error,
   isPasswordFromStorage,
-  defaultLocalPath,
   onStorageTypeChange,
   onStoredConnectionSelect,
-  onWebDAVConnect,
-  onLocalConnect,
-  onOSSConnect,
-  onHuggingFaceConnect,
-  onUrlChange,
-  onUsernameChange,
-  onPasswordChange,
-  onPasswordFocus,
+  onConnect,
+  onFormDataChange,
 }) => {
   const { t } = useTranslation();
+
+  // 创建表单提交处理器
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    onConnect();
+  };
 
   return (
     <div className="w-full max-w-none sm:max-w-md mx-0 sm:mx-auto lg:mx-0 h-full sm:h-auto">
@@ -72,8 +64,8 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               {t('saved.connections')}
             </label>
             <ConnectionSelector
-              onSelect={onStoredConnectionSelect}
               selectedConnection={selectedStoredConnection}
+              onSelect={onStoredConnectionSelect}
             />
           </div>
 
@@ -94,41 +86,159 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
           {/* 根据存储类型显示不同的表单 */}
           {storageType === 'webdav' ? (
             <WebDAVConnectionForm
-              url={url}
-              username={username}
-              password={password}
+              config={{
+                url: formData.url || '',
+                username: formData.username || '',
+                password: formData.password || '',
+              }}
+              onChange={config => {
+                const updates: Record<string, any> = {};
+                if (config.url !== undefined) updates.url = config.url;
+                if (config.username !== undefined) updates.username = config.username;
+                if (config.password !== undefined) {
+                  updates.password = config.password;
+                  // 当密码被清空时，标记为不再来自存储
+                  if (config.password === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                onFormDataChange(updates);
+              }}
               connecting={connecting}
               error={error}
               isPasswordFromStorage={isPasswordFromStorage}
-              onUrlChange={onUrlChange}
-              onUsernameChange={onUsernameChange}
-              onPasswordChange={onPasswordChange}
-              onPasswordFocus={onPasswordFocus}
-              onSubmit={onWebDAVConnect}
+              onConnect={onConnect}
+            />
+          ) : storageType === 'ssh' ? (
+            <SSHConnectionForm
+              config={{
+                type: 'ssh',
+                url: formData.url || '',
+                username: formData.username || '',
+                password: formData.password || '',
+                port: formData.port || 22,
+                privateKeyPath: formData.privateKeyPath || '~/.ssh/id_rsa',
+                passphrase: formData.passphrase || '',
+                rootPath: formData.rootPath || '/',
+              }}
+              onChange={config => {
+                const updates: Record<string, any> = {};
+                if (config.url !== undefined) updates.url = config.url;
+                if (config.username !== undefined) updates.username = config.username;
+                if (config.password !== undefined) {
+                  updates.password = config.password;
+                  // 当密码被清空时，标记为不再来自存储
+                  if (config.password === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                if (config.port !== undefined) updates.port = config.port;
+                if (config.privateKeyPath !== undefined)
+                  updates.privateKeyPath = config.privateKeyPath;
+                if (config.passphrase !== undefined) updates.passphrase = config.passphrase;
+                if (config.rootPath !== undefined) updates.rootPath = config.rootPath;
+                onFormDataChange(updates);
+              }}
+              connecting={connecting}
+              error={error}
+              onConnect={handleSubmit}
+              isPasswordFromStorage={isPasswordFromStorage}
+            />
+          ) : storageType === 'smb' ? (
+            <SMBConnectionForm
+              config={{
+                type: 'smb',
+                url: formData.url || '',
+                username: formData.username || '',
+                password: formData.password || '',
+                share: formData.share || '',
+                domain: formData.domain || '',
+              }}
+              onChange={config => {
+                const updates: Record<string, any> = {};
+                if (config.url !== undefined) updates.url = config.url;
+                if (config.username !== undefined) updates.username = config.username;
+                if (config.password !== undefined) {
+                  updates.password = config.password;
+                  // 当密码被清空时，标记为不再来自存储
+                  if (config.password === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                if (config.share !== undefined) updates.share = config.share;
+                if (config.domain !== undefined) updates.domain = config.domain;
+                onFormDataChange(updates);
+              }}
+              connecting={connecting}
+              error={error}
+              onConnect={handleSubmit}
+              isPasswordFromStorage={isPasswordFromStorage}
             />
           ) : storageType === 'local' ? (
             <LocalConnectionForm
-              onConnect={onLocalConnect}
+              config={{
+                rootPath: formData.rootPath || '',
+              }}
+              onChange={(config: { rootPath?: string }) => {
+                onFormDataChange(config);
+              }}
               connecting={connecting}
               error={error}
-              defaultPath={
-                selectedStoredConnection?.config.type === 'local'
-                  ? selectedStoredConnection.config.rootPath || ''
-                  : defaultLocalPath
-              }
+              onConnect={onConnect}
             />
           ) : storageType === 'oss' ? (
             <OSSConnectionForm
-              onConnect={onOSSConnect}
+              config={{
+                endpoint: formData.endpoint || '',
+                accessKey: formData.username || '',
+                secretKey: formData.password || '',
+                bucket: formData.bucket || '',
+                region: formData.region || '',
+                platform: formData.platform || 'aliyun',
+              }}
+              onChange={(config: any) => {
+                const updates: Record<string, any> = {};
+                if (config.endpoint !== undefined) updates.endpoint = config.endpoint;
+                if (config.accessKey !== undefined) updates.username = config.accessKey;
+                if (config.secretKey !== undefined) {
+                  updates.password = config.secretKey;
+                  // 当密钥被清空时，标记为不再来自存储
+                  if (config.secretKey === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                if (config.bucket !== undefined) updates.bucket = config.bucket;
+                if (config.region !== undefined) updates.region = config.region;
+                if (config.platform !== undefined) updates.platform = config.platform;
+                onFormDataChange(updates);
+              }}
               connecting={connecting}
               error={error}
-              selectedConnection={selectedStoredConnection}
+              isPasswordFromStorage={isPasswordFromStorage}
+              onConnect={onConnect}
             />
           ) : storageType === 'huggingface' ? (
             <HuggingFaceConnectionForm
-              onConnect={onHuggingFaceConnect}
-              isConnecting={connecting}
-              selectedConnection={selectedStoredConnection}
+              config={{
+                apiToken: formData.apiToken || '',
+                organization: formData.organization || '',
+              }}
+              onChange={config => {
+                const updates: Record<string, any> = {};
+                if (config.apiToken !== undefined) {
+                  updates.apiToken = config.apiToken;
+                  // 当API token被清空时，标记为不再来自存储
+                  if (config.apiToken === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                if (config.organization !== undefined) updates.organization = config.organization;
+                onFormDataChange(updates);
+              }}
+              connecting={connecting}
+              error={error}
+              isPasswordFromStorage={isPasswordFromStorage}
+              onConnect={onConnect}
             />
           ) : null}
         </div>

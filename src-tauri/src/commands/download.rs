@@ -2,8 +2,6 @@
 // 提供文件下载、进度监控和取消功能
 
 use crate::download::{DownloadManager, DownloadRequest};
-use crate::storage::get_storage_manager;
-use std::collections::HashMap;
 use std::sync::LazyLock;
 
 // 全局下载管理器
@@ -19,51 +17,13 @@ pub async fn download_start(
     filename: String,
     save_path: Option<String>,
 ) -> Result<String, String> {
-    // 获取存储管理器并处理下载URL（避免死锁）
-    let (download_url, download_headers) = {
-        let manager_arc = get_storage_manager().await;
-        let manager = manager_arc.read().await;
-
-        // 通过存储客户端获取正确的下载 URL
-        // 每个存储客户端会根据自己的特点处理路径到 URL 的转换
-        let processed_url = match manager.get_download_url(&url).await {
-            Ok(u) => u,
-            Err(e) => {
-                if url.starts_with("http://") || url.starts_with("https://") {
-                    url.clone()
-                } else {
-                    return Err(format!("无法解析协议URL（需连接存储或不受支持）: {}", e));
-                }
-            }
-        };
-
-        // 获取存储客户端提供的认证头（WebDAV 需要）
-        let headers = match manager.get_download_headers().await {
-            Ok(h) => h,
-            Err(e) => {
-                if url.starts_with("webdav://") || url.starts_with("webdavs://") {
-                    return Err(format!("需要认证头但当前未连接存储: {}", e));
-                }
-                HashMap::new()
-            }
-        };
-
-        (processed_url, headers)
-        // 锁在这里自动释放
-    };
-
     // 如果没有指定保存路径，使用默认下载路径
     let final_save_path = match save_path {
         Some(path) => Some(path),
         None => Some(get_default_download_path(&filename)?),
     };
 
-    let request = DownloadRequest {
-        method: "GET".to_string(), // 下载文件统一使用 GET 请求
-        url: download_url,
-        headers: download_headers, // 使用存储客户端提供的认证头
-        filename,
-    };
+    let request = DownloadRequest { url, filename };
 
     DOWNLOAD_MANAGER
         .download_with_progress(app, request, final_save_path)

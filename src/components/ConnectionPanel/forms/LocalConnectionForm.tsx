@@ -1,30 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Folder, FolderOpen, FolderSearch } from 'lucide-react';
-import { commands } from '../../types/tauri-commands';
+import { commands } from '../../../types/tauri-commands';
+import { ConnectButton, ErrorDisplay } from '../common';
+import { UnifiedConnectionFormProps } from './types';
 
-interface LocalConnectionFormProps {
-  onConnect: (rootPath: string) => void;
-  connecting: boolean;
-  error?: string;
-  defaultPath?: string; // 新增：默认路径
+interface LocalConnectionFormProps extends UnifiedConnectionFormProps {
+  config: {
+    rootPath?: string;
+  };
 }
 
 export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
-  onConnect,
+  config,
+  onChange,
   connecting,
   error,
-  defaultPath,
+  onConnect,
 }) => {
   const { t } = useTranslation();
-  const [rootPath, setRootPath] = useState(defaultPath || '');
-
-  // 当 defaultPath 属性变化时，更新输入框的值
-  useEffect(() => {
-    if (defaultPath) {
-      setRootPath(defaultPath);
-    }
-  }, [defaultPath]);
 
   // 常用本机路径建议
   const commonPaths = [
@@ -36,30 +30,35 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (rootPath.trim()) {
-      onConnect(rootPath.trim());
+    if (config.rootPath?.trim()) {
+      onConnect();
     }
   };
 
-  const handleQuickSelect = (path: string) => {
-    setRootPath(path);
+  const handlePathChange = (path: string) => {
+    onChange({ ...config, rootPath: path });
   };
 
+  // 快速选择路径
+  const handleQuickSelect = (path: string) => {
+    handlePathChange(path);
+  };
+
+  // 选择目录
   const handleSelectDirectory = async () => {
     try {
-      // 使用 Tauri 的对话框 API 选择目录
-      const result = await commands.systemSelectFolder();
+      const result = await commands.systemSelectFolder(t('local.select.directory'));
       if (result.status === 'ok' && result.data) {
-        setRootPath(result.data);
+        handlePathChange(result.data);
       }
-    } catch (error) {
-      console.error('Failed to open directory dialog:', error);
+    } catch (err) {
+      console.error('Failed to select directory:', err);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* 统一使用 space-y-4 */}
+      {/* 路径输入 */}
       <div>
         <label
           htmlFor="rootPath"
@@ -73,8 +72,8 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
             <input
               id="rootPath"
               type="text"
-              value={rootPath}
-              onChange={e => setRootPath(e.target.value)}
+              value={config.rootPath || ''}
+              onChange={e => handlePathChange(e.target.value)}
               placeholder={t('local.path.placeholder')}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               required
@@ -111,22 +110,9 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
+      <ErrorDisplay error={error || ''} />
 
-      <button
-        type="submit"
-        disabled={connecting || !rootPath.trim()}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400
-                 text-white font-medium py-2 px-4 rounded-md transition-colors
-                 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                 disabled:cursor-not-allowed"
-      >
-        {connecting ? t('connecting') : t('local.connect')}
-      </button>
+      <ConnectButton connecting={connecting} connectText={t('local.connect')} />
 
       {/* 权限说明 */}
       <div className="text-xs text-gray-500 dark:text-gray-400">

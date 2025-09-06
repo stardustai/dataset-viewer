@@ -443,4 +443,81 @@ impl StorageClient for LocalFileSystemClient {
 
         Ok(file_url)
     }
+
+    /// 高效的本地文件下载实现，使用流式复制
+    async fn download_file(
+        &self,
+        path: &str,
+        save_path: &std::path::Path,
+        progress_callback: Option<ProgressCallback>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<(), StorageError> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let source_path = self.build_safe_path(path)?;
+
+        if !source_path.exists() {
+            return Err(StorageError::NotFound(format!(
+                "Source file does not exist: {:?}",
+                source_path
+            )));
+        }
+
+        let file_size = fs::metadata(&source_path)
+            .await
+            .map_err(|e| StorageError::IoError(format!("Failed to get file metadata: {}", e)))?
+            .len();
+
+        let mut source_file = fs::File::open(&source_path)
+            .await
+            .map_err(|e| StorageError::IoError(format!("Failed to open source file: {}", e)))?;
+
+        let mut dest_file = fs::File::create(save_path).await.map_err(|e| {
+            StorageError::IoError(format!("Failed to create destination file: {}", e))
+        })?;
+
+        let chunk_size = chunk_size::calculate_optimal_chunk_size(file_size);
+        let mut buffer = vec![0u8; chunk_size];
+        let mut copied = 0u64;
+
+        loop {
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if cancel_rx.try_recv().is_ok() {
+                    let _ = fs::remove_file(save_path).await;
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
+                }
+            }
+
+            let bytes_read = source_file.read(&mut buffer).await.map_err(|e| {
+                StorageError::IoError(format!("Failed to read from source file: {}", e))
+            })?;
+
+            if bytes_read == 0 {
+                break; // EOF
+            }
+
+            dest_file
+                .write_all(&buffer[..bytes_read])
+                .await
+                .map_err(|e| {
+                    StorageError::IoError(format!("Failed to write to destination file: {}", e))
+                })?;
+
+            copied += bytes_read as u64;
+
+            // 调用进度回调
+            if let Some(ref callback) = progress_callback {
+                callback(copied, file_size);
+            }
+        }
+
+        dest_file.flush().await.map_err(|e| {
+            StorageError::IoError(format!("Failed to flush destination file: {}", e))
+        })?;
+
+        Ok(())
+    }
 }

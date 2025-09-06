@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StorageServiceManager } from '../../services/storage/StorageManager';
-import { StoredConnection, connectionStorage } from '../../services/connectionStorage';
+import { StoredConnection } from '../../services/connectionStorage';
 import { ConnectionConfig, StorageClientType } from '../../services/storage/types';
+import { getStorageAdapter } from '../../services/storage/StorageClient';
 
 export default function useConnectionLogic(onConnectSuccess?: () => void) {
   const { t } = useTranslation();
@@ -15,292 +16,127 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     null
   );
 
-  // WebDAV 状态
-  const [url, setUrl] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false);
+  // 通用表单数据状态 - 替换分散的单独状态
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // 本地文件系统状态
-  const [defaultLocalPath, setDefaultLocalPath] = useState('');
+  // 保留必要的兼容性状态
+  const isPasswordFromStorage = formData.isPasswordFromStorage || false;
 
-  // 获取默认本地路径（从已保存的连接中）
-  const getDefaultLocalPath = (): string => {
-    const connections = StorageServiceManager.getStoredConnections();
-    const localConnections = connections.filter(conn => conn.config.type === 'local');
+  // 更新表单数据的辅助函数
+  const updateFormData = (key: string, value: any) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    setError(''); // 清除错误
+    setValidationErrors([]); // 清除验证错误
+  };
 
-    if (localConnections.length > 0) {
-      // 按最后连接时间排序
-      const sorted = localConnections.sort((a, b) => {
-        const aTime = new Date(a.lastConnected || 0).getTime();
-        const bTime = new Date(b.lastConnected || 0).getTime();
-        return bTime - aTime;
-      });
-
-      return sorted[0].config.rootPath || '';
-    }
-
-    return '';
+  // 初始化表单数据
+  const initializeFormData = (type: StorageClientType) => {
+    const adapter = getStorageAdapter(type);
+    const defaultConfig = adapter.getDefaultConfig?.() || {};
+    setFormData(defaultConfig);
+    setValidationErrors([]);
+    setError('');
   };
 
   const handleSelectStoredConnection = (connection: StoredConnection) => {
     setSelectedStoredConnection(connection);
     setError('');
+    setValidationErrors([]);
 
     const config = connection.config;
     setStorageType(config.type);
 
-    switch (config.type) {
-      case 'local':
-        setDefaultLocalPath(config.rootPath || '');
-        break;
+    // 使用 adapter 提取表单数据
+    const adapter = getStorageAdapter(config.type);
+    const extractedFormData = adapter.extractFormData?.(config) || {};
 
-      case 'oss':
-        // OSS 相关状态将由 OSSConnectionForm 处理
-        break;
-
-      case 'huggingface':
-        // HuggingFace 相关状态将由 HuggingFaceConnectionForm 处理
-        break;
-
-      case 'webdav':
-        setUrl(config.url || '');
-        setUsername(config.username || '');
-        if (config.password) {
-          setPassword('••••••••');
-          setIsPasswordFromStorage(true);
-        } else {
-          setPassword('');
-          setIsPasswordFromStorage(false);
-        }
-        break;
-    }
+    setFormData(extractedFormData);
   };
 
   useEffect(() => {
-    const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
-
-    if (wasDisconnected) {
-      // 如果用户主动断开连接，仍然使用最近的连接信息预填表单，但不自动连接
-      const defaultConnection = StorageServiceManager.getDefaultConnection();
-      if (defaultConnection) {
-        const config = defaultConnection.config;
-        setStorageType(config.type);
-
-        switch (config.type) {
-          case 'local':
-            setDefaultLocalPath(config.rootPath || '');
-            break;
-          case 'oss':
-          case 'huggingface':
-          case 'webdav':
-            handleSelectStoredConnection(defaultConnection);
-            break;
-        }
-      }
-    } else {
-      // 如果不是主动断开，使用默认连接逻辑
-      const defaultConnection = StorageServiceManager.getDefaultConnection();
-      if (defaultConnection) {
-        const config = defaultConnection.config;
-        setStorageType(config.type);
-
-        switch (config.type) {
-          case 'local':
-            setDefaultLocalPath(config.rootPath || '');
-            break;
-          case 'oss':
-          case 'huggingface':
-          case 'webdav':
-            handleSelectStoredConnection(defaultConnection);
-            break;
-        }
-      }
+    // 使用最近的连接信息预填表单，但不自动连接
+    const defaultConnection = StorageServiceManager.getDefaultConnection();
+    if (defaultConnection) {
+      handleSelectStoredConnection(defaultConnection);
     }
-    // 注意：不要在这里清除 userDisconnected 标志，应该在实际连接成功时清除
   }, []);
 
-  const handleWebDAVConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const connectionName = selectedStoredConnection
-      ? selectedStoredConnection.name
-      : t('connection.name.webdav', 'WebDAV({{host}})', { host: getHostnameFromUrl(url) });
-
-    const actualPassword =
-      isPasswordFromStorage && selectedStoredConnection?.config.password
-        ? selectedStoredConnection.config.password
-        : password;
-
-    const config: ConnectionConfig = {
-      type: 'webdav',
-      url: url.trim().replace(/\/+$/, ''), // 标准化 URL，移除末尾斜杠
-      username: username.trim(),
-      password: actualPassword,
-      name: connectionName,
-    };
-
-    await handleConnect(config);
-  };
-
-  const handleLocalConnect = async (rootPath: string) => {
-    const path = rootPath || defaultLocalPath || getDefaultLocalPath();
-    if (!path.trim()) {
-      setError(t('error.path.required'));
-      return;
-    }
-
-    const config: ConnectionConfig = {
-      type: 'local',
-      rootPath: path,
-      name:
-        selectedStoredConnection?.name ||
-        t('connection.name.local', 'Local({{path}})', {
-          path: path.split('/').pop() || 'Root',
-        }),
-    };
-
-    await handleConnect(config);
-  };
-
-  const handleConnect = async (config: ConnectionConfig) => {
+  // 通用连接方法 - 使用 adapter 配置构建，移除前端验证
+  const handleConnectWithValidation = async (
+    storageType: StorageClientType,
+    formData: Record<string, any>
+  ) => {
     setConnecting(true);
     setError('');
+    setValidationErrors([]);
 
     try {
+      const adapter = getStorageAdapter(storageType);
+
+      // 1. 使用 adapter 构建完整配置（不再做前端验证）
+      const config =
+        adapter.buildConnectionConfig?.(formData, selectedStoredConnection) ||
+        (formData as ConnectionConfig);
+
+      // 2. 直接尝试连接，让后端处理所有验证
       const success = await StorageServiceManager.connectWithConfig(config);
       if (success) {
-        // 连接成功后，将当前连接设为默认连接
-        const currentConnection = connectionStorage.findConnection(config);
-        if (currentConnection) {
-          connectionStorage.setDefaultConnection(currentConnection.id);
-        }
-
         onConnectSuccess?.();
         return;
       } else {
         throw new Error(t('error.connection.failed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error.connection.failed'));
+      const errorMessage = err instanceof Error ? err.message : t('error.connection.failed');
+      setError(errorMessage);
     } finally {
       setConnecting(false);
     }
   };
 
-  // 处理WebDAV表单字段变化
-  const handleUrlChange = (value: string) => {
-    setUrl(value);
-    setError('');
-  };
-
-  const handleUsernameChange = (value: string) => {
-    setUsername(value);
-    setError('');
-  };
-
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    setError('');
-    setIsPasswordFromStorage(false);
-  };
-
-  const handlePasswordFocus = () => {
-    if (isPasswordFromStorage) {
-      setPassword('');
-      setIsPasswordFromStorage(false);
-    }
-  };
-
-  // OSS和HuggingFace连接处理
-  const handleOSSConnect = async (config: ConnectionConfig) => {
-    await handleConnect(config);
-  };
-
-  const handleHuggingFaceConnect = async (config: ConnectionConfig) => {
-    await handleConnect(config);
+  // 新增：使用当前表单数据连接
+  const handleConnectWithCurrentForm = async () => {
+    await handleConnectWithValidation(storageType, formData);
   };
 
   const handleStorageTypeChange = (type: StorageClientType) => {
     setStorageType(type);
     setError('');
+    setValidationErrors([]);
 
-    if (type === 'webdav') {
-      if (selectedStoredConnection && selectedStoredConnection.config.type === 'webdav') {
-        // 保持 WebDAV 连接选择
-      } else {
-        setSelectedStoredConnection(null);
-        setUrl('');
-        setUsername('');
-        setPassword('');
-        setIsPasswordFromStorage(false);
-      }
-    } else if (type === 'local') {
-      if (selectedStoredConnection && selectedStoredConnection.config.type === 'local') {
-        setDefaultLocalPath(selectedStoredConnection.config.rootPath || '');
-      } else {
-        setSelectedStoredConnection(null);
-        if (!defaultLocalPath) {
-          setDefaultLocalPath(getDefaultLocalPath());
-        }
-      }
-    } else if (type === 'oss') {
-      if (!selectedStoredConnection || selectedStoredConnection.config.type !== 'oss') {
-        setSelectedStoredConnection(null);
-      }
-    } else if (type === 'huggingface') {
-      if (!selectedStoredConnection || selectedStoredConnection.config.type !== 'huggingface') {
-        setSelectedStoredConnection(null);
-      }
+    // 如果当前选择的连接类型匹配新类型，保持选择状态
+    if (selectedStoredConnection && selectedStoredConnection.config.type === type) {
+      return; // 保持当前表单数据
     }
-  };
 
-  // 辅助函数
-  const getHostnameFromUrl = (url: string): string => {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return url;
-    }
+    // 清除当前选择并初始化新类型的默认表单数据
+    setSelectedStoredConnection(null);
+    initializeFormData(type);
   };
 
   return {
-    // 状态
+    // 核心状态
     storageType,
     connecting,
     error,
     selectedStoredConnection,
-    url,
-    username,
-    password,
+    formData,
+    validationErrors,
     isPasswordFromStorage,
-    defaultLocalPath,
 
-    // 状态设置函数
+    // 核心处理函数
+    updateFormData,
+    handleStorageTypeChange,
+    handleSelectStoredConnection,
+    handleConnectWithCurrentForm,
+    handleFormDataChange: (updates: Partial<Record<string, any>>) => {
+      setFormData(prev => ({ ...prev, ...updates }));
+    },
+
+    // 保留的状态设置函数（用于外部调用）
     setStorageType,
     setError,
     setSelectedStoredConnection,
-    setUrl,
-    setUsername,
-    setPassword,
-    setIsPasswordFromStorage,
-    setDefaultLocalPath,
-
-    // 处理函数
-    handleStorageTypeChange,
-    handleSelectStoredConnection,
-    handleWebDAVConnect,
-    handleLocalConnect,
-    handleConnect,
-    handleOSSConnect,
-    handleHuggingFaceConnect,
-    handleUrlChange,
-    handleUsernameChange,
-    handlePasswordChange,
-    handlePasswordFocus,
-
-    // 辅助函数
-    getDefaultLocalPath,
-    getHostnameFromUrl,
   };
 }

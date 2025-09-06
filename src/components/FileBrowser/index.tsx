@@ -586,7 +586,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       }
 
       // 让用户选择一次保存目录
-      const result = await commands.systemSelectFolder();
+      const result = await commands.systemSelectFolder(t('download.folder.select.directory'));
 
       if (result.status === 'error') {
         console.error('Failed to select folder:', result.error);

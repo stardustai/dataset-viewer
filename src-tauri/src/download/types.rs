@@ -1,11 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct DownloadRequest {
-    pub method: String,
     pub url: String,
-    pub headers: HashMap<String, String>,
     pub filename: String,
 }
 
