@@ -3,36 +3,29 @@ import { useTranslation } from 'react-i18next';
 import { User } from 'lucide-react';
 import { ConnectButton, ErrorDisplay } from '../common';
 import { PasswordInput } from '../../common';
+import { UnifiedConnectionFormProps } from './types';
 
-interface WebDAVConnectionFormProps {
-  url: string;
-  username: string;
-  password: string;
-  connecting: boolean;
-  error: string;
-  isPasswordFromStorage: boolean;
-  onUrlChange: (value: string) => void;
-  onUsernameChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
-}
-
-export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
-  url,
-  username,
-  password,
+export const WebDAVConnectionForm: React.FC<UnifiedConnectionFormProps> = ({
+  config,
+  onChange,
   connecting,
   error,
-  isPasswordFromStorage,
-  onUrlChange,
-  onUsernameChange,
-  onPasswordChange,
-  onSubmit,
+  isPasswordFromStorage = false,
+  onConnect,
 }) => {
   const { t } = useTranslation();
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onConnect();
+  };
+
+  const handleFieldChange = (field: string, value: string) => {
+    onChange({ ...config, [field]: value });
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label
           htmlFor="url"
@@ -43,8 +36,8 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
         <input
           id="url"
           type="url"
-          value={url}
-          onChange={e => onUrlChange(e.target.value)}
+          value={config.url || ''}
+          onChange={e => handleFieldChange('url', e.target.value)}
           placeholder={t('server.url.placeholder')}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           required
@@ -63,8 +56,8 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
           <input
             id="username"
             type="text"
-            value={username}
-            onChange={e => onUsernameChange(e.target.value)}
+            value={config.username || ''}
+            onChange={e => handleFieldChange('username', e.target.value)}
             placeholder={t('username.placeholder')}
             className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             required
@@ -86,15 +79,15 @@ export const WebDAVConnectionForm: React.FC<WebDAVConnectionFormProps> = ({
         </label>
         <PasswordInput
           id="password"
-          value={password}
-          onChange={onPasswordChange}
+          value={config.password || ''}
+          onChange={value => handleFieldChange('password', value)}
           placeholder={t('password.placeholder')}
           isFromStorage={isPasswordFromStorage}
           required
         />
       </div>
 
-      <ErrorDisplay error={error} />
+      <ErrorDisplay error={error || ''} />
 
       <ConnectButton connecting={connecting} />
     </form>

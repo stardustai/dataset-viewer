@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageClientType, ConnectionConfig } from '../../services/storage/types';
+import { StorageClientType } from '../../services/storage/types';
 import { StoredConnection } from '../../services/connectionStorage';
 import { ConnectionSelector } from './ConnectionSelector';
 import { StorageTypeSelector } from '../StorageTypeSelector';
@@ -39,11 +39,6 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   onFormDataChange,
 }) => {
   const { t } = useTranslation();
-
-  // 创建表单更新助手函数
-  const handleFormUpdate = (field: string, value: any) => {
-    onFormDataChange({ [field]: value });
-  };
 
   // 创建表单提交处理器
   const handleSubmit = (e?: React.FormEvent) => {
@@ -91,22 +86,28 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
           {/* 根据存储类型显示不同的表单 */}
           {storageType === 'webdav' ? (
             <WebDAVConnectionForm
-              url={formData.url || ''}
-              username={formData.username || ''}
-              password={formData.password || ''}
+              config={{
+                url: formData.url || '',
+                username: formData.username || '',
+                password: formData.password || '',
+              }}
+              onChange={config => {
+                const updates: Record<string, any> = {};
+                if (config.url !== undefined) updates.url = config.url;
+                if (config.username !== undefined) updates.username = config.username;
+                if (config.password !== undefined) {
+                  updates.password = config.password;
+                  // 当密码被清空时，标记为不再来自存储
+                  if (config.password === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                onFormDataChange(updates);
+              }}
               connecting={connecting}
               error={error}
               isPasswordFromStorage={isPasswordFromStorage}
-              onUrlChange={value => handleFormUpdate('url', value)}
-              onUsernameChange={value => handleFormUpdate('username', value)}
-              onPasswordChange={value => {
-                handleFormUpdate('password', value);
-                // 当密码被清空时，标记为不再来自存储
-                if (value === '') {
-                  handleFormUpdate('isPasswordFromStorage', false);
-                }
-              }}
-              onSubmit={handleSubmit}
+              onConnect={onConnect}
             />
           ) : storageType === 'ssh' ? (
             <SSHConnectionForm
@@ -175,44 +176,69 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
             />
           ) : storageType === 'local' ? (
             <LocalConnectionForm
-              defaultPath={formData.rootPath || ''}
+              config={{
+                rootPath: formData.rootPath || '',
+              }}
+              onChange={(config: { rootPath?: string }) => {
+                onFormDataChange(config);
+              }}
               connecting={connecting}
               error={error}
-              onConnect={(rootPath: string) => {
-                handleFormUpdate('rootPath', rootPath);
-                handleSubmit();
-              }}
+              onConnect={onConnect}
             />
           ) : storageType === 'oss' ? (
             <OSSConnectionForm
-              selectedConnection={selectedStoredConnection}
+              config={{
+                endpoint: formData.endpoint || '',
+                accessKey: formData.username || '',
+                secretKey: formData.password || '',
+                bucket: formData.bucket || '',
+                region: formData.region || '',
+                platform: formData.platform || 'aliyun',
+              }}
+              onChange={(config: any) => {
+                const updates: Record<string, any> = {};
+                if (config.endpoint !== undefined) updates.endpoint = config.endpoint;
+                if (config.accessKey !== undefined) updates.username = config.accessKey;
+                if (config.secretKey !== undefined) {
+                  updates.password = config.secretKey;
+                  // 当密钥被清空时，标记为不再来自存储
+                  if (config.secretKey === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                if (config.bucket !== undefined) updates.bucket = config.bucket;
+                if (config.region !== undefined) updates.region = config.region;
+                if (config.platform !== undefined) updates.platform = config.platform;
+                onFormDataChange(updates);
+              }}
               connecting={connecting}
               error={error}
-              onConnect={async (config: ConnectionConfig) => {
-                // 更新formData以保存配置
-                onFormDataChange({
-                  endpoint: config.endpoint,
-                  bucket: config.bucket,
-                  region: config.region,
-                  platform: config.platform,
-                });
-                // 触发连接
-                handleSubmit();
-              }}
+              isPasswordFromStorage={isPasswordFromStorage}
+              onConnect={onConnect}
             />
           ) : storageType === 'huggingface' ? (
             <HuggingFaceConnectionForm
-              selectedConnection={selectedStoredConnection}
-              isConnecting={connecting}
-              onConnect={async (config: ConnectionConfig) => {
-                // 更新formData以保存配置
-                onFormDataChange({
-                  apiToken: config.apiToken,
-                  organization: config.organization,
-                });
-                // 触发连接
-                handleSubmit();
+              config={{
+                apiToken: formData.apiToken || '',
+                organization: formData.organization || '',
               }}
+              onChange={config => {
+                const updates: Record<string, any> = {};
+                if (config.apiToken !== undefined) {
+                  updates.apiToken = config.apiToken;
+                  // 当API token被清空时，标记为不再来自存储
+                  if (config.apiToken === '') {
+                    updates.isPasswordFromStorage = false;
+                  }
+                }
+                if (config.organization !== undefined) updates.organization = config.organization;
+                onFormDataChange(updates);
+              }}
+              connecting={connecting}
+              error={error}
+              isPasswordFromStorage={isPasswordFromStorage}
+              onConnect={onConnect}
             />
           ) : null}
         </div>

@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FolderSearch } from 'lucide-react';
-import type { ConnectionConfig } from '../../../services/storage/types';
 import { commands } from '../../../types/tauri-commands';
 import { ConnectButton, ErrorDisplay } from '../common';
 import { PasswordInput } from '../../common';
+import { UnifiedConnectionFormProps } from './types';
 
-interface SSHConnectionFormProps {
-  config: Partial<ConnectionConfig>;
-  onChange: (config: Partial<ConnectionConfig>) => void;
-  connecting: boolean;
-  error?: string;
-  onConnect: () => void;
-  isPasswordFromStorage?: boolean;
+interface SSHConnectionFormProps extends UnifiedConnectionFormProps {
+  config: {
+    type?: string;
+    url?: string;
+    username?: string;
+    password?: string;
+    port?: number;
+    privateKeyPath?: string;
+    passphrase?: string;
+    rootPath?: string;
+  };
 }
 
 export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({

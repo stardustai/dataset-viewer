@@ -1,76 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lock, Bot } from 'lucide-react';
-import { ConnectionConfig } from '../../../services/storage/types';
-import { StoredConnection } from '../../../services/connectionStorage';
-import { ConnectButton } from '../common';
+import { Bot } from 'lucide-react';
+import { ConnectButton, ErrorDisplay } from '../common';
+import { PasswordInput } from '../../common';
+import { UnifiedConnectionFormProps } from './types';
 
-interface HuggingFaceConnectionFormProps {
-  onConnect: (config: ConnectionConfig) => Promise<void>;
-  isConnecting: boolean;
-  selectedConnection?: StoredConnection | null;
+interface HuggingFaceConnectionFormProps extends UnifiedConnectionFormProps {
+  config: {
+    apiToken?: string;
+    organization?: string;
+  };
 }
 
 export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps> = ({
+  config,
+  onChange,
+  connecting,
+  error,
   onConnect,
-  isConnecting,
-  selectedConnection,
+  isPasswordFromStorage = false,
 }) => {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({
-    apiToken: '',
-    organization: '',
-  });
 
-  // 当选中连接变化时，更新表单
-  useEffect(() => {
-    if (selectedConnection && selectedConnection.config.type === 'huggingface') {
-      const config = selectedConnection.config;
-      setFormData({
-        organization: config.organization || '',
-        apiToken: config.apiToken ? '••••••••' : '',
-      });
-    } else if (!selectedConnection) {
-      // 清空表单
-      setFormData({
-        apiToken: '',
-        organization: '',
-      });
-    }
-  }, [selectedConnection]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // 如果 API token 是占位符且有选中的连接，使用真实的 token
-    const actualApiToken =
-      formData.apiToken === '••••••••' && selectedConnection
-        ? selectedConnection.config.apiToken || ''
-        : formData.apiToken;
-
-    // 检查组织名是否发生变化
-    const originalOrg = selectedConnection?.config.organization || '';
-    const currentOrg = formData.organization || '';
-    const orgChanged = originalOrg !== currentOrg;
-
-    const config: ConnectionConfig = {
-      type: 'huggingface',
-      apiToken: actualApiToken || undefined,
-      organization: formData.organization || undefined,
-      url: 'https://huggingface.co', // 固定URL
-      name: orgChanged ? undefined : selectedConnection?.name, // 如果组织名变化，清除名称让系统重新生成
-    };
-
-    await onConnect(config);
+    onConnect();
   };
 
-  const handleInputChange =
-    (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      setFormData(prev => ({
-        ...prev,
-        [field]: e.target.value.trim(),
-      }));
-    };
+  const handleFieldChange = (field: string, value: string) => {
+    onChange({ ...config, [field]: value });
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -83,8 +42,8 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
         </label>
         <input
           type="text"
-          value={formData.organization}
-          onChange={handleInputChange('organization')}
+          value={config.organization || ''}
+          onChange={e => handleFieldChange('organization', e.target.value)}
           placeholder={t('huggingface.organization.placeholder')}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
                    bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
@@ -98,26 +57,30 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
       {/* API Token */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          <Lock className="inline w-4 h-4 mr-1" />
           {t('huggingface.apiToken')}
           <span className="text-gray-500 ml-1">{t('optional')}</span>
+          {isPasswordFromStorage && (
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+              ({t('password.saved')})
+            </span>
+          )}
         </label>
-        <input
-          type="password"
-          value={formData.apiToken}
-          onChange={handleInputChange('apiToken')}
+        <PasswordInput
+          id="apiToken"
+          value={config.apiToken || ''}
+          onChange={value => handleFieldChange('apiToken', value)}
           placeholder={t('huggingface.apiToken.placeholder')}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
-                   bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          isFromStorage={isPasswordFromStorage}
         />
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {t('huggingface.apiToken.help')}
         </p>
       </div>
 
+      <ErrorDisplay error={error || ''} />
+
       {/* 连接按钮 */}
-      <ConnectButton connecting={isConnecting} />
+      <ConnectButton connecting={connecting} />
 
       {/* 帮助信息 */}
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">

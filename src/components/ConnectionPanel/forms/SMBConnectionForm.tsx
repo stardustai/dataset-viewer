@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff } from 'lucide-react';
-import type { ConnectionConfig } from '../../../services/storage/types';
 import { ConnectButton, ErrorDisplay } from '../common';
 import { PasswordInput } from '../../common';
+import { UnifiedConnectionFormProps } from './types';
 
-interface SMBConnectionFormProps {
-  config: Partial<ConnectionConfig>;
-  onChange: (config: Partial<ConnectionConfig>) => void;
-  connecting: boolean;
-  error?: string;
-  onConnect: () => void;
-  isPasswordFromStorage?: boolean;
+interface SMBConnectionFormProps extends UnifiedConnectionFormProps {
+  config: {
+    type?: string;
+    url?: string;
+    username?: string;
+    password?: string;
+    share?: string;
+    domain?: string;
+  };
   showAdvancedOptions?: boolean;
 }
 

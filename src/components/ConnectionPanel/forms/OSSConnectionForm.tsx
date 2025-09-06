@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConnectionConfig } from '../../../services/storage/types';
-import { StoredConnection } from '../../../services/connectionStorage';
 import { OSSPlatformSelector, OSS_PLATFORMS } from '../OSSPlatformSelector';
 import { ConnectButton, ErrorDisplay } from '../common';
 import { PasswordInput } from '../../common';
+import { UnifiedConnectionFormProps } from './types';
 
-interface OSSConnectionFormProps {
-  onConnect: (config: ConnectionConfig) => Promise<void>;
-  connecting: boolean;
-  error?: string;
-  selectedConnection?: StoredConnection | null;
+interface OSSConnectionFormProps extends UnifiedConnectionFormProps {
+  config: {
+    endpoint?: string;
+    accessKey?: string;
+    secretKey?: string;
+    bucket?: string;
+    region?: string;
+    platform?: string;
+  };
 }
 
 /**
@@ -18,10 +21,12 @@ interface OSSConnectionFormProps {
  * 支持阿里云 OSS、AWS S3 等兼容的对象存储服务
  */
 export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
-  onConnect,
+  config,
+  onChange,
   connecting,
-  error: externalError,
-  selectedConnection,
+  error,
+  onConnect,
+  isPasswordFromStorage = false,
 }) => {
   const { t } = useTranslation();
 
@@ -31,18 +36,22 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
   const defaultEndpoint =
     defaultPlatform?.regions.find(r => r.id === defaultRegion)?.endpoint || '';
 
-  const [config, setConfig] = useState({
-    endpoint: defaultEndpoint,
-    accessKey: '',
-    secretKey: '',
-    bucket: '',
-    region: defaultRegion,
-  });
+  // 从 config 中获取当前配置，如果没有则使用默认值
+  const currentConfig = {
+    endpoint: config.endpoint || defaultEndpoint,
+    accessKey: config.accessKey || '',
+    secretKey: config.secretKey || '',
+    bucket: config.bucket || '',
+    region: config.region || defaultRegion,
+    platform: config.platform || 'aliyun',
+  };
 
   // 平台选择相关状态
-  const [selectedPlatform, setSelectedPlatform] = useState('aliyun');
-  const [selectedRegion, setSelectedRegion] = useState('cn-hangzhou');
-  const [customEndpoint, setCustomEndpoint] = useState('');
+  const [selectedPlatform, setSelectedPlatform] = useState(currentConfig.platform);
+  const [selectedRegion, setSelectedRegion] = useState(currentConfig.region);
+  const [customEndpoint, setCustomEndpoint] = useState(
+    currentConfig.platform === 'custom' ? currentConfig.endpoint : ''
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -54,8 +63,8 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     if (platform) {
       if (platformId === 'custom') {
         // 自定义平台，清空端点让用户输入
-        setConfig(prev => ({ ...prev, endpoint: '', region: '' }));
         setCustomEndpoint('');
+        onChange({ ...currentConfig, endpoint: '', region: '', platform: platformId });
       } else {
         // 预设平台，设置默认区域
         const defaultRegion = platform.defaultRegion || platform.regions[0]?.id || '';
@@ -66,11 +75,12 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
         const endpoint =
           regionData?.endpoint || platform.endpoint.replace('{region}', defaultRegion);
 
-        setConfig(prev => ({
-          ...prev,
+        onChange({
+          ...currentConfig,
           endpoint: endpoint,
           region: defaultRegion,
-        }));
+          platform: platformId,
+        });
       }
     }
   };
@@ -84,111 +94,27 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       const regionData = platform.regions.find(r => r.id === regionId);
       const endpoint = regionData?.endpoint || platform.endpoint.replace('{region}', regionId);
 
-      setConfig(prev => ({
-        ...prev,
+      onChange({
+        ...currentConfig,
         endpoint: endpoint,
         region: regionId,
-      }));
+      });
     }
   };
 
   // 处理自定义端点变化
   const handleCustomEndpointChange = (endpoint: string) => {
     setCustomEndpoint(endpoint);
-    setConfig(prev => ({ ...prev, endpoint: endpoint }));
+    onChange({ ...currentConfig, endpoint: endpoint });
   };
-
-  // 当选中连接变化时，更新表单
-  useEffect(() => {
-    if (selectedConnection && selectedConnection.config.type === 'oss') {
-      try {
-        const config = selectedConnection.config;
-
-        // 从配置中获取信息
-        const bucket = config.bucket || '';
-        const endpoint = config.endpoint || '';
-        const region = config.region || '';
-        const platform = config.platform || 'custom';
-
-        // 尝试匹配平台
-        let matchedPlatform = platform;
-        let matchedRegion = region;
-
-        // 如果没有明确的平台信息，尝试根据endpoint匹配
-        if (platform === 'custom' || !platform) {
-          for (const platformInfo of OSS_PLATFORMS) {
-            if (platformInfo.id === 'custom') continue;
-
-            const regionMatch = platformInfo.regions.find(
-              r =>
-                r.endpoint === endpoint ||
-                endpoint.includes(r.id) ||
-                (platformInfo.endpoint.includes('{region}') && endpoint.includes(r.id))
-            );
-
-            if (regionMatch) {
-              matchedPlatform = platformInfo.id;
-              matchedRegion = regionMatch.id;
-              break;
-            }
-          }
-        }
-
-        // 更新平台和区域状态
-        setSelectedPlatform(matchedPlatform);
-        setSelectedRegion(matchedRegion);
-
-        if (matchedPlatform === 'custom') {
-          setCustomEndpoint(endpoint);
-        }
-
-        setConfig({
-          endpoint: endpoint,
-          accessKey: config.username || '',
-          secretKey: config.password ? '••••••••' : '',
-          bucket: bucket,
-          region: matchedRegion,
-        });
-      } catch (error) {
-        console.error('Failed to parse OSS connection:', error);
-        // 如果解析失败，使用自定义模式
-        setSelectedPlatform('custom');
-        setCustomEndpoint(selectedConnection.config.endpoint || '');
-        setConfig({
-          endpoint: selectedConnection.config.endpoint || '',
-          accessKey: selectedConnection.config.username || '',
-          secretKey: selectedConnection.config.password ? '••••••••' : '',
-          bucket: selectedConnection.config.bucket || '',
-          region: selectedConnection.config.region || '',
-        });
-      }
-    } else if (!selectedConnection) {
-      // 清空表单，恢复默认值
-      setSelectedPlatform('aliyun');
-      setSelectedRegion('cn-hangzhou');
-      setCustomEndpoint('');
-
-      // 设置默认端点
-      const defaultPlatform = OSS_PLATFORMS.find(p => p.id === 'aliyun');
-      const defaultEndpoint =
-        defaultPlatform?.regions.find(r => r.id === 'cn-hangzhou')?.endpoint || '';
-
-      setConfig({
-        endpoint: defaultEndpoint,
-        accessKey: '',
-        secretKey: '',
-        bucket: '',
-        region: 'cn-hangzhou',
-      });
-    }
-  }, [selectedConnection]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     // 验证端点
-    const endpointToValidate = selectedPlatform === 'custom' ? customEndpoint : config.endpoint;
-    if (!endpointToValidate.trim()) {
+    const endpointToValidate =
+      selectedPlatform === 'custom' ? customEndpoint : currentConfig.endpoint;
+    if (!endpointToValidate?.trim()) {
       newErrors.endpoint = t('error.endpoint.required');
     } else {
       try {
@@ -198,15 +124,15 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       }
     }
 
-    if (!config.accessKey.trim()) {
+    if (!currentConfig.accessKey?.trim()) {
       newErrors.accessKey = t('error.access.key.required');
     }
 
-    if (!config.secretKey.trim()) {
+    if (!currentConfig.secretKey?.trim()) {
       newErrors.secretKey = t('error.secret.key.required');
     }
 
-    if (!config.bucket.trim()) {
+    if (!currentConfig.bucket?.trim()) {
       newErrors.bucket = t('error.bucket.required');
     }
 
@@ -214,90 +140,14 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    // 确定最终使用的端点
-    const finalEndpoint = selectedPlatform === 'custom' ? customEndpoint : config.endpoint;
-
-    // 解析 host（含端口），确保从有效的端点中提取
-    let hostWithPort = '';
-    try {
-      const url = new URL(finalEndpoint);
-      hostWithPort = url.host; // e.g., localhost:9000 或 oss-cn-hangzhou.aliyuncs.com
-
-      // 检查主机名格式是否有效
-      if (
-        url.hostname.includes('/') ||
-        !url.hostname.includes('.') ||
-        url.hostname.split('.').length < 2
-      ) {
-        // 主机名格式无效，使用默认的阿里云 OSS 端点
-        const region = config.region || selectedRegion || 'cn-hangzhou';
-        hostWithPort = `oss-${region}.aliyuncs.com`;
-      }
-    } catch {
-      // URL 解析失败，使用默认的阿里云 OSS 端点
-      const region = config.region || selectedRegion || 'cn-hangzhou';
-      hostWithPort = `oss-${region}.aliyuncs.com`;
-    }
-
-    // 生成默认连接名称
-    const hostname = hostWithPort;
-    const platformName = OSS_PLATFORMS.find(p => p.id === selectedPlatform)?.name || 'OSS';
-    // 显示完整的桶名和路径信息
-    const bucketDisplayName = config.bucket || 'Unknown';
-    const defaultName =
-      selectedPlatform === 'custom'
-        ? t('connection.name.oss', 'OSS({{host}}-{{bucket}})', {
-            host: hostname,
-            bucket: bucketDisplayName,
-          })
-        : `${platformName}(${bucketDisplayName})`;
-
-    // 如果密码是占位符（来自已保存的连接），使用真实密码
-    const actualSecretKey =
-      config.secretKey === '••••••••' && selectedConnection?.config.password
-        ? selectedConnection.config.password
-        : config.secretKey;
-
-    // 处理bucket路径：移除尾部无意义的斜杠
-    const cleanBucket = config.bucket.trim();
-    const bucketWithPath = cleanBucket.replace(/\/+$/, ''); // 移除所有尾部斜杠
-
-    // 检查当前配置是否与选中的连接相同（只比较桶的基础名称）
-    const isConfigChanged =
-      selectedConnection &&
-      ((selectedConnection.config.bucket || '').split('/')[0] !== bucketWithPath.split('/')[0] ||
-        selectedConnection.config.region !== (config.region || selectedRegion) ||
-        selectedConnection.config.endpoint !== finalEndpoint ||
-        selectedConnection.config.username !== config.accessKey);
-
-    // 如果配置有变化，使用新生成的名称；否则保持原名称
-    const connectionName = isConfigChanged ? defaultName : selectedConnection?.name || defaultName;
-
-    const connectionConfig: ConnectionConfig = {
-      type: 'oss',
-      name: connectionName,
-      url: finalEndpoint, // 保存实际的 HTTP 端点
-      username: config.accessKey, // 使用 username 字段存储 accessKey
-      password: actualSecretKey, // 使用 password 字段存储 secretKey
-      bucket: bucketWithPath, // 添加 bucket 字段（清理后的）
-      region: config.region || selectedRegion, // 使用选中的区域
-      endpoint: finalEndpoint, // 添加 endpoint 字段
-      platform: selectedPlatform, // 直接保存用户选择的平台信息
-    };
-
-    try {
-      await onConnect(connectionConfig);
-    } catch (error) {
-      // 错误由父组件处理，这里不需要设置本地错误状态
-      console.error('OSS connection failed:', error);
-    }
+    onConnect();
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -317,21 +167,18 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       processedValue = processedValue.replace(/^\/+/, '');
     }
 
-    setConfig(prev => ({ ...prev, [field]: processedValue }));
+    onChange({ ...currentConfig, [field]: processedValue });
+
     // 清除对应字段的错误
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-    // 如果用户修改了任何字段，清除选中的连接状态（除非是密码字段的特殊处理）
-    if (selectedConnection && field !== 'secretKey') {
-      // 不清除选中连接，但标记为已修改
     }
   };
 
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <ErrorDisplay error={externalError || ''} />
+        <ErrorDisplay error={error || ''} />
 
         {/* 平台选择器 */}
         <OSSPlatformSelector
@@ -356,7 +203,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
             <input
               type="text"
               id="accessKey"
-              value={config.accessKey}
+              value={currentConfig.accessKey}
               onChange={e => handleInputChange('accessKey', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.accessKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
@@ -379,10 +226,10 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
             </label>
             <PasswordInput
               id="secretKey"
-              value={config.secretKey}
+              value={currentConfig.secretKey}
               onChange={value => handleInputChange('secretKey', value)}
               placeholder={t('oss.secret.key.placeholder')}
-              isFromStorage={config.secretKey === '••••••••'}
+              isFromStorage={isPasswordFromStorage}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.secretKey ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
               }`}
@@ -407,7 +254,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
               <input
                 type="text"
                 id="bucket"
-                value={config.bucket}
+                value={currentConfig.bucket}
                 onChange={e => handleInputChange('bucket', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                   errors.bucket ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
@@ -432,7 +279,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
               <input
                 type="text"
                 id="region"
-                value={config.region}
+                value={currentConfig.region}
                 onChange={e => handleInputChange('region', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder={t('oss.region.placeholder')}
@@ -451,7 +298,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
             <input
               type="text"
               id="bucket"
-              value={config.bucket}
+              value={currentConfig.bucket}
               onChange={e => handleInputChange('bucket', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
                 errors.bucket ? 'border-red-300 dark:border-red-600' : 'border-gray-300'
