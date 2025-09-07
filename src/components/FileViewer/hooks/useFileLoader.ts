@@ -92,28 +92,20 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         const isLarge = fileSize > config.streaming.maxInitialLoad;
         setIsLargeFile(isLarge);
 
-        if (isLarge) {
-          // 大文件：流式加载
-          const chunkSize = config.streaming.chunkSize;
-          const result = await StorageServiceManager.getFileContent(filePath, 0, chunkSize);
-          const byteLength = new TextEncoder().encode(result.content).length;
-          setContent(result.content);
-          setCurrentFilePosition(byteLength); // 文件位置：从0读取到byteLength
-          setCurrentStartPosition(0); // 窗口开始位置：从文件开头开始
-          setLoadedContentSize(byteLength); // 内存中的内容大小
-          setLoadedChunks(1);
-          // 初始加载时设置时间戳，避免立即触发向前加载
-          lastJumpTimestampRef.current = Date.now();
-        } else {
-          // 小文件：一次性加载
-          const result = await StorageServiceManager.getFileContent(filePath);
-          const byteLength = new TextEncoder().encode(result.content).length;
-          setContent(result.content);
-          setCurrentFilePosition(byteLength); // 文件位置：整个文件都读取了
-          setCurrentStartPosition(0); // 窗口开始位置：从文件开头开始
-          setLoadedContentSize(byteLength); // 内存中的内容大小
-          setLoadedChunks(1);
-        }
+        // 根据文件大小选择加载策略
+        const result = isLarge
+          ? await StorageServiceManager.getFileContent(filePath, 0, config.streaming.chunkSize)
+          : await StorageServiceManager.getFileContent(filePath);
+
+        const byteLength = new TextEncoder().encode(result.content).length;
+        setContent(result.content);
+        setCurrentFilePosition(byteLength); // 文件位置：从0读取到byteLength（大文件）或整个文件（小文件）
+        setCurrentStartPosition(0); // 窗口开始位置：从文件开头开始
+        setLoadedContentSize(byteLength); // 内存中的内容大小
+        setLoadedChunks(1);
+        setBaselineStartLineNumber(1);
+        // 初始加载时设置时间戳，避免立即触发向前加载
+        lastJumpTimestampRef.current = Date.now();
       } catch (err) {
         console.error('Failed to load file:', err);
         setError(err instanceof Error ? err.message : 'Failed to load file');
