@@ -19,6 +19,27 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate version
+        run: |
+          NEW_VERSION="${{ github.event.inputs.version }}"
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+
+          echo "Current version: $CURRENT_VERSION"
+          echo "New version: $NEW_VERSION"
+
+          # Use semver to validate and compare versions
+          npx semver "$NEW_VERSION" --range ">$CURRENT_VERSION" || {
+            echo "❌ Version validation failed: New version ($NEW_VERSION) must be higher than current version ($CURRENT_VERSION)"
+            exit 1
+          }
+
+          echo "✅ Version validation passed: $NEW_VERSION > $CURRENT_VERSION"
+
       - name: Update version in package.json, tauri.conf.json and Cargo.toml
         run: |
           VERSION="${{ github.event.inputs.version }}"
