@@ -26,19 +26,11 @@ jobs:
 
       - name: Validate version
         run: |
-          NEW_VERSION="${{ github.event.inputs.version }}"
           CURRENT_VERSION=$(jq -r '.version' package.json)
-
-          echo "Current version: $CURRENT_VERSION"
-          echo "New version: $NEW_VERSION"
-
-          # Use semver to validate and compare versions
-          npx semver "$NEW_VERSION" --range ">$CURRENT_VERSION" || {
-            echo "❌ Version validation failed: New version ($NEW_VERSION) must be higher than current version ($CURRENT_VERSION)"
-            exit 1
-          }
-
-          echo "✅ Version validation passed: $NEW_VERSION > $CURRENT_VERSION"
+          NEW_VERSION="${{ github.event.inputs.version }}"
+          echo "Checking: $NEW_VERSION > $CURRENT_VERSION"
+          npx semver "$NEW_VERSION" -r ">$CURRENT_VERSION" --include-prerelease || (echo "❌ Version $NEW_VERSION must be higher than $CURRENT_VERSION" && exit 1)
+          echo "✅ Version validation passed"
 
       - name: Update version in package.json, tauri.conf.json and Cargo.toml
         run: |
