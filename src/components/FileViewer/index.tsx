@@ -73,7 +73,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({
     loading,
     error,
     loadingMore,
+    loadingBefore,
     currentFilePosition,
+    currentStartPosition,
     loadedContentSize,
     totalSize,
     loadedChunks,
@@ -83,6 +85,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
     dataMetadata,
     presentationMetadata,
     handleScrollToBottom,
+    handleScrollToTop,
     jumpToFilePercentage,
     calculateStartLineNumber,
     performFullFileSearch,
@@ -211,6 +214,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
         searchTerm={searchTerm}
         handleSearchResults={handleSearchResults}
         handleScrollToBottom={handleScrollToBottom}
+        handleScrollToTop={handleScrollToTop}
         containerHeight={containerHeight}
         calculateStartLineNumber={calculateStartLineNumber}
         currentSearchIndex={currentSearchIndex}
@@ -219,6 +223,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({
         searchResults={searchResults}
         isLargeFile={isLargeFile}
         loadingMore={loadingMore}
+        loadingBefore={loadingBefore}
+        canLoadBefore={currentStartPosition > 0}
         loadedChunks={loadedChunks}
         loadedContentSize={loadedContentSize}
         setPresentationMetadata={setPresentationMetadata}

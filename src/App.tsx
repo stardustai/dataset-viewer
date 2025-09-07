@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { ConnectionPanel } from './components/ConnectionPanel';
 import { FileBrowser } from './components/FileBrowser';
@@ -103,25 +103,25 @@ function App() {
       }
     }
 
+    const fileAssociationHandledRef = useRef(false);
+
     // 监听文件打开事件
     const setupFileOpenListener = async () => {
       try {
         await fileAssociationService.setupFileOpenListener(
           (file: StorageFile, fileName: string) => {
-            // 文件打开成功回调
+            // 文件关联成功，直接接管应用状态
+            fileAssociationHandledRef.current = true;
+            console.log('File association handled, taking over app state');
+
             const currentStorageClient = StorageServiceManager.getCurrentClient();
-            // 文件关联连接后，根目录就是文件所在的目录
-            // 所以我们需要将FileBrowser的初始路径设置为根目录（空字符串）
             setCurrentDirectory('');
-            // 标记当前是文件关联模式
             setIsFileAssociationMode(true);
-            // 确保应用状态首先设置为浏览状态
             setAppState('browsing');
-            // 然后再处理文件选择（这会将状态改为viewing）
             handleFileSelect(file, fileName, currentStorageClient);
           },
           (error: string) => {
-            // 错误回调
+            // 文件关联失败
             console.error('File association error:', error);
             setAppState('connecting');
           }
@@ -137,22 +137,18 @@ function App() {
         // 设置文件打开监听器
         await setupFileOpenListener();
 
-        // 等待一小段时间，让文件关联事件有机会触发
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // 简单等待，让文件关联事件有机会触发
+        await new Promise(resolve => setTimeout(resolve, 200));
 
-        // 检查是否已经通过文件关联连接了
-        const isConnected = await fileAssociationService.isConnectedViaFileAssociation();
-        if (isConnected) {
-          // 如果已经连接（通过文件关联），设置为browsing状态
-          setAppState('browsing');
+        // 如果文件关联已经处理，直接返回
+        if (fileAssociationHandledRef.current) {
+          console.log('File association already handled, skipping auto connect');
           return;
         }
 
         // 检查用户是否主动断开了连接
         const wasDisconnected = localStorage.getItem('userDisconnected') === 'true';
-
         if (wasDisconnected) {
-          // 如果用户主动断开过连接，显示连接页面
           setAppState('connecting');
           return;
         }

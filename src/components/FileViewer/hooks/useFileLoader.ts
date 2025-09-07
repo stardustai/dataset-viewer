@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../../types';
 import { StorageServiceManager } from '../../../services/storage';
 import { configManager } from '../../../config';
@@ -12,9 +12,12 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
   const [isLargeFile, setIsLargeFile] = useState<boolean>(false);
   const [totalSize, setTotalSize] = useState<number>(0);
   const [currentFilePosition, setCurrentFilePosition] = useState<number>(0); // 文件中当前读取到的绝对位置
+  const [currentStartPosition, setCurrentStartPosition] = useState<number>(0); // 当前内容窗口在文件中的起始位置
   const [loadedContentSize, setLoadedContentSize] = useState<number>(0); // 内存中已加载内容的总大小
   const [loadedChunks, setLoadedChunks] = useState<number>(0);
   const [baselineStartLineNumber, setBaselineStartLineNumber] = useState<number>(1);
+  const [loadingBefore, setLoadingBefore] = useState<boolean>(false); // 向前加载状态
+  const lastJumpTimestampRef = useRef<number>(0); // 上次跳转时间戳
   const [dataMetadata, setDataMetadata] = useState<{ numRows: number; numColumns: number } | null>(
     null
   );
@@ -73,6 +76,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
           setContent('');
           setTotalSize(0);
           setCurrentFilePosition(0);
+          setCurrentStartPosition(0);
           setLoadedContentSize(0);
           setLoadedChunks(0);
           setError(null);
@@ -88,24 +92,20 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         const isLarge = fileSize > config.streaming.maxInitialLoad;
         setIsLargeFile(isLarge);
 
-        if (isLarge) {
-          // 大文件：流式加载
-          const chunkSize = config.streaming.chunkSize;
-          const result = await StorageServiceManager.getFileContent(filePath, 0, chunkSize);
-          const byteLength = new TextEncoder().encode(result.content).length;
-          setContent(result.content);
-          setCurrentFilePosition(byteLength); // 文件位置：从0读取到byteLength
-          setLoadedContentSize(byteLength); // 内存中的内容大小
-          setLoadedChunks(1);
-        } else {
-          // 小文件：一次性加载
-          const result = await StorageServiceManager.getFileContent(filePath);
-          const byteLength = new TextEncoder().encode(result.content).length;
-          setContent(result.content);
-          setCurrentFilePosition(byteLength); // 文件位置：整个文件都读取了
-          setLoadedContentSize(byteLength); // 内存中的内容大小
-          setLoadedChunks(1);
-        }
+        // 根据文件大小选择加载策略
+        const result = isLarge
+          ? await StorageServiceManager.getFileContent(filePath, 0, config.streaming.chunkSize)
+          : await StorageServiceManager.getFileContent(filePath);
+
+        const byteLength = new TextEncoder().encode(result.content).length;
+        setContent(result.content);
+        setCurrentFilePosition(byteLength); // 文件位置：从0读取到byteLength（大文件）或整个文件（小文件）
+        setCurrentStartPosition(0); // 窗口开始位置：从文件开头开始
+        setLoadedContentSize(byteLength); // 内存中的内容大小
+        setLoadedChunks(1);
+        setBaselineStartLineNumber(1);
+        // 初始加载时设置时间戳，避免立即触发向前加载
+        lastJumpTimestampRef.current = Date.now();
       } catch (err) {
         console.error('Failed to load file:', err);
         setError(err instanceof Error ? err.message : 'Failed to load file');
@@ -113,7 +113,13 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         setLoading(false);
       }
     },
-    [filePath, isTextBased, config.streaming.maxInitialLoad, config.streaming.chunkSize, forceTextMode]
+    [
+      filePath,
+      isTextBased,
+      config.streaming.maxInitialLoad,
+      config.streaming.chunkSize,
+      forceTextMode,
+    ]
   );
 
   const handleScrollToBottom = useCallback(async () => {
@@ -153,12 +159,85 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
     config.streaming.chunkSize,
   ]);
 
+  // 新增：向前加载函数（改进版）
+  const handleScrollToTop = useCallback(
+    async (userScrollDirection?: 'up' | 'down') => {
+      if (!isLargeFile || loadingBefore || loading) return;
+
+      // 检查是否已到达文件开头
+      if (currentStartPosition <= 0) return;
+
+      // 检查是否刚刚跳转（跳转后5秒内不触发向前加载）
+      const currentTime = Date.now();
+      if (currentTime - lastJumpTimestampRef.current < 5000) {
+        return;
+      }
+
+      // 只有用户向上滚动时才触发向前加载
+      if (userScrollDirection !== 'up') {
+        return;
+      }
+
+      try {
+        setLoadingBefore(true);
+        const chunkSize = config.streaming.chunkSize;
+        const startPosition = Math.max(0, currentStartPosition - chunkSize);
+        const endPosition = currentStartPosition;
+
+        const result = await StorageServiceManager.getFileContent(
+          filePath,
+          startPosition,
+          endPosition - startPosition
+        );
+        const byteLength = new TextEncoder().encode(result.content).length;
+
+        // 在内容前面插入新内容
+        setContent(prev => result.content + prev);
+
+        setCurrentStartPosition(startPosition); // 更新窗口开始位置
+        setLoadedContentSize(prev => prev + byteLength); // 累加新读取的内容
+        setLoadedChunks(prev => prev + 1);
+
+        // 重新计算起始行号
+        if (startPosition === 0) {
+          setBaselineStartLineNumber(1);
+        } else {
+          // 估算新的起始行号（向前移动）
+          const avgBytesPerLine = 50;
+          const estimatedLinesAdded = Math.floor(byteLength / avgBytesPerLine);
+          setBaselineStartLineNumber(prev => Math.max(1, prev - estimatedLinesAdded));
+        }
+
+        return byteLength; // 返回新增内容的字节数，用于调整滚动位置
+      } catch (err) {
+        console.error('Failed to load previous content:', err);
+        setError('Failed to load previous content');
+        return 0;
+      } finally {
+        setLoadingBefore(false);
+      }
+    },
+    [
+      isLargeFile,
+      loadingBefore,
+      loading,
+      currentStartPosition,
+      filePath,
+      config.streaming.chunkSize,
+    ]
+  );
+
   const jumpToFilePercentage = useCallback(
     async (percentage: number) => {
       if (!isLargeFile) return;
 
       try {
         setLoading(true);
+
+        // 设置跳转时间戳
+        const jumpTime = Date.now();
+        lastJumpTimestampRef.current = jumpTime;
+
         const targetPosition = Math.floor((totalSize * percentage) / 100);
         const chunkSize = config.streaming.chunkSize;
         const endPosition = Math.min(targetPosition + chunkSize, totalSize);
@@ -171,6 +250,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         const byteLength = new TextEncoder().encode(result.content).length;
         setContent(result.content);
         setCurrentFilePosition(endPosition); // 文件位置：跳转后的结束位置
+        setCurrentStartPosition(targetPosition); // 窗口开始位置：跳转到的位置
         setLoadedContentSize(byteLength); // 内存内容：重置为当前块的大小
         setLoadedChunks(1);
 
@@ -296,9 +376,11 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
     loading,
     error,
     loadingMore,
+    loadingBefore,
     isLargeFile,
     totalSize,
     currentFilePosition,
+    currentStartPosition,
     loadedContentSize,
     loadedChunks,
     baselineStartLineNumber,
@@ -331,6 +413,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
     setError,
     setLoadingMore,
     setCurrentFilePosition,
+    setCurrentStartPosition,
     setLoadedContentSize,
     setLoadedChunks,
     setDataMetadata,
@@ -351,6 +434,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
     // 功能函数
     loadFileContent,
     handleScrollToBottom,
+    handleScrollToTop,
     jumpToFilePercentage,
     calculateStartLineNumber,
     performFullFileSearch,
