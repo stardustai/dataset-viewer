@@ -118,7 +118,7 @@ export const sshStorageAdapter: StorageAdapter = {
   extractFormData: (config: ConnectionConfig) => ({
     url: config.url || '',
     username: config.username || '',
-    password: config.password || '',
+    password: config.password ? '******' : '', // 使用占位符回显已保存的密码
     port: config.port || 22,
     privateKeyPath: config.privateKeyPath || '',
     passphrase: config.passphrase || '',

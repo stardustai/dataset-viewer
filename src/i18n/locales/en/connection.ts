@@ -160,6 +160,20 @@ export const connection = {
   // OSS errors
   'error.oss.connection.failed': 'OSS connection failed',
 
+  // SSH errors
+  'error.ssh.connection.failed': 'SSH connection failed',
+  'error.ssh.authentication.failed':
+    'SSH authentication failed, please check username and password or private key',
+  'error.ssh.key.not.found': 'Private key file not found or cannot be read',
+  'error.ssh.permission.denied': 'SSH permission denied, please check user permissions',
+
+  // SMB errors
+  'error.smb.connection.failed': 'SMB connection failed',
+  'error.smb.authentication.failed':
+    'SMB authentication failed, please check username and password',
+  'error.smb.share.not.found': 'Specified shared directory not found',
+  'error.smb.permission.denied': 'SMB access denied, please check user permissions',
+
   // OSS help information
   'oss.help.credentials.title': 'How to get Access Key:',
   'oss.help.step1': 'Login to object storage service console (Alibaba Cloud, AWS, MinIO, etc.)',

@@ -93,8 +93,7 @@ export const smbStorageAdapter: StorageAdapter = {
   extractFormData: (config: ConnectionConfig) => ({
     url: config.url || '',
     username: config.username || '',
-    password: config.password || '',
-    share: config.share || '',
+    password: config.password ? '******' : '', // 使用占位符回显已保存的密码
     domain: config.domain || '',
     isPasswordFromStorage: !!config.password, // 如果有密码，标记为来自存储
   }),

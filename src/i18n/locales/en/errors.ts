@@ -1,6 +1,6 @@
 export const errors = {
   // Connection errors
-  'error.connection.failed': 'Failed to connect to WebDAV server. Please check your credentials.',
+  'error.connection.failed': 'Connection failed. Please check your server address and credentials.',
   'error.credentials': 'Connection failed. Please verify the server URL and credentials.',
   'error.unknown': 'Unknown error',
 

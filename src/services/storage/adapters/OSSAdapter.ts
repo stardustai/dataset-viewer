@@ -155,7 +155,7 @@ export const ossStorageAdapter: StorageAdapter = {
     region: config.region || 'us-east-1',
     bucket: config.bucket || '',
     username: config.username || '',
-    password: config.password || '',
+    password: config.password ? '******' : '', // 使用占位符回显已保存的密钥
     isPasswordFromStorage: !!config.password, // 如果有密钥，标记为来自存储
   }),
 };

@@ -103,8 +103,8 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
 
   extractFormData: (config: ConnectionConfig) => ({
     organization: config.organization || '',
-    apiToken: config.apiToken || '',
-    isApiTokenFromStorage: !!config.apiToken, // 如果有API令牌，标记为来自存储
+    apiToken: config.apiToken ? '******' : '', // 使用占位符回显已保存的令牌
+    isApiTokenFromStorage: !!config.apiToken, // 如果有令牌，标记为来自存储
   }),
 };
 

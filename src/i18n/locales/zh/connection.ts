@@ -156,6 +156,18 @@ export const connection = {
   // OSS 错误
   'error.oss.connection.failed': 'OSS 连接失败',
 
+  // SSH 错误
+  'error.ssh.connection.failed': 'SSH 连接失败',
+  'error.ssh.authentication.failed': 'SSH 身份验证失败，请检查用户名和密码或私钥',
+  'error.ssh.key.not.found': '私钥文件不存在或无法读取',
+  'error.ssh.permission.denied': 'SSH 权限被拒绝，请检查用户权限',
+
+  // SMB 错误
+  'error.smb.connection.failed': 'SMB 连接失败',
+  'error.smb.authentication.failed': 'SMB 身份验证失败，请检查用户名和密码',
+  'error.smb.share.not.found': '找不到指定的共享目录',
+  'error.smb.permission.denied': 'SMB 访问被拒绝，请检查用户权限',
+
   // OSS 帮助信息
   'oss.help.credentials.title': 'Access Key 获取方式：',
   'oss.help.step1': '登录对象存储服务控制台（阿里云、AWS、MinIO 等）',

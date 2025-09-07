@@ -443,7 +443,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       if (
         errorMessage.includes('403') ||
         errorMessage.includes('Forbidden') ||
-        errorMessage.includes('AccessDenied')
+        errorMessage.includes('AccessDenied') ||
+        errorMessage.includes('permission denied')
       ) {
         displayError = t('error.access.denied');
         shouldRetryPathFallback = false; // 权限错误不尝试路径回退
