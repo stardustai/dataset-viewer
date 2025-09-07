@@ -77,8 +77,10 @@ hex = "0.4"
 # 添加 futures 以支持 block_on
 futures = "0.3"
 
-# SSH/SFTP 支持
-ssh2 = "0.9"
+# SSH/SFTP 支持 - 使用纯 Rust 实现，避免 OpenSSL 依赖
+russh = { version = "0.44", default-features = false }
+russh-sftp = { version = "2.1", default-features = false }
+russh-keys = { version = "0.44", default-features = false }
 # SMB 支持 - 使用纯 Rust 实现
 smb = "0.8"
 

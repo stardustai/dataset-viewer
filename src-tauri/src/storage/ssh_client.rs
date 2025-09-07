@@ -1,12 +1,12 @@
 use async_trait::async_trait;
-use ssh2::{Session, Sftp};
-use std::io::{Read, Seek};
-use std::net::TcpStream;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tokio::task::spawn_blocking;
-use url::Url;
+use russh::client::{self, Handle};
+use russh_keys;
+use russh_sftp::client::SftpSession;
+use std::io::SeekFrom;
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tokio::sync::Mutex;
 
 use crate::storage::traits::{
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
@@ -15,9 +15,25 @@ use crate::storage::traits::{
 
 pub struct SSHClient {
     config: ConnectionConfig,
-    session: Arc<Mutex<Option<Session>>>,
-    sftp: Arc<Mutex<Option<Sftp>>>,
+    handle: Arc<Mutex<Option<Handle<Client>>>>,
+    sftp: Arc<Mutex<Option<SftpSession>>>,
     connected: Arc<std::sync::atomic::AtomicBool>,
+}
+
+// SSH客户端处理器
+struct Client {}
+
+#[async_trait]
+impl client::Handler for Client {
+    type Error = russh::Error;
+
+    async fn check_server_key(
+        &mut self,
+        _server_public_key: &russh_keys::key::PublicKey,
+    ) -> Result<bool, Self::Error> {
+        // 在生产环境中，应该验证服务器密钥
+        Ok(true)
+    }
 }
 
 impl SSHClient {
@@ -43,10 +59,11 @@ impl SSHClient {
             StorageError::RequestFailed(format!("Failed to {} {}: {}", operation, path, error))
         }
     }
+
     pub fn new(config: ConnectionConfig) -> Result<Self, StorageError> {
         Ok(SSHClient {
             config,
-            session: Arc::new(Mutex::new(None)),
+            handle: Arc::new(Mutex::new(None)),
             sftp: Arc::new(Mutex::new(None)),
             connected: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         })
@@ -65,106 +82,74 @@ impl SSHClient {
             .as_ref()
             .ok_or_else(|| StorageError::InvalidConfig("SSH username is required".to_string()))?;
 
-        let server_clone = server.clone();
-        let username_clone = username.clone();
-        let password = config.password.clone();
-        let private_key_path = config.private_key_path.clone();
-        let passphrase = config.passphrase.clone();
+        // 创建SSH配置
+        let ssh_config = Arc::new(client::Config::default());
+        let sh = Client {};
 
-        let session = spawn_blocking(move || -> Result<Session, StorageError> {
-            // 建立TCP连接
-            let tcp = TcpStream::connect(format!("{}:{}", server_clone, port)).map_err(|e| {
-                StorageError::ConnectionFailed(format!(
-                    "Failed to connect to {}:{}: {}",
-                    server_clone, port, e
-                ))
-            })?;
+        // 建立连接 - 修正类型问题
+        let mut handle = client::connect(ssh_config, (server.as_str(), port), sh)
+            .await
+            .map_err(|e| StorageError::ConnectionFailed(format!("SSH connect failed: {}", e)))?;
 
-            tcp.set_read_timeout(Some(Duration::from_secs(30)))
+        // 认证
+        let auth_result = if let Some(password) = &config.password {
+            // 密码认证
+            handle
+                .authenticate_password(username, password)
+                .await
                 .map_err(|e| {
-                    StorageError::ConnectionFailed(format!("Failed to set read timeout: {}", e))
-                })?;
-            tcp.set_write_timeout(Some(Duration::from_secs(30)))
-                .map_err(|e| {
-                    StorageError::ConnectionFailed(format!("Failed to set write timeout: {}", e))
-                })?;
-
-            // 创建SSH会话
-            let mut sess = Session::new().map_err(|e| {
-                StorageError::ConnectionFailed(format!("Failed to create SSH session: {}", e))
-            })?;
-
-            sess.set_tcp_stream(tcp);
-            sess.handshake().map_err(|e| {
-                StorageError::ConnectionFailed(format!("SSH handshake failed: {}", e))
-            })?;
-
-            // 认证
-            if let Some(key_path) = private_key_path {
-                // 私钥认证
-                let public_key_path = format!("{}.pub", key_path);
-                sess.userauth_pubkey_file(
-                    &username_clone,
-                    Some(Path::new(&public_key_path)),
-                    Path::new(&key_path),
-                    passphrase.as_deref(),
-                )
-                .map_err(|e| {
-                    StorageError::ConnectionFailed(format!(
-                        "SSH private key authentication failed: {}",
+                    StorageError::AuthenticationFailed(format!(
+                        "SSH password authentication failed: {}",
                         e
                     ))
-                })?;
-            } else if let Some(password) = password {
-                // 密码认证
-                sess.userauth_password(&username_clone, &password)
+                })
+        } else if let Some(private_key_path) = &config.private_key_path {
+            // 私钥认证
+            let key_pair =
+                russh_keys::load_secret_key(private_key_path, config.passphrase.as_deref())
                     .map_err(|e| {
-                        StorageError::ConnectionFailed(format!(
-                            "SSH password authentication failed: {}",
+                        StorageError::AuthenticationFailed(format!(
+                            "Failed to load SSH private key: {}",
                             e
                         ))
                     })?;
-            } else {
-                return Err(StorageError::InvalidConfig(
-                    "Either password or private key is required for SSH authentication".to_string(),
-                ));
-            }
+            handle
+                .authenticate_publickey(username, Arc::new(key_pair))
+                .await
+                .map_err(|e| {
+                    StorageError::AuthenticationFailed(format!(
+                        "SSH private key authentication failed: {}",
+                        e
+                    ))
+                })
+        } else {
+            return Err(StorageError::InvalidConfig(
+                "Either password or private key is required for SSH authentication".to_string(),
+            ));
+        }?;
 
-            if !sess.authenticated() {
-                return Err(StorageError::ConnectionFailed(
-                    "SSH authentication failed".to_string(),
-                ));
-            }
-
-            Ok(sess)
-        })
-        .await
-        .map_err(|e| StorageError::ConnectionFailed(format!("Task join error: {}", e)))??;
-
-        let session_arc = Arc::new(Mutex::new(session));
+        if !auth_result {
+            return Err(StorageError::AuthenticationFailed(
+                "SSH authentication failed".to_string(),
+            ));
+        }
 
         // 创建SFTP会话
-        let sftp = spawn_blocking({
-            let session_clone = session_arc.clone();
-            move || -> Result<Sftp, StorageError> {
-                let session = session_clone.lock().unwrap();
-                let sftp = session.sftp().map_err(|e| {
-                    StorageError::ConnectionFailed(format!("Failed to create SFTP session: {}", e))
-                })?;
-                Ok(sftp)
-            }
-        })
-        .await
-        .map_err(|e| StorageError::ConnectionFailed(format!("Task join error: {}", e)))??;
+        let channel = handle.channel_open_session().await.map_err(|e| {
+            StorageError::ConnectionFailed(format!("Failed to open channel: {}", e))
+        })?;
 
-        // 提取 session 从 Arc<Mutex<Session>>
-        let session_final = {
-            let session_guard = session_arc.lock().unwrap();
-            (*session_guard).clone()
-        };
+        channel.request_subsystem(true, "sftp").await.map_err(|e| {
+            StorageError::ConnectionFailed(format!("Failed to request SFTP subsystem: {}", e))
+        })?;
 
-        *self.session.lock().unwrap() = Some(session_final);
-        *self.sftp.lock().unwrap() = Some(sftp);
+        let sftp = SftpSession::new(channel.into_stream()).await.map_err(|e| {
+            StorageError::ConnectionFailed(format!("Failed to create SFTP session: {}", e))
+        })?;
+
+        // 保存连接
+        *self.handle.lock().await = Some(handle);
+        *self.sftp.lock().await = Some(sftp);
         self.connected
             .store(true, std::sync::atomic::Ordering::Relaxed);
 
@@ -196,19 +181,16 @@ impl SSHClient {
 
     /// 解析SSH协议URL，提取文件路径
     fn parse_ssh_url(&self, ssh_url: &str) -> Result<String, StorageError> {
-        // ssh://user@host:port/path 格式解析
         if !ssh_url.starts_with("ssh://") {
             return Ok(ssh_url.to_string());
         }
 
         let without_protocol = ssh_url.strip_prefix("ssh://").unwrap();
 
-        // 找到路径部分（第一个 '/' 之后的内容）
         if let Some(path_start) = without_protocol.find('/') {
             let path = &without_protocol[path_start..];
             Ok(path.to_string())
         } else {
-            // 如果没有路径部分，默认为根路径
             Ok("/".to_string())
         }
     }
@@ -219,9 +201,8 @@ impl SSHClient {
     }
 
     /// 格式化修改时间
-    fn format_mtime(mtime: u64) -> String {
-        let datetime = SystemTime::UNIX_EPOCH + Duration::from_secs(mtime);
-        match datetime.duration_since(UNIX_EPOCH) {
+    fn format_mtime(mtime: SystemTime) -> String {
+        match mtime.duration_since(UNIX_EPOCH) {
             Ok(duration) => {
                 let secs = duration.as_secs();
                 let dt = chrono::DateTime::from_timestamp(secs as i64, 0)
@@ -255,8 +236,47 @@ impl StorageClient for SSHClient {
         }
 
         let full_path = self.get_full_path(path);
-        let sftp = self.sftp.clone();
-        let path_owned = path.to_string();
+        let mut sftp_guard = self.sftp.lock().await;
+        let sftp = sftp_guard
+            .as_mut()
+            .ok_or_else(|| StorageError::NotConnected)?;
+
+        let entries = sftp
+            .read_dir(&full_path)
+            .await
+            .map_err(|e| Self::parse_ssh_error(&e, "read directory", &full_path))?;
+
+        let mut files = Vec::new();
+        for entry in entries {
+            let filename = entry.file_name().to_string();
+
+            // 跳过 . 和 ..
+            if filename == "." || filename == ".." {
+                continue;
+            }
+
+            let metadata = entry.metadata();
+            let is_dir = metadata.is_dir();
+            let file_type = if is_dir { "directory" } else { "file" };
+
+            let file = StorageFile {
+                filename: filename.clone(),
+                basename: filename,
+                lastmod: Self::format_mtime(metadata.modified().unwrap_or(UNIX_EPOCH)),
+                size: Self::format_file_size(metadata.len()),
+                file_type: file_type.to_string(),
+                mime: if is_dir {
+                    None
+                } else {
+                    Some("application/octet-stream".to_string())
+                },
+                etag: None,
+            };
+
+            files.push(file);
+        }
+
+        // 按选项排序
         let sort_by = options
             .and_then(|o| o.sort_by.clone())
             .unwrap_or_else(|| "name".to_string());
@@ -264,78 +284,31 @@ impl StorageClient for SSHClient {
             .and_then(|o| o.sort_order.clone())
             .unwrap_or_else(|| "asc".to_string());
 
-        spawn_blocking(move || -> Result<DirectoryResult, StorageError> {
-            let sftp_guard = sftp.lock().unwrap();
-            let sftp = sftp_guard
-                .as_ref()
-                .ok_or_else(|| StorageError::NotConnected)?;
+        files.sort_by(|a, b| {
+            let cmp = match sort_by.as_str() {
+                "size" => a
+                    .size
+                    .parse::<u64>()
+                    .unwrap_or(0)
+                    .cmp(&b.size.parse::<u64>().unwrap_or(0)),
+                "modified" => a.lastmod.cmp(&b.lastmod),
+                _ => a.filename.cmp(&b.filename),
+            };
 
-            let entries = sftp
-                .readdir(Path::new(&full_path))
-                .map_err(|e| Self::parse_ssh_error(&e, "read directory", &full_path))?;
-
-            let mut files = Vec::new();
-            for (file_path, stat) in entries {
-                let filename = file_path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-
-                // 跳过 . 和 ..
-                if filename == "." || filename == ".." {
-                    continue;
-                }
-
-                let is_dir = stat.is_dir();
-                let file_type = if is_dir { "directory" } else { "file" };
-
-                let file = StorageFile {
-                    filename: filename.clone(),
-                    basename: filename,
-                    lastmod: Self::format_mtime(stat.mtime.unwrap_or(0)),
-                    size: Self::format_file_size(stat.size.unwrap_or(0)),
-                    file_type: file_type.to_string(),
-                    mime: if is_dir {
-                        None
-                    } else {
-                        Some("application/octet-stream".to_string())
-                    },
-                    etag: None,
-                };
-
-                files.push(file);
+            if sort_order == "desc" {
+                cmp.reverse()
+            } else {
+                cmp
             }
+        });
 
-            // 按选项排序
-            files.sort_by(|a, b| {
-                let cmp = match sort_by.as_str() {
-                    "size" => a
-                        .size
-                        .parse::<u64>()
-                        .unwrap_or(0)
-                        .cmp(&b.size.parse::<u64>().unwrap_or(0)),
-                    "modified" => a.lastmod.cmp(&b.lastmod),
-                    _ => a.filename.cmp(&b.filename),
-                };
-
-                if sort_order == "desc" {
-                    cmp.reverse()
-                } else {
-                    cmp
-                }
-            });
-
-            Ok(DirectoryResult {
-                files,
-                has_more: false,
-                next_marker: None,
-                total_count: None,
-                path: path_owned,
-            })
+        Ok(DirectoryResult {
+            files,
+            has_more: false,
+            next_marker: None,
+            total_count: None,
+            path: path.to_string(),
         })
-        .await
-        .map_err(|e| StorageError::RequestFailed(format!("Task join error: {}", e)))?
     }
 
     async fn read_file_range(
@@ -360,80 +333,71 @@ impl StorageClient for SSHClient {
             return Err(StorageError::NotConnected);
         }
 
+        if let Some(ref mut cancel_rx) = cancel_rx {
+            if cancel_rx.try_recv().is_ok() {
+                return Err(StorageError::RequestFailed(
+                    "download.cancelled".to_string(),
+                ));
+            }
+        }
+
         let full_path = self.get_full_path(path);
-        let sftp = self.sftp.clone();
+        let mut sftp_guard = self.sftp.lock().await;
+        let sftp = sftp_guard
+            .as_mut()
+            .ok_or_else(|| StorageError::NotConnected)?;
 
-        // 在spawn_blocking之前检查取消信号
-        if let Some(ref mut cancel_rx) = cancel_rx {
-            if cancel_rx.try_recv().is_ok() {
-                return Err(StorageError::RequestFailed(
-                    "download.cancelled".to_string(),
-                ));
+        // 打开文件
+        let mut file = sftp
+            .open(&full_path)
+            .await
+            .map_err(|e| Self::parse_ssh_error(&e, "open", &full_path))?;
+
+        // 设置文件指针位置
+        file.seek(SeekFrom::Start(start)).await.map_err(|e| {
+            StorageError::RequestFailed(format!("Failed to seek to position {}: {}", start, e))
+        })?;
+
+        // 分块读取
+        let chunk_size = std::cmp::min(8192u64, length);
+        let mut result = Vec::with_capacity(length as usize);
+        let mut remaining = length;
+        let mut total_read = 0u64;
+
+        while remaining > 0 {
+            let current_chunk_size = std::cmp::min(remaining, chunk_size) as usize;
+            let mut chunk = vec![0u8; current_chunk_size];
+
+            let bytes_read = file
+                .read(&mut chunk)
+                .await
+                .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
+
+            if bytes_read == 0 {
+                break;
+            }
+
+            chunk.truncate(bytes_read);
+            result.extend_from_slice(&chunk);
+            total_read += bytes_read as u64;
+            remaining = remaining.saturating_sub(bytes_read as u64);
+
+            // 调用进度回调
+            if let Some(ref callback) = progress_callback {
+                callback(total_read, length);
+            }
+
+            // 检查取消信号
+            if let Some(ref mut cancel_rx) = cancel_rx {
+                if cancel_rx.try_recv().is_ok() {
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
+                }
             }
         }
 
-        let result = spawn_blocking(move || -> Result<Vec<u8>, StorageError> {
-            let sftp_guard = sftp.lock().unwrap();
-            let sftp = sftp_guard
-                .as_ref()
-                .ok_or_else(|| StorageError::NotConnected)?;
-
-            let file = sftp.open(Path::new(&full_path)).map_err(|e| {
-                StorageError::RequestFailed(format!("Failed to open file {}: {}", full_path, e))
-            })?;
-
-            let mut file = file;
-
-            // 设置文件指针位置
-            file.seek(std::io::SeekFrom::Start(start)).map_err(|e| {
-                StorageError::RequestFailed(format!("Failed to seek to position {}: {}", start, e))
-            })?;
-
-            // 使用分块读取来处理大文件并支持进度回调
-            let chunk_size = std::cmp::min(8192u64, length); // 8KB chunks
-            let mut result = Vec::with_capacity(length as usize);
-            let mut remaining = length;
-            let mut total_read = 0u64;
-
-            while remaining > 0 {
-                let current_chunk_size = std::cmp::min(remaining, chunk_size) as usize;
-                let mut chunk = vec![0u8; current_chunk_size];
-
-                let bytes_read = file
-                    .read(&mut chunk)
-                    .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
-
-                if bytes_read == 0 {
-                    // 到达文件末尾
-                    break;
-                }
-
-                chunk.truncate(bytes_read);
-                result.extend_from_slice(&chunk);
-                total_read += bytes_read as u64;
-                remaining = remaining.saturating_sub(bytes_read as u64);
-
-                // 调用进度回调
-                if let Some(ref callback) = progress_callback {
-                    callback(total_read, length);
-                }
-            }
-
-            Ok(result)
-        })
-        .await
-        .map_err(|e| StorageError::RequestFailed(format!("Task join error: {}", e)))?;
-
-        // 完成后再次检查取消信号
-        if let Some(ref mut cancel_rx) = cancel_rx {
-            if cancel_rx.try_recv().is_ok() {
-                return Err(StorageError::RequestFailed(
-                    "download.cancelled".to_string(),
-                ));
-            }
-        }
-
-        result
+        Ok(result)
     }
 
     async fn read_full_file(&self, path: &str) -> Result<Vec<u8>, StorageError> {
@@ -442,26 +406,22 @@ impl StorageClient for SSHClient {
         }
 
         let full_path = self.get_full_path(path);
-        let sftp = self.sftp.clone();
+        let mut sftp_guard = self.sftp.lock().await;
+        let sftp = sftp_guard
+            .as_mut()
+            .ok_or_else(|| StorageError::NotConnected)?;
 
-        spawn_blocking(move || -> Result<Vec<u8>, StorageError> {
-            let sftp_guard = sftp.lock().unwrap();
-            let sftp = sftp_guard
-                .as_ref()
-                .ok_or_else(|| StorageError::NotConnected)?;
+        let mut file = sftp
+            .open(&full_path)
+            .await
+            .map_err(|e| Self::parse_ssh_error(&e, "open", &full_path))?;
 
-            let mut file = sftp
-                .open(Path::new(&full_path))
-                .map_err(|e| Self::parse_ssh_error(&e, "open", &full_path))?;
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)
+            .await
+            .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
 
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer)
-                .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
-
-            Ok(buffer)
-        })
-        .await
-        .map_err(|e| StorageError::RequestFailed(format!("Task join error: {}", e)))?
+        Ok(buffer)
     }
 
     async fn get_file_size(&self, path: &str) -> Result<u64, StorageError> {
@@ -470,25 +430,19 @@ impl StorageClient for SSHClient {
         }
 
         let full_path = self.get_full_path(path);
-        let sftp = self.sftp.clone();
+        let mut sftp_guard = self.sftp.lock().await;
+        let sftp = sftp_guard
+            .as_mut()
+            .ok_or_else(|| StorageError::NotConnected)?;
 
-        spawn_blocking(move || -> Result<u64, StorageError> {
-            let sftp_guard = sftp.lock().unwrap();
-            let sftp = sftp_guard
-                .as_ref()
-                .ok_or_else(|| StorageError::NotConnected)?;
+        let metadata = sftp.metadata(&full_path).await.map_err(|e| {
+            StorageError::RequestFailed(format!(
+                "Failed to get file stats for {}: {}",
+                full_path, e
+            ))
+        })?;
 
-            let stat = sftp.stat(Path::new(&full_path)).map_err(|e| {
-                StorageError::RequestFailed(format!(
-                    "Failed to get file stats for {}: {}",
-                    full_path, e
-                ))
-            })?;
-
-            Ok(stat.size.unwrap_or(0))
-        })
-        .await
-        .map_err(|e| StorageError::RequestFailed(format!("Task join error: {}", e)))?
+        Ok(metadata.len())
     }
 
     fn protocol(&self) -> &str {
@@ -526,7 +480,6 @@ impl StorageClient for SSHClient {
     }
 
     fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // SSH doesn't provide direct download URLs, return the SSH path
         let server = self.config.url.as_ref().ok_or_else(|| {
             StorageError::InvalidConfig("SSH server URL not configured".to_string())
         })?;
@@ -548,132 +501,62 @@ impl StorageClient for SSHClient {
         ))
     }
 
-    /// 高效的 SSH/SFTP 文件下载实现，使用 SFTP 流式传输
     async fn download_file(
         &self,
         path: &str,
         save_path: &std::path::Path,
         progress_callback: Option<ProgressCallback>,
-        _cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+        mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<(), StorageError> {
-        let config = self.config.clone();
-        let remote_path = self.get_full_path(path);
-        let save_path = save_path.to_path_buf();
+        let file_size = self.get_file_size(path).await?;
+        let mut local_file = tokio::fs::File::create(save_path)
+            .await
+            .map_err(|e| StorageError::IoError(format!("Failed to create local file: {}", e)))?;
 
-        // 在阻塞线程中执行 SFTP 文件传输
-        tokio::task::spawn_blocking(move || {
-            // 解析主机信息
-            let (host, port) = if let Some(url_str) = &config.url {
-                if url_str.starts_with("ssh://") || url_str.starts_with("sftp://") {
-                    let url = Url::parse(url_str).map_err(|e| {
-                        StorageError::InvalidConfig(format!("Invalid SSH URL: {}", e))
-                    })?;
-                    let host = url.host_str().ok_or_else(|| {
-                        StorageError::InvalidConfig("No host in SSH URL".to_string())
-                    })?;
-                    let port = url.port().unwrap_or(22);
-                    (host.to_string(), port)
-                } else {
-                    (url_str.clone(), config.port.unwrap_or(22))
+        let chunk_size = std::cmp::min(64 * 1024, file_size / 100).max(8 * 1024);
+        let mut downloaded = 0u64;
+
+        while downloaded < file_size {
+            let remaining = file_size - downloaded;
+            let current_chunk_size = std::cmp::min(chunk_size, remaining);
+
+            // 避免所有权问题，每次传递 None 而不是 cancel_rx 的引用
+            let chunk_data = if let Some(ref mut rx) = cancel_rx {
+                if rx.try_recv().is_ok() {
+                    let _ = tokio::fs::remove_file(save_path).await;
+                    return Err(StorageError::RequestFailed(
+                        "download.cancelled".to_string(),
+                    ));
                 }
+                self.read_file_range(path, downloaded, current_chunk_size)
+                    .await?
             } else {
-                return Err(StorageError::InvalidConfig(
-                    "SSH host/URL is required".to_string(),
-                ));
+                self.read_file_range(path, downloaded, current_chunk_size)
+                    .await?
             };
 
-            let username = config.username.as_ref().ok_or_else(|| {
-                StorageError::InvalidConfig("SSH username is required".to_string())
-            })?;
+            local_file
+                .write_all(&chunk_data)
+                .await
+                .map_err(|e| StorageError::IoError(format!("Failed to write data: {}", e)))?;
 
-            // 建立 SSH 连接
-            let tcp = TcpStream::connect(&format!("{}:{}", host, port)).map_err(|e| {
-                StorageError::ConnectionFailed(format!("TCP connect failed: {}", e))
-            })?;
+            downloaded += chunk_data.len() as u64;
 
-            let mut session = Session::new().map_err(|e| {
-                StorageError::ConnectionFailed(format!("Session create failed: {}", e))
-            })?;
-            session.set_tcp_stream(tcp);
-            session.handshake().map_err(|e| {
-                StorageError::ConnectionFailed(format!("SSH handshake failed: {}", e))
-            })?;
-
-            // SSH 认证
-            if let Some(password) = &config.password {
-                session.userauth_password(username, password).map_err(|e| {
-                    StorageError::AuthenticationFailed(format!("Password auth failed: {}", e))
-                })?;
-            } else if let Some(private_key) = &config.private_key_path {
-                session
-                    .userauth_pubkey_file(
-                        username,
-                        None,
-                        Path::new(private_key),
-                        config.passphrase.as_deref(),
-                    )
-                    .map_err(|e| {
-                        StorageError::AuthenticationFailed(format!("Key auth failed: {}", e))
-                    })?;
+            // 调用进度回调
+            if let Some(ref callback) = progress_callback {
+                callback(downloaded, file_size);
             }
 
-            // 创建 SFTP 通道
-            let sftp = session.sftp().map_err(|e| {
-                StorageError::ConnectionFailed(format!("SFTP session failed: {}", e))
-            })?;
-
-            // 获取文件信息
-            let stat = sftp
-                .stat(Path::new(&remote_path))
-                .map_err(|e| StorageError::IoError(format!("Failed to stat remote file: {}", e)))?;
-            let file_size = stat.size.unwrap_or(0);
-
-            // 打开远程文件
-            let mut remote_file = sftp
-                .open(Path::new(&remote_path))
-                .map_err(|e| StorageError::IoError(format!("Failed to open remote file: {}", e)))?;
-
-            // 创建本地文件
-            let mut local_file = std::fs::File::create(&save_path).map_err(|e| {
-                StorageError::IoError(format!("Failed to create local file: {}", e))
-            })?;
-
-            // 流式传输文件
-            let chunk_size = if file_size > 0 {
-                std::cmp::min(64 * 1024, file_size as usize / 100).max(8 * 1024)
-            } else {
-                64 * 1024
-            };
-            let mut buffer = vec![0u8; chunk_size];
-            let mut downloaded = 0u64;
-
-            loop {
-                let bytes_read = remote_file.read(&mut buffer).map_err(|e| {
-                    StorageError::IoError(format!("Failed to read from remote file: {}", e))
-                })?;
-
-                if bytes_read == 0 {
-                    break; // EOF
-                }
-
-                std::io::Write::write_all(&mut local_file, &buffer[..bytes_read]).map_err(|e| {
-                    StorageError::IoError(format!("Failed to write to local file: {}", e))
-                })?;
-
-                downloaded += bytes_read as u64;
-
-                // 调用进度回调
-                if let Some(ref callback) = progress_callback {
-                    callback(downloaded, file_size);
-                }
+            if chunk_data.len() < current_chunk_size as usize {
+                break;
             }
+        }
 
-            std::io::Write::flush(&mut local_file)
-                .map_err(|e| StorageError::IoError(format!("Failed to flush local file: {}", e)))?;
+        local_file
+            .flush()
+            .await
+            .map_err(|e| StorageError::IoError(format!("Failed to flush local file: {}", e)))?;
 
-            Ok(())
-        })
-        .await
-        .map_err(|e| StorageError::IoError(format!("Blocking task failed: {}", e)))?
+        Ok(())
     }
 }
