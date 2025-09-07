@@ -14,23 +14,30 @@ export const connection = {
   'features.virtual_scrolling': 'Virtual Scrolling',
   'features.virtual_scrolling.desc': 'Efficiently handle millions of data records',
   'features.multi_storage': 'Multi Data Source Support',
-  'features.multi_storage.desc': 'Support WebDAV, OSS and local file systems as data sources',
+  'features.multi_storage.desc': 'Support WebDAV, S3 and local file systems as data sources',
   'tech.stack': 'Tech Stack',
 
   // Storage types
   'storage.type.select': 'Select Data Source Type',
   'storage.type.webdav': 'WebDAV',
   'storage.type.webdav.description': 'WebDAV Server',
+  'storage.type.ssh': 'SSH',
+  'storage.type.ssh.description': 'SSH Remote Server',
+  'storage.type.smb': 'SMB',
+  'storage.type.smb.description': 'SMB/CIFS Network Share',
   'storage.type.local': 'Local Files',
   'storage.type.local.description': 'Browse local file system',
-  'storage.type.oss': 'OSS',
-  'storage.type.oss.description': 'Connect to Object Storage Service',
+  'storage.type.s3': 'S3',
+  'storage.type.s3.description': 'Connect to S3-compatible object storage',
   'storage.type.huggingface': 'HuggingFace',
   'storage.type.huggingface.description': 'AI Datasets',
 
   // Connection name formats
   'connection.name.webdav': 'WebDAV({{host}})',
+  'connection.name.ssh': 'SSH({{host}})',
+  'connection.name.smb': 'SMB({{host}}/{{share}})',
   'connection.name.local': 'Local Files({{path}})',
+  'connection.name.s3': 'S3({{host}}-{{bucket}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
   'connection.name.huggingface': 'Hugging Face({{org}})',
 
@@ -42,10 +49,7 @@ export const connection = {
   password: 'Password',
   'password.placeholder': 'Your password',
   'password.saved': 'Using saved password',
-  'password.click.new': 'Click to enter new password',
-  connecting: 'Connecting...',
-  connect: 'Connect',
-  optional: '(Optional)',
+  'password.click.to.edit': 'Click to edit password',
 
   // OSS specific fields
   'oss.platform.select': 'Select Platform',
@@ -73,15 +77,47 @@ export const connection = {
   'oss.region.placeholder': 'e.g.: cn-hangzhou, us-east-1',
   'oss.region.optional': 'Region (Optional)',
 
+  // SSH specific fields
+  'ssh.server': 'Server URL',
+  'ssh.server.placeholder': 'server.domain.com',
+  'ssh.port': 'Port',
+  'ssh.port.placeholder': '22',
+  'ssh.username': 'Username',
+  'ssh.username.placeholder': 'username',
+  'ssh.authentication': 'Authentication',
+  'ssh.password': 'Password',
+  'ssh.password.placeholder': 'password',
+  'ssh.private.key': 'Private Key File',
+  'ssh.private.key.placeholder': 'private key file path',
+  'ssh.select.private.key': 'Select Private Key File',
+  'ssh.path': 'Remote Path',
+  'ssh.path.placeholder': '/home/username',
+
+  // SMB specific fields
+  'smb.server': 'Server URL',
+  'smb.server.placeholder': 'server.domain.com',
+  'smb.share': 'Share Name',
+  'smb.share.placeholder': 'shared',
+  'smb.domain': 'Domain',
+  'smb.domain.placeholder': 'WORKGROUP or DOMAIN',
+  'smb.domain.description': 'Windows domain or workgroup (optional)',
+
   // Form validation errors
   'error.endpoint.required': 'Please enter OSS endpoint',
   'error.endpoint.invalid': 'Please enter a valid endpoint',
   'error.access.key.required': 'Please enter Access Key',
   'error.secret.key.required': 'Please enter Secret Key',
   'error.bucket.required': 'Please enter Bucket name',
+  'error.ssh.server.required': 'Please enter SSH server address',
+  'error.ssh.username.required': 'Please enter SSH username',
+  'error.ssh.password.required': 'Please enter SSH password or private key file',
+  'error.ssh.path.required': 'Please enter remote path',
+  'error.smb.server.required': 'Please enter SMB server address',
+  'error.smb.share.required': 'Please enter share name',
+  'error.smb.username.required': 'Please enter username',
+  'error.smb.password.required': 'Please enter password',
 
   // Connection management
-  'saved.connections': 'Saved Connections',
   'no.saved.connections': 'No saved connections',
   'save.connection.hint':
     'Connection information can be automatically saved after successful connection',
@@ -93,32 +129,31 @@ export const connection = {
     'Password will be saved in plain text in local storage, please use with caution',
   'connection.name.placeholder': 'Connection name (optional)',
   'connection.name.hint': 'Leave empty to auto-generate name',
-  'last.connected': 'Last connected',
   'set.default': 'Set as default',
   'unset.default': 'Unset default',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
-  deleted: 'Connection deleted',
-  undo: 'Undo',
 
   // Local file system
-  'local.root.path': 'Root Directory Path',
-  'local.path.placeholder': 'e.g.: /Users/username/Documents',
-  'local.select.directory': 'Select Directory',
-  'local.quick.select': 'Quick Select',
-  'local.path.documents': 'Documents',
-  'local.path.downloads': 'Downloads',
-  'local.path.desktop': 'Desktop',
-  'local.path.home': 'Home',
-  'local.permission.notice': 'Permission Notice',
-  'local.permission.description':
-    'The app can only access directories you explicitly select and their subdirectories. It is recommended to select common directories such as Documents and Downloads.',
-  'local.connect': 'Connect to Local Files',
   'local.error.access':
     'Cannot access the specified path, please check if the path exists and you have permission to access it',
   'local.error.connection': 'Failed to connect to local file system',
 
   // OSS errors
   'error.oss.connection.failed': 'OSS connection failed',
+
+  // SSH errors
+  'error.ssh.connection.failed': 'SSH connection failed',
+  'error.ssh.authentication.failed':
+    'SSH authentication failed, please check username and password or private key',
+  'error.ssh.key.not.found': 'Private key file not found or cannot be read',
+  'error.ssh.permission.denied': 'SSH permission denied, please check user permissions',
+
+  // SMB errors
+  'error.smb.connection.failed': 'SMB connection failed',
+  'error.smb.authentication.failed':
+    'SMB authentication failed, please check username and password',
+  'error.smb.share.not.found': 'Specified shared directory not found',
+  'error.smb.permission.denied': 'SMB access denied, please check user permissions',
 
   // OSS help information
   'oss.help.credentials.title': 'How to get Access Key:',
@@ -147,5 +182,4 @@ export const connection = {
     'Connection type mismatch: Cannot use {{connectionType}} client to connect to "{{connectionName}}"',
   'connection.switch.missing_credentials':
     'Connection "{{connectionName}}" is missing required credentials',
-  dismiss: 'Dismiss',
 };

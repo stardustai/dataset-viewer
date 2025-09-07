@@ -1,14 +1,13 @@
 import { StorageAdapter } from '../StorageClient';
 import { ConnectionConfig } from '../types';
-import { getHostnameFromUrl } from '../../../utils/urlUtils';
 
 /**
- * WebDAV 存储适配器
- * 处理 WebDAV 协议特有的逻辑
+ * SMB 存储适配器
+ * 处理 SMB/CIFS 协议特有的逻辑
  */
-export const webdavStorageAdapter: StorageAdapter = {
-  protocol: 'webdav',
-  displayName: 'WebDAV Server',
+export const smbStorageAdapter: StorageAdapter = {
+  protocol: 'smb',
+  displayName: 'SMB/CIFS Server',
   defaultSortOptions: null, // 使用前端排序
   defaultPageSize: null, // 不分页
   supportsSearch: false,
@@ -16,29 +15,41 @@ export const webdavStorageAdapter: StorageAdapter = {
 
   buildProtocolUrl: (path: string, connection: any) => {
     if (!connection?.url) {
-      throw new Error('Not connected to WebDAV server');
+      throw new Error('Not connected to SMB server');
     }
 
-    const connectionUrl = new URL(connection.url);
-    const scheme = connectionUrl.protocol === 'https:' ? 'webdavs' : 'webdav';
-    const cleanPath = path.replace(/^\/+/, '');
-    const basePath = connectionUrl.pathname.replace(/\/+$/, '');
+    const rawPath = (path ?? '').toString();
+    const cleanPath = rawPath.replace(/^\/+/, '');
+    const server = String(connection.url)
+      .replace(/^smb:\/\//i, '')
+      .replace(/^\/+|\/+$/g, '');
+    let share = String(connection.share || '')
+      .trim()
+      .replace(/^[\/\\]+|[\/\\]+$/g, '');
 
-    if (cleanPath) {
-      return `${scheme}://${connectionUrl.host}${basePath}/${cleanPath}`;
-    } else {
-      return `${scheme}://${connectionUrl.host}${basePath}`;
+    if (!share) {
+      throw new Error('SMB share name is required');
     }
+    if (share.includes('/')) {
+      throw new Error('Invalid SMB share name');
+    }
+    const encodedShare = encodeURIComponent(share);
+    const encodedPath = cleanPath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+
+    return encodedPath
+      ? `smb://${server}/${encodedShare}/${encodedPath}`
+      : `smb://${server}/${encodedShare}`;
   },
 
   generateConnectionName: (config: ConnectionConfig) => {
     if (config.name) return config.name;
 
     try {
-      const hostname = getHostnameFromUrl(config.url!);
-      return `WebDAV (${hostname})`;
+      const server = config.url || 'unknown';
+      const share = config.share || 'share';
+      return `SMB (${server}/${share})`;
     } catch {
-      return 'WebDAV Server';
+      return 'SMB Server';
     }
   },
 
@@ -47,26 +58,33 @@ export const webdavStorageAdapter: StorageAdapter = {
       url: config.url?.trim(),
       username: config.username,
       password: config.password,
+      share: config.share || '',
+      domain: config.domain || '',
       connected: true,
     };
   },
 
   // === 新增的标准方法实现 ===
 
-  getDefaultConfig: () => ({}),
+  getDefaultConfig: () => ({
+    share: '',
+    domain: '',
+  }),
 
   buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
     const config: ConnectionConfig = {
-      type: 'webdav',
+      type: 'smb',
       url: formData.url?.trim(),
       username: formData.username?.trim(),
       password:
         formData.isPasswordFromStorage && existingConnection?.config.password
           ? existingConnection.config.password
           : formData.password,
+      share: formData.share?.trim(),
+      domain: formData.domain?.trim() || undefined,
       name: existingConnection
         ? existingConnection.name
-        : `WebDAV (${formData.url?.trim() || 'unknown'})`,
+        : `SMB (${formData.url?.trim() || 'unknown'}/${formData.share?.trim() || 'share'})`,
     };
 
     return config;
@@ -76,6 +94,7 @@ export const webdavStorageAdapter: StorageAdapter = {
     url: config.url || '',
     username: config.username || '',
     password: config.password ? '******' : '', // 使用占位符回显已保存的密码
+    domain: config.domain || '',
     isPasswordFromStorage: !!config.password, // 如果有密码，标记为来自存储
   }),
 };

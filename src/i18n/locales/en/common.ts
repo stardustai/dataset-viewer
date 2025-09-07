@@ -21,6 +21,10 @@ export const common = {
   loading: 'Loading...',
   'loading.pointCloud': 'Loading point cloud renderer...',
   optional: '(Optional)',
+  connecting: 'Connecting...',
+  deleted: 'Deleted',
+  undo: 'Undo',
+  dismiss: 'Dismiss',
 
   // Time related
   'time.today': 'Today',

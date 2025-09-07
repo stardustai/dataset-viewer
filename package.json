@@ -17,7 +17,7 @@
     "package:all": "pnpm package && pnpm package:windows",
     "clean": "rm -rf dist src-tauri/target node_modules/.vite",
     "clean:build": "rm -rf src-tauri/target/release src-tauri/target/debug",
-    "lint": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "format": "biome format --write . && cd src-tauri && cargo fmt",
     "format:check": "biome format . && cd src-tauri && cargo fmt --check",
     "format:frontend": "biome format --write .",

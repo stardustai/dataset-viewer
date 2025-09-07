@@ -21,6 +21,10 @@ export const common = {
   'loading.pointCloud': '正在加载点云渲染器...',
   optional: '(可选)',
   close: '关闭',
+  connecting: '连接中...',
+  deleted: '已删除',
+  undo: '撤销',
+  dismiss: '关闭',
 
   // 时间相关
   'time.today': '今天',

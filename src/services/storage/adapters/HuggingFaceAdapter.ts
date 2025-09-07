@@ -78,6 +78,34 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
       connected: true,
     };
   },
+
+  // === 新增的标准方法实现 ===
+
+  getDefaultConfig: () => ({}),
+
+  buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
+    const config: ConnectionConfig = {
+      type: 'huggingface',
+      organization: formData.organization?.trim() || undefined,
+      apiToken:
+        formData.isApiTokenFromStorage && existingConnection?.config.apiToken
+          ? existingConnection.config.apiToken
+          : formData.apiToken?.trim() || undefined,
+      name: existingConnection
+        ? existingConnection.name
+        : formData.organization?.trim()
+          ? `HF (${formData.organization.trim()})`
+          : 'Hugging Face Hub',
+    };
+
+    return config;
+  },
+
+  extractFormData: (config: ConnectionConfig) => ({
+    organization: config.organization || '',
+    apiToken: config.apiToken ? '******' : '', // 使用占位符回显已保存的令牌
+    isApiTokenFromStorage: !!config.apiToken, // 如果有令牌，标记为来自存储
+  }),
 };
 
 /**
