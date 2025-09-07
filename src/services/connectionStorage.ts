@@ -116,6 +116,30 @@ class ConnectionStorageService {
           case 'huggingface':
             return storedConfig.organization === config.organization;
 
+          case 'ssh':
+            // SSH连接匹配：主机、端口、用户名
+            const storedHost = storedConfig.url || '';
+            const configHost = config.url || '';
+            const storedPort = storedConfig.port || 22;
+            const configPort = config.port || 22;
+            return (
+              storedHost === configHost &&
+              storedPort === configPort &&
+              storedConfig.username === config.username
+            );
+
+          case 'smb':
+            // SMB连接匹配：主机、共享名、用户名
+            const storedSmbHost = storedConfig.url || '';
+            const configSmbHost = config.url || '';
+            const storedShare = storedConfig.share || '';
+            const configShare = config.share || '';
+            return (
+              storedSmbHost === configSmbHost &&
+              storedShare === configShare &&
+              storedConfig.username === config.username
+            );
+
           default:
             return false;
         }
@@ -141,6 +165,16 @@ class ConnectionStorageService {
 
       case 'huggingface':
         return `HuggingFace(${config.organization || 'hub'})`;
+
+      case 'ssh':
+        const sshHost = config.url ? this.getHostnameFromUrl(config.url) : 'SSH';
+        const sshPort = config.port && config.port !== 22 ? `:${config.port}` : '';
+        return `SSH (${sshHost}${sshPort})`;
+
+      case 'smb':
+        const smbHost = config.url || 'unknown';
+        const smbShare = config.share || 'share';
+        return `SMB (${smbHost}/${smbShare})`;
 
       default:
         return 'Unknown Connection';
