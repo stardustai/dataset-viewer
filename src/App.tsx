@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { ConnectionPanel } from './components/ConnectionPanel';
 import { FileBrowser } from './components/FileBrowser';
@@ -103,7 +103,7 @@ function App() {
       }
     }
 
-    let fileAssociationHandled = false;
+    const fileAssociationHandledRef = useRef(false);
 
     // 监听文件打开事件
     const setupFileOpenListener = async () => {
@@ -111,7 +111,7 @@ function App() {
         await fileAssociationService.setupFileOpenListener(
           (file: StorageFile, fileName: string) => {
             // 文件关联成功，直接接管应用状态
-            fileAssociationHandled = true;
+            fileAssociationHandledRef.current = true;
             console.log('File association handled, taking over app state');
 
             const currentStorageClient = StorageServiceManager.getCurrentClient();
@@ -141,7 +141,7 @@ function App() {
         await new Promise(resolve => setTimeout(resolve, 200));
 
         // 如果文件关联已经处理，直接返回
-        if (fileAssociationHandled) {
+        if (fileAssociationHandledRef.current) {
           console.log('File association already handled, skipping auto connect');
           return;
         }

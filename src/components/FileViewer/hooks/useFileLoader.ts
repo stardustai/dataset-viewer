@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../../types';
 import { StorageServiceManager } from '../../../services/storage';
 import { configManager } from '../../../config';
@@ -17,7 +17,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
   const [loadedChunks, setLoadedChunks] = useState<number>(0);
   const [baselineStartLineNumber, setBaselineStartLineNumber] = useState<number>(1);
   const [loadingBefore, setLoadingBefore] = useState<boolean>(false); // 向前加载状态
-  const [lastJumpTimestamp, setLastJumpTimestamp] = useState<number>(0); // 上次跳转时间戳
+  const lastJumpTimestampRef = useRef<number>(0); // 上次跳转时间戳
   const [dataMetadata, setDataMetadata] = useState<{ numRows: number; numColumns: number } | null>(
     null
   );
@@ -103,7 +103,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
           setLoadedContentSize(byteLength); // 内存中的内容大小
           setLoadedChunks(1);
           // 初始加载时设置时间戳，避免立即触发向前加载
-          setLastJumpTimestamp(Date.now());
+          lastJumpTimestampRef.current = Date.now();
         } else {
           // 小文件：一次性加载
           const result = await StorageServiceManager.getFileContent(filePath);
@@ -177,7 +177,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
 
       // 检查是否刚刚跳转（跳转后5秒内不触发向前加载）
       const currentTime = Date.now();
-      if (currentTime - lastJumpTimestamp < 5000) {
+      if (currentTime - lastJumpTimestampRef.current < 5000) {
         return;
       }
 
@@ -230,7 +230,6 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
       loadingBefore,
       loading,
       currentStartPosition,
-      lastJumpTimestamp,
       filePath,
       config.streaming.chunkSize,
     ]
@@ -245,7 +244,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
 
         // 设置跳转时间戳
         const jumpTime = Date.now();
-        setLastJumpTimestamp(jumpTime);
+        lastJumpTimestampRef.current = jumpTime;
 
         const targetPosition = Math.floor((totalSize * percentage) / 100);
         const chunkSize = config.streaming.chunkSize;
