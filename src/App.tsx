@@ -38,6 +38,9 @@ function App() {
   const [isFileAssociationMode, setIsFileAssociationMode] = useState(false);
   const [forceTextMode, setForceTextMode] = useState(false);
 
+  // 用于跟踪文件关联是否已处理的 ref，必须在顶层声明
+  const fileAssociationHandledRef = useRef(false);
+
   // 监听状态变化，立即移除loading以避免空白闪烁
   useEffect(() => {
     if (appState === 'initializing') return;
@@ -102,8 +105,6 @@ function App() {
         return; // 文件查看模式下不执行后续的自动连接逻辑
       }
     }
-
-    const fileAssociationHandledRef = useRef(false);
 
     // 监听文件打开事件
     const setupFileOpenListener = async () => {
