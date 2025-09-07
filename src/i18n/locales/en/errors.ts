@@ -16,6 +16,7 @@ export const errors = {
   // Permission and authentication errors
   'error.access.denied': 'Access denied: Please check your credentials and permissions',
   'error.directory.not.found': 'Directory not found',
+  'error.not.directory': 'Path is not a directory',
   'error.authentication.failed': 'Authentication failed: Please check your credentials',
   'error.network.failed': 'Network connection failed: Please check your connection',
 

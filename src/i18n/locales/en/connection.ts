@@ -50,9 +50,6 @@ export const connection = {
   'password.placeholder': 'Your password',
   'password.saved': 'Using saved password',
   'password.click.to.edit': 'Click to edit password',
-  connecting: 'Connecting...',
-  connect: 'Connect',
-  optional: '(Optional)',
 
   // OSS specific fields
   'oss.platform.select': 'Select Platform',
@@ -121,7 +118,6 @@ export const connection = {
   'error.smb.password.required': 'Please enter password',
 
   // Connection management
-  'saved.connections': 'Saved Connections',
   'no.saved.connections': 'No saved connections',
   'save.connection.hint':
     'Connection information can be automatically saved after successful connection',
@@ -133,26 +129,11 @@ export const connection = {
     'Password will be saved in plain text in local storage, please use with caution',
   'connection.name.placeholder': 'Connection name (optional)',
   'connection.name.hint': 'Leave empty to auto-generate name',
-  'last.connected': 'Last connected',
   'set.default': 'Set as default',
   'unset.default': 'Unset default',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
-  deleted: 'Connection deleted',
-  undo: 'Undo',
 
   // Local file system
-  'local.root.path': 'Root Directory Path',
-  'local.path.placeholder': 'e.g.: /Users/username/Documents',
-  'local.select.directory': 'Select Directory',
-  'local.quick.select': 'Quick Select',
-  'local.path.documents': 'Documents',
-  'local.path.downloads': 'Downloads',
-  'local.path.desktop': 'Desktop',
-  'local.path.home': 'Home',
-  'local.permission.notice': 'Permission Notice',
-  'local.permission.description':
-    'The app can only access directories you explicitly select and their subdirectories. It is recommended to select common directories such as Documents and Downloads.',
-  'local.connect': 'Connect to Local Files',
   'local.error.access':
     'Cannot access the specified path, please check if the path exists and you have permission to access it',
   'local.error.connection': 'Failed to connect to local file system',
@@ -201,5 +182,4 @@ export const connection = {
     'Connection type mismatch: Cannot use {{connectionType}} client to connect to "{{connectionName}}"',
   'connection.switch.missing_credentials':
     'Connection "{{connectionName}}" is missing required credentials',
-  dismiss: 'Dismiss',
 };

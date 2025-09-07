@@ -21,6 +21,28 @@ pub struct SSHClient {
 }
 
 impl SSHClient {
+    /// 解析 SSH/SFTP 错误并返回用户友好的错误消息
+    fn parse_ssh_error(error: &dyn std::fmt::Display, operation: &str, path: &str) -> StorageError {
+        let error_msg = format!("{}", error);
+        let error_lower = error_msg.to_lowercase();
+
+        if error_lower.contains("permission") {
+            StorageError::RequestFailed(format!("Permission denied {} file: {}", operation, path))
+        } else if error_lower.contains("not found") || error_lower.contains("no such file") {
+            StorageError::RequestFailed(format!("File not found: {}", path))
+        } else if error_lower.contains("not a directory") {
+            StorageError::RequestFailed(format!("Path is not a directory: {}", path))
+        } else if error_lower.contains("directory") && operation == "accessing" {
+            StorageError::RequestFailed(format!("Path is a directory, not a file: {}", path))
+        } else if error_lower.contains("failure") {
+            StorageError::RequestFailed(format!(
+                "SSH operation failed for {}: {} (possible permission or access issue)",
+                operation, path
+            ))
+        } else {
+            StorageError::RequestFailed(format!("Failed to {} {}: {}", operation, path, error))
+        }
+    }
     pub fn new(config: ConnectionConfig) -> Result<Self, StorageError> {
         Ok(SSHClient {
             config,
@@ -248,12 +270,9 @@ impl StorageClient for SSHClient {
                 .as_ref()
                 .ok_or_else(|| StorageError::NotConnected)?;
 
-            let entries = sftp.readdir(Path::new(&full_path)).map_err(|e| {
-                StorageError::RequestFailed(format!(
-                    "Failed to read directory {}: {}",
-                    full_path, e
-                ))
-            })?;
+            let entries = sftp
+                .readdir(Path::new(&full_path))
+                .map_err(|e| Self::parse_ssh_error(&e, "read directory", &full_path))?;
 
             let mut files = Vec::new();
             for (file_path, stat) in entries {
@@ -380,9 +399,9 @@ impl StorageClient for SSHClient {
                 let current_chunk_size = std::cmp::min(remaining, chunk_size) as usize;
                 let mut chunk = vec![0u8; current_chunk_size];
 
-                let bytes_read = file.read(&mut chunk).map_err(|e| {
-                    StorageError::RequestFailed(format!("Failed to read file: {}", e))
-                })?;
+                let bytes_read = file
+                    .read(&mut chunk)
+                    .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
 
                 if bytes_read == 0 {
                     // 到达文件末尾
@@ -431,13 +450,13 @@ impl StorageClient for SSHClient {
                 .as_ref()
                 .ok_or_else(|| StorageError::NotConnected)?;
 
-            let mut file = sftp.open(Path::new(&full_path)).map_err(|e| {
-                StorageError::RequestFailed(format!("Failed to open file {}: {}", full_path, e))
-            })?;
+            let mut file = sftp
+                .open(Path::new(&full_path))
+                .map_err(|e| Self::parse_ssh_error(&e, "open", &full_path))?;
 
             let mut buffer = Vec::new();
             file.read_to_end(&mut buffer)
-                .map_err(|e| StorageError::RequestFailed(format!("Failed to read file: {}", e)))?;
+                .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
 
             Ok(buffer)
         })

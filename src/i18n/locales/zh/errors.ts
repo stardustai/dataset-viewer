@@ -17,6 +17,7 @@ export const errors = {
   // 权限和认证错误
   'error.access.denied': '访问被拒绝：请检查您的凭据和权限设置',
   'error.directory.not.found': '目录不存在',
+  'error.not.directory': '路径不是一个目录',
   'error.authentication.failed': '身份验证失败：请检查您的凭据',
   'error.network.failed': '网络连接失败：请检查您的网络连接',
 

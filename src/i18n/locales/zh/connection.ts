@@ -50,9 +50,6 @@ export const connection = {
   'password.placeholder': '请输入密码',
   'password.saved': '使用已保存的密码',
   'password.click.to.edit': '点击修改密码',
-  connecting: '连接中...',
-  connect: '连接',
-  optional: '(可选)',
 
   // OSS 特定字段
   'oss.platform.select': '选择平台',
@@ -120,7 +117,6 @@ export const connection = {
   'error.smb.password.required': '请输入密码',
 
   // 连接管理
-  'saved.connections': '已保存的连接',
   'no.saved.connections': '暂无已保存的连接',
   'save.connection.hint': '连接成功后可自动保存连接信息',
   'connection.select.saved': '选择已保存的连接',
@@ -130,26 +126,11 @@ export const connection = {
   'save.password.warning': '密码将以明文形式保存在本地存储中，请谨慎使用',
   'connection.name.placeholder': '连接名称（可选）',
   'connection.name.hint': '留空将自动生成名称',
-  'last.connected': '最后连接',
   'set.default': '设为默认',
   'unset.default': '取消默认',
   'confirm.delete.connection': '确定要删除这个连接吗？',
-  deleted: '连接已删除',
-  undo: '撤销',
 
   // 本地文件系统
-  'local.root.path': '根目录路径',
-  'local.path.placeholder': '例如: /Users/username/Documents',
-  'local.select.directory': '选择目录',
-  'local.quick.select': '快速选择',
-  'local.path.documents': '文档',
-  'local.path.downloads': '下载',
-  'local.path.desktop': '桌面',
-  'local.path.home': '用户目录',
-  'local.permission.notice': '权限说明',
-  'local.permission.description':
-    '应用只能访问您明确选择的目录及其子目录。建议选择文档、下载等常用目录。',
-  'local.connect': '连接到本机文件',
   'local.error.access': '无法访问指定路径，请检查路径是否存在且有权限访问',
   'local.error.connection': '连接本机文件系统失败',
 
@@ -194,5 +175,4 @@ export const connection = {
   'connection.switch.type_mismatch':
     '连接类型不匹配：无法使用 {{connectionType}} 客户端连接到 "{{connectionName}}"',
   'connection.switch.missing_credentials': '连接 "{{connectionName}}" 缺少必要的认证信息',
-  dismiss: '关闭',
 };
