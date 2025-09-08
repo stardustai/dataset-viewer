@@ -4,7 +4,8 @@ import { X } from 'lucide-react';
 import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
 import DOMPurify from 'dompurify';
-import { highlightMarkdownCode } from '../../../utils/markdownCodeHighlighter';
+import { highlightMarkdownCode } from '../../../utils/syntaxHighlighter';
+import { useTheme } from '../../../hooks/useTheme';
 
 interface MarkdownPreviewModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
   fileName,
 }) => {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const [parsedContent, setParsedContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,12 +31,16 @@ export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
     const parseMarkdown = async () => {
       setIsLoading(true);
       try {
-        const highlightedContent = await highlightMarkdownCode(content);
-        const html = micromark(highlightedContent, {
+        // 首先将 Markdown 转换为 HTML
+        const html = micromark(content, {
           extensions: [gfm()],
           htmlExtensions: [gfmHtml()],
+          allowDangerousHtml: true, // 启用 HTML 支持
         });
-        setParsedContent(html);
+
+        // 然后对 HTML 中的代码块进行语法高亮
+        const highlightedHtml = await highlightMarkdownCode(html, isDark ? 'dark' : 'light');
+        setParsedContent(highlightedHtml);
       } catch (error) {
         console.error('Error parsing markdown:', error);
         setParsedContent('<p>Error parsing markdown content</p>');
@@ -44,7 +50,7 @@ export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
     };
 
     parseMarkdown();
-  }, [isOpen, content]);
+  }, [isOpen, content, isDark]);
 
   if (!isOpen) return null;
 
@@ -71,7 +77,7 @@ export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
             </div>
           ) : (
             <div
-              className="prose prose-gray dark:prose-invert max-w-none prose-pre:bg-transparent prose-code:bg-gray-100 prose-code:dark:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm"
+              className="prose prose-gray dark:prose-invert max-w-none  prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-pre:dark:bg-gray-800 prose-pre:dark:text-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm"
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(parsedContent) }}
             />
           )}
