@@ -1,9 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Braces, X, Check } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
 import { VirtualizedTextViewer } from '../viewers/VirtualizedTextViewer';
 import { ImageRenderer } from '../viewers/ImageRenderer';
+import {
+  getLanguageFromFileName,
+  isLanguageSupported,
+  highlightCodeBlock,
+} from '../../../utils/syntaxHighlighter';
+import { useTheme } from '../../../hooks/useTheme';
+import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 
 // 检测是否为 base64 编码的图片
 const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; format?: string } => {
@@ -112,6 +119,117 @@ const formatXML = (xml: string): string => {
   });
 
   return formatted.trim();
+};
+
+// 高亮文本渲染组件
+interface HighlightedTextRendererProps {
+  content: string;
+  fileName?: string;
+  searchTerm?: string;
+  className?: string;
+}
+
+const HighlightedTextRenderer: React.FC<HighlightedTextRendererProps> = ({
+  content,
+  fileName,
+  searchTerm,
+  className = '',
+}) => {
+  const { t } = useTranslation();
+  const { isDark } = useTheme();
+  const { enabled: syntaxHighlightingEnabled } = useSyntaxHighlighting();
+
+  // 语法高亮相关
+  const detectedLanguage = useMemo(() => {
+    if (!syntaxHighlightingEnabled || !fileName) return 'text';
+    return getLanguageFromFileName(fileName);
+  }, [syntaxHighlightingEnabled, fileName]);
+
+  const shouldHighlight = useMemo(() => {
+    return (
+      syntaxHighlightingEnabled && isLanguageSupported(detectedLanguage) && content.length <= 50000
+    );
+  }, [syntaxHighlightingEnabled, detectedLanguage, content.length]);
+
+  // 高亮后的内容
+  const [highlightedContent, setHighlightedContent] = useState<string | null>(null);
+  const [isHighlighting, setIsHighlighting] = useState(false);
+
+  // 处理语法高亮
+  useEffect(() => {
+    if (!shouldHighlight) {
+      setHighlightedContent(null);
+      return;
+    }
+
+    const performHighlight = async () => {
+      setIsHighlighting(true);
+      try {
+        const blockHtml = await highlightCodeBlock(
+          content,
+          detectedLanguage,
+          isDark ? 'dark' : 'light'
+        );
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = blockHtml;
+        const codeElement = tempDiv.querySelector('code');
+        setHighlightedContent(codeElement?.innerHTML || null);
+      } catch (error) {
+        console.error('Failed to highlight content:', error);
+        setHighlightedContent(null);
+      } finally {
+        setIsHighlighting(false);
+      }
+    };
+
+    performHighlight();
+  }, [content, shouldHighlight, detectedLanguage, isDark]);
+
+  // 统一的容器样式
+  const containerProps = {
+    className: `whitespace-pre-wrap break-words font-mono text-sm overflow-wrap-anywhere bg-gray-50 dark:bg-gray-900 p-3 rounded ${className}`,
+    style: { whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const },
+  };
+
+  // 搜索高亮处理函数
+  const applySearchHighlight = (text: string, isHTML = false) => {
+    if (!searchTerm || searchTerm.length < 2) return text;
+
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return isHTML
+      ? text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800">$1</mark>')
+      : text.split(regex).map((part, index) =>
+          regex.test(part) ? (
+            <mark key={index} className="bg-yellow-200 dark:bg-yellow-800">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        );
+  };
+
+  // 加载状态
+  if (isHighlighting) {
+    return (
+      <div {...containerProps} className={`text-gray-500 dark:text-gray-400 p-3 ${className}`}>
+        {t('highlighting.content', '正在处理语法高亮...')}
+      </div>
+    );
+  }
+
+  // 有语法高亮的内容
+  if (highlightedContent) {
+    return (
+      <div
+        {...containerProps}
+        dangerouslySetInnerHTML={{ __html: applySearchHighlight(highlightedContent, true) }}
+      />
+    );
+  }
+
+  // 普通文本（带搜索高亮）
+  return <div {...containerProps}>{applySearchHighlight(content)}</div>;
 };
 
 export interface UnifiedContentModalData {
@@ -339,30 +457,13 @@ export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
               key="unified-modal-formatted-viewer"
             />
           ) : (
-            // 原始内容或简单文本
+            // 原始内容或简单文本 - 使用高亮文本渲染组件
             <div className="flex-1 overflow-auto p-4">
-              <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 font-mono text-sm whitespace-pre-wrap break-words">
-                {searchTerm && searchTerm.length >= 2
-                  ? displayContent
-                      .split(
-                        new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-                      )
-                      .map((part: string, index: number) => {
-                        const regex = new RegExp(
-                          searchTerm!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-                          'gi'
-                        );
-                        if (regex.test(part)) {
-                          return (
-                            <mark key={index} className="bg-yellow-200 dark:bg-yellow-800">
-                              {part}
-                            </mark>
-                          );
-                        }
-                        return part;
-                      })
-                  : displayContent}
-              </div>
+              <HighlightedTextRenderer
+                content={displayContent}
+                fileName={fileName}
+                searchTerm={searchTerm}
+              />
             </div>
           )}
         </div>
