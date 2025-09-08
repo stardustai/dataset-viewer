@@ -29,6 +29,7 @@ interface VirtualizedTextViewerProps {
     isLimited?: boolean
   ) => void;
   onScrollToBottom?: () => void;
+  onScrollToTop?: (userScrollDirection?: 'up' | 'down') => Promise<number | void>; // 新增：向前加载回调，包含滚动方向
   className?: string;
   startLineNumber?: number;
   currentSearchIndex?: number;
@@ -50,6 +51,13 @@ const MAX_LINE_LENGTH = 10000;
 const TRUNCATE_LENGTH = 200;
 const LONG_LINE_THRESHOLD = 300;
 
+// 滚动检测常量
+const SCROLL_TOP_THRESHOLD = 50; // 滚动到顶部的阈值
+const SCROLL_BOTTOM_THRESHOLD = 100; // 滚动到底部的阈值
+const SCROLL_DIRECTION_THRESHOLD = 5; // 滚动方向检测阈值
+const CONSECUTIVE_SCROLL_REQUIRED = 2; // 需要连续滚动的次数
+const LOAD_LOCK_TIMEOUT = 2000; // 加载锁定时间
+
 export const VirtualizedTextViewer = forwardRef<
   VirtualizedTextViewerRef,
   VirtualizedTextViewerProps
@@ -60,6 +68,7 @@ export const VirtualizedTextViewer = forwardRef<
       searchTerm = '',
       onSearchResults,
       onScrollToBottom,
+      onScrollToTop,
       className = '',
       startLineNumber = 1,
       currentSearchIndex = -1,
@@ -88,6 +97,18 @@ export const VirtualizedTextViewer = forwardRef<
     const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
     const [isHighlighting, setIsHighlighting] = useState(false);
     const [expandedLongLines, setExpandedLongLines] = useState<Set<number>>(new Set());
+    const [shouldAdjustScrollAfterPrepend, setShouldAdjustScrollAfterPrepend] = useState(false);
+    const [scrollAdjustmentData, setScrollAdjustmentData] = useState<{
+      previousScrollTop: number;
+      previousLinesCount: number;
+      visibleStartIndex: number; // 用户当前看到的第一个虚拟行索引
+      scrollOffsetInFirstItem: number; // 在第一个可见项中的偏移
+    } | null>(null);
+    const lastScrollTopLoadCheck = useRef<number>(-1);
+    const scrollTopLoadInProgress = useRef<boolean>(false);
+    const lastScrollTop = useRef<number>(0);
+    const scrollDirection = useRef<'up' | 'down' | 'none'>('none');
+    const consecutiveUpScrollCount = useRef<number>(0);
 
     const lines = useMemo(() => content.split('\n'), [content]);
 
@@ -354,7 +375,7 @@ export const VirtualizedTextViewer = forwardRef<
               )}
               {showExpandButton && (
                 <button
-                  className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  className="ml-2 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                   onClick={e => {
                     e.stopPropagation();
                     setExpandedLongLines(prev => {
@@ -410,7 +431,7 @@ export const VirtualizedTextViewer = forwardRef<
               )}
               {showExpandButton && (
                 <button
-                  className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  className="ml-2 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                   onClick={e => {
                     e.stopPropagation();
                     setExpandedLongLines(prev => {
@@ -520,7 +541,7 @@ export const VirtualizedTextViewer = forwardRef<
                 )}
                 {showExpandButton && (
                   <button
-                    className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    className="ml-2 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                     onClick={e => {
                       e.stopPropagation();
                       setExpandedLongLines(prev => {
@@ -570,7 +591,7 @@ export const VirtualizedTextViewer = forwardRef<
             )}
             {showExpandButton && (
               <button
-                className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                className="ml-2 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                 onClick={e => {
                   e.stopPropagation();
                   setExpandedLongLines(prev => {
@@ -794,22 +815,91 @@ export const VirtualizedTextViewer = forwardRef<
     // 行号区域引用
     const lineNumberRef = useRef<HTMLDivElement>(null);
 
-    // 滚动同步和滚动到底部检测
+    // 滚动同步和滚动检测（支持双向加载）
     useEffect(() => {
       const container = containerRef.current;
       const lineNumberContainer = lineNumberRef.current;
       if (!container) return;
 
-      const handleScroll = () => {
+      const handleScroll = async () => {
         // 同步行号区域滚动
         if (lineNumberContainer) {
           lineNumberContainer.scrollTop = container.scrollTop;
         }
 
-        // 滚动到底部检测
-        if (onScrollToBottom) {
-          const { scrollTop, scrollHeight, clientHeight } = container;
-          const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        const { scrollTop, scrollHeight, clientHeight } = container;
+
+        // 检测滚动方向
+        const currentScrollTop = scrollTop;
+        const scrollDelta = currentScrollTop - lastScrollTop.current;
+
+        if (Math.abs(scrollDelta) > SCROLL_DIRECTION_THRESHOLD) {
+          // 忽略小幅度滚动
+          if (scrollDelta > 0) {
+            scrollDirection.current = 'down';
+            consecutiveUpScrollCount.current = 0;
+          } else {
+            scrollDirection.current = 'up';
+            consecutiveUpScrollCount.current += 1;
+          }
+        }
+
+        lastScrollTop.current = currentScrollTop;
+
+        // 滚动到顶部检测（向前加载）- 更严格的条件
+        if (
+          onScrollToTop &&
+          scrollTop <= SCROLL_TOP_THRESHOLD &&
+          !scrollTopLoadInProgress.current &&
+          scrollDirection.current === 'up' &&
+          consecutiveUpScrollCount.current >= CONSECUTIVE_SCROLL_REQUIRED
+        ) {
+          // 需要连续向上滚动
+
+          // 防抖：避免在相同位置重复触发
+          if (Math.abs(scrollTop - lastScrollTopLoadCheck.current) < 10) {
+            return;
+          }
+
+          scrollTopLoadInProgress.current = true;
+          lastScrollTopLoadCheck.current = scrollTop;
+
+          // 记录当前滚动位置和虚拟化器状态，用于精确恢复
+          const currentScrollTop = scrollTop;
+          const currentLinesCount = lines.length;
+          const virtualItems = virtualizer.getVirtualItems();
+          const firstVisibleItem = virtualItems[0];
+
+          try {
+            const addedBytes = await onScrollToTop(scrollDirection.current);
+            if (addedBytes && addedBytes > 0) {
+              // 设置滚动调整数据，基于虚拟化器状态进行精确恢复
+              setScrollAdjustmentData({
+                previousScrollTop: currentScrollTop,
+                previousLinesCount: currentLinesCount,
+                visibleStartIndex: firstVisibleItem?.index || 0,
+                scrollOffsetInFirstItem: firstVisibleItem
+                  ? currentScrollTop - firstVisibleItem.start
+                  : 0,
+              });
+              setShouldAdjustScrollAfterPrepend(true);
+
+              // 重置连续滚动计数，避免立即再次触发
+              consecutiveUpScrollCount.current = 0;
+            }
+          } catch (error) {
+            console.error('Error in forward loading:', error);
+          } finally {
+            // 延迟重置锁，避免立即再次触发
+            setTimeout(() => {
+              scrollTopLoadInProgress.current = false;
+            }, LOAD_LOCK_TIMEOUT);
+          }
+        }
+
+        // 滚动到底部检测（向后加载）- 只在向下滚动时触发
+        if (onScrollToBottom && scrollDirection.current === 'down') {
+          const isNearBottom = scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD;
 
           if (isNearBottom) {
             onScrollToBottom();
@@ -819,7 +909,47 @@ export const VirtualizedTextViewer = forwardRef<
 
       container.addEventListener('scroll', handleScroll, { passive: true });
       return () => container.removeEventListener('scroll', handleScroll);
-    }, [onScrollToBottom]);
+    }, [onScrollToBottom, onScrollToTop, lines.length]);
+
+    // 内容变化后调整滚动位置（向前加载后） - 精确恢复用户视觉位置
+    useEffect(() => {
+      if (shouldAdjustScrollAfterPrepend && scrollAdjustmentData) {
+        const container = containerRef.current;
+        if (container) {
+          // 计算实际新增的行数
+          const currentLinesCount = lines.length;
+          const actualAddedLines = currentLinesCount - scrollAdjustmentData.previousLinesCount;
+
+          if (actualAddedLines > 0) {
+            // 计算新的虚拟行索引：原来的索引 + 新增的行数
+            const newVisibleStartIndex = scrollAdjustmentData.visibleStartIndex + actualAddedLines;
+
+            // 使用虚拟化器精确滚动到对应位置
+            requestAnimationFrame(() => {
+              virtualizer.scrollToIndex(newVisibleStartIndex, {
+                align: 'start',
+              });
+
+              // 微调滚动位置，加上在第一个项目内的偏移
+              setTimeout(() => {
+                if (scrollAdjustmentData.scrollOffsetInFirstItem > 0) {
+                  container.scrollTop += scrollAdjustmentData.scrollOffsetInFirstItem;
+                }
+
+                // 更新滚动方向跟踪，避免触发其他加载
+                lastScrollTop.current = container.scrollTop;
+                scrollDirection.current = 'none';
+                consecutiveUpScrollCount.current = 0;
+              }, 0);
+            });
+          }
+        }
+
+        // 重置状态
+        setShouldAdjustScrollAfterPrepend(false);
+        setScrollAdjustmentData(null);
+      }
+    }, [shouldAdjustScrollAfterPrepend, scrollAdjustmentData, lines.length, virtualizer]);
 
     return (
       <>

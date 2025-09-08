@@ -14,23 +14,30 @@ export const connection = {
   'features.virtual_scrolling': '虚拟滚动',
   'features.virtual_scrolling.desc': '高效处理数百万行数据记录',
   'features.multi_storage': '多数据源支持',
-  'features.multi_storage.desc': '支持 WebDAV、OSS 和本地文件系统等多种数据源',
+  'features.multi_storage.desc': '支持 WebDAV、S3 和本地文件系统等多种数据源',
   'tech.stack': '技术栈',
 
   // 存储类型
   'storage.type.select': '选择数据源类型',
   'storage.type.webdav': 'WebDAV',
   'storage.type.webdav.description': 'WebDAV 服务器',
+  'storage.type.ssh': 'SSH',
+  'storage.type.ssh.description': 'SSH 远程服务器',
+  'storage.type.smb': 'SMB',
+  'storage.type.smb.description': 'SMB/CIFS 网络共享',
   'storage.type.local': '本机文件',
   'storage.type.local.description': '浏览本机文件系统',
-  'storage.type.oss': 'OSS',
-  'storage.type.oss.description': '连接到对象存储服务',
+  'storage.type.s3': 'S3',
+  'storage.type.s3.description': '连接到 S3 兼容的对象存储服务',
   'storage.type.huggingface': 'HuggingFace',
   'storage.type.huggingface.description': 'AI 数据集',
 
   // 连接名称格式
   'connection.name.webdav': 'WebDAV({{host}})',
+  'connection.name.ssh': 'SSH({{host}})',
+  'connection.name.smb': 'SMB({{host}}/{{share}})',
   'connection.name.local': '本机文件({{path}})',
+  'connection.name.s3': 'S3({{host}}-{{bucket}})',
   'connection.name.oss': 'OSS({{host}}-{{bucket}})',
   'connection.name.huggingface': 'Hugging Face({{org}})',
 
@@ -40,12 +47,9 @@ export const connection = {
   username: '用户名',
   'username.placeholder': '您的用户名',
   password: '密码',
-  'password.placeholder': '您的密码',
+  'password.placeholder': '请输入密码',
   'password.saved': '使用已保存的密码',
-  'password.click.new': '点击输入新密码',
-  connecting: '连接中...',
-  connect: '连接',
-  optional: '(可选)',
+  'password.click.to.edit': '点击修改密码',
 
   // OSS 特定字段
   'oss.platform.select': '选择平台',
@@ -72,15 +76,47 @@ export const connection = {
   'oss.region.placeholder': '例如：cn-hangzhou、us-east-1',
   'oss.region.optional': '区域 (可选)',
 
+  // SSH 特定字段
+  'ssh.server': '服务器地址',
+  'ssh.server.placeholder': 'server.domain.com',
+  'ssh.port': '端口',
+  'ssh.port.placeholder': '22',
+  'ssh.username': '用户名',
+  'ssh.username.placeholder': '用户名',
+  'ssh.authentication': '认证方式',
+  'ssh.password': '密码',
+  'ssh.password.placeholder': '密码',
+  'ssh.private.key': '私钥文件',
+  'ssh.private.key.placeholder': '私钥文件路径',
+  'ssh.select.private.key': '选择私钥文件',
+  'ssh.path': '远程路径',
+  'ssh.path.placeholder': '/home/username',
+
+  // SMB 连接
+  'smb.server': '服务器地址',
+  'smb.server.placeholder': 'server.example.com',
+  'smb.share': '共享名称',
+  'smb.share.placeholder': 'shared',
+  'smb.domain': '域',
+  'smb.domain.placeholder': 'WORKGROUP 或 DOMAIN',
+  'smb.domain.description': 'Windows 域或工作组（可选）',
+
   // 表单验证错误
   'error.endpoint.required': '请输入 OSS 端点地址',
   'error.endpoint.invalid': '请输入有效的端点地址',
   'error.access.key.required': '请输入 Access Key',
   'error.secret.key.required': '请输入 Secret Key',
   'error.bucket.required': '请输入 Bucket 名称',
+  'error.ssh.server.required': '请输入 SSH 服务器地址',
+  'error.ssh.username.required': '请输入 SSH 用户名',
+  'error.ssh.password.required': '请输入 SSH 密码或私钥文件',
+  'error.ssh.path.required': '请输入远程路径',
+  'error.smb.server.required': '请输入 SMB 服务器地址',
+  'error.smb.share.required': '请输入共享名称',
+  'error.smb.username.required': '请输入用户名',
+  'error.smb.password.required': '请输入密码',
 
   // 连接管理
-  'saved.connections': '已保存的连接',
   'no.saved.connections': '暂无已保存的连接',
   'save.connection.hint': '连接成功后可自动保存连接信息',
   'connection.select.saved': '选择已保存的连接',
@@ -90,31 +126,28 @@ export const connection = {
   'save.password.warning': '密码将以明文形式保存在本地存储中，请谨慎使用',
   'connection.name.placeholder': '连接名称（可选）',
   'connection.name.hint': '留空将自动生成名称',
-  'last.connected': '最后连接',
   'set.default': '设为默认',
   'unset.default': '取消默认',
   'confirm.delete.connection': '确定要删除这个连接吗？',
-  deleted: '连接已删除',
-  undo: '撤销',
 
   // 本地文件系统
-  'local.root.path': '根目录路径',
-  'local.path.placeholder': '例如: /Users/username/Documents',
-  'local.select.directory': '选择目录',
-  'local.quick.select': '快速选择',
-  'local.path.documents': '文档',
-  'local.path.downloads': '下载',
-  'local.path.desktop': '桌面',
-  'local.path.home': '用户目录',
-  'local.permission.notice': '权限说明',
-  'local.permission.description':
-    '应用只能访问您明确选择的目录及其子目录。建议选择文档、下载等常用目录。',
-  'local.connect': '连接到本机文件',
   'local.error.access': '无法访问指定路径，请检查路径是否存在且有权限访问',
   'local.error.connection': '连接本机文件系统失败',
 
   // OSS 错误
   'error.oss.connection.failed': 'OSS 连接失败',
+
+  // SSH 错误
+  'error.ssh.connection.failed': 'SSH 连接失败',
+  'error.ssh.authentication.failed': 'SSH 身份验证失败，请检查用户名和密码或私钥',
+  'error.ssh.key.not.found': '私钥文件不存在或无法读取',
+  'error.ssh.permission.denied': 'SSH 权限被拒绝，请检查用户权限',
+
+  // SMB 错误
+  'error.smb.connection.failed': 'SMB 连接失败',
+  'error.smb.authentication.failed': 'SMB 身份验证失败，请检查用户名和密码',
+  'error.smb.share.not.found': '找不到指定的共享目录',
+  'error.smb.permission.denied': 'SMB 访问被拒绝，请检查用户权限',
 
   // OSS 帮助信息
   'oss.help.credentials.title': 'Access Key 获取方式：',
@@ -142,5 +175,4 @@ export const connection = {
   'connection.switch.type_mismatch':
     '连接类型不匹配：无法使用 {{connectionType}} 客户端连接到 "{{connectionName}}"',
   'connection.switch.missing_credentials': '连接 "{{connectionName}}" 缺少必要的认证信息',
-  dismiss: '关闭',
 };

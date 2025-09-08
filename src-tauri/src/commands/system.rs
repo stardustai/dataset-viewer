@@ -5,7 +5,10 @@
 /// 跨平台的目录选择功能
 #[tauri::command]
 #[specta::specta]
-pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<String>, String> {
+pub async fn system_select_folder(
+    _app: tauri::AppHandle,
+    title: String,
+) -> Result<Option<String>, String> {
     #[cfg(target_os = "ios")]
     {
         return Err("Folder selection is not supported on iOS platform".to_string());
@@ -20,7 +23,7 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
 
         _app.dialog()
             .file()
-            .set_title("选择目录")
+            .set_title(&title)
             .pick_folder(move |folder| {
                 let _ = tx.send(folder);
             });
@@ -31,24 +34,73 @@ pub async fn system_select_folder(_app: tauri::AppHandle) -> Result<Option<Strin
                     .into_path()
                     .map_err(|e| format!("Failed to get path: {}", e))?;
 
-                // 确保返回正确的绝对路径
-                let path_str = if cfg!(target_os = "windows") {
-                    path_buf.to_string_lossy().to_string()
+                // 规范为绝对路径
+                let abs_path = if path_buf.is_absolute() {
+                    path_buf
                 } else {
-                    // 对于 Unix 系统，确保路径以 / 开头
-                    let path_str = path_buf.to_string_lossy().to_string();
-                    if path_str.starts_with('/') {
-                        path_str
-                    } else {
-                        format!("/{}", path_str)
-                    }
+                    std::env::current_dir()
+                        .map_err(|e| format!("Failed to get current dir: {}", e))?
+                        .join(path_buf)
                 };
+                let path_str = abs_path.to_string_lossy().to_string();
 
                 println!("Selected folder path: {}", path_str);
                 Ok(Some(path_str))
             }
             Ok(None) => Ok(None),
             Err(e) => Err(format!("Failed to receive folder selection: {}", e)),
+        }
+    }
+}
+
+/// 显示文件选择对话框
+/// 跨平台的文件选择功能
+#[tauri::command]
+#[specta::specta]
+pub async fn system_select_file(
+    _app: tauri::AppHandle,
+    title: String,
+) -> Result<Option<String>, String> {
+    #[cfg(target_os = "ios")]
+    {
+        return Err("File selection is not supported on iOS platform".to_string());
+    }
+
+    #[cfg(desktop)]
+    {
+        use std::sync::mpsc;
+        use tauri_plugin_dialog::DialogExt;
+
+        let (tx, rx) = mpsc::channel();
+
+        _app.dialog()
+            .file()
+            .set_title(&title)
+            .pick_file(move |file| {
+                let _ = tx.send(file);
+            });
+
+        match rx.recv() {
+            Ok(Some(file)) => {
+                let path_buf = file
+                    .into_path()
+                    .map_err(|e| format!("Failed to get path: {}", e))?;
+
+                // 规范为绝对路径
+                let abs_path = if path_buf.is_absolute() {
+                    path_buf
+                } else {
+                    std::env::current_dir()
+                        .map_err(|e| format!("Failed to get current dir: {}", e))?
+                        .join(path_buf)
+                };
+                let path_str = abs_path.to_string_lossy().to_string();
+
+                println!("Selected file path: {}", path_str);
+                Ok(Some(path_str))
+            }
+            Ok(None) => Ok(None),
+            Err(e) => Err(format!("Failed to receive file selection: {}", e)),
         }
     }
 }

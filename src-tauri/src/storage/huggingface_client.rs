@@ -2,13 +2,13 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
 
-use futures_util::StreamExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::storage::traits::{
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
     StorageFile,
 };
+use crate::utils::http_downloader::HttpDownloader;
 
 /// HuggingFace 数据集信息
 #[derive(Debug, Deserialize)]
@@ -694,6 +694,8 @@ impl StorageClient for HuggingFaceClient {
         progress_callback: Option<ProgressCallback>,
         mut cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<Vec<u8>, StorageError> {
+        use futures_util::StreamExt; // 这里需要StreamExt用于内存读取
+
         let (dataset_id, file_path) = self.parse_path(path)?;
         let download_url = self.build_download_url(&dataset_id, &file_path);
 
@@ -891,5 +893,35 @@ impl StorageClient for HuggingFaceClient {
         }
         // API token 是可选的
         Ok(())
+    }
+
+    /// 高效的 HuggingFace 文件下载实现，使用 HTTP 流式下载
+    async fn download_file(
+        &self,
+        path: &str,
+        save_path: &std::path::Path,
+        progress_callback: Option<ProgressCallback>,
+        cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+    ) -> Result<(), StorageError> {
+        let (dataset_id, file_path) = self.parse_path(path)?;
+        let download_url = self.build_download_url(&dataset_id, &file_path);
+
+        // 准备认证头（如果有 API token）
+        let auth_header = self
+            .api_token
+            .as_ref()
+            .filter(|t| !t.trim().is_empty())
+            .map(|token| format!("Bearer {}", token));
+
+        // 使用通用HTTP下载工具
+        HttpDownloader::download_with_auth(
+            &self.client,
+            &download_url,
+            auth_header.as_deref(),
+            save_path,
+            progress_callback,
+            cancel_rx,
+        )
+        .await
     }
 }

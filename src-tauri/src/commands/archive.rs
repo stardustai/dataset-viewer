@@ -31,7 +31,7 @@ pub async fn archive_get_file_info(
             .analyze_archive_with_client(client, url, filename, max_size)
             .await
     } else {
-        Err("No storage client available. Please connect to a storage first (Local, WebDAV, OSS, or HuggingFace)".to_string())
+        Err("No storage client available. Please connect to a storage first (Local, WebDAV, S3, or HuggingFace)".to_string())
     }
 }
 
@@ -71,6 +71,6 @@ pub async fn archive_get_file_content(
             )
             .await
     } else {
-        Err("No storage client available. Please connect to a storage first (Local, WebDAV, OSS, or HuggingFace)".to_string())
+        Err("No storage client available. Please connect to a storage first (Local, WebDAV, S3, or HuggingFace)".to_string())
     }
 }

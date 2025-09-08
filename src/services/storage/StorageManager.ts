@@ -83,7 +83,7 @@ export class StorageClientFactory {
    * 检查是否支持指定的存储类型
    */
   static isSupportedType(type: string): type is StorageClientType {
-    return ['webdav', 'local', 'oss', 'huggingface'].includes(type);
+    return ['webdav', 'local', 'oss', 'huggingface', 'ssh', 'smb'].includes(type);
   }
 
   /**
@@ -123,7 +123,11 @@ export class StorageServiceManager {
 
       // 自动保存连接信息（除非明确标记为临时连接）
       if (!config.isTemporary) {
-        await this.saveConnectionInfo(config);
+        const connectionId = await this.saveConnectionInfo(config);
+        // 如果成功保存连接，设置为默认连接
+        if (connectionId) {
+          connectionStorage.setDefaultConnection(connectionId);
+        }
       }
 
       return true;
@@ -136,16 +140,18 @@ export class StorageServiceManager {
   /**
    * 保存连接信息到本地存储
    */
-  private static async saveConnectionInfo(config: ConnectionConfig): Promise<void> {
+  private static async saveConnectionInfo(config: ConnectionConfig): Promise<string | null> {
     try {
       // 直接使用 connectionStorage.saveConnection，它会自动处理新建或更新逻辑
-      await connectionStorage.saveConnection(
+      const connectionId = await connectionStorage.saveConnection(
         config,
         this.currentClient!.generateConnectionName(config)
       );
+      return connectionId;
     } catch (error) {
       console.warn('Failed to save connection info:', error);
       // 不抛出错误，允许连接继续
+      return null;
     }
   }
 

@@ -1,6 +1,6 @@
 [package]
 name = "dataset-viewer"
-version = "1.3.2"
+version = "1.4.0-beta.2"
 description = "Dataset Viewer - A modern multi-source dataset browser"
 authors = ["you"]
 edition = "2021"
@@ -49,6 +49,7 @@ tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
 thiserror = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
+time = "0.3"
 once_cell = "1.19"
 # Use rustls for better compatibility
 reqwest = { version = "0.11", features = ["json", "stream", "rustls-tls"], default-features = false }
@@ -75,6 +76,13 @@ sha2 = "0.10"
 hex = "0.4"
 # 添加 futures 以支持 block_on
 futures = "0.3"
+
+# SSH/SFTP 支持 - 使用纯 Rust 实现，避免 OpenSSL 依赖
+russh = { version = "0.44", default-features = false }
+russh-sftp = { version = "2.1", default-features = false }
+russh-keys = { version = "0.44", default-features = false }
+# SMB 支持 - 使用纯 Rust 实现
+smb = "0.8"
 
 # 优化配置
 [profile.release]

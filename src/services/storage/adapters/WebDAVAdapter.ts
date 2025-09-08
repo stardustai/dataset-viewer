@@ -50,4 +50,32 @@ export const webdavStorageAdapter: StorageAdapter = {
       connected: true,
     };
   },
+
+  // === 新增的标准方法实现 ===
+
+  getDefaultConfig: () => ({}),
+
+  buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
+    const config: ConnectionConfig = {
+      type: 'webdav',
+      url: formData.url?.trim(),
+      username: formData.username?.trim(),
+      password:
+        formData.isPasswordFromStorage && existingConnection?.config.password
+          ? existingConnection.config.password
+          : formData.password,
+      name: existingConnection
+        ? existingConnection.name
+        : `WebDAV (${formData.url?.trim() || 'unknown'})`,
+    };
+
+    return config;
+  },
+
+  extractFormData: (config: ConnectionConfig) => ({
+    url: config.url || '',
+    username: config.username || '',
+    password: config.password ? '******' : '', // 使用占位符回显已保存的密码
+    isPasswordFromStorage: !!config.password, // 如果有密码，标记为来自存储
+  }),
 };

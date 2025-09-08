@@ -16,6 +16,22 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate version
+        run: |
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          NEW_VERSION="${{ github.event.inputs.version }}"
+          echo "Checking: $NEW_VERSION > $CURRENT_VERSION"
+          npx semver "$NEW_VERSION" -r ">$CURRENT_VERSION" --include-prerelease || (echo "❌ Version $NEW_VERSION must be higher than $CURRENT_VERSION" && exit 1)
+          echo "✅ Version validation passed"
+
       - name: Update version in package.json, tauri.conf.json and Cargo.toml
         run: |
           VERSION="${{ github.event.inputs.version }}"
@@ -29,11 +45,17 @@ jobs:
           # Update Cargo.toml
           sed -i '/^\[package\]/,/^\[/ s/^version = ".*"/version = "'"$VERSION"'"/' src-tauri/Cargo.toml
 
+      - name: Update Cargo.lock
+        run: |
+          cd src-tauri
+          # Update the lock file to reflect the new version
+          cargo update -p dataset-viewer --precise ${{ github.event.inputs.version }}
+
       - name: Commit version update
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
           git commit -m "Bump version to ${{ github.event.inputs.version }}"
           git push
 

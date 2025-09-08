@@ -55,6 +55,8 @@ interface FileViewerContentProps {
   };
   isLargeFile: boolean;
   loadingMore: boolean;
+  loadingBefore?: boolean; // 新增：向前加载状态
+  canLoadBefore?: boolean; // 新增：是否可以向前加载
   loadedChunks: number;
   loadedContentSize: number;
   containerRef: React.RefObject<HTMLDivElement>;
@@ -64,6 +66,7 @@ interface FileViewerContentProps {
   setIsMarkdownPreviewOpen: (open: boolean) => void;
   handleSearchResults: (results: SearchResult[], isLimited?: boolean) => void;
   handleScrollToBottom: () => void;
+  handleScrollToTop?: () => Promise<number | void>; // 新增：向前加载函数
   setPresentationMetadata: (metadata: any) => void;
   setDataMetadata: (metadata: any) => void;
   loadFileContent: (forceLoad?: boolean) => Promise<void>;
@@ -90,8 +93,11 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       fileInfo,
       isLargeFile,
       loadingMore,
+      loadingBefore,
+      canLoadBefore,
       handleSearchResults,
       handleScrollToBottom,
+      handleScrollToTop,
       setPresentationMetadata,
       setDataMetadata,
       isMarkdownPreviewOpen,
@@ -145,6 +151,16 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     if (forceTextMode || openAsText || fileInfo.isText || fileInfo.isMarkdown) {
       return (
         <div className="flex flex-col flex-1 overflow-hidden">
+          {/* 顶部加载状态指示器 */}
+          {isLargeFile && loadingBefore && canLoadBefore && (
+            <div className="flex justify-center py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{t('loading')}</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 min-h-0">
             <VirtualizedTextViewer
               ref={ref}
@@ -152,6 +168,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
               searchTerm={searchTerm}
               onSearchResults={handleSearchResults}
               onScrollToBottom={handleScrollToBottom}
+              onScrollToTop={handleScrollToTop}
               startLineNumber={calculateStartLineNumber ? calculateStartLineNumber(0) : 1}
               currentSearchIndex={currentSearchIndex}
               searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}

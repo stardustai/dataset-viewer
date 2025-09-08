@@ -441,17 +441,31 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       if (
         errorMessage.includes('403') ||
         errorMessage.includes('Forbidden') ||
-        errorMessage.includes('AccessDenied')
+        errorMessage.includes('AccessDenied') ||
+        errorMessage.includes('permission denied') ||
+        errorMessage.includes('Permission denied') ||
+        errorMessage.includes('SSH operation failed') ||
+        errorMessage.includes('possible permission or access issue')
       ) {
         displayError = t('error.access.denied');
         shouldRetryPathFallback = false; // 权限错误不尝试路径回退
-      } else if (errorMessage.includes('404') || errorMessage.includes('NotFound')) {
+      } else if (
+        errorMessage.includes('404') ||
+        errorMessage.includes('NotFound') ||
+        errorMessage.includes('not found')
+      ) {
         displayError = t('error.directory.not.found');
       } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
         displayError = t('error.authentication.failed');
         shouldRetryPathFallback = false;
       } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
         displayError = t('error.network.failed');
+      } else if (
+        errorMessage.includes('not a directory') ||
+        errorMessage.includes('Not a directory')
+      ) {
+        displayError = t('error.not.directory');
+        shouldRetryPathFallback = false;
       }
 
       // 如果有失败的路径，将其添加到错误信息中
@@ -584,7 +598,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       }
 
       // 让用户选择一次保存目录
-      const result = await commands.systemSelectFolder();
+      const result = await commands.systemSelectFolder(t('download.folder.select.directory'));
 
       if (result.status === 'error') {
         console.error('Failed to select folder:', result.error);

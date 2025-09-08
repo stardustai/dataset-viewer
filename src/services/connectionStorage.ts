@@ -1,4 +1,5 @@
 import { ConnectionConfig } from './storage/types';
+import { getHostnameFromUrl } from '../utils/urlUtils';
 
 export interface StoredConnection {
   id: string;
@@ -116,6 +117,31 @@ class ConnectionStorageService {
           case 'huggingface':
             return storedConfig.organization === config.organization;
 
+          case 'ssh':
+            // SSH 连接匹配：规范化主机名 + 端口 + 用户名
+            const storedHost = storedConfig.url ? getHostnameFromUrl(storedConfig.url) : '';
+            const configHost = config.url ? getHostnameFromUrl(config.url) : '';
+            const storedPort = storedConfig.port ?? 22;
+            const configPort = config.port ?? 22;
+            return (
+              storedHost === configHost &&
+              storedPort === configPort &&
+              (storedConfig.username || '') === (config.username || '')
+            );
+
+          case 'smb':
+            // SMB 连接匹配：规范化主机名 + 共享名 + 用户名
+            const storedSmbHost = storedConfig.url ? getHostnameFromUrl(storedConfig.url) : '';
+            const configSmbHost = config.url ? getHostnameFromUrl(config.url) : '';
+            const normalizeShare = (s?: string) => (s || '').replace(/^\/+|\/+$/g, '');
+            const storedShare = normalizeShare(storedConfig.share);
+            const configShare = normalizeShare(config.share);
+            return (
+              storedSmbHost === configSmbHost &&
+              storedShare === configShare &&
+              (storedConfig.username || '') === (config.username || '')
+            );
+
           default:
             return false;
         }
@@ -127,7 +153,7 @@ class ConnectionStorageService {
   generateConnectionName(config: ConnectionConfig): string {
     switch (config.type) {
       case 'webdav':
-        const hostname = config.url ? this.getHostnameFromUrl(config.url) : 'WebDAV';
+        const hostname = config.url ? getHostnameFromUrl(config.url) : 'WebDAV';
         return `WebDAV(${hostname})`;
 
       case 'local':
@@ -142,17 +168,18 @@ class ConnectionStorageService {
       case 'huggingface':
         return `HuggingFace(${config.organization || 'hub'})`;
 
+      case 'ssh':
+        const sshHost = config.url ? getHostnameFromUrl(config.url) : 'SSH';
+        const sshPort = config.port && config.port !== 22 ? `:${config.port}` : '';
+        return `SSH (${sshHost}${sshPort})`;
+
+      case 'smb':
+        const smbHost = config.url ? getHostnameFromUrl(config.url) : 'unknown';
+        const smbShare = config.share || 'share';
+        return `SMB (${smbHost}/${smbShare})`;
+
       default:
         return 'Unknown Connection';
-    }
-  }
-
-  // 从URL提取主机名
-  private getHostnameFromUrl(url: string): string {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return url;
     }
   }
 

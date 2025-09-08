@@ -2,7 +2,7 @@
   "name": "dataset-viewer",
   "displayName": "Dataset Viewer",
   "private": true,
-  "version": "1.3.2",
+  "version": "1.4.0-beta.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,7 @@
     "package:all": "pnpm package && pnpm package:windows",
     "clean": "rm -rf dist src-tauri/target node_modules/.vite",
     "clean:build": "rm -rf src-tauri/target/release src-tauri/target/debug",
-    "lint": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "format": "biome format --write . && cd src-tauri && cargo fmt",
     "format:check": "biome format . && cd src-tauri && cargo fmt --check",
     "format:frontend": "biome format --write .",

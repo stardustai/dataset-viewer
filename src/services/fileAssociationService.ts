@@ -109,6 +109,7 @@ export class FileAssociationService {
       };
     } catch (error) {
       console.error('Error in handleFileOpen:', error);
+
       return {
         success: false,
         fileName: '',
