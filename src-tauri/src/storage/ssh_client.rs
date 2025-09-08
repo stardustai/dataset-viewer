@@ -12,6 +12,7 @@ use crate::storage::traits::{
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
     StorageFile,
 };
+use crate::utils::path_utils::PathUtils;
 
 pub struct SSHClient {
     config: ConnectionConfig,
@@ -38,7 +39,11 @@ impl client::Handler for Client {
 
 impl SSHClient {
     /// 解析 SSH/SFTP 错误并返回用户友好的错误消息
-    fn parse_ssh_error(error: &dyn std::fmt::Display, operation: &str, path: &str) -> StorageError {
+    fn parse_ssh_error(
+        error: &russh_sftp::client::error::Error,
+        operation: &str,
+        path: &str,
+    ) -> StorageError {
         let error_msg = format!("{}", error);
         let error_lower = error_msg.to_lowercase();
 
@@ -57,6 +62,21 @@ impl SSHClient {
             ))
         } else {
             StorageError::RequestFailed(format!("Failed to {} {}: {}", operation, path, error))
+        }
+    }
+
+    /// 解析 std::io::Error 并返回用户友好的错误消息
+    fn parse_io_error(error: &std::io::Error, operation: &str, path: &str) -> StorageError {
+        match error.kind() {
+            std::io::ErrorKind::NotFound => {
+                StorageError::NotFound(format!("File not found: {}", path))
+            }
+            std::io::ErrorKind::PermissionDenied => {
+                StorageError::RequestFailed(format!("Permission denied: {}", path))
+            }
+            _ => {
+                StorageError::RequestFailed(format!("Failed to {} {}: {}", operation, path, error))
+            }
         }
     }
 
@@ -104,15 +124,18 @@ impl SSHClient {
                     ))
                 })
         } else if let Some(private_key_path) = &config.private_key_path {
-            // 私钥认证
-            let key_pair =
-                russh_keys::load_secret_key(private_key_path, config.passphrase.as_deref())
-                    .map_err(|e| {
-                        StorageError::AuthenticationFailed(format!(
-                            "Failed to load SSH private key: {}",
-                            e
-                        ))
-                    })?;
+            // 私钥认证 - 展开路径中的 ~
+            let expanded_private_key_path = PathUtils::expand_home_dir(private_key_path)?;
+            let key_pair = russh_keys::load_secret_key(
+                &expanded_private_key_path,
+                config.passphrase.as_deref(),
+            )
+            .map_err(|e| {
+                StorageError::AuthenticationFailed(format!(
+                    "Failed to load SSH private key from '{}': {}",
+                    expanded_private_key_path, e
+                ))
+            })?;
             handle
                 .authenticate_publickey(username, Arc::new(key_pair))
                 .await
@@ -159,18 +182,19 @@ impl SSHClient {
     /// 获取文件的完整路径
     fn get_full_path(&self, path: &str) -> String {
         // 如果是SSH协议URL，解析出实际的文件路径
-        let actual_path = if path.starts_with("ssh://") {
-            self.parse_ssh_url(path)
-                .unwrap_or_else(|_| path.to_string())
-        } else {
-            path.to_string()
-        };
+        if path.starts_with("ssh://") {
+            // 协议URL已经包含完整的绝对路径，直接解析返回
+            return self
+                .parse_ssh_url(path)
+                .unwrap_or_else(|_| path.to_string());
+        }
 
+        // 对于相对路径，需要与 root_path 拼接
         let root_path = self.config.root_path.as_deref().unwrap_or("/");
-        if actual_path.is_empty() || actual_path == "/" {
+        if path.is_empty() || path == "/" {
             root_path.to_string()
         } else {
-            let clean_path = actual_path.trim_start_matches('/');
+            let clean_path = path.trim_start_matches('/');
             if root_path.ends_with('/') {
                 format!("{}{}", root_path, clean_path)
             } else {
@@ -371,7 +395,7 @@ impl StorageClient for SSHClient {
             let bytes_read = file
                 .read(&mut chunk)
                 .await
-                .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
+                .map_err(|e| Self::parse_io_error(&e, "read", &full_path))?;
 
             if bytes_read == 0 {
                 break;
@@ -419,7 +443,7 @@ impl StorageClient for SSHClient {
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)
             .await
-            .map_err(|e| Self::parse_ssh_error(&e, "read", &full_path))?;
+            .map_err(|e| Self::parse_io_error(&e, "read", &full_path))?;
 
         Ok(buffer)
     }

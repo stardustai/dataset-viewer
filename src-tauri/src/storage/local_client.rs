@@ -9,6 +9,7 @@ use super::traits::{
     StorageFile,
 };
 use crate::utils::chunk_size;
+use crate::utils::path_utils::PathUtils;
 
 /// 本机文件系统存储客户端
 pub struct LocalFileSystemClient {
@@ -37,20 +38,8 @@ impl LocalFileSystemClient {
 
         // 如果路径以 ~ 开头，直接展开
         if actual_path.starts_with('~') {
-            if let Some(home_dir) = dirs::home_dir() {
-                let expanded_path = if actual_path == "~" {
-                    home_dir
-                } else if let Some(stripped) = actual_path.strip_prefix("~/") {
-                    home_dir.join(stripped)
-                } else {
-                    PathBuf::from(actual_path)
-                };
-                return Ok(expanded_path);
-            } else {
-                return Err(StorageError::ConnectionFailed(
-                    "Cannot determine home directory".to_string(),
-                ));
-            }
+            let expanded_path_str = PathUtils::expand_home_dir(actual_path)?;
+            return Ok(PathBuf::from(expanded_path_str));
         }
 
         // 检查是否为绝对路径
@@ -141,19 +130,8 @@ impl StorageClient for LocalFileSystemClient {
 
         // 展开 ~ 为用户主目录
         let expanded_path = if root_path.starts_with('~') {
-            if let Some(home_dir) = dirs::home_dir() {
-                if root_path == "~" {
-                    home_dir
-                } else if let Some(stripped) = root_path.strip_prefix("~/") {
-                    home_dir.join(stripped)
-                } else {
-                    PathBuf::from(root_path)
-                }
-            } else {
-                return Err(StorageError::ConnectionFailed(
-                    "Cannot determine home directory".to_string(),
-                ));
-            }
+            let expanded_path_str = PathUtils::expand_home_dir(root_path)?;
+            PathBuf::from(expanded_path_str)
         } else {
             PathBuf::from(root_path)
         };
