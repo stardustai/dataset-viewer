@@ -1,4 +1,5 @@
 import { parquetMetadataAsync, parquetReadObjects, type AsyncBuffer } from 'hyparquet';
+import { compressors } from 'hyparquet-compressors';
 import { commands } from '../../../types/tauri-commands';
 
 export interface DataColumn {
@@ -131,7 +132,7 @@ export class ParquetDataProvider implements DataProvider {
 
     const buffer = await this.getStreamingBuffer();
 
-    // 读取 Parquet 元数据
+    // 读取 Parquet 元数据，支持所有压缩格式
     this.parquetMetadata = await parquetMetadataAsync(buffer);
     const numRows = Number(this.parquetMetadata.num_rows);
     const schema = this.parquetMetadata.schema;
@@ -178,11 +179,12 @@ export class ParquetDataProvider implements DataProvider {
     const buffer = await this.getStreamingBuffer();
 
     try {
-      // 使用 hyparquet 的分块读取功能，利用流式缓冲区
+      // 使用 hyparquet 的分块读取功能，利用流式缓冲区，支持所有压缩格式
       const result = await parquetReadObjects({
         file: buffer,
         rowStart: validOffset,
         rowEnd: validOffset + validLimit,
+        compressors, // 支持 ZSTD、Brotli、LZ4 等压缩格式
       });
 
       console.debug(

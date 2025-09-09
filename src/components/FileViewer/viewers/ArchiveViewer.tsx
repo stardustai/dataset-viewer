@@ -839,7 +839,9 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
                             : selectedEntry.path.toLowerCase().endsWith('.parquet') ||
                                 selectedEntry.path.toLowerCase().endsWith('.pqt')
                               ? 'parquet'
-                              : 'csv'
+                              : selectedEntry.path.toLowerCase().endsWith('.orc')
+                                ? 'orc'
+                                : 'csv'
                         }
                         previewContent={filePreview.content}
                       />

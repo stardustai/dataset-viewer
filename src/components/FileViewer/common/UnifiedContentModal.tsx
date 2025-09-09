@@ -223,7 +223,9 @@ const HighlightedTextRenderer: React.FC<HighlightedTextRendererProps> = ({
     return (
       <div
         {...containerProps}
-        dangerouslySetInnerHTML={{ __html: applySearchHighlight(highlightedContent, true) }}
+        dangerouslySetInnerHTML={{
+          __html: applySearchHighlight(highlightedContent, true) as string,
+        }}
       />
     );
   }

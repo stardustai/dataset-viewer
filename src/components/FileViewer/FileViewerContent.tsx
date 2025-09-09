@@ -255,7 +255,9 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
               file.basename.toLowerCase().endsWith('.parquet') ||
               file.basename.toLowerCase().endsWith('.pqt')
                 ? 'parquet'
-                : 'csv',
+                : file.basename.toLowerCase().endsWith('.orc')
+                  ? 'orc'
+                  : 'csv',
             onMetadataLoaded: setDataMetadata,
           }}
         />

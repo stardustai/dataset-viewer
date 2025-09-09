@@ -15,7 +15,12 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronUp, ChevronDown, Database, ArrowUpDown, Loader2 } from 'lucide-react';
 import { LoadingDisplay, ErrorDisplay } from '../../common';
 import type { DataProvider, DataMetadata } from '../data-providers';
-import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
+import {
+  ParquetDataProvider,
+  XlsxDataProvider,
+  CsvDataProvider,
+  OrcDataProvider,
+} from '../data-providers';
 import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table-components';
 import { UnifiedContentModal } from '../common';
 
@@ -30,7 +35,7 @@ interface UniversalDataTableViewerProps {
   filePath: string;
   fileName: string;
   fileSize: number;
-  fileType: 'parquet' | 'xlsx' | 'csv' | 'ods';
+  fileType: 'parquet' | 'xlsx' | 'csv' | 'ods' | 'orc';
   onMetadataLoaded?: (metadata: DataMetadata) => void;
   previewContent?: Uint8Array;
 }
@@ -42,7 +47,7 @@ const CHUNK_SIZE = 500;
 function createProvider(
   filePath: string,
   fileSize: number,
-  fileType: 'parquet' | 'xlsx' | 'csv' | 'ods',
+  fileType: 'parquet' | 'xlsx' | 'csv' | 'ods' | 'orc',
   previewContent?: Uint8Array
 ): DataProvider {
   switch (fileType) {
@@ -53,6 +58,8 @@ function createProvider(
       return new XlsxDataProvider(filePath, fileSize, previewContent);
     case 'csv':
       return new CsvDataProvider(filePath, fileSize);
+    case 'orc':
+      return new OrcDataProvider(filePath, fileSize);
     default:
       throw new Error(`Unsupported file type: ${fileType}`);
   }

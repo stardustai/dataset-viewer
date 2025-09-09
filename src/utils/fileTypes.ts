@@ -120,6 +120,7 @@ const FILE_EXTENSIONS: Record<string, { type: FileType; mime: string }> = {
   // Data files
   parquet: { type: 'data', mime: 'application/vnd.apache.parquet' },
   pqt: { type: 'data', mime: 'application/vnd.apache.parquet' },
+  orc: { type: 'data', mime: 'application/orc' },
 
   // Point cloud files
   pcd: { type: 'pointcloud', mime: 'application/pcd' },

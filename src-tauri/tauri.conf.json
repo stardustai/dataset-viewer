@@ -61,10 +61,11 @@
       {
         "ext": [
           "parquet",
-          "pqt"
+          "pqt",
+          "orc"
         ],
         "name": "Data Files",
-        "description": "Parquet data files",
+        "description": "Parquet and ORC data files",
         "role": "Viewer"
       },
       {

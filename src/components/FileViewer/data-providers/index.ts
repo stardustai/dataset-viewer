@@ -2,3 +2,4 @@ export type { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvid
 export { ParquetDataProvider } from './ParquetDataProvider';
 export { XlsxDataProvider } from './XlsxDataProvider';
 export { CsvDataProvider } from './CsvDataProvider';
+export { OrcDataProvider } from './OrcDataProvider';
