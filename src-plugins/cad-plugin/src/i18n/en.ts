@@ -8,8 +8,9 @@ export const en = {
   'cad.loading': 'Loading CAD file...',
   'cad.loadSuccess': 'Successfully loaded: {{filename}}',
   'cad.loadError': 'Failed to load: {{error}}',
+  'cad.loadFailedTitle': 'CAD File Loading Failed',
   'cad.initError': 'CAD viewer initialization failed',
-  'cad.unsupportedFile': 'Please select a DWG or DXF file',
-  'cad.canvas.dropFile': 'Drop DWG/DXF files here',
+  'cad.unsupportedFile': 'Please select a DWG, DXF, STEP, or IGES file',
+  'cad.canvas.dropFile': 'Drop DWG/DXF/STEP/IGES files here',
   'cad.canvas.clickToOpen': 'Click to open file',
 };

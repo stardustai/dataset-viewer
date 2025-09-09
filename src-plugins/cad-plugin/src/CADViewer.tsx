@@ -168,7 +168,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
 
       console.log('CAD Simple Viewer initialized successfully');
     } catch (error) {
-      const errorMsg = t('cad.initError');
+      const errorMsg = t?.('cad.initError') || 'CAD viewer initialization failed';
       setState(prev => ({
         ...prev,
         error: errorMsg,
@@ -189,13 +189,32 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
 
     const fileName = file.filename.toLowerCase();
     if (fileName.endsWith('.dxf')) {
-      const decoder = new TextDecoder('utf-8');
-      return decoder.decode(fileData);
+      try {
+        const decoder = new TextDecoder('utf-8');
+        return decoder.decode(fileData);
+      } catch (error) {
+        // 尝试其他常见编码
+        console.warn('UTF-8 decoding failed, trying GBK...', error);
+        try {
+          const decoder = new TextDecoder('gbk');
+          return decoder.decode(fileData);
+        } catch (gbkError) {
+          console.warn('GBK decoding failed, trying GB2312...', gbkError);
+          try {
+            const decoder = new TextDecoder('gb2312');
+            return decoder.decode(fileData);
+          } catch (gb2312Error) {
+            console.error('All encoding attempts failed, using UTF-8 with replacement', gb2312Error);
+            const decoder = new TextDecoder('utf-8', { fatal: false });
+            return decoder.decode(fileData);
+          }
+        }
+      }
     } else if (fileName.endsWith('.dwg')) {
       return fileData;
     }
 
-    throw new Error(t('cad.unsupportedFile'));
+    throw new Error(t?.('cad.unsupportedFile') || 'Unsupported file type');
   };
 
   // 加载 CAD 文件
@@ -215,8 +234,10 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
 
       // 验证文件类型
       const fileName = file.filename.toLowerCase();
-      if (!fileName.endsWith('.dxf') && !fileName.endsWith('.dwg')) {
-        throw new Error(t('cad.unsupportedFile'));
+      const supportedExtensions = ['.dxf', '.dwg', '.step', '.stp', '.iges', '.igs'];
+      const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
+      if (!isSupported) {
+        throw new Error(t?.('cad.unsupportedFile') || 'Unsupported file type');
       }
 
       setState(prev => ({
@@ -294,7 +315,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
         throw new Error(`Failed to load: ${file.filename}`);
       }
     } catch (error) {
-      const errorMsg = t('cad.loadError', { error: (error as Error).message });
+      const errorMsg = t?.('cad.loadError', { error: (error as Error).message }) || `Failed to load: ${(error as Error).message}`;
       setState(prev => ({
         ...prev,
         error: errorMsg,
@@ -416,7 +437,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       >
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
         <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
-          CAD 文件加载失败
+          {t?.('cad.loadFailedTitle') || 'CAD File Loading Failed'}
         </h3>
         <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
           {state.error}
@@ -437,7 +458,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
           <div className="flex flex-col items-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-2xl min-w-80">
             <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              {t('cad.loading')}
+              {t?.('cad.loading') || 'Loading CAD file...'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
               {state.loadingStage}

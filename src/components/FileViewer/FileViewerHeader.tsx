@@ -142,7 +142,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
           )}
 
           <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
-            <FileIcon fileType={fileType as any} size="lg" filename={file.basename} />
+            <FileIcon fileType={fileType} size="lg" filename={file.basename} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center space-x-1 lg:space-x-2">
                 <h1
