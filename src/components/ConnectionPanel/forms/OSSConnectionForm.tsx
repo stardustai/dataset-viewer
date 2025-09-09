@@ -30,19 +30,19 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // 获取默认平台和端点
-  const defaultPlatform = OSS_PLATFORMS.find(p => p.id === 'aliyun');
-  const defaultRegion = 'cn-hangzhou';
-  const defaultEndpoint =
-    defaultPlatform?.regions.find(r => r.id === defaultRegion)?.endpoint || '';
+  // 从 adapter 的默认配置获取默认值
+  const fallbackPlatform = OSS_PLATFORMS.find(p => p.id === 'aliyun');
+  const fallbackRegion = 'cn-hangzhou';
+  const fallbackEndpoint =
+    fallbackPlatform?.regions.find(r => r.id === fallbackRegion)?.endpoint || '';
 
   // 从 config 中获取当前配置，如果没有则使用默认值
   const currentConfig = {
-    endpoint: config.endpoint || defaultEndpoint,
+    endpoint: config.endpoint || fallbackEndpoint,
     accessKey: config.accessKey || '',
     secretKey: config.secretKey || '',
     bucket: config.bucket || '',
-    region: config.region || defaultRegion,
+    region: config.region || fallbackRegion,
     platform: config.platform || 'aliyun',
   };
 
