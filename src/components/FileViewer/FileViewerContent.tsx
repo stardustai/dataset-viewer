@@ -1,8 +1,10 @@
+import { Loader2 } from 'lucide-react';
 import { forwardRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
-import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
-import { StorageServiceManager } from '../../services/storage';
+import type { StorageClient } from '../../services/storage/types';
+import type { FullFileSearchResult, SearchResult, StorageFile } from '../../types';
+import { FileTypeRenderer } from './FileTypeRenderer';
+import { TextViewer } from './TextViewer';
 import { LazyComponentWrapper } from './common';
 import { pluginManager } from '../../services/plugin/pluginManager';
 import { PluginViewer } from './PluginViewer';
@@ -29,7 +31,7 @@ interface FileViewerContentProps {
   file: StorageFile;
   filePath: string;
   fileType: string;
-  storageClient?: any;
+  storageClient?: StorageClient;
   hasAssociatedFiles?: boolean;
   content: string;
   searchTerm: string;
@@ -67,8 +69,17 @@ interface FileViewerContentProps {
   handleSearchResults: (results: SearchResult[], isLimited?: boolean) => void;
   handleScrollToBottom: () => void;
   handleScrollToTop?: () => Promise<number | void>; // 新增：向前加载函数
-  setPresentationMetadata: (metadata: any) => void;
-  setDataMetadata: (metadata: any) => void;
+  setPresentationMetadata: (
+    metadata: { slideCount: number; size: { width: number; height: number } } | null
+  ) => void;
+  setDataMetadata: (
+    metadata: {
+      numRows: number;
+      numColumns: number;
+      fileType?: string;
+      extensions?: Record<string, unknown>;
+    } | null
+  ) => void;
   loadFileContent: (forceLoad?: boolean) => Promise<void>;
   forceTextMode?: boolean; // 新增属性，用于强制以文本格式打开
 }
@@ -150,45 +161,27 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     // 如果强制文本模式或用户选择以文本格式打开，或者是文本/Markdown文件
     if (forceTextMode || openAsText || fileInfo.isText || fileInfo.isMarkdown) {
       return (
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {/* 顶部加载状态指示器 */}
-          {isLargeFile && loadingBefore && canLoadBefore && (
-            <div className="flex justify-center py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('loading')}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex-1 min-h-0">
-            <VirtualizedTextViewer
-              ref={ref}
-              content={content}
-              searchTerm={searchTerm}
-              onSearchResults={handleSearchResults}
-              onScrollToBottom={handleScrollToBottom}
-              onScrollToTop={handleScrollToTop}
-              startLineNumber={calculateStartLineNumber ? calculateStartLineNumber(0) : 1}
-              currentSearchIndex={currentSearchIndex}
-              searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
-              fileName={file.basename}
-              isMarkdown={fileInfo.isMarkdown && !openAsText}
-              isMarkdownPreviewOpen={isMarkdownPreviewOpen}
-              setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
-            />
-          </div>
-
-          {/* 底部加载状态指示器 */}
-          {isLargeFile && loadingMore && (
-            <div className="flex justify-center py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('loading')}</span>
-              </div>
-            </div>
-          )}
-        </div>
+        <TextViewer
+          ref={ref}
+          content={content}
+          searchTerm={searchTerm}
+          currentSearchIndex={currentSearchIndex}
+          searchResults={searchResults}
+          fullFileSearchResults={fullFileSearchResults}
+          fullFileSearchMode={fullFileSearchMode}
+          calculateStartLineNumber={calculateStartLineNumber}
+          fileInfo={fileInfo}
+          isLargeFile={isLargeFile}
+          loadingMore={loadingMore}
+          loadingBefore={loadingBefore}
+          canLoadBefore={canLoadBefore}
+          isMarkdownPreviewOpen={isMarkdownPreviewOpen}
+          setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
+          handleSearchResults={handleSearchResults}
+          handleScrollToBottom={handleScrollToBottom}
+          handleScrollToTop={handleScrollToTop}
+          openAsText={openAsText}
+        />
       );
     }
 
@@ -302,9 +295,15 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     }
 
     return (
-      <UnsupportedFormatDisplay
-        message={t('viewer.unsupported.format')}
-        secondaryMessage={t('viewer.download.to.view')}
+      <FileTypeRenderer
+        file={file}
+        filePath={filePath}
+        fileType={fileType}
+        storageClient={storageClient}
+        hasAssociatedFiles={hasAssociatedFiles}
+        fileInfo={fileInfo}
+        setPresentationMetadata={setPresentationMetadata}
+        setDataMetadata={setDataMetadata}
         onOpenAsText={async () => {
           if (loadFileContent) {
             await loadFileContent(true); // 强制加载非文本文件

@@ -1,7 +1,7 @@
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import * as semver from 'semver';
-import type { UpdateCheckResult, ReleaseInfo } from '../types';
+import type { ReleaseInfo, UpdateCheckResult } from '../types';
 
 const GITHUB_API_URL = 'https://api.github.com/repos/stardustai/dataset-viewer/releases/latest';
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { Check, ChevronDown, Loader2, Star } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Check, Star, Loader2 } from 'lucide-react';
-import { StoredConnection } from '../../services/connectionStorage';
+import type { StoredConnection } from '../../services/connectionStorage';
 import { StorageServiceManager } from '../../services/storage';
 import { showErrorToast } from '../../utils/clipboard';
 import { formatConnectionDisplayName } from '../../utils/urlUtils';

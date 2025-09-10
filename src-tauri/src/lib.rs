@@ -121,6 +121,9 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         // 压缩包处理命令（统一接口）
         archive_get_file_info,
         archive_get_file_content,
+        // ORC文件处理命令
+        orc_get_metadata,
+        orc_get_data,
         // 插件发现命令
         discover_plugins,
         validate_plugin_path,

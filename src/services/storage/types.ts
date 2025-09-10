@@ -1,5 +1,5 @@
 // 存储类型定义
-import { DirectoryResult, ListOptions } from '../../types/tauri-commands';
+import type { DirectoryResult, ListOptions } from '../../types/tauri-commands';
 
 // 重新导出从 tauri-commands 导入的类型，使其对外可用
 export type { DirectoryResult, ListOptions };
@@ -14,6 +14,18 @@ export interface StorageClient {
   getFileSize(path: string): Promise<number>;
   downloadFile(path: string): Promise<Blob>;
   downloadFileWithProgress?(path: string, filename: string, savePath?: string): Promise<string>;
+  getArchiveFilePreview?(
+    path: string,
+    filename: string,
+    entryPath: string,
+    maxPreviewSize?: number,
+    offset?: number
+  ): Promise<import('../../types').FilePreview>;
+  analyzeArchive?(
+    path: string,
+    filename: string,
+    maxSize?: number
+  ): Promise<import('../../types').ArchiveInfo>;
 }
 
 // 统一的连接配置基类

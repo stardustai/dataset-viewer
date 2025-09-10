@@ -3,14 +3,16 @@
 
 pub mod archive; // 压缩包处理命令
 pub mod download; // 下载管理命令
+pub mod orc; // ORC文件处理命令
 pub mod plugin_discovery; // 插件发现命令
-pub mod plugin_installer;
+pub mod plugin_installer; // 插件安装命令
 pub mod storage; // 统一存储接口命令
-pub mod system; // 其他系统控制命令 // 插件安装命令
+pub mod system; // 其他系统控制命令
 
 // 重新导出所有命令，便于在 lib.rs 中统一注册
 pub use archive::*;
 pub use download::*;
+pub use orc::*;
 pub use plugin_discovery::*;
 pub use plugin_installer::*;
 pub use storage::*;

@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { StorageFile, SearchResult, FullFileSearchResult } from '../../../types';
-import { StorageServiceManager } from '../../../services/storage';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { configManager } from '../../../config';
+import { StorageServiceManager } from '../../../services/storage';
+import type { FullFileSearchResult, SearchResult, StorageFile } from '../../../types';
 import { getFileType } from '../../../utils/fileTypes';
 
 export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode?: boolean) => {

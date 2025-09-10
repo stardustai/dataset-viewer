@@ -86,5 +86,5 @@ export const formatFileSize = (bytes: number | string): string => {
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.min(Math.floor(Math.log(numBytes) / Math.log(k)), sizes.length - 1);
-  return parseFloat((numBytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((numBytes / k ** i).toFixed(2)) + ' ' + sizes[i];
 };

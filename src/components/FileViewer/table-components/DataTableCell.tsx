@@ -1,13 +1,14 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Maximize2 } from 'lucide-react';
+import type React from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableCellProps {
-  value: any;
+  value: unknown;
   column: string;
   rowIndex: number;
   maxLength?: number;
-  onOpenModal: (value: any, column: string, rowIndex: number) => void;
+  onOpenModal: (value: unknown, column: string, rowIndex: number) => void;
 }
 
 export const DataTableCell: React.FC<DataTableCellProps> = ({

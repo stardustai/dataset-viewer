@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageServiceManager } from '../../services/storage/StorageManager';
-import { StoredConnection } from '../../services/connectionStorage';
-import { ConnectionConfig, StorageClientType } from '../../services/storage/types';
+import type { StoredConnection } from '../../services/connectionStorage';
 import { getStorageAdapter } from '../../services/storage/StorageClient';
+import { StorageServiceManager } from '../../services/storage/StorageManager';
+import type { ConnectionConfig, StorageClientType } from '../../services/storage/types';
 
 export default function useConnectionLogic(onConnectSuccess?: () => void) {
   const { t } = useTranslation();

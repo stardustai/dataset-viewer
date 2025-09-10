@@ -1,10 +1,10 @@
 import { common } from './common';
 import { connection } from './connection';
+import { download } from './download';
+import { errors } from './errors';
 import { fileBrowser } from './fileBrowser';
 import { fileViewer } from './fileViewer';
-import { errors } from './errors';
 import { settings } from './settings';
-import { download } from './download';
 import { pluginManager } from './pluginManager';
 
 export const zh = {

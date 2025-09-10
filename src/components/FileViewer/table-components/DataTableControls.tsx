@@ -1,6 +1,6 @@
-import React from 'react';
+import { Layers, Search, X } from 'lucide-react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Layers, X } from 'lucide-react';
 
 interface DataTableControlsProps {
   globalFilter: string;
