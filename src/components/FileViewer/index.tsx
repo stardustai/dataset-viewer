@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { StorageClient } from '../../services/storage/types';
 import type { StorageFile } from '../../types';
 import { FileViewerContent } from './FileViewerContent';

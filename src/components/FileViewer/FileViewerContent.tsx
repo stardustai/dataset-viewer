@@ -9,7 +9,6 @@ import { LazyComponentWrapper } from './common';
 import { pluginManager } from '../../services/plugin/pluginManager';
 import { PluginViewer } from './PluginViewer';
 import {
-  VirtualizedTextViewer,
   WordViewer,
   PresentationViewer,
   MediaViewer,
@@ -17,7 +16,6 @@ import {
   ArchiveViewer,
   PointCloudViewer,
 } from './viewers';
-import { UnsupportedFormatDisplay } from '../common';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -163,12 +161,14 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       return (
         <TextViewer
           ref={ref}
+          file={file}
           content={content}
           searchTerm={searchTerm}
           currentSearchIndex={currentSearchIndex}
           searchResults={searchResults}
           fullFileSearchResults={fullFileSearchResults}
           fullFileSearchMode={fullFileSearchMode}
+          containerHeight={600}
           calculateStartLineNumber={calculateStartLineNumber}
           fileInfo={fileInfo}
           isLargeFile={isLargeFile}
@@ -192,7 +192,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
           props={{
             filePath,
             fileName: file.basename,
-            fileSize: file.size,
+            fileSize: Number(file.size),
           }}
         />
       );
@@ -205,7 +205,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
           props={{
             filePath,
             fileName: file.basename,
-            fileSize: file.size,
+            fileSize: Number(file.size),
             onMetadataLoaded: setPresentationMetadata,
           }}
         />
@@ -220,7 +220,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
             filePath,
             fileName: file.basename,
             fileType: fileType as 'image' | 'pdf' | 'video' | 'audio',
-            fileSize: file.size,
+            fileSize: Number(file.size),
             hasAssociatedFiles,
           }}
         />
@@ -234,7 +234,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
           props={{
             filePath,
             fileName: file.basename,
-            fileSize: file.size,
+            fileSize: Number(file.size),
             fileType:
               file.basename.toLowerCase().endsWith('.xlsx') ||
               file.basename.toLowerCase().endsWith('.xls')
@@ -255,7 +255,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
           props={{
             filePath,
             fileName: file.basename,
-            fileSize: file.size,
+            fileSize: Number(file.size),
             fileType:
               file.basename.toLowerCase().endsWith('.parquet') ||
               file.basename.toLowerCase().endsWith('.pqt')
@@ -272,7 +272,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
         <LazyComponentWrapper
           component={ArchiveViewer}
           props={{
-            url: StorageServiceManager.getFileUrl(filePath),
+            url: filePath,
             filename: file.basename,
             storageClient,
           }}
@@ -286,7 +286,7 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
           component={PointCloudViewer}
           props={{
             filePath,
-            onMetadataLoaded: setDataMetadata,
+            onMetadataLoaded: (metadata: any) => setDataMetadata(metadata),
           }}
           loadingText={t('loading.pointCloud', '正在加载点云渲染器...')}
           fallbackHeight="h-64"

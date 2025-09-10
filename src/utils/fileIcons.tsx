@@ -15,7 +15,7 @@ import {
   Music,
   Presentation,
 } from 'lucide-react';
-import type React from 'react';
+import React from 'react';
 import type { FileType } from './fileTypes';
 
 interface FileIconConfig {
