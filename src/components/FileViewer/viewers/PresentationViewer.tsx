@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Presentation, AlertCircle } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
-import { StorageServiceManager } from '../../../services/storage';
-import { parse } from 'pptxtojson';
 import DOMPurify from 'dompurify';
+import { AlertCircle, Presentation } from 'lucide-react';
+import { parse } from 'pptxtojson';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { StorageServiceManager } from '../../../services/storage';
+import { ErrorDisplay, LoadingDisplay } from '../../common/StatusDisplay';
 
 interface PresentationMetadata {
   slideCount: number;
@@ -25,6 +26,51 @@ type PptxToJsonData = Awaited<ReturnType<typeof parse>>;
 type PresentationData = PptxToJsonData;
 type Slide = PresentationData['slides'][0];
 
+// 填充类型定义
+interface FillColor {
+  type: 'color';
+  value: string;
+}
+
+interface FillImage {
+  type: 'image';
+  value?: {
+    picBase64?: string;
+  };
+}
+
+type Fill = FillColor | FillImage;
+
+// 表格边框类型
+interface TableBorders {
+  top?: { width?: number; color?: string };
+  bottom?: { width?: number; color?: string };
+  left?: { width?: number; color?: string };
+  right?: { width?: number; color?: string };
+}
+
+// 表格单元格对象类型
+interface TableCellObject {
+  text?: string;
+  content?: string;
+  fillColor?: string;
+  merged?: boolean;
+  isMerged?: boolean;
+  skip?: boolean;
+  hidden?: boolean;
+  rowspan?: number;
+  rowSpan?: number;
+  rows?: number;
+  mergeDown?: number;
+  colspan?: number;
+  colSpan?: number;
+  cols?: number;
+  mergeRight?: number;
+}
+
+// 表格单元格类型
+type TableCell = string | number | boolean | null | undefined | TableCellObject;
+
 // 辅助类型用于渲染
 interface RenderableElement {
   type: string;
@@ -34,15 +80,15 @@ interface RenderableElement {
   height: number;
   content?: string;
   src?: string;
-  fill?: any;
+  fill?: Fill;
   borderColor?: string;
   borderWidth?: number;
   rotate?: number;
   name?: string;
   shapType?: string;
   // 表格特有属性
-  data?: any[][];
-  borders?: any;
+  data?: TableCell[][];
+  borders?: TableBorders;
   rowHeights?: number[];
   colWidths?: number[];
 }
@@ -146,14 +192,18 @@ const renderSlideElement = (
                       .map((cell, cellIndex) => {
                         // 检查各种可能的合并标识
                         if (
+                          cell &&
                           typeof cell === 'object' &&
                           (cell.merged || cell.isMerged || cell.skip || cell.hidden)
                         ) {
                           return null;
                         }
 
-                        const cellContent =
-                          typeof cell === 'object' ? cell.text || cell.content || '' : String(cell);
+                        const cellContent = cell
+                          ? typeof cell === 'object'
+                            ? cell.text || cell.content || ''
+                            : String(cell)
+                          : '';
                         const cellStyle: React.CSSProperties = {
                           height: element.rowHeights?.[rowIndex]
                             ? `${element.rowHeights[rowIndex]}pt`
@@ -162,16 +212,17 @@ const renderSlideElement = (
                             ? `${element.colWidths[cellIndex]}pt`
                             : 'auto',
                           backgroundColor:
-                            (typeof cell === 'object' ? cell.fillColor : null) || 'transparent',
+                            (cell && typeof cell === 'object' ? cell.fillColor : null) ||
+                            'transparent',
                         };
 
                         // 获取合并属性 - 尝试多种可能的属性名
                         const rowSpan =
-                          typeof cell === 'object'
+                          cell && typeof cell === 'object'
                             ? cell.rowspan || cell.rowSpan || cell.rows || cell.mergeDown || 1
                             : 1;
                         const colSpan =
-                          typeof cell === 'object'
+                          cell && typeof cell === 'object'
                             ? cell.colspan || cell.colSpan || cell.cols || cell.mergeRight || 1
                             : 1;
 
@@ -267,8 +318,8 @@ const SlideRenderer: React.FC<{
   if (slide.fill) {
     if (slide.fill.type === 'color') {
       backgroundColor = slide.fill.value as string;
-    } else if (slide.fill.type === 'image' && (slide.fill as any).value?.picBase64) {
-      backgroundImage = `url(${(slide.fill as any).value.picBase64})`;
+    } else if (slide.fill.type === 'image' && slide.fill.value?.picBase64) {
+      backgroundImage = `url(${slide.fill.value.picBase64})`;
     }
   }
 

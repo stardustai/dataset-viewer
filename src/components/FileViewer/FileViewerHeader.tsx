@@ -1,12 +1,12 @@
-import React from 'react';
+import { ArrowLeft, Copy, Download } from 'lucide-react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Download, Copy } from 'lucide-react';
-import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
-import { LanguageSwitcher } from '../LanguageSwitcher';
-import { FileIcon } from '../../utils/fileIcons';
+import type { StorageFile } from '../../types';
 import { copyToClipboard, showCopyToast, showToast } from '../../utils/clipboard';
+import { FileIcon } from '../../utils/fileIcons';
 import { formatFileSize } from '../../utils/fileUtils';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 
 interface FileViewerHeaderProps {
   file: StorageFile;
@@ -33,7 +33,7 @@ interface FileViewerHeaderProps {
     numRows: number;
     numColumns: number;
     fileType?: string;
-    extensions?: any; // 扩展字段，允许任何格式添加自己的特定信息
+    extensions?: Record<string, unknown>; // 扩展字段，允许任何格式添加自己的特定信息
   } | null;
   presentationMetadata?: { slideCount: number; size: { width: number; height: number } } | null;
   currentFilePosition?: number;
@@ -165,7 +165,13 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
                 {
                   // 检查是否有扩展字段中的点云信息
                   dataMetadata && dataMetadata.extensions && 'pointCount' in dataMetadata.extensions
-                    ? `${(dataMetadata.extensions as any).pointCount.toLocaleString()} points • ${(dataMetadata.extensions as any).hasColor ? 'RGB' : 'XYZ'}${(dataMetadata.extensions as any).hasIntensity ? '+I' : ''}`
+                    ? (() => {
+                        const ext = dataMetadata.extensions as Record<string, unknown>;
+                        const pointCount = typeof ext.pointCount === 'number' ? ext.pointCount : 0;
+                        const hasColor = Boolean(ext.hasColor);
+                        const hasIntensity = Boolean(ext.hasIntensity);
+                        return `${pointCount.toLocaleString()} points • ${hasColor ? 'RGB' : 'XYZ'}${hasIntensity ? '+I' : ''}`;
+                      })()
                     : // 通用数据文件（表格、CSV等）
                       (fileInfo.isData || fileInfo.isSpreadsheet) && dataMetadata
                       ? `${dataMetadata.numRows.toLocaleString()} rows • ${dataMetadata.numColumns} columns`

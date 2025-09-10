@@ -1,28 +1,29 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
+  type ColumnFiltersState,
   createColumnHelper,
   flexRender,
-  SortingState,
-  ColumnFiltersState,
-  VisibilityState,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronUp, ChevronDown, Database, ArrowUpDown, Loader2 } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../../common';
-import type { DataProvider, DataMetadata } from '../data-providers';
+import { ArrowUpDown, ChevronDown, ChevronUp, Database, Loader2 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ErrorDisplay, LoadingDisplay } from '../../common';
+import { UnifiedContentModal } from '../common';
+import type { DataMetadata, DataProvider } from '../data-providers';
 import {
-  ParquetDataProvider,
-  XlsxDataProvider,
   CsvDataProvider,
   OrcDataProvider,
+  ParquetDataProvider,
+  XlsxDataProvider,
 } from '../data-providers';
-import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table-components';
-import { UnifiedContentModal } from '../common';
+import { DataTableCell, DataTableColumnPanel, DataTableControls } from '../table-components';
 
 interface DataColumn {
   id: string;

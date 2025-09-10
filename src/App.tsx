@@ -1,16 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
 import { emit } from '@tauri-apps/api/event';
+import { useEffect, useRef, useState } from 'react';
 import { ConnectionPanel } from './components/ConnectionPanel';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import DownloadProgress from './components/DownloadProgress';
 import { FileBrowser } from './components/FileBrowser';
 import { FileViewer } from './components/FileViewer';
-import DownloadProgress from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
-import ErrorBoundary from './components/common/ErrorBoundary';
-import { StorageFile } from './types';
-import { StorageServiceManager } from './services/storage';
-import { navigationHistoryService } from './services/navigationHistory';
-import { fileAssociationService } from './services/fileAssociationService';
 import { useTheme } from './hooks/useTheme';
+import { fileAssociationService } from './services/fileAssociationService';
+import { navigationHistoryService } from './services/navigationHistory';
+import { StorageServiceManager } from './services/storage';
+import type { StorageClient } from './services/storage/types';
+import type { StorageFile } from './types';
 import './i18n';
 import './App.css';
 
@@ -30,7 +31,9 @@ function App() {
   const [appState, setAppState] = useState<AppState>('initializing');
   const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
-  const [selectedStorageClient, setSelectedStorageClient] = useState<any>(null);
+  const [selectedStorageClient, setSelectedStorageClient] = useState<StorageClient | undefined>(
+    undefined
+  );
   const [currentDirectory, setCurrentDirectory] = useState<string>('');
   const [hasAssociatedFiles, setHasAssociatedFiles] = useState(false);
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
@@ -53,7 +56,7 @@ function App() {
   const handleFileSelect = (
     file: StorageFile,
     path: string,
-    storageClient?: any,
+    storageClient?: StorageClient,
     files?: StorageFile[],
     isForceTextMode?: boolean
   ) => {
@@ -214,7 +217,7 @@ function App() {
     setAppState('browsing');
     setSelectedFile(null);
     setSelectedFilePath('');
-    setSelectedStorageClient(null);
+    setSelectedStorageClient(undefined);
     setForceTextMode(false); // 重置强制文本模式
 
     // 只有当是文件关联模式时，才需要刷新列表

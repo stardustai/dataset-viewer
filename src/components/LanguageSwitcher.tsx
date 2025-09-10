@@ -1,6 +1,6 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
+import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import { settingsStorage } from '../services/settingsStorage';
 
 export const LanguageSwitcher: React.FC = () => {

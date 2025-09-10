@@ -1,5 +1,16 @@
 import { commands } from '../../../types/tauri-commands';
 
+// ORC特定的类型定义
+interface OrcColumn {
+  name: string;
+  type_name: string;
+  logical_type?: string | null;
+}
+
+interface OrcRow {
+  values: Record<string, unknown>;
+}
+
 export interface DataColumn {
   name: string;
   type: string;
@@ -36,7 +47,7 @@ export class OrcDataProvider implements DataProvider {
 
   async loadMetadata(): Promise<DataMetadata> {
     if (this.metadata) {
-      return this.metadata;
+      return this.metadata!;
     }
 
     try {
@@ -56,10 +67,10 @@ export class OrcDataProvider implements DataProvider {
       this.metadata = {
         numRows: Number(result.data.num_rows),
         numColumns: result.data.num_columns,
-        columns: result.data.columns.map((col: any) => ({
+        columns: result.data.columns.map((col: OrcColumn) => ({
           name: col.name,
           type: col.type_name,
-          logicalType: col.logical_type,
+          logicalType: col.logical_type || undefined,
         })),
         fileSize: Number(result.data.file_size),
       };
@@ -103,7 +114,7 @@ export class OrcDataProvider implements DataProvider {
       );
 
       // 转换ORC数据行为Record格式
-      return result.data.map((row: any) => row.values as Record<string, unknown>);
+      return result.data.map((row: OrcRow) => row.values);
     } catch (error) {
       console.error('ORC数据加载失败:', error);
       throw new Error(`Failed to load ORC data: ${error}`);

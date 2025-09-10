@@ -1,5 +1,5 @@
-import { StorageAdapter } from '../StorageClient';
-import { ConnectionConfig } from '../types';
+import type { StorageAdapter } from '../StorageClient';
+import type { ConnectionConfig } from '../types';
 
 /**
  * SMB 存储适配器
@@ -23,9 +23,9 @@ export const smbStorageAdapter: StorageAdapter = {
     const server = String(connection.url)
       .replace(/^smb:\/\//i, '')
       .replace(/^\/+|\/+$/g, '');
-    let share = String(connection.share || '')
+    const share = String(connection.share || '')
       .trim()
-      .replace(/^[\/\\]+|[\/\\]+$/g, '');
+      .replace(/^[/\\]+|[/\\]+$/g, '');
 
     if (!share) {
       throw new Error('SMB share name is required');

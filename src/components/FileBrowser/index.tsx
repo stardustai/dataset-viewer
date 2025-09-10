@@ -1,43 +1,43 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Download,
   Eye,
   EyeOff,
-  ChevronUp,
-  ChevronDown,
+  Loader2,
   RefreshCw,
   Search,
-  X,
   Settings,
-  ArrowLeft,
-  Download,
-  Loader2,
+  X,
 } from 'lucide-react';
-import { StorageFile } from '../../types';
-import { commands } from '../../types/tauri-commands';
-import { compareFileSize } from '../../utils/typeUtils';
-import { StorageServiceManager } from '../../services/storage';
-import { ListOptions } from '../../services/storage/types';
-import { cleanPath } from '../../utils/pathUtils';
-import type { StorageClient as IStorageClient } from '../../services/storage/types';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FolderDownloadService } from '../../services/folderDownloadService';
 import { navigationHistoryService } from '../../services/navigationHistory';
-import { LanguageSwitcher } from '../LanguageSwitcher';
-import { VirtualizedFileList } from './VirtualizedFileList';
-import { PerformanceIndicator } from './PerformanceIndicator';
-import { SettingsPanel } from './SettingsPanel';
-import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { StorageServiceManager } from '../../services/storage';
+import type { StorageClient as IStorageClient, ListOptions } from '../../services/storage/types';
+import type { StorageFile } from '../../types';
+import { commands } from '../../types/tauri-commands';
+import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
+import { cleanPath } from '../../utils/pathUtils';
+import { compareFileSize } from '../../utils/typeUtils';
 import {
-  LoadingDisplay,
-  HiddenFilesDisplay,
-  NoSearchResultsDisplay,
-  NoLocalResultsDisplay,
-  NoRemoteResultsDisplay,
+  BreadcrumbNavigation,
   EmptyDisplay,
   ErrorDisplay,
-  BreadcrumbNavigation,
+  HiddenFilesDisplay,
+  LoadingDisplay,
+  NoLocalResultsDisplay,
+  NoRemoteResultsDisplay,
+  NoSearchResultsDisplay,
 } from '../common';
-import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
-import { FolderDownloadService } from '../../services/folderDownloadService';
+import { LanguageSwitcher } from '../LanguageSwitcher';
+import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { PerformanceIndicator } from './PerformanceIndicator';
+import { SettingsPanel } from './SettingsPanel';
+import { VirtualizedFileList } from './VirtualizedFileList';
 
 interface FileBrowserProps {
   onFileSelect: (
@@ -55,9 +55,8 @@ interface FileBrowserProps {
 }
 
 // 类型适配函数：将 null 转换为 undefined
-const nullToUndefined = function <T>(value: T | null): T | undefined {
-  return value === null ? undefined : value;
-};
+const nullToUndefined = <T,>(value: T | null): T | undefined =>
+  value === null ? undefined : value;
 
 export const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileSelect,
@@ -631,7 +630,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       // 获取完整的文件列表（处理分页）
       setIsRefreshing(true); // 使用刷新状态而不是全屏loading
-      let allFiles: StorageFile[] = [];
+      const allFiles: StorageFile[] = [];
       let hasMorePages = true;
       let marker: string | undefined;
 

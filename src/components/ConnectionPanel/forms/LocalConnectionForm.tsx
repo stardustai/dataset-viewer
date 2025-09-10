@@ -1,9 +1,9 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Folder, FolderOpen, FolderSearch } from 'lucide-react';
+import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import { commands } from '../../../types/tauri-commands';
 import { ConnectButton, ErrorDisplay } from '../common';
-import { UnifiedConnectionFormProps } from './types';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface LocalConnectionFormProps extends UnifiedConnectionFormProps {
   config: {

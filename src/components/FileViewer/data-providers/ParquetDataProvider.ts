@@ -1,4 +1,4 @@
-import { parquetMetadataAsync, parquetReadObjects, type AsyncBuffer } from 'hyparquet';
+import { type AsyncBuffer, parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
 import { commands } from '../../../types/tauri-commands';
 

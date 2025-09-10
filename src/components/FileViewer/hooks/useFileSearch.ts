@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { SearchResult, FullFileSearchResult } from '../../../types';
+import type { FullFileSearchResult, SearchResult } from '../../../types';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
