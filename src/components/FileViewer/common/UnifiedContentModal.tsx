@@ -189,8 +189,13 @@ const HighlightedTextRenderer: React.FC<HighlightedTextRendererProps> = ({
 
   // 统一的容器样式
   const containerProps = {
-    className: `whitespace-pre-wrap break-words font-mono text-sm overflow-wrap-anywhere bg-gray-50 dark:bg-gray-900 p-3 rounded ${className}`,
-    style: { whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const },
+    className: `whitespace-pre-wrap break-words text-sm overflow-wrap-anywhere bg-gray-50 dark:bg-gray-900 p-3 rounded ${className}`,
+    style: {
+      whiteSpace: 'pre-wrap' as const,
+      wordBreak: 'break-word' as const,
+      fontFamily:
+        'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
+    },
   };
 
   // 搜索高亮处理函数
