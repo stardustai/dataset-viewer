@@ -1,9 +1,9 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Bot } from 'lucide-react';
-import { ConnectButton, ErrorDisplay } from '../common';
+import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import { PasswordInput } from '../../common';
-import { UnifiedConnectionFormProps } from './types';
+import { ConnectButton, ErrorDisplay } from '../common';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface HuggingFaceConnectionFormProps extends UnifiedConnectionFormProps {
   config: {

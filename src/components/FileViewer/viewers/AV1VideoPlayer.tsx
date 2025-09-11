@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dav1dDecoderService } from '../../../services/dav1dDecoder';
 import { ErrorDisplay } from '../../common/StatusDisplay';
+
 interface AV1VideoPlayerProps {
   videoData: Uint8Array;
   fileName?: string;

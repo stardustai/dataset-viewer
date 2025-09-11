@@ -1,16 +1,16 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  Loader2,
+  AlertTriangle,
   Archive,
-  Search,
+  EyeOff,
   File,
   FileText,
   Folder,
-  EyeOff,
-  AlertTriangle,
-  LucideIcon,
+  Loader2,
+  type LucideIcon,
+  Search,
 } from 'lucide-react';
+import type React from 'react';
+import { useTranslation } from 'react-i18next';
 
 type StatusType =
   | 'loading'

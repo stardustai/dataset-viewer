@@ -1,7 +1,7 @@
-import { StorageClient } from './StorageClient';
-import { ConnectionConfig, StorageClientType } from './types';
-import { connectionStorage, StoredConnection } from '../connectionStorage';
 import { commands } from '../../types/tauri-commands';
+import { connectionStorage, type StoredConnection } from '../connectionStorage';
+import { StorageClient } from './StorageClient';
+import type { ConnectionConfig, StorageClientType } from './types';
 
 /**
  * 存储客户端工厂 - 简化版
@@ -23,18 +23,18 @@ export class StorageClientFactory {
   static getInstance(type: StorageClientType, key?: string): StorageClient {
     const instanceKey = key || type;
 
-    if (!this.instances.has(instanceKey)) {
-      this.instances.set(instanceKey, this.createClient(type));
+    if (!StorageClientFactory.instances.has(instanceKey)) {
+      StorageClientFactory.instances.set(instanceKey, StorageClientFactory.createClient(type));
     }
 
-    return this.instances.get(instanceKey)!;
+    return StorageClientFactory.instances.get(instanceKey)!;
   }
 
   /**
    * 连接到存储服务
    */
   static async connectToStorage(config: ConnectionConfig, key?: string): Promise<StorageClient> {
-    const client = this.getInstance(config.type, key);
+    const client = StorageClientFactory.getInstance(config.type, key);
 
     try {
       const connected = await client.connect(config);
@@ -55,16 +55,16 @@ export class StorageClientFactory {
    */
   static disconnect(key?: string): void {
     if (key) {
-      const client = this.instances.get(key);
+      const client = StorageClientFactory.instances.get(key);
       if (client) {
         client.disconnect();
-        this.instances.delete(key);
+        StorageClientFactory.instances.delete(key);
       }
     } else {
       // 断开所有连接
-      for (const [key, client] of this.instances) {
+      for (const [key, client] of StorageClientFactory.instances) {
         client.disconnect();
-        this.instances.delete(key);
+        StorageClientFactory.instances.delete(key);
       }
     }
   }
@@ -73,7 +73,7 @@ export class StorageClientFactory {
    * 获取所有活跃的连接
    */
   static getActiveConnections(): Array<{ key: string; client: StorageClient }> {
-    return Array.from(this.instances.entries()).map(([key, client]) => ({
+    return Array.from(StorageClientFactory.instances.entries()).map(([key, client]) => ({
       key,
       client,
     }));
@@ -91,7 +91,7 @@ export class StorageClientFactory {
    */
   static generateConnectionName(config: ConnectionConfig): string {
     try {
-      const client = this.createClient(config.type);
+      const client = StorageClientFactory.createClient(config.type);
       return client.generateConnectionName(config);
     } catch (error) {
       // 如果出错，回退到简单的名称生成
@@ -115,15 +115,15 @@ export class StorageServiceManager {
   static async connectWithConfig(config: ConnectionConfig): Promise<boolean> {
     try {
       // 断开现有连接
-      this.disconnect();
+      StorageServiceManager.disconnect();
 
       // 连接新的存储
-      this.currentClient = await StorageClientFactory.connectToStorage(config);
-      this.currentConnection = config;
+      StorageServiceManager.currentClient = await StorageClientFactory.connectToStorage(config);
+      StorageServiceManager.currentConnection = config;
 
       // 自动保存连接信息（除非明确标记为临时连接）
       if (!config.isTemporary) {
-        const connectionId = await this.saveConnectionInfo(config);
+        const connectionId = await StorageServiceManager.saveConnectionInfo(config);
         // 如果成功保存连接，设置为默认连接
         if (connectionId) {
           connectionStorage.setDefaultConnection(connectionId);
@@ -145,7 +145,7 @@ export class StorageServiceManager {
       // 直接使用 connectionStorage.saveConnection，它会自动处理新建或更新逻辑
       const connectionId = await connectionStorage.saveConnection(
         config,
-        this.currentClient!.generateConnectionName(config)
+        StorageServiceManager.currentClient!.generateConnectionName(config)
       );
       return connectionId;
     } catch (error) {
@@ -159,7 +159,7 @@ export class StorageServiceManager {
    * 设置当前活跃的存储客户端
    */
   static async setCurrentStorage(config: ConnectionConfig): Promise<void> {
-    await this.connectWithConfig(config);
+    await StorageServiceManager.connectWithConfig(config);
   }
 
   /**
@@ -169,47 +169,47 @@ export class StorageServiceManager {
    * 获取连接显示名称
    */
   static getConnectionDisplayName(): string {
-    if (!this.isConnected() || !this.currentClient) {
+    if (!StorageServiceManager.isConnected() || !StorageServiceManager.currentClient) {
       return 'Unknown';
     }
-    return this.currentClient.getDisplayName();
+    return StorageServiceManager.currentClient.getDisplayName();
   }
 
   /**
    * 获取当前存储客户端
    */
   static getCurrentClient(): StorageClient {
-    if (!this.currentClient) {
+    if (!StorageServiceManager.currentClient) {
       throw new Error('No storage client connected');
     }
-    return this.currentClient;
+    return StorageServiceManager.currentClient;
   }
 
   /**
    * 获取当前连接配置
    */
   static getCurrentConnection(): ConnectionConfig {
-    if (!this.currentConnection) {
+    if (!StorageServiceManager.currentConnection) {
       throw new Error('No storage connection active');
     }
-    return this.currentConnection;
+    return StorageServiceManager.currentConnection;
   }
 
   /**
    * 检查是否已连接
    */
   static isConnected(): boolean {
-    return this.currentClient?.isConnected() || false;
+    return StorageServiceManager.currentClient?.isConnected() || false;
   }
 
   /**
    * 断开当前连接
    */
   static disconnect(): void {
-    if (this.currentClient) {
-      this.currentClient.disconnect();
-      this.currentClient = null;
-      this.currentConnection = null;
+    if (StorageServiceManager.currentClient) {
+      StorageServiceManager.currentClient.disconnect();
+      StorageServiceManager.currentClient = null;
+      StorageServiceManager.currentConnection = null;
     }
   }
 
@@ -217,7 +217,7 @@ export class StorageServiceManager {
    * 切换存储类型（如从 WebDAV 切换到 OSS）
    */
   static async switchStorage(config: ConnectionConfig): Promise<void> {
-    await this.connectWithConfig(config);
+    await StorageServiceManager.connectWithConfig(config);
   }
 
   /**
@@ -228,14 +228,14 @@ export class StorageServiceManager {
     supportsRangeRequests: boolean;
     supportsSearch: boolean;
   } {
-    if (!this.currentClient || !this.currentConnection) {
+    if (!StorageServiceManager.currentClient || !StorageServiceManager.currentConnection) {
       throw new Error('No storage connection active');
     }
 
     return {
-      type: this.currentConnection.type,
+      type: StorageServiceManager.currentConnection.type,
       supportsRangeRequests: true, // 所有存储类型都支持范围请求
-      supportsSearch: this.currentClient.supportsSearch(),
+      supportsSearch: StorageServiceManager.currentClient.supportsSearch(),
     };
   }
 
@@ -247,14 +247,14 @@ export class StorageServiceManager {
       // 尝试使用默认连接
       const defaultConnection = connectionStorage.getDefaultConnection();
       if (defaultConnection) {
-        return await this.connectWithConfig(defaultConnection.config);
+        return await StorageServiceManager.connectWithConfig(defaultConnection.config);
       }
 
       // 尝试使用最近的连接
       const connections = connectionStorage.getStoredConnections();
       if (connections.length > 0) {
         // connections 已经按最后连接时间排序，取第一个即可
-        return await this.connectWithConfig(connections[0].config);
+        return await StorageServiceManager.connectWithConfig(connections[0].config);
       }
 
       return false;
@@ -273,7 +273,7 @@ export class StorageServiceManager {
    * 列出目录
    */
   static async listDirectory(path: string = '', options?: any) {
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
     return await client.listDirectory(path, options);
   }
 
@@ -281,7 +281,7 @@ export class StorageServiceManager {
    * 获取文件内容
    */
   static async getFileContent(path: string, start?: number, length?: number) {
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
     const options = start !== undefined && length !== undefined ? { start, length } : undefined;
     return await client.getFileContent(path, options);
   }
@@ -290,7 +290,7 @@ export class StorageServiceManager {
    * 获取文件大小
    */
   static async getFileSize(path: string): Promise<number> {
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
     return await client.getFileSize(path);
   }
 
@@ -298,7 +298,7 @@ export class StorageServiceManager {
    * 下载文件
    */
   static async downloadFile(path: string): Promise<Blob> {
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
     return await client.downloadFile(path);
   }
 
@@ -310,7 +310,7 @@ export class StorageServiceManager {
     filename: string,
     savePath?: string
   ): Promise<string> {
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
     if (client.downloadFileWithProgress) {
       return await client.downloadFileWithProgress(path, filename, savePath);
     }
@@ -321,7 +321,7 @@ export class StorageServiceManager {
    * 获取文件URL
    */
   static getFileUrl(path: string): string {
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
     return client.toProtocolUrl(path);
   }
 
@@ -329,7 +329,7 @@ export class StorageServiceManager {
    * 获取连接信息
    */
   static getConnection(): any {
-    return this.currentConnection;
+    return StorageServiceManager.currentConnection;
   }
 
   // ========== 连接管理便捷方法 ==========
@@ -377,7 +377,7 @@ export class StorageServiceManager {
       name: connectionName || `Local Files(${rootPath})`,
       isTemporary: isTemporary,
     };
-    return await this.connectWithConfig(config);
+    return await StorageServiceManager.connectWithConfig(config);
   }
 
   /**
@@ -391,7 +391,7 @@ export class StorageServiceManager {
   ): Promise<string> {
     // 对于压缩文件内的文件，我们需要先获取文件内容，然后保存
     // 这个方法可能需要后端支持
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
 
     try {
       // 尝试使用普通下载方法
@@ -423,7 +423,7 @@ export class StorageServiceManager {
    * 获取文件的ArrayBuffer内容
    */
   static async getFileArrayBuffer(path: string): Promise<ArrayBuffer> {
-    const client = this.getCurrentClient();
+    const client = StorageServiceManager.getCurrentClient();
     const blob = await client.downloadFile(path);
     return await blob.arrayBuffer();
   }

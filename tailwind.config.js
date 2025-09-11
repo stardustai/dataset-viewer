@@ -7,8 +7,37 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['Fira Code', 'Monaco', 'monospace'],
+        sans: [
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'PingFang SC',
+          'Hiragino Sans GB',
+          'Microsoft YaHei',
+          'Helvetica Neue',
+          'Helvetica',
+          'Arial',
+          'sans-serif',
+          'Apple Color Emoji',
+          'Segoe UI Emoji',
+          'Segoe UI Symbol',
+        ],
+        mono: [
+          'Fira Code',
+          'Monaco',
+          'Menlo',
+          'Consolas',
+          'SF Mono',
+          'Source Code Pro',
+          'PingFang SC',
+          'Hiragino Sans GB',
+          'Microsoft YaHei',
+          'SimHei',
+          'Liberation Mono',
+          'Courier New',
+          'monospace',
+        ],
       },
       colors: {
         primary: {

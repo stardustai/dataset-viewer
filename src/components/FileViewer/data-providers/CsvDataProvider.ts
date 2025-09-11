@@ -1,6 +1,6 @@
-import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
 import { getFileText } from '../../../utils/fileDataUtils';
+import type { DataColumn, DataMetadata, DataProvider } from './ParquetDataProvider';
 
 export class CsvDataProvider implements DataProvider {
   private filePath: string;

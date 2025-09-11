@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
-import { formatFileSize } from '../../../utils/fileUtils';
+import { Dav1dDecoderService } from '../../../services/dav1dDecoder';
 import {
-  getFileUrl,
   getFileArrayBuffer,
   getFileHeader,
+  getFileUrl,
   getMimeType,
 } from '../../../utils/fileDataUtils';
+import { formatFileSize } from '../../../utils/fileUtils';
+import { ErrorDisplay, LoadingDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 import { AV1VideoPlayer } from './AV1VideoPlayer';
-import { Dav1dDecoderService } from '../../../services/dav1dDecoder';
 import { ImageRenderer } from './ImageRenderer';
 
 // AV1 视频播放器包装组件，处理按需加载

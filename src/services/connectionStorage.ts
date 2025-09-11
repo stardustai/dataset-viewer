@@ -1,5 +1,5 @@
-import { ConnectionConfig } from './storage/types';
 import { getHostnameFromUrl } from '../utils/urlUtils';
+import type { ConnectionConfig } from './storage/types';
 
 export interface StoredConnection {
   id: string;
@@ -92,18 +92,19 @@ class ConnectionStorageService {
         if (storedConfig.type !== config.type) return false;
 
         switch (config.type) {
-          case 'webdav':
+          case 'webdav': {
             // 标准化 URL 进行比较，移除末尾斜杠
             const normalizeUrl = (url?: string) => url?.trim().replace(/\/+$/, '') || '';
             return (
               normalizeUrl(storedConfig.url) === normalizeUrl(config.url) &&
               storedConfig.username === config.username
             );
+          }
 
           case 'local':
             return storedConfig.rootPath === config.rootPath;
 
-          case 'oss':
+          case 'oss': {
             // 对于 OSS 连接，只比较桶的基础名称（不包含路径）
             const storedBucketBase = (storedConfig.bucket || '').split('/')[0];
             const configBucketBase = (config.bucket || '').split('/')[0];
@@ -113,11 +114,12 @@ class ConnectionStorageService {
               storedConfig.endpoint === config.endpoint &&
               storedConfig.username === config.username
             );
+          }
 
           case 'huggingface':
             return storedConfig.organization === config.organization;
 
-          case 'ssh':
+          case 'ssh': {
             // SSH 连接匹配：规范化主机名 + 端口 + 用户名
             const storedHost = storedConfig.url ? getHostnameFromUrl(storedConfig.url) : '';
             const configHost = config.url ? getHostnameFromUrl(config.url) : '';
@@ -128,8 +130,9 @@ class ConnectionStorageService {
               storedPort === configPort &&
               (storedConfig.username || '') === (config.username || '')
             );
+          }
 
-          case 'smb':
+          case 'smb': {
             // SMB 连接匹配：规范化主机名 + 共享名 + 用户名
             const storedSmbHost = storedConfig.url ? getHostnameFromUrl(storedConfig.url) : '';
             const configSmbHost = config.url ? getHostnameFromUrl(config.url) : '';
@@ -141,6 +144,7 @@ class ConnectionStorageService {
               storedShare === configShare &&
               (storedConfig.username || '') === (config.username || '')
             );
+          }
 
           default:
             return false;
@@ -152,31 +156,36 @@ class ConnectionStorageService {
   // 生成连接名称
   generateConnectionName(config: ConnectionConfig): string {
     switch (config.type) {
-      case 'webdav':
+      case 'webdav': {
         const hostname = config.url ? getHostnameFromUrl(config.url) : 'WebDAV';
         return `WebDAV(${hostname})`;
+      }
 
-      case 'local':
+      case 'local': {
         const path = config.rootPath || '/';
         const folderName = path.split('/').filter(Boolean).pop() || 'Root';
         return `Local(${folderName})`;
+      }
 
-      case 'oss':
+      case 'oss': {
         const platform = config.platform || 'OSS';
         return `${platform}(${config.bucket})`;
+      }
 
       case 'huggingface':
         return `HuggingFace(${config.organization || 'hub'})`;
 
-      case 'ssh':
+      case 'ssh': {
         const sshHost = config.url ? getHostnameFromUrl(config.url) : 'SSH';
         const sshPort = config.port && config.port !== 22 ? `:${config.port}` : '';
         return `SSH (${sshHost}${sshPort})`;
+      }
 
-      case 'smb':
+      case 'smb': {
         const smbHost = config.url ? getHostnameFromUrl(config.url) : 'unknown';
         const smbShare = config.share || 'share';
         return `SMB (${smbHost}/${smbShare})`;
+      }
 
       default:
         return 'Unknown Connection';

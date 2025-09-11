@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import * as dat from 'dat.gui';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
-import { OrbitControls } from 'three-stdlib';
-import { PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
-import * as dat from 'dat.gui';
-import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
+import { OrbitControls, PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
 import { StorageServiceManager } from '../../../services/storage';
+import { ErrorDisplay, LoadingDisplay } from '../../common/StatusDisplay';
 
 // 点云数据点接口
 interface PCDPoint {
@@ -17,7 +17,7 @@ interface PCDPoint {
   g?: number;
   b?: number;
   intensity?: number;
-  [key: string]: any;
+  [key: string]: number | undefined;
 }
 
 // 点云统计信息接口
@@ -45,9 +45,28 @@ interface RenderSettings {
   rotationSpeed: number;
 }
 
+// 点云元数据接口
+interface PointCloudMetadata {
+  pointCount: number;
+  hasColor: boolean;
+  hasIntensity: boolean;
+  fileSize: number;
+  extensions: {
+    pointCount: number;
+    hasColor: boolean;
+    hasIntensity: boolean;
+    bounds: {
+      min: { x: number; y: number; z: number };
+      max: { x: number; y: number; z: number };
+    };
+    center: { x: number; y: number; z: number };
+    scale: number;
+  };
+}
+
 interface PointCloudViewerProps {
   filePath: string;
-  onMetadataLoaded?: (metadata: any) => void;
+  onMetadataLoaded?: (metadata: PointCloudMetadata) => void;
   previewContent?: Uint8Array; // 可选的预加载内容，用于压缩包内文件
 }
 
@@ -367,7 +386,7 @@ const calculatePointColor = (
       }
       break;
 
-    case 'height':
+    case 'height': {
       const normalizedHeight =
         (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
       // 使用更自然的渐变色：蓝色(低) -> 绿色(中) -> 红色(高)
@@ -385,13 +404,15 @@ const calculatePointColor = (
         b = 0.2 - t * 0.2;
       }
       break;
+    }
 
-    case 'uniform':
+    case 'uniform': {
       const color = new THREE.Color(uniformColor);
       r = color.r;
       g = color.g;
       b = color.b;
       break;
+    }
   }
 
   return { r, g, b };
@@ -551,8 +572,8 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
                 resolve(loadedPoints);
               },
               undefined,
-              (error: any) => {
-                reject(error);
+              (event: ErrorEvent) => {
+                reject(new Error(event.message || 'Failed to load PCD file'));
               }
             );
           });
@@ -566,8 +587,8 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
                 resolve(loadedGeometry);
               },
               undefined,
-              (error: any) => {
-                reject(error);
+              (event: ErrorEvent) => {
+                reject(new Error(event.message || 'Failed to load PLY file'));
               }
             );
           });
@@ -585,8 +606,8 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
                 resolve(loadedGeometry);
               },
               undefined,
-              (error: any) => {
-                reject(error);
+              (event: ErrorEvent) => {
+                reject(new Error(event.message || 'Failed to load XYZ file'));
               }
             );
           });
@@ -646,17 +667,10 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
 
         // 调用元数据回调 - 使用通用格式
         onMetadataLoaded?.({
-          // 通用字段
-          numRows: pointStats.pointCount, // 点数作为行数
-          numColumns: pointStats.hasColor
-            ? pointStats.hasIntensity
-              ? 7
-              : 6
-            : pointStats.hasIntensity
-              ? 4
-              : 3, // x,y,z + 可选的r,g,b + 可选的intensity
-          fileType: fileExtension?.toUpperCase() || 'Point Cloud',
-          // 扩展信息 - 任何格式都可以添加自己的扩展字段
+          pointCount: pointStats.pointCount,
+          hasColor: pointStats.hasColor,
+          hasIntensity: pointStats.hasIntensity,
+          fileSize: previewContent?.byteLength || 0,
           extensions: {
             pointCount: pointStats.pointCount,
             hasColor: pointStats.hasColor,

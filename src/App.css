@@ -15,6 +15,24 @@ body {
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
   margin: 0;
   padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
+
+/* 专门的中文字体类 */
+.font-chinese {
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimHei', 'Source Han Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
+}
+
+/* 中文等宽字体类 */
+.font-chinese-mono {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimHei', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* 确保表格和数据显示区域使用正确的字体 */
+.data-table-cell,
+.content-viewer,
+.text-content {
+  font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 /* 根容器确保填满屏幕 */

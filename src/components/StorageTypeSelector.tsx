@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { Bot, ChevronDown, Cloud, Folder, Network, Server, Terminal } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Server, Folder, Cloud, Bot, Network, Terminal, ChevronDown } from 'lucide-react';
-import { StorageClientType } from '../services/storage/types';
+import type { StorageClientType } from '../services/storage/types';
 
 interface StorageTypeSelectorProps {
   selectedType: StorageClientType;

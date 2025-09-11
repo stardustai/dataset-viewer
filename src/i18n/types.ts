@@ -1,5 +1,5 @@
 // 导出所有翻译键的类型定义
-import { zh } from './locales/zh';
+import type { zh } from './locales/zh';
 
 export type TranslationKeys = keyof typeof zh;
 

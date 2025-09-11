@@ -1,5 +1,5 @@
-import { StorageAdapter } from '../StorageClient';
-import { ConnectionConfig } from '../types';
+import type { StorageAdapter } from '../StorageClient';
+import type { ConnectionConfig } from '../types';
 
 /**
  * SSH 存储适配器

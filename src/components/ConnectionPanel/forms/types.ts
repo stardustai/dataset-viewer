@@ -1,4 +1,4 @@
-import { StoredConnection } from '../../../services/connectionStorage';
+import type { StoredConnection } from '../../../services/connectionStorage';
 
 /**
  * 统一的连接表单 Props 接口

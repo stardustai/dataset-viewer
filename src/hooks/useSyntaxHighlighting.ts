@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const SYNTAX_HIGHLIGHTING_KEY = 'dataset-viewer-syntax-highlighting';
 

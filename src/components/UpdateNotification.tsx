@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Download, X, RefreshCw, AlertCircle } from 'lucide-react';
+import { AlertCircle, Download, RefreshCw, X } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { updateService } from '../services/updateService';
 import { settingsStorage } from '../services/settingsStorage';
+import { updateService } from '../services/updateService';
 import type { UpdateCheckResult } from '../types';
 
 interface UpdateNotificationProps {

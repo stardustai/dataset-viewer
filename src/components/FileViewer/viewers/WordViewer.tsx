@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import mammoth from 'mammoth';
-import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
-import { StorageServiceManager } from '../../../services/storage';
 import DOMPurify from 'dompurify';
+import mammoth from 'mammoth';
+import type React from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { StorageServiceManager } from '../../../services/storage';
+import { ErrorDisplay, LoadingDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 
 interface WordViewerProps {
   filePath: string;
@@ -33,7 +34,7 @@ const extractTextFromDocx = async (
 const extractTextFromRtf = (content: string, t: (key: string) => string): string => {
   try {
     // 移除 RTF 控制字符和格式代码
-    let text = content
+    const text = content
       .replace(/\{\\[^}]*\}/g, '') // 移除 RTF 控制组
       .replace(/\\[a-z]+\d*\s?/gi, '') // 移除 RTF 控制词
       .replace(/\{|\}/g, '') // 移除大括号

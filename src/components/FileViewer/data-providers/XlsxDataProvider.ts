@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
-import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import { getFileArrayBuffer } from '../../../utils/fileDataUtils';
+import type { DataColumn, DataMetadata, DataProvider } from './ParquetDataProvider';
 
 export class XlsxDataProvider implements DataProvider {
   private filePath: string;

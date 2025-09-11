@@ -3,6 +3,7 @@
 
 use crate::archive::{handlers::ArchiveHandler, types::*};
 use crate::storage::get_storage_manager;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, LazyLock};
 
 // 全局压缩包处理器
