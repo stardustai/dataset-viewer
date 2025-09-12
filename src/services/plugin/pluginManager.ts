@@ -1,34 +1,7 @@
-import React, { ReactNode } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { ReactNode } from 'react';
+import { commands, type PluginInfo, type LocalPluginInfo } from '../../types/tauri-commands';
 import { PluginFramework } from './pluginFramework';
 import { PluginInstance } from '../../types/plugin-framework';
-
-// Rust backend plugin types
-interface PluginInfo {
-  metadata: {
-    id: string;
-    name: string;
-    version: string;
-    description: string;
-    author: string;
-    supported_extensions: string[];
-    mime_types: Record<string, string>;
-    icon?: string;
-    official: boolean;
-    category: string;
-    min_app_version: string;
-  };
-  source: {
-    type: string;
-    path?: string;
-    package_name?: string;
-    version?: string;
-    url?: string;
-  };
-  installed: boolean;
-  active: boolean;
-  entry_path?: string;
-}
 
 /**
  * 插件管理器 - 负责插件的生命周期管理
@@ -57,7 +30,11 @@ export class PluginManager {
 
     try {
       // 从后端获取已激活的插件列表
-      const activePlugins: PluginInfo[] = await invoke('get_active_plugins');
+      const activePluginsResult = await commands.getActivePlugins();
+      if (activePluginsResult.status === 'error') {
+        throw new Error(activePluginsResult.error);
+      }
+      const activePlugins = activePluginsResult.data;
 
       // 加载每个激活的插件
       for (const pluginInfo of activePlugins) {
@@ -88,8 +65,12 @@ export class PluginManager {
       console.log('Syncing plugin state...');
 
       // 获取后端所有插件状态
-      const allPlugins = await invoke<PluginInfo[]>('discover_plugins');
-      const activePlugins = allPlugins.filter(p => p.installed && p.active);
+      const allPluginsResult = await commands.discoverPlugins();
+      if (allPluginsResult.status === 'error') {
+        throw new Error(allPluginsResult.error);
+      }
+      const allPlugins = allPluginsResult.data;
+      const activePlugins = allPlugins.filter(p => p.enabled);
 
       // 获取当前前端已加载的插件
       const loadedPlugins = this.framework.getAllPlugins();
@@ -97,7 +78,7 @@ export class PluginManager {
 
       // 卸载不应该激活的插件
       for (const plugin of loadedPlugins) {
-        const shouldBeActive = activePlugins.some(p => p.metadata.id === plugin.metadata.id);
+        const shouldBeActive = activePlugins.some(p => p.id === plugin.metadata.id);
         if (!shouldBeActive) {
           await this.framework.unloadPlugin(plugin.metadata.id);
           console.log(`Plugin unloaded during sync: ${plugin.metadata.name}`);
@@ -106,12 +87,12 @@ export class PluginManager {
 
       // 加载应该激活但未加载的插件
       for (const pluginInfo of activePlugins) {
-        if (!loadedPluginIds.has(pluginInfo.metadata.id) && pluginInfo.entry_path) {
+        if (!loadedPluginIds.has(pluginInfo.id) && pluginInfo.entry_path) {
           try {
             await this.framework.loadPlugin(pluginInfo.entry_path);
-            console.log(`Plugin loaded during sync: ${pluginInfo.metadata.name}`);
+            console.log(`Plugin loaded during sync: ${pluginInfo.name}`);
           } catch (error) {
-            console.error(`Failed to load plugin ${pluginInfo.metadata.name} during sync:`, error);
+            console.error(`Failed to load plugin ${pluginInfo.name} during sync:`, error);
           }
         }
       }
@@ -131,9 +112,17 @@ export class PluginManager {
       let pluginInfo: PluginInfo;
 
       if (source === 'local') {
-        pluginInfo = await invoke('install_plugin_from_local', { pluginPath: path });
+        const result = await commands.installPluginFromLocal(path);
+        if (result.status === 'error') {
+          throw new Error(result.error);
+        }
+        pluginInfo = result.data;
       } else {
-        pluginInfo = await invoke('install_plugin_from_url', { pluginUrl: path });
+        const result = await commands.installPluginFromUrl(path);
+        if (result.status === 'error') {
+          throw new Error(result.error);
+        }
+        pluginInfo = result.data;
       }
 
       console.log(`Plugin installed: ${pluginInfo.metadata.name}`);
@@ -149,16 +138,23 @@ export class PluginManager {
   async activatePlugin(pluginId: string): Promise<void> {
     try {
       // 调用后端激活插件
-      await invoke('activate_plugin', { pluginId });
+      const activateResult = await commands.activatePlugin(pluginId);
+      if (activateResult.status === 'error') {
+        throw new Error(activateResult.error);
+      }
 
       // 获取所有插件信息找到激活的插件
-      const plugins = await invoke<PluginInfo[]>('discover_plugins');
-      const pluginInfo = plugins.find(p => p.metadata.id === pluginId && p.installed && p.active);
+      const pluginsResult = await commands.discoverPlugins();
+      if (pluginsResult.status === 'error') {
+        throw new Error(pluginsResult.error);
+      }
+      const plugins = pluginsResult.data;
+      const pluginInfo = plugins.find(p => p.id === pluginId && p.enabled);
 
       if (pluginInfo?.entry_path) {
         // 使用后端提供的准确入口文件路径
         await this.framework.loadPlugin(pluginInfo.entry_path);
-        console.log(`Plugin activated and loaded: ${pluginInfo.metadata.name}`);
+        console.log(`Plugin activated and loaded: ${pluginInfo.name}`);
       } else {
         throw new Error(
           `Plugin ${pluginId} not found, not enabled, or missing entry path after activation`
@@ -175,7 +171,10 @@ export class PluginManager {
    */
   async deactivatePlugin(pluginId: string): Promise<void> {
     try {
-      await invoke('deactivate_plugin', { pluginId });
+      const result = await commands.deactivatePlugin(pluginId);
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
       await this.framework.unloadPlugin(pluginId);
       console.log(`Plugin deactivated: ${pluginId}`);
     } catch (error) {
@@ -193,7 +192,10 @@ export class PluginManager {
       await this.deactivatePlugin(pluginId);
 
       // 卸载插件
-      await invoke('uninstall_plugin', { pluginId });
+      const result = await commands.uninstallPlugin(pluginId);
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
       console.log(`Plugin uninstalled: ${pluginId}`);
     } catch (error) {
       console.error('Failed to uninstall plugin:', error);
@@ -204,9 +206,13 @@ export class PluginManager {
   /**
    * 获取所有插件列表
    */
-  async getAllPlugins(): Promise<PluginInfo[]> {
+  async getAllPlugins(): Promise<LocalPluginInfo[]> {
     try {
-      return await invoke('discover_plugins');
+      const result = await commands.discoverPlugins();
+      if (result.status === 'error') {
+        throw new Error(result.error);
+      }
+      return result.data;
     } catch (error) {
       console.error('Failed to get plugins:', error);
       return [];

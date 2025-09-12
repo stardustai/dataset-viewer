@@ -108,7 +108,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
       <PluginComponent
         file={{
           name: file.basename,
-          size: file.size,
+          size: parseInt(file.size) || 0,
           path: filePath,
         }}
         content={content}

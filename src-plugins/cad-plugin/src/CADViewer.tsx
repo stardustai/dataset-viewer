@@ -9,7 +9,7 @@ interface CADViewerState {
   isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
-  loadedFile: string | null;
+  loadedFileKey: string | null;
   loadingProgress: number;
   loadingStage: string;
 }
@@ -28,7 +28,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
     isLoading: false,
     error: null,
     isInitialized: false,
-    loadedFile: null,
+    loadedFileKey: null,
     loadingProgress: 0,
     loadingStage: 'Initializing...'
   });
@@ -219,7 +219,15 @@ export const CADViewer: FC<PluginViewerProps> = ({
 
   // 加载 CAD 文件
   const loadFile = useCallback(async () => {
-    if (!AcApDocManager.instance || state.loadedFile === file.name) {
+    if (!AcApDocManager.instance) {
+      return;
+    }
+
+    // 计算当前文件的去重键
+    const currentFileKey = `${file.path}:${file.size}`;
+    
+    // 如果已经加载了相同的文件，跳过
+    if (state.loadedFileKey === currentFileKey) {
       return;
     }
 
@@ -291,7 +299,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
       if (success) {
         setState(prev => ({
           ...prev,
-          loadedFile: file.name,
+          loadedFileKey: currentFileKey,
           error: null,
           isLoading: false,
           loadingProgress: 100,
@@ -324,12 +332,12 @@ export const CADViewer: FC<PluginViewerProps> = ({
       onError?.((error as Error).message);
       console.error('Error loading CAD file:', error);
     }
-  }, [file.name, file.path, content, fileAccessor, isLargeFile]); // 移除 state.loadedFile 依赖
+  }, [file.name, file.path, file.size, content, fileAccessor, isLargeFile, state.loadedFileKey]); // 添加必要的依赖
 
   // 设置平移模式 - 基于 mlight-lee 官方实现
   const enablePanMode = () => {
     try {
-      if (AcApDocManager.instance && state.loadedFile) {
+      if (AcApDocManager.instance && state.loadedFileKey) {
         console.log('Enabling pan mode...');
 
         // 执行官方 pan 命令
@@ -358,13 +366,17 @@ export const CADViewer: FC<PluginViewerProps> = ({
   }, []);
 
   useEffect(() => {
-    if (state.isInitialized && !state.isLoading && !state.loadedFile && file) {
+    // 计算当前文件的去重键
+    const currentFileKey = `${file.path}:${file.size}`;
+    
+    // 当初始化完成、不在加载中、且文件键不同时，加载文件
+    if (state.isInitialized && !state.isLoading && state.loadedFileKey !== currentFileKey) {
       loadFile();
     }
-  }, [state.isInitialized, file.name, file.path]); // 只监听关键状态和文件标识符
+  }, [state.isInitialized, state.isLoading, file.path, file.size, loadFile]);
 
   useEffect(() => {
-    if (state.loadedFile) {
+    if (state.loadedFileKey) {
       // 延迟配置，确保 CAD 系统完全初始化
       const configureControls = () => {
         try {
@@ -407,7 +419,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
         });
       }
     }
-  }, [state.loadedFile]);
+  }, [state.loadedFileKey]);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current || !state.isInitialized) return;

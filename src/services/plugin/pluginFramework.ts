@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { PluginBundle, PluginInstance } from '../../types/plugin-framework';
 import i18n from '../../i18n';
 
