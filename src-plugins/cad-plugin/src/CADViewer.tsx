@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, FC } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { AcApDocManager, AcApSettingManager } from '@mlightcad/cad-simple-viewer';
 import { AcDbOpenDatabaseOptions } from '@mlightcad/data-model';
@@ -14,10 +14,10 @@ interface CADViewerState {
   loadingStage: string;
 }
 
-export const CADViewer: React.FC<PluginViewerProps> = ({
+export const CADViewer: FC<PluginViewerProps> = ({
   file,
   content,
-  storageClient,
+  fileAccessor,
   isLargeFile,
   onError,
   t
@@ -187,7 +187,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       return fileData;
     }
 
-    const fileName = file.filename.toLowerCase();
+    const fileName = file.name.toLowerCase();
     if (fileName.endsWith('.dxf')) {
       try {
         const decoder = new TextDecoder('utf-8');
@@ -219,7 +219,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
 
   // 加载 CAD 文件
   const loadFile = useCallback(async () => {
-    if (!AcApDocManager.instance || state.loadedFile === file.filename) {
+    if (!AcApDocManager.instance || state.loadedFile === file.name) {
       return;
     }
 
@@ -233,7 +233,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       }));
 
       // 验证文件类型
-      const fileName = file.filename.toLowerCase();
+      const fileName = file.name.toLowerCase();
       const supportedExtensions = ['.dxf', '.dwg', '.step', '.stp', '.iges', '.igs'];
       const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
       if (!isSupported) {
@@ -255,13 +255,11 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
         } else if (content instanceof ArrayBuffer) {
           fileContent = await readFileContent(content);
         } else {
-          const blob = await storageClient.downloadFile(file.path);
-          const arrayBuffer = await blob.arrayBuffer();
+          const arrayBuffer = await fileAccessor.getFullContent();
           fileContent = await readFileContent(arrayBuffer);
         }
       } else {
-        const blob = await storageClient.downloadFile(file.path);
-        const arrayBuffer = await blob.arrayBuffer();
+        const arrayBuffer = await fileAccessor.getFullContent();
         fileContent = await readFileContent(arrayBuffer);
       }
 
@@ -285,7 +283,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
 
       // 打开文档
       const success = await AcApDocManager.instance.openDocument(
-        file.filename,
+        file.name,
         fileContent,
         options
       );
@@ -293,13 +291,13 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       if (success) {
         setState(prev => ({
           ...prev,
-          loadedFile: file.filename,
+          loadedFile: file.name,
           error: null,
           isLoading: false,
           loadingProgress: 100,
           loadingStage: 'Complete'
         }));
-        console.log(`Successfully loaded: ${file.filename}`);
+        console.log(`Successfully loaded: ${file.name}`);
 
         // 等待一帧后启用平移模式和缩放适应
         requestAnimationFrame(() => {
@@ -312,7 +310,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
           }
         });
       } else {
-        throw new Error(`Failed to load: ${file.filename}`);
+        throw new Error(`Failed to load: ${file.name}`);
       }
     } catch (error) {
       const errorMsg = t?.('cad.loadError', { error: (error as Error).message }) || `Failed to load: ${(error as Error).message}`;
@@ -326,7 +324,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
       onError?.((error as Error).message);
       console.error('Error loading CAD file:', error);
     }
-  }, [file.filename, file.path, content, storageClient, isLargeFile]); // 移除 state.loadedFile 依赖
+  }, [file.name, file.path, content, fileAccessor, isLargeFile]); // 移除 state.loadedFile 依赖
 
   // 设置平移模式 - 基于 mlight-lee 官方实现
   const enablePanMode = () => {
@@ -363,7 +361,7 @@ export const CADViewer: React.FC<PluginViewerProps> = ({
     if (state.isInitialized && !state.isLoading && !state.loadedFile && file) {
       loadFile();
     }
-  }, [state.isInitialized, file.filename, file.path]); // 只监听关键状态和文件标识符
+  }, [state.isInitialized, file.name, file.path]); // 只监听关键状态和文件标识符
 
   useEffect(() => {
     if (state.loadedFile) {

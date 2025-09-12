@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { PluginFramework } from './pluginFramework';
 import { PluginInstance } from '../../types/plugin-framework';
@@ -237,7 +237,7 @@ export class PluginManager {
   /**
    * 获取图标映射
    */
-  getIconMapping(): Map<string, React.ReactNode> {
+  getIconMapping(): Map<string, ReactNode> {
     return this.framework.getIconMapping();
   }
 

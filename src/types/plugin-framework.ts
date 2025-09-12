@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 
 /**
  * 插件包接口
@@ -37,10 +37,45 @@ export interface PluginMetadata {
    * 注意：如果是 React 组件，不要包含尺寸样式（如 w-4 h-4），
    * 系统会根据使用场景自动应用合适的尺寸
    */
-  icon?: string | React.ReactNode;
-  official: boolean;
+  icon?: string | ReactNode;
+  /**
+   * 按文件扩展名的图标映射，支持为不同文件类型指定不同图标
+   * 键为文件扩展名（如 '.dwg', '.dxf'），值为图标
+   * 如果某个扩展名没有在此映射中定义，则使用默认的 icon
+   */
+  iconMapping?: {
+    [extension: string]: string | ReactNode;
+  };
+  /**
+   * 是否为官方插件，由系统自动识别（基于包名是否以 @dataset-viewer/ 开头）
+   * 插件开发者无需手动设置此字段
+   */
+  official?: boolean;
   category: 'viewer' | 'editor' | 'converter' | 'analyzer';
   minAppVersion: string;
+}
+
+/**
+ * 文件获取接口
+ */
+export interface FileAccessor {
+  /**
+   * 获取完整文件内容
+   */
+  getFullContent: () => Promise<ArrayBuffer>;
+
+  /**
+   * 获取文件的指定范围内容
+   * @param start 起始字节位置
+   * @param end 结束字节位置（可选，不指定则读取到文件末尾）
+   */
+  getRangeContent: (start: number, end?: number) => Promise<ArrayBuffer>;
+
+  /**
+   * 获取文件的文本内容（自动处理编码）
+   * @param encoding 指定编码，默认为 'utf-8'
+   */
+  getTextContent: (encoding?: string) => Promise<string>;
 }
 
 /**
@@ -48,12 +83,19 @@ export interface PluginMetadata {
  */
 export interface PluginViewerProps {
   file: {
-    filename: string;
+    name: string;
     size: number;
     path: string;
   };
-  content: string | ArrayBuffer;
-  storageClient: any;
+  /**
+   * 预加载的文件内容（可选）
+   * 如果提供了此内容，插件可以直接使用，否则需要通过 fileAccessor 获取
+   */
+  content?: string | ArrayBuffer;
+  /**
+   * 文件访问器，提供获取文件内容的方法
+   */
+  fileAccessor: FileAccessor;
   isLargeFile: boolean;
   onError: (error: string) => void;
   onLoadingChange: (loading: boolean) => void;
@@ -85,8 +127,9 @@ export interface PluginInstance {
    * 获取文件图标，可以返回字符串（如 emoji）或 React 组件
    * 注意：如果返回 React 组件，不要包含尺寸样式（如 w-4 h-4），
    * 系统会根据使用场景自动应用合适的尺寸
+   * @param filename 可选的文件名，用于根据扩展名返回特定图标
    */
-  getFileIcon?: () => string | React.ReactNode;
+  getFileIcon?: (filename?: string) => string | ReactNode;
 }
 
 /**

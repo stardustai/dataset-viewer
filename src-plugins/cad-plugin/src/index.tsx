@@ -1,4 +1,4 @@
-import { Layers } from 'lucide-react';
+import { Layers, Box, FileImage, Shapes } from 'lucide-react';
 import { CADViewer } from './CADViewer';
 import type { PluginBundle } from './plugin-types';
 import { resources } from './i18n';
@@ -20,7 +20,14 @@ const pluginBundle: PluginBundle = {
       '.igs': 'application/iges',
     },
     icon: <Layers className="text-purple-600" />,
-    official: true,
+    iconMapping: {
+      '.dwg': <FileImage className="text-blue-600" />,
+      '.dxf': <Shapes className="text-green-600" />,
+      '.step': <Box className="text-orange-600" />,
+      '.stp': <Box className="text-orange-600" />,
+      '.iges': <Layers className="text-purple-600" />,
+      '.igs': <Layers className="text-purple-600" />,
+    },
     category: 'viewer' as const,
     minAppVersion: '1.0.0',
   },

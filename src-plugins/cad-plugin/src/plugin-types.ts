@@ -2,5 +2,6 @@
 export type {
   PluginViewerProps,
   PluginMetadata,
-  PluginBundle
+  PluginBundle,
+  FileAccessor
 } from '../../../src/types/plugin-framework';

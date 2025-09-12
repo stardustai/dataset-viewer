@@ -4,8 +4,9 @@ import i18n from '../../i18n';
 import { pluginManager } from '../../services/plugin/pluginManager';
 import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
 import type { StorageFile } from '../../types';
+import type { FileAccessor, PluginViewerProps } from '../../types/plugin-framework';
 
-interface PluginViewerProps {
+interface LocalPluginViewerProps {
   file: StorageFile;
   filePath: string;
   content?: string | ArrayBuffer;
@@ -13,7 +14,39 @@ interface PluginViewerProps {
   isLargeFile: boolean;
 }
 
-export const PluginViewer: React.FC<PluginViewerProps> = ({
+/**
+ * 创建文件访问器适配器，将 storageClient 包装为 FileAccessor 接口
+ */
+const createFileAccessor = (storageClient: any, filePath: string): FileAccessor => ({
+  getFullContent: async (): Promise<ArrayBuffer> => {
+    const blob = await storageClient.downloadFile(filePath);
+    return await blob.arrayBuffer();
+  },
+
+  getRangeContent: async (start: number, end?: number): Promise<ArrayBuffer> => {
+    // 如果 storageClient 支持范围请求，使用它；否则获取全部内容后截取
+    if (storageClient.downloadFileRange) {
+      const blob = await storageClient.downloadFileRange(filePath, start, end);
+      return await blob.arrayBuffer();
+    } else {
+      // 回退到获取全部内容
+      const fullContent = await storageClient.downloadFile(filePath);
+      const arrayBuffer = await fullContent.arrayBuffer();
+      const endPos = end ?? arrayBuffer.byteLength;
+      return arrayBuffer.slice(start, endPos);
+    }
+  },
+
+  getTextContent: async (encoding: string = 'utf-8'): Promise<string> => {
+    const arrayBuffer = await storageClient
+      .downloadFile(filePath)
+      .then((blob: Blob) => blob.arrayBuffer());
+    const decoder = new TextDecoder(encoding);
+    return decoder.decode(arrayBuffer);
+  },
+});
+
+export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
   file,
   filePath,
   content,
@@ -21,7 +54,8 @@ export const PluginViewer: React.FC<PluginViewerProps> = ({
   isLargeFile,
 }) => {
   const { t } = useTranslation();
-  const [pluginComponent, setPluginComponent] = useState<React.ComponentType<any> | null>(null);
+  const [pluginComponent, setPluginComponent] =
+    useState<React.ComponentType<PluginViewerProps> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,14 +107,15 @@ export const PluginViewer: React.FC<PluginViewerProps> = ({
     <div className="flex-1 overflow-hidden">
       <PluginComponent
         file={{
-          filename: file.basename,
+          name: file.basename,
           size: file.size,
           path: filePath,
         }}
         content={content}
-        storageClient={storageClient}
+        fileAccessor={createFileAccessor(storageClient, filePath)}
         isLargeFile={isLargeFile}
         onError={(error: string) => setError(error)}
+        onLoadingChange={(loading: boolean) => setLoading(loading)}
         language={i18n.language}
         t={t}
       />

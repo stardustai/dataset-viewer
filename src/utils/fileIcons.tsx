@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { FC, ReactNode, useEffect, useState } from 'react';
 import {
   Folder,
   FileText,
@@ -47,23 +47,23 @@ interface FileIconProps {
   filename?: string; // 添加filename属性用于插件图标查询
 }
 
-export const FileIcon: React.FC<FileIconProps> = ({
+export const FileIcon: FC<FileIconProps> = ({
   fileType,
   size = 'md',
   className = '',
   filename,
 }) => {
   // 如果提供了文件名，尝试从插件获取图标
-  const [pluginIcon, setPluginIcon] = React.useState<string | React.ReactNode | null>(null);
+  const [pluginIcon, setPluginIcon] = useState<string | ReactNode | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (filename) {
       const loadPluginIcon = async () => {
         try {
           const { pluginManager } = await import('../services/plugin/pluginManager');
           const plugin = pluginManager.findViewerForFile(filename);
           if (plugin && plugin.getFileIcon) {
-            const iconName = plugin.getFileIcon();
+            const iconName = plugin.getFileIcon(filename);
             if (iconName) {
               setPluginIcon(iconName);
               return;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { PluginBundle, PluginInstance } from '../../types/plugin-framework';
 import i18n from '../../i18n';
 
@@ -54,9 +54,17 @@ export class PluginFramework {
         }
       }
 
-      // 创建插件实例
+      // 自动识别官方插件（基于路径中是否包含 @dataset-viewer）
+      const isOfficial = pluginPath.includes('@dataset-viewer/plugin-');
+
+      // 创建插件实例，自动设置 official 字段
+      const enhancedMetadata = {
+        ...bundle.metadata,
+        official: isOfficial,
+      };
+
       const instance: PluginInstance = {
-        metadata: bundle.metadata,
+        metadata: enhancedMetadata,
         component: bundle.component,
         canHandle: (filename: string) => {
           const ext = filename.split('.').pop()?.toLowerCase();
@@ -71,7 +79,18 @@ export class PluginFramework {
           });
         },
         getFileType: () => bundle.metadata.id, // 使用插件ID作为文件类型标识符
-        getFileIcon: () => bundle.metadata.icon || '',
+        getFileIcon: (filename?: string) => {
+          // 如果提供了文件名且存在图标映射，尝试根据扩展名获取特定图标
+          if (filename && bundle.metadata.iconMapping) {
+            const ext = '.' + filename.split('.').pop()?.toLowerCase();
+            const specificIcon = bundle.metadata.iconMapping[ext];
+            if (specificIcon) {
+              return specificIcon;
+            }
+          }
+          // 返回默认图标
+          return bundle.metadata.icon || '';
+        },
       };
 
       // 缓存插件
@@ -190,15 +209,14 @@ export class PluginFramework {
   /**
    * 获取插件的图标映射
    */
-  getIconMapping(): Map<string, React.ReactNode> {
-    const mapping = new Map<string, React.ReactNode>();
+  getIconMapping(): Map<string, ReactNode> {
+    const mapping = new Map<string, ReactNode>();
 
     for (const plugin of this.plugins.values()) {
-      const icon = plugin.getFileIcon?.();
-      if (icon) {
-        for (const ext of plugin.metadata.supportedExtensions) {
-          mapping.set(ext, icon);
-        }
+      for (const ext of plugin.metadata.supportedExtensions) {
+        // 尝试获取特定扩展名的图标
+        const icon = plugin.getFileIcon?.(ext);
+        if (icon) mapping.set(ext, icon);
       }
     }
 
