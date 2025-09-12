@@ -4,6 +4,7 @@ export const settings = {
   'settings.theme': '主题设置',
   'settings.update': '更新设置',
   'settings.cache': '缓存管理',
+  'pure.black.bg': '纯黑色背景',
 
   // 更新功能
   'auto.check.updates': '自动检查更新',
@@ -24,6 +25,11 @@ export const settings = {
   'clearing.cache': '清理中...',
   'cache.cleared.success': '缓存和连接清理成功',
   'cache.clear.failed': '缓存清理失败',
+
+  // 插件管理
+  'settings.plugins': '插件管理',
+  'plugins.description': '安装和管理文件查看器插件，扩展更多文件格式支持',
+  'manage.plugins': '管理插件',
 
   // 关于
   about: '关于',

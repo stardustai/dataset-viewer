@@ -5,6 +5,7 @@ import { fileViewer } from './fileViewer';
 import { errors } from './errors';
 import { settings } from './settings';
 import { download } from './download';
+import { pluginManager } from './pluginManager';
 
 export const en = {
   ...common,
@@ -14,4 +15,5 @@ export const en = {
   ...errors,
   ...settings,
   ...download,
+  ...pluginManager,
 };

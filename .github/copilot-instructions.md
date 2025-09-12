@@ -39,7 +39,6 @@ Cross-platform Tauri application for unified dataset browsing with massive file 
   - HuggingFace: `huggingface://owner:dataset/path`
   - Local: `file:///absolute/path`
 - **Unified Backend Parsing**: All storage clients parse protocol URLs in file operations
-- **Direct Backend Communication**: All clients use direct Tauri invoke() calls
 
 ## Development Guidelines
 - **TypeScript**: Use strict typing for all code
