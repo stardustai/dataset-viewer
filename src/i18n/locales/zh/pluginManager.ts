@@ -1,5 +1,6 @@
 export const pluginManager = {
   // 插件管理器标题和标签
+  'plugin.management': '插件管理',
   'plugin.manager.title': '插件管理器',
   'plugin.manager.installed': '已安装插件',
   'plugin.manager.available': '插件市场',

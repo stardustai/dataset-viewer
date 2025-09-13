@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Download, Copy } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { FileIcon } from '../../utils/fileIcons';
 import { copyToClipboard, showCopyToast, showToast } from '../../utils/clipboard';
 import { formatFileSize } from '../../utils/fileUtils';
@@ -193,7 +192,6 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
         </div>
 
         <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0">
-          <LanguageSwitcher />
           {/* 响应式下载按钮 */}
           <button
             onClick={downloadFile}

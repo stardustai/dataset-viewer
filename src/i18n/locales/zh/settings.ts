@@ -4,7 +4,14 @@ export const settings = {
   'settings.theme': '主题设置',
   'settings.update': '更新设置',
   'settings.cache': '缓存管理',
+  'settings.language': '语言设置',
   'pure.black.bg': '纯黑色背景',
+
+  // 语言设置
+  'language.description': '切换应用界面语言',
+  'language.switch.to': '切换为',
+  'language.english': '英文',
+  'language.chinese': '中文',
 
   // 更新功能
   'auto.check.updates': '自动检查更新',
@@ -29,7 +36,8 @@ export const settings = {
   // 插件管理
   'settings.plugins': '插件管理',
   'plugins.description': '安装和管理文件查看器插件，扩展更多文件格式支持',
-  'manage.plugins': '管理插件',
+  'manage.plugins': '管理插件', // 保留兼容性
+  'plugin.management': '插件管理',
 
   // 关于
   about: '关于',

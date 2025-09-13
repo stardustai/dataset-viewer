@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Package, Download, Trash2, Search, AlertCircle, Loader, RefreshCw, X } from 'lucide-react';
+import { Package, Download, Trash2, AlertCircle, Loader, RefreshCw, X } from 'lucide-react';
 import { commands } from '../../types/tauri-commands';
 import type { LocalPluginInfo } from '../../types/tauri-commands';
 import { pluginManager } from '../../services/plugin/pluginManager';
@@ -29,52 +29,47 @@ const PluginCard: React.FC<PluginCardProps> = ({
   const pluginId = plugin.id;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
-        <div className="flex items-start space-x-3 flex-1">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xl">
+        <div className="flex items-start space-x-3 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-lg flex-shrink-0">
             📦
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
-              <h3 className="font-medium text-gray-900 dark:text-white">{plugin.name}</h3>
-              <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                {t('plugin.info.version', { version: plugin.version })}
+              <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                {plugin.name}
+              </h3>
+              <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300 flex-shrink-0">
+                v{plugin.version}
               </span>
               {plugin.official && (
-                <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded">
+                <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-1.5 py-0.5 rounded flex-shrink-0">
                   {t('plugin.status.official')}
                 </span>
               )}
               {plugin.local && (
-                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded">
+                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded flex-shrink-0">
                   {t('plugin.status.installed')}
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{plugin.description}</p>
-            <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-400">
-              <span>{t('plugin.info.author', { author: plugin.author })}</span>
-              <span>
-                {t('plugin.info.supports', {
-                  extensions: plugin.supported_extensions.join(', '),
-                })}
-              </span>
-              {plugin.local && plugin.local_path && (
-                <span className="truncate">
-                  {t('plugin.info.path', { path: plugin.local_path })}
-                </span>
-              )}
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+              {plugin.description}
+            </p>
+            <div className="flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <span className="truncate">作者: {plugin.author}</span>
+              <span className="truncate">支持: {plugin.supported_extensions.join(', ')}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0 ml-3">
           {isInstalled ? (
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => onToggle(pluginId, !plugin.enabled)}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                   plugin.enabled
                     ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200'
                     : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
@@ -114,7 +109,6 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<'installed' | 'available'>('installed');
   const [allPlugins, setAllPlugins] = useState<LocalPluginInfo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [customPackageName, setCustomPackageName] = useState('');
 
   // 加载插件数据
@@ -248,31 +242,11 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     }
   };
 
-  // 过滤已安装插件
-  const filterInstalledPlugins = (plugins: LocalPluginInfo[]): LocalPluginInfo[] => {
-    if (!searchTerm) return plugins;
-    return plugins.filter(
-      plugin =>
-        plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        plugin.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  };
-
-  // 过滤可用插件
-  const filterAvailablePlugins = (plugins: LocalPluginInfo[]): LocalPluginInfo[] => {
-    if (!searchTerm) return plugins;
-    return plugins.filter(
-      plugin =>
-        plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        plugin.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
         {/* 头部 */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
             <Package className="w-5 h-5 text-blue-500" />
             <div>
@@ -291,95 +265,82 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         </div>
 
         {/* 标签页 */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setActiveTab('installed')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'installed'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-          >
-            {t('plugin.manager.installed')} ({getInstalledPlugins().length})
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('available');
-              // 切换到插件市场时刷新插件列表
-              handleRefresh();
-            }}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'available'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-          >
-            {t('plugin.manager.available')}
-          </button>
-        </div>
-
-        {/* 搜索和操作栏 */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder={t('plugin.manager.search.placeholder')}
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {activeTab === 'available' && (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  placeholder={t('plugin.manager.custom.placeholder')}
-                  value={customPackageName}
-                  onChange={e => setCustomPackageName(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  onClick={() => handleInstallPlugin(customPackageName)}
-                  disabled={!customPackageName.trim()}
-                  className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 text-sm"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{t('plugin.action.install')}</span>
-                </button>
-              </div>
-            )}
-
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          <div className="flex">
             <button
-              onClick={handleRefresh}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
-              title={t('plugin.action.refresh')}
+              onClick={() => setActiveTab('installed')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'installed'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
             >
-              <RefreshCw className="w-4 h-4" />
+              {t('plugin.manager.installed')} ({getInstalledPlugins().length})
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('available');
+                // 切换到插件市场时刷新插件列表
+                handleRefresh();
+              }}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'available'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              {t('plugin.manager.available')}
             </button>
           </div>
+
+          <button
+            onClick={handleRefresh}
+            className="mr-6 p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+            title={t('plugin.action.refresh')}
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
         </div>
 
+        {/* 操作栏 */}
+        {activeTab === 'available' && (
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-3">
+              <input
+                type="text"
+                placeholder={t('plugin.manager.custom.placeholder')}
+                value={customPackageName}
+                onChange={e => setCustomPackageName(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+              <button
+                onClick={() => handleInstallPlugin(customPackageName)}
+                disabled={!customPackageName.trim()}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 text-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span>{t('plugin.action.install')}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 内容区域 */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-5 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader className="w-8 h-8 animate-spin text-blue-500" />
               <span className="ml-2 text-gray-600 dark:text-gray-400">{t('plugin.loading')}</span>
             </div>
           ) : activeTab === 'installed' ? (
-            <div className="space-y-4">
-              {filterInstalledPlugins(getInstalledPlugins()).length === 0 ? (
+            <div className="space-y-3">
+              {getInstalledPlugins().length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {searchTerm ? t('plugin.empty.search') : t('plugin.empty.installed')}
-                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">{t('plugin.empty.installed')}</p>
                 </div>
               ) : (
-                filterInstalledPlugins(getInstalledPlugins()).map(plugin => (
+                getInstalledPlugins().map(plugin => (
                   <PluginCard
                     key={`${plugin.id}-${plugin.local}-${plugin.enabled}`}
                     plugin={plugin}
@@ -392,16 +353,14 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {filterAvailablePlugins(getAvailablePlugins()).length === 0 ? (
+            <div className="space-y-3">
+              {getAvailablePlugins().length === 0 ? (
                 <div className="text-center py-12">
                   <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {searchTerm ? t('plugin.empty.search') : t('plugin.empty.available')}
-                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">{t('plugin.empty.available')}</p>
                 </div>
               ) : (
-                filterAvailablePlugins(getAvailablePlugins()).map(plugin => (
+                getAvailablePlugins().map(plugin => (
                   <PluginCard
                     key={`${plugin.id}-${plugin.local}-${plugin.enabled}`}
                     plugin={plugin}
@@ -417,7 +376,7 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         </div>
 
         {/* 底部提示 */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-b-lg border-t border-gray-200 dark:border-gray-700">
+        <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800 rounded-b-lg border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
             <div className="flex items-center space-x-2">
               <AlertCircle className="w-4 h-4" />

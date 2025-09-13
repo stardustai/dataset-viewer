@@ -4,7 +4,14 @@ export const settings = {
   'settings.theme': 'Theme Settings',
   'settings.update': 'Update Settings',
   'settings.cache': 'Cache Management',
+  'settings.language': 'Language Settings',
   'pure.black.bg': 'Pure Black Background',
+
+  // Language settings
+  'language.description': 'Switch application interface language',
+  'language.switch.to': 'Switch to ',
+  'language.english': 'English',
+  'language.chinese': 'Chinese',
 
   // Update functionality
   'auto.check.updates': 'Auto check updates',
@@ -31,7 +38,8 @@ export const settings = {
   'settings.plugins': 'Plugin Management',
   'plugins.description':
     'Install and manage file viewer plugins to extend support for more file formats',
-  'manage.plugins': 'Manage Plugins',
+  'manage.plugins': 'Manage Plugins', // Keep for compatibility
+  'plugin.management': 'Plugin Management',
 
   // About
   about: 'About',

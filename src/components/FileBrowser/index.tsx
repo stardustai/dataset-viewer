@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Download,
   Loader2,
+  Package,
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { commands } from '../../types/tauri-commands';
@@ -21,11 +22,11 @@ import { ListOptions } from '../../services/storage/types';
 import { cleanPath } from '../../utils/pathUtils';
 import type { StorageClient as IStorageClient } from '../../services/storage/types';
 import { navigationHistoryService } from '../../services/navigationHistory';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { PluginManager } from '../PluginManager';
 import {
   LoadingDisplay,
   HiddenFilesDisplay,
@@ -97,6 +98,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [failedPath, setFailedPath] = useState<string>(''); // 记录失败的路径
   const [searchTerm, setSearchTerm] = useState(''); // 文件名搜索
   const [showSettings, setShowSettings] = useState(false); // 设置面板显示状态
+  const [showPluginManager, setShowPluginManager] = useState(false); // 插件管理器显示状态
   const [currentView, setCurrentView] = useState<'directory' | 'remote-search'>('directory'); // 当前显示的内容类型
   const [remoteSearchQuery, setRemoteSearchQuery] = useState(''); // 远程搜索查询词
   // OSS 分页状态
@@ -930,7 +932,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               <span className="hidden lg:inline">{t('hide.hidden')}</span>
             </button>
-            <LanguageSwitcher />
+            {/* 插件管理按钮 */}
+            <button
+              onClick={() => setShowPluginManager(true)}
+              className="flex items-center space-x-2 p-2 sm:px-3 sm:py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={t('plugin.management')}
+            >
+              <Package className="w-4 h-4" />
+              <span className="hidden lg:inline">{t('plugin.management')}</span>
+            </button>
             {/* 响应式设置按钮 */}
             <button
               onClick={() => setShowSettings(true)}
@@ -1202,6 +1212,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       {/* 设置面板 */}
       <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
+
+      {/* 插件管理器 */}
+      {showPluginManager && <PluginManager onClose={() => setShowPluginManager(false)} />}
     </div>
   );
 };

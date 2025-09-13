@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Package } from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
@@ -7,7 +7,6 @@ import { navigationHistoryService } from '../../services/navigationHistory';
 import { connectionStorage } from '../../services/connectionStorage';
 import { settingsStorage } from '../../services/settingsStorage';
 import { showToast } from '../../utils/clipboard';
-import { PluginManager } from '../PluginManager';
 import type { UpdateCheckResult } from '../../types';
 
 interface SettingsPanelProps {
@@ -16,7 +15,7 @@ interface SettingsPanelProps {
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -25,7 +24,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     settingsStorage.getSetting('usePureBlackBg')
   );
   const [isClearingCache, setIsClearingCache] = useState(false);
-  const [showPluginManager, setShowPluginManager] = useState(false);
   // 切换纯黑色背景
   const handlePureBlackBgToggle = () => {
     const newValue = !usePureBlackBg;
@@ -166,6 +164,33 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             </div>
           </div>
 
+          {/* Language Settings */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              {t('settings.language')}
+            </h3>
+            <div className="space-y-3">
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                {t('language.description')}
+              </p>
+              <button
+                onClick={() => {
+                  const newLang = i18n.language === 'zh' ? 'en' : 'zh';
+                  i18n.changeLanguage(newLang);
+                  // 保存语言设置到持久化存储
+                  settingsStorage.updateSetting('language', newLang);
+                }}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="text-sm">
+                  {t('language.switch.to')}
+                  {i18n.language === 'zh' ? t('language.english') : t('language.chinese')}
+                </span>
+              </button>
+            </div>
+          </div>
+
           {/* Update Settings */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
@@ -269,23 +294,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-          {/* Plugin Management */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              {t('settings.plugins')}
-            </h3>
-            <div className="space-y-3">
-              <p className="text-xs text-gray-600 dark:text-gray-300">{t('plugins.description')}</p>
-              <button
-                onClick={() => setShowPluginManager(true)}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg transition-colors"
-              >
-                <Package className="w-4 h-4" />
-                <span className="text-sm">{t('manage.plugins')}</span>
-              </button>
-            </div>
-          </div>
-
           {/* About */}
           <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t('about')}</h3>
@@ -307,9 +315,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           </button>
         </div>
       </div>
-
-      {/* Plugin Manager Modal */}
-      {showPluginManager && <PluginManager onClose={() => setShowPluginManager(false)} />}
     </div>
   );
 };

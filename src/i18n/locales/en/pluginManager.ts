@@ -1,5 +1,6 @@
 export const pluginManager = {
   // Plugin manager title and tabs
+  'plugin.management': 'Plugin Management',
   'plugin.manager.title': 'Plugin Manager',
   'plugin.manager.installed': 'Installed Plugins',
   'plugin.manager.available': 'Plugin Store',
