@@ -6,11 +6,14 @@
 import { AcDbLibreDwgConverter } from '@mlightcad/libredwg-converter';
 import { AcDbDatabaseConverterManager, AcDbFileType } from '@mlightcad/data-model';
 
+type LoadingState = 'idle' | 'loading' | 'ready' | 'error';
+
 interface ModuleCache {
   libredwgModule: any | null;
   converter: AcDbLibreDwgConverter | null;
-  isLoading: boolean;
+  state: LoadingState;
   error: Error | null;
+  lastAttempt: number | null;
 }
 
 class CADModuleManager {
@@ -18,11 +21,13 @@ class CADModuleManager {
   private cache: ModuleCache = {
     libredwgModule: null,
     converter: null,
-    isLoading: false,
-    error: null
+    state: 'idle',
+    error: null,
+    lastAttempt: null
   };
 
   private modulePromise: Promise<any> | null = null;
+  private readonly RETRY_DELAY = 5000; // 5秒后可重试
 
   static getInstance(): CADModuleManager {
     if (!CADModuleManager.instance) {
@@ -35,38 +40,49 @@ class CADModuleManager {
    * 预加载 LibreDWG 模块
    */
   async preloadLibreDwgModule(): Promise<any> {
-    if (this.cache.libredwgModule) {
+    // 如果已经成功加载，直接返回
+    if (this.cache.state === 'ready' && this.cache.libredwgModule) {
       return this.cache.libredwgModule;
     }
 
-    if (this.cache.error) {
-      throw this.cache.error;
+    // 如果有错误且在重试延迟期内，抛出错误
+    if (this.cache.state === 'error') {
+      const now = Date.now();
+      if (this.cache.lastAttempt && now - this.cache.lastAttempt < this.RETRY_DELAY) {
+        throw this.cache.error;
+      }
+      // 超过重试延迟，重置状态允许重试
+      this.cache.state = 'idle';
+      this.cache.error = null;
     }
 
-    if (this.modulePromise) {
+    // 如果正在加载，返回现有的Promise
+    if (this.cache.state === 'loading' && this.modulePromise) {
       return this.modulePromise;
     }
 
-    this.cache.isLoading = true;
+    // 开始新的加载流程
+    this.cache.state = 'loading';
     this.cache.error = null;
+    this.cache.lastAttempt = Date.now();
 
     try {
-      console.log('开始预加载 LibreDWG 模块...');
+      console.log('🔄 开始预加载 LibreDWG 模块...');
 
       this.modulePromise = import('@mlightcad/libredwg-web').then(async (instance) => {
         const module = await instance.createModule();
         this.cache.libredwgModule = module;
-        this.cache.isLoading = false;
-        console.log('LibreDWG 模块预加载完成');
+        this.cache.state = 'ready';
+        console.log('✅ LibreDWG 模块预加载完成');
         return module;
       });
 
       return await this.modulePromise;
     } catch (error) {
       this.cache.error = error as Error;
-      this.cache.isLoading = false;
+      this.cache.state = 'error';
       this.modulePromise = null;
-      console.error('LibreDWG 模块预加载失败:', error);
+      console.error('❌ LibreDWG 模块预加载失败:', error);
       throw error;
     }
   }
@@ -75,24 +91,31 @@ class CADModuleManager {
    * 获取或创建 DWG 转换器
    */
   async getDwgConverter(): Promise<AcDbLibreDwgConverter> {
-    if (this.cache.converter) {
+    if (this.cache.converter && this.cache.state === 'ready') {
       return this.cache.converter;
     }
 
     try {
       const module = await this.preloadLibreDwgModule();
-      this.cache.converter = new AcDbLibreDwgConverter(module);
 
-      // 注册转换器
-      AcDbDatabaseConverterManager.instance.register(
-        AcDbFileType.DWG,
-        this.cache.converter
-      );
+      if (!this.cache.converter) {
+        this.cache.converter = new AcDbLibreDwgConverter(module);
 
-      console.log('DWG 转换器创建并注册成功');
+        // 注册转换器到数据库转换器管理器
+        try {
+          AcDbDatabaseConverterManager.instance.register(
+            AcDbFileType.DWG,
+            this.cache.converter as any // 类型兼容性处理
+          );
+          console.log('✅ DWG 转换器创建并注册成功');
+        } catch (regError) {
+          console.warn('⚠️ 转换器注册失败，但不影响使用:', regError);
+        }
+      }
+
       return this.cache.converter;
     } catch (error) {
-      console.error('创建 DWG 转换器失败:', error);
+      console.error('❌ 创建 DWG 转换器失败:', error);
       throw error;
     }
   }
@@ -101,7 +124,14 @@ class CADModuleManager {
    * 检查是否正在加载
    */
   isLoading(): boolean {
-    return this.cache.isLoading;
+    return this.cache.state === 'loading';
+  }
+
+  /**
+   * 获取当前状态
+   */
+  getState(): LoadingState {
+    return this.cache.state;
   }
 
   /**
@@ -112,10 +142,21 @@ class CADModuleManager {
   }
 
   /**
-   * 检查模块是否已预加载
+   * 检查模块是否已准备就绪
    */
   isModuleReady(): boolean {
-    return !!this.cache.libredwgModule && !this.cache.isLoading && !this.cache.error;
+    return this.cache.state === 'ready' && !!this.cache.libredwgModule;
+  }
+
+  /**
+   * 强制重试加载（忽略重试延迟）
+   */
+  async forceRetry(): Promise<any> {
+    this.cache.state = 'idle';
+    this.cache.error = null;
+    this.cache.lastAttempt = null;
+    this.modulePromise = null;
+    return this.preloadLibreDwgModule();
   }
 
   /**
@@ -125,20 +166,54 @@ class CADModuleManager {
     this.cache = {
       libredwgModule: null,
       converter: null,
-      isLoading: false,
-      error: null
+      state: 'idle',
+      error: null,
+      lastAttempt: null
     };
     this.modulePromise = null;
   }
 
   /**
    * 启动预加载（可在应用启动时调用）
+   * 这是一个非阻塞的后台加载方法
    */
-  startPreloading(): void {
+  startPreloading(): Promise<any> {
+    // 如果已经在加载或已加载完成，不重复启动
+    if (this.cache.state === 'loading' || this.cache.state === 'ready') {
+      console.log('📦 CAD模块预加载已在进行中或已完成');
+      return this.modulePromise || Promise.resolve(this.cache.libredwgModule);
+    }
+
+    console.log('🚀 启动CAD模块后台预加载...');
+
     // 异步预加载，不阻塞主线程
-    this.preloadLibreDwgModule().catch((error) => {
-      console.warn('背景预加载 LibreDWG 模块失败:', error);
+    const preloadPromise = this.preloadLibreDwgModule().catch((error) => {
+      console.warn('⚠️ 背景预加载 LibreDWG 模块失败:', error);
+      // 不抛出错误，让后续使用时再处理
     });
+
+    return preloadPromise;
+  }
+
+  /**
+   * 获取预加载进度信息
+   */
+  getLoadingProgress(): {
+    state: LoadingState;
+    ready: boolean;
+    error: Error | null;
+    canRetry: boolean;
+  } {
+    const now = Date.now();
+    const canRetry = this.cache.state !== 'loading' &&
+      (!this.cache.lastAttempt || now - this.cache.lastAttempt >= this.RETRY_DELAY);
+
+    return {
+      state: this.cache.state,
+      ready: this.cache.state === 'ready',
+      error: this.cache.error,
+      canRetry
+    };
   }
 }
 

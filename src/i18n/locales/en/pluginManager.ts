@@ -16,8 +16,16 @@ export const pluginManager = {
   // Plugin actions
   'plugin.action.install': 'Install',
   'plugin.action.uninstall': 'Uninstall plugin',
+  'plugin.action.delete': 'Delete',
+  'plugin.action.enable': 'Enable',
+  'plugin.action.disable': 'Disable',
   'plugin.action.refresh': 'Refresh',
   'plugin.action.toggle': 'Toggle status',
+
+  // Plugin source
+  'plugin.source.dev': 'Dev',
+  'plugin.source.npm': 'NPM',
+  'plugin.source.local': 'Local',
 
   // Plugin info
   'plugin.info.author': 'Author: {{author}}',

@@ -150,10 +150,7 @@ export const getFileType = (filename: string): FileType | string => {
     const plugin = pluginManager.findViewerForFile(filename);
     if (plugin) {
       const pluginFileType = plugin.getFileType();
-      console.log(`✅ Plugin file type for ${filename}: ${pluginFileType}`);
       return pluginFileType;
-    } else {
-      console.log(`❌ No plugin found for ${filename}`);
     }
   } catch (error) {
     // 如果插件系统不可用，继续使用默认逻辑

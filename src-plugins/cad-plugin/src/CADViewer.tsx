@@ -58,115 +58,132 @@ export const CADViewer: FC<PluginViewerProps> = ({
     });
   };
 
-  // 优化的转换器注册
-  const registerConverters = async () => {
-    try {
-      setState(prev => ({
-        ...prev,
-        loadingStage: 'Loading DWG converter...',
-        loadingProgress: 10
-      }));
-
-      // 调用 cadModuleManager 的获取转换器方法
-      await cadModuleManager.getDwgConverter();
-
-      setState(prev => ({
-        ...prev,
-        loadingProgress: 30
-      }));
-
-      console.log('CAD converters initialized successfully');
-    } catch (error) {
-      console.warn('Failed to initialize CAD converters:', error);
-    }
-  };
-
-  // 初始化 CAD 查看器
-  const initializeViewer = useCallback(async () => {
-    if (!canvasRef.current || !containerRef.current) return;
-
+  // 初始化步骤1: 设置画布
+  const initializeCanvas = () => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
 
-    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-      console.log('Container not ready, waiting...');
-      return;
+    if (!canvas || !container) {
+      throw new Error('Canvas or container not available');
     }
 
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+      throw new Error('Container not ready');
+    }
+
+    setupHighDPICanvas(canvas);
+    return { canvas, container };
+  };
+
+  // 初始化步骤2: 准备CAD模块
+  const prepareCADModules = async () => {
+    setState(prev => ({
+      ...prev,
+      loadingStage: 'Preparing CAD modules...',
+      loadingProgress: 20
+    }));
+
+    // 获取DWG转换器（这会触发模块加载如果还没完成）
+    await cadModuleManager.getDwgConverter();
+
+    setState(prev => ({
+      ...prev,
+      loadingProgress: 40
+    }));
+  };
+
+  // 初始化步骤3: 创建文档管理器
+  const initializeDocumentManager = (canvas: HTMLCanvasElement) => {
+    setState(prev => ({
+      ...prev,
+      loadingStage: 'Creating document manager...',
+      loadingProgress: 60
+    }));
+
+    // 创建文档管理器实例
+    AcApDocManager.createInstance(canvas);
+
+    // 尝试设置渲染器的像素比
+    try {
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const docMgr = AcApDocManager.instance as any;
+
+      if (docMgr?.currentView?.renderer?.internalRenderer) {
+        docMgr.currentView.renderer.internalRenderer.setPixelRatio(pixelRatio);
+        console.log(`Set WebGL renderer pixel ratio to ${pixelRatio}`);
+      }
+    } catch (error) {
+      console.warn('Could not set renderer pixel ratio:', error);
+    }
+
+    setState(prev => ({
+      ...prev,
+      loadingProgress: 70
+    }));
+  };
+
+  // 初始化步骤4: 加载字体和配置
+  const configureViewer = async () => {
+    setState(prev => ({
+      ...prev,
+      loadingStage: 'Loading fonts and configuring...',
+      loadingProgress: 80
+    }));
+
+    // 加载默认字体
+    await AcApDocManager.instance.loadDefaultFonts();
+
+    // 配置设置
+    if (AcApSettingManager.instance) {
+      AcApSettingManager.instance.isShowCommandLine = false;
+      AcApSettingManager.instance.isShowToolbar = false;
+      AcApSettingManager.instance.isShowStats = false;
+      AcApSettingManager.instance.isShowCoordinate = true;
+    }
+
+    setState(prev => ({
+      ...prev,
+      loadingProgress: 100
+    }));
+  };
+
+  // 主初始化方法 - 清晰的步骤序列
+  const initializeViewer = useCallback(async () => {
     try {
       setState(prev => ({
         ...prev,
         isLoading: true,
         error: null,
-        loadingStage: 'Initializing viewer...',
+        loadingStage: 'Starting initialization...',
         loadingProgress: 0
       }));
 
-      // 设置高DPI画布尺寸
-      setupHighDPICanvas(canvas);
+      // 步骤1: 初始化画布
+      const { canvas } = initializeCanvas();
 
       setState(prev => ({
         ...prev,
-        loadingProgress: 5
+        loadingProgress: 10
       }));
 
-      // 注册转换器
-      await registerConverters();
+      // 步骤2: 准备CAD模块
+      await prepareCADModules();
 
-      setState(prev => ({
-        ...prev,
-        loadingStage: 'Creating document manager...',
-        loadingProgress: 40
-      }));
+      // 步骤3: 创建文档管理器
+      initializeDocumentManager(canvas);
 
-      // 创建文档管理器实例
-      AcApDocManager.createInstance(canvas);
+      // 步骤4: 配置查看器
+      await configureViewer();
 
-      // 尝试设置渲染器的像素比（如果可以访问到内部渲染器）
-      try {
-        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-        const docMgr = AcApDocManager.instance as any;
-
-        if (docMgr?.currentView?.renderer?.internalRenderer) {
-          docMgr.currentView.renderer.internalRenderer.setPixelRatio(pixelRatio);
-          console.log(`Set WebGL renderer pixel ratio to ${pixelRatio}`);
-        }
-      } catch (error) {
-        console.warn('Could not set renderer pixel ratio:', error);
-      }
-
-      setState(prev => ({
-        ...prev,
-        loadingStage: 'Loading default fonts...',
-        loadingProgress: 60
-      }));
-
-      // 加载默认字体
-      await AcApDocManager.instance.loadDefaultFonts();
-
-      setState(prev => ({
-        ...prev,
-        loadingStage: 'Configuring settings...',
-        loadingProgress: 80
-      }));
-
-      // 配置设置
-      if (AcApSettingManager.instance) {
-        AcApSettingManager.instance.isShowCommandLine = false;
-        AcApSettingManager.instance.isShowToolbar = false;
-        AcApSettingManager.instance.isShowStats = false;
-        AcApSettingManager.instance.isShowCoordinate = true;
-      }
-
+      // 完成初始化
       setState(prev => ({
         ...prev,
         isInitialized: true,
         isLoading: false,
-        loadingProgress: 100,
         loadingStage: 'Ready'
       }));
 
-      console.log('CAD Simple Viewer initialized successfully');
+      console.log('✅ CAD Simple Viewer initialized successfully');
     } catch (error) {
       const errorMsg = t?.('cad.initError') || 'CAD viewer initialization failed';
       setState(prev => ({
@@ -177,7 +194,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
         loadingStage: 'Error'
       }));
       onError?.((error as Error).message);
-      console.error('Failed to initialize CAD viewer:', error);
+      console.error('❌ Failed to initialize CAD viewer:', error);
     }
   }, []);
 
@@ -217,17 +234,20 @@ export const CADViewer: FC<PluginViewerProps> = ({
     throw new Error(t?.('cad.unsupportedFile') || 'Unsupported file type');
   };
 
-  // 加载 CAD 文件
+  // 加载 CAD 文件 - 简化的逻辑
   const loadFile = useCallback(async () => {
+    // 基础检查
     if (!AcApDocManager.instance) {
+      console.warn('Document manager not ready yet');
       return;
     }
 
-    // 计算当前文件的去重键
+    // 计算当前文件的唯一标识
     const currentFileKey = `${file.path}:${file.size}`;
-    
-    // 如果已经加载了相同的文件，跳过
+
+    // 避免重复加载相同文件
     if (state.loadedFileKey === currentFileKey) {
+      console.log('File already loaded, skipping');
       return;
     }
 
@@ -236,7 +256,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
         ...prev,
         isLoading: true,
         error: null,
-        loadingStage: 'Preparing file...',
+        loadingStage: 'Validating file...',
         loadingProgress: 0
       }));
 
@@ -244,28 +264,21 @@ export const CADViewer: FC<PluginViewerProps> = ({
       const fileName = file.name.toLowerCase();
       const supportedExtensions = ['.dxf', '.dwg', '.step', '.stp', '.iges', '.igs'];
       const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
+
       if (!isSupported) {
         throw new Error(t?.('cad.unsupportedFile') || 'Unsupported file type');
       }
 
       setState(prev => ({
         ...prev,
-        loadingStage: 'Loading file content...',
+        loadingStage: 'Reading file content...',
         loadingProgress: 20
       }));
 
-      // 优先使用传入的 content，没有则自己获取
+      // 读取文件内容
       let fileContent: string | ArrayBuffer;
-
       if (content) {
-        if (typeof content === 'string') {
-          fileContent = content;
-        } else if (content instanceof ArrayBuffer) {
-          fileContent = await readFileContent(content);
-        } else {
-          const arrayBuffer = await fileAccessor.getFullContent();
-          fileContent = await readFileContent(arrayBuffer);
-        }
+        fileContent = typeof content === 'string' ? content : await readFileContent(content);
       } else {
         const arrayBuffer = await fileAccessor.getFullContent();
         fileContent = await readFileContent(arrayBuffer);
@@ -273,7 +286,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
 
       setState(prev => ({
         ...prev,
-        loadingStage: 'Parsing CAD data...',
+        loadingStage: 'Opening CAD document...',
         loadingProgress: 60
       }));
 
@@ -296,32 +309,36 @@ export const CADViewer: FC<PluginViewerProps> = ({
         options
       );
 
-      if (success) {
-        setState(prev => ({
-          ...prev,
-          loadedFileKey: currentFileKey,
-          error: null,
-          isLoading: false,
-          loadingProgress: 100,
-          loadingStage: 'Complete'
-        }));
-        console.log(`Successfully loaded: ${file.name}`);
-
-        // 等待一帧后启用平移模式和缩放适应
-        requestAnimationFrame(() => {
-          enablePanMode();
-
-          // 执行缩放适应命令
-          if (AcApDocManager.instance) {
-            AcApDocManager.instance.sendStringToExecute('zoom e');
-            console.log('Zoom extents applied');
-          }
-        });
-      } else {
-        throw new Error(`Failed to load: ${file.name}`);
+      if (!success) {
+        throw new Error(`Failed to open document: ${file.name}`);
       }
+
+      // 成功加载
+      setState(prev => ({
+        ...prev,
+        loadedFileKey: currentFileKey,
+        error: null,
+        isLoading: false,
+        loadingProgress: 100,
+        loadingStage: 'Complete'
+      }));
+
+      console.log(`✅ Successfully loaded: ${file.name}`);
+
+      // 设置视图控制
+      requestAnimationFrame(() => {
+        enablePanMode();
+        // 执行缩放适应命令
+        if (AcApDocManager.instance) {
+          AcApDocManager.instance.sendStringToExecute('zoom e');
+          console.log('Zoom extents applied');
+        }
+      });
+
     } catch (error) {
-      const errorMsg = t?.('cad.loadError', { error: (error as Error).message }) || `Failed to load: ${(error as Error).message}`;
+      const errorMsg = t?.('cad.loadError', { error: (error as Error).message }) ||
+        `Failed to load: ${(error as Error).message}`;
+
       setState(prev => ({
         ...prev,
         error: errorMsg,
@@ -329,10 +346,11 @@ export const CADViewer: FC<PluginViewerProps> = ({
         loadingProgress: 0,
         loadingStage: 'Error'
       }));
+
       onError?.((error as Error).message);
-      console.error('Error loading CAD file:', error);
+      console.error('❌ Error loading CAD file:', error);
     }
-  }, [file.name, file.path, file.size, content, fileAccessor, isLargeFile, state.loadedFileKey]); // 添加必要的依赖
+  }, [file.name, file.path, file.size, content, fileAccessor, isLargeFile, state.loadedFileKey, t, onError]);
 
   // 设置平移模式 - 基于 mlight-lee 官方实现
   const enablePanMode = () => {
@@ -357,21 +375,29 @@ export const CADViewer: FC<PluginViewerProps> = ({
     }
   };
 
-  // 初始化
+  // 初始化effect - 只在组件挂载时运行
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const timeoutId = setTimeout(() => initializeViewer(), 100);
-    return () => clearTimeout(timeoutId);
-  }, []);
+    const timeoutId = setTimeout(() => {
+      initializeViewer().catch(error => {
+        console.error('Viewer initialization failed:', error);
+      });
+    }, 100);
 
+    return () => clearTimeout(timeoutId);
+  }, []); // 只依赖组件挂载
+
+  // 文件加载effect - 当初始化完成且文件信息变化时运行
   useEffect(() => {
-    // 计算当前文件的去重键
     const currentFileKey = `${file.path}:${file.size}`;
-    
-    // 当初始化完成、不在加载中、且文件键不同时，加载文件
-    if (state.isInitialized && !state.isLoading && state.loadedFileKey !== currentFileKey) {
-      loadFile();
+
+    if (state.isInitialized &&
+        !state.isLoading &&
+        state.loadedFileKey !== currentFileKey) {
+      loadFile().catch(error => {
+        console.error('File loading failed:', error);
+      });
     }
   }, [state.isInitialized, state.isLoading, file.path, file.size, loadFile]);
 
@@ -465,12 +491,12 @@ export const CADViewer: FC<PluginViewerProps> = ({
       {/* 增强的加载指示器 */}
       {state.isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-20">
-          <div className="flex flex-col items-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-2xl min-w-80">
+          <div className="flex flex-col items-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-96 max-w-sm">
             <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2 text-center">
               {t?.('cad.loading') || 'Loading CAD file...'}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center h-10 flex items-center justify-center">
               {state.loadingStage}
             </p>
 

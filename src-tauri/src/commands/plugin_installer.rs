@@ -37,44 +37,26 @@ struct NpmDist {
 /**
  * 统一的插件安装接口
  * 自动判断使用 npm link、本地缓存还是 npm registry
+ * 新安装的插件默认为禁用状态
  */
 #[command]
 #[specta::specta]
 pub async fn install_plugin(package_name: String) -> Result<PluginInstallResult, String> {
     println!("Installing plugin: {}", package_name);
 
-    // 0. 如果插件在禁用列表中，从禁用列表移除（重新启用）
-    let plugin_id = if package_name.starts_with("@dataset-viewer/plugin-") {
+    let _plugin_id = if package_name.starts_with("@dataset-viewer/plugin-") {
         package_name
             .strip_prefix("@dataset-viewer/plugin-")
+            .unwrap_or(&package_name)
+            .to_string()
+    } else if package_name.starts_with("dataset-viewer-plugin") {
+        package_name
+            .strip_prefix("dataset-viewer-plugin-")
             .unwrap_or(&package_name)
             .to_string()
     } else {
         package_name.clone()
     };
-
-    if let Ok(cache_dir) = get_plugin_cache_dir() {
-        let disabled_plugins_file = cache_dir.join("disabled_plugins.json");
-        if disabled_plugins_file.exists() {
-            if let Ok(content) = fs::read_to_string(&disabled_plugins_file) {
-                if let Ok(mut disabled_plugins) = serde_json::from_str::<Vec<String>>(&content) {
-                    if let Some(pos) = disabled_plugins.iter().position(|x| *x == plugin_id) {
-                        disabled_plugins.remove(pos);
-
-                        // 保存更新后的禁用列表
-                        if let Ok(json_content) = serde_json::to_string_pretty(&disabled_plugins) {
-                            if fs::write(&disabled_plugins_file, json_content).is_ok() {
-                                println!(
-                                    "Removed plugin {} from disabled list (re-enabling)",
-                                    plugin_id
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // 1. 优先检查 npm link（开发环境）
     if let Ok(result) = try_npm_link_plugin(&package_name).await {
@@ -332,79 +314,86 @@ fn is_development_mode() -> bool {
 
 /**
  * 卸载插件
- * 支持从本地缓存和 npm link 中卸载
+ * 根据插件来源进行不同处理：
+ * - npm-link: 只禁用，不删除文件
+ * - npm-registry/local-cache: 禁用并删除文件
  */
 #[command]
 #[specta::specta]
 pub async fn uninstall_plugin(plugin_id: String) -> Result<PluginUninstallResult, String> {
     println!("Uninstalling plugin: {}", plugin_id);
 
-    // 构建可能的包名
-    let package_name = if plugin_id.starts_with("@dataset-viewer/plugin-") {
-        plugin_id.clone()
-    } else {
-        format!("@dataset-viewer/plugin-{}", plugin_id)
-    };
+    // 首先获取插件信息以确定来源
+    let all_plugins = crate::commands::plugin_discovery::discover_plugins().await?;
+    let plugin_info = all_plugins.iter().find(|p| p.id == plugin_id);
 
-    // 1. 尝试移除本地缓存的插件
-    if let Ok(cache_dir) = get_plugin_cache_dir() {
-        let plugin_dir = cache_dir.join(&package_name);
-        if plugin_dir.exists() {
-            match fs::remove_dir_all(&plugin_dir) {
-                Ok(_) => {
-                    println!("Removed cached plugin directory: {:?}", plugin_dir);
-                    return Ok(PluginUninstallResult {
-                        success: true,
-                        plugin_id,
-                        message: "Plugin successfully uninstalled from cache".to_string(),
-                    });
+    match plugin_info {
+        Some(plugin) => {
+            match plugin.source.as_str() {
+                "npm-link" => {
+                    // npm link 插件只禁用，不删除
+                    match toggle_plugin(plugin_id.clone(), false).await {
+                        Ok(_) => Ok(PluginUninstallResult {
+                            success: true,
+                            plugin_id,
+                            message:
+                                "Plugin has been disabled. (npm-link plugins cannot be deleted)"
+                                    .to_string(),
+                        }),
+                        Err(e) => Err(format!("Failed to disable plugin: {}", e)),
+                    }
                 }
-                Err(e) => {
-                    return Err(format!("Failed to remove plugin directory: {}", e));
+                "npm-registry" | "local-cache" => {
+                    // npm 仓库安装的插件可以真正删除
+                    let cache_dir = get_plugin_cache_dir()?;
+                    let package_name = format!("@dataset-viewer/plugin-{}", plugin_id);
+                    let plugin_dir = cache_dir.join(&package_name);
+
+                    // 先禁用插件
+                    let _ = toggle_plugin(plugin_id.clone(), false).await;
+
+                    // 删除插件文件
+                    if plugin_dir.exists() {
+                        match std::fs::remove_dir_all(&plugin_dir) {
+                            Ok(_) => {
+                                println!("Removed plugin directory: {:?}", plugin_dir);
+                                Ok(PluginUninstallResult {
+                                    success: true,
+                                    plugin_id,
+                                    message: "Plugin has been completely uninstalled.".to_string(),
+                                })
+                            }
+                            Err(e) => Err(format!("Failed to remove plugin directory: {}", e)),
+                        }
+                    } else {
+                        // 文件不存在，只禁用
+                        Ok(PluginUninstallResult {
+                            success: true,
+                            plugin_id,
+                            message: "Plugin has been disabled. (Files not found)".to_string(),
+                        })
+                    }
+                }
+                _ => {
+                    // 未知来源，只禁用
+                    match toggle_plugin(plugin_id.clone(), false).await {
+                        Ok(_) => Ok(PluginUninstallResult {
+                            success: true,
+                            plugin_id,
+                            message: "Plugin has been disabled.".to_string(),
+                        }),
+                        Err(e) => Err(format!("Failed to disable plugin: {}", e)),
+                    }
                 }
             }
         }
-
-        // 2. 对于 npm link 的插件，创建永久禁用标记
-        // 创建一个全局的禁用列表文件
-        let disabled_plugins_file = cache_dir.join("disabled_plugins.json");
-
-        // 读取现有的禁用列表
-        let mut disabled_plugins: Vec<String> = if disabled_plugins_file.exists() {
-            match fs::read_to_string(&disabled_plugins_file) {
-                Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-                Err(_) => Vec::new(),
-            }
-        } else {
-            Vec::new()
-        };
-
-        // 添加到禁用列表（如果不存在）
-        if !disabled_plugins.contains(&plugin_id) {
-            disabled_plugins.push(plugin_id.clone());
-
-            // 保存禁用列表
-            let json_content = serde_json::to_string_pretty(&disabled_plugins)
-                .map_err(|e| format!("Failed to serialize disabled plugins: {}", e))?;
-
-            fs::write(&disabled_plugins_file, json_content)
-                .map_err(|e| format!("Failed to write disabled plugins file: {}", e))?;
-
-            println!("Added plugin {} to disabled list", plugin_id);
-        }
+        None => Err(format!("Plugin {} not found", plugin_id)),
     }
-
-    Ok(PluginUninstallResult {
-        success: true,
-        plugin_id,
-        message: "Plugin permanently disabled. It will no longer appear in the plugin list."
-            .to_string(),
-    })
 }
 
 /**
  * 禁用插件
- * 通过创建禁用标记文件来禁用插件
+ * 通过管理启用列表来控制插件状态
  */
 #[command]
 #[specta::specta]
@@ -414,11 +403,11 @@ pub async fn toggle_plugin(plugin_id: String, enabled: bool) -> Result<bool, Str
     let cache_dir =
         get_plugin_cache_dir().map_err(|e| format!("Failed to get cache directory: {}", e))?;
 
-    let disabled_plugins_file = cache_dir.join("disabled_plugins.json");
+    let enabled_plugins_file = cache_dir.join("enabled_plugins.json");
 
-    // 读取现有的禁用列表
-    let mut disabled_plugins: Vec<String> = if disabled_plugins_file.exists() {
-        match fs::read_to_string(&disabled_plugins_file) {
+    // 读取现有的启用列表
+    let mut enabled_plugins: Vec<String> = if enabled_plugins_file.exists() {
+        match fs::read_to_string(&enabled_plugins_file) {
             Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
             Err(_) => Vec::new(),
         }
@@ -427,25 +416,25 @@ pub async fn toggle_plugin(plugin_id: String, enabled: bool) -> Result<bool, Str
     };
 
     if enabled {
-        // 启用插件：从禁用列表中移除
-        if let Some(index) = disabled_plugins.iter().position(|x| x == &plugin_id) {
-            disabled_plugins.remove(index);
-            println!("Plugin {} enabled (removed from disabled list)", plugin_id);
+        // 启用插件：添加到启用列表
+        if !enabled_plugins.contains(&plugin_id) {
+            enabled_plugins.push(plugin_id.clone());
+            println!("Plugin {} enabled (added to enabled list)", plugin_id);
         }
     } else {
-        // 禁用插件：添加到禁用列表
-        if !disabled_plugins.contains(&plugin_id) {
-            disabled_plugins.push(plugin_id.clone());
-            println!("Plugin {} disabled (added to disabled list)", plugin_id);
+        // 禁用插件：从启用列表中移除
+        if let Some(index) = enabled_plugins.iter().position(|x| x == &plugin_id) {
+            enabled_plugins.remove(index);
+            println!("Plugin {} disabled (removed from enabled list)", plugin_id);
         }
     }
 
-    // 保存禁用列表
-    let json_content = serde_json::to_string_pretty(&disabled_plugins)
-        .map_err(|e| format!("Failed to serialize disabled plugins: {}", e))?;
+    // 保存启用列表
+    let json_content = serde_json::to_string_pretty(&enabled_plugins)
+        .map_err(|e| format!("Failed to serialize enabled plugins: {}", e))?;
 
-    fs::write(&disabled_plugins_file, json_content)
-        .map_err(|e| format!("Failed to write disabled plugins file: {}", e))?;
+    fs::write(&enabled_plugins_file, json_content)
+        .map_err(|e| format!("Failed to write enabled plugins file: {}", e))?;
 
     Ok(enabled)
 }

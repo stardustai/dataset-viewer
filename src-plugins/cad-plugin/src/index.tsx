@@ -2,6 +2,7 @@ import { Layers, Box, FileImage, Shapes } from 'lucide-react';
 import { CADViewer } from './CADViewer';
 import type { PluginBundle } from './plugin-types';
 import { resources } from './i18n';
+import { cadModuleManager } from './utils/cadModuleManager';
 
 const pluginBundle: PluginBundle = {
   metadata: {
@@ -34,10 +35,20 @@ const pluginBundle: PluginBundle = {
   component: CADViewer,
   i18nResources: resources,
   initialize: async () => {
-    console.log('CAD Plugin initialized');
+    console.log('🔧 CAD Plugin initializing...');
+
+    // 启动CAD模块后台预加载
+    cadModuleManager.startPreloading();
+
+    console.log('✅ CAD Plugin initialized');
   },
   cleanup: async () => {
-    console.log('CAD Plugin cleaned up');
+    console.log('🧹 CAD Plugin cleaning up...');
+
+    // 清理CAD模块缓存
+    cadModuleManager.clearCache();
+
+    console.log('✅ CAD Plugin cleaned up');
   },
 };
 

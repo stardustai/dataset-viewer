@@ -16,8 +16,16 @@ export const pluginManager = {
   // 插件操作
   'plugin.action.install': '安装',
   'plugin.action.uninstall': '卸载插件',
+  'plugin.action.delete': '删除',
+  'plugin.action.enable': '启用',
+  'plugin.action.disable': '禁用',
   'plugin.action.refresh': '刷新',
   'plugin.action.toggle': '切换状态',
+
+  // 插件来源
+  'plugin.source.dev': '开发版',
+  'plugin.source.npm': 'NPM',
+  'plugin.source.local': '本地',
 
   // 插件信息
   'plugin.info.author': '作者: {{author}}',

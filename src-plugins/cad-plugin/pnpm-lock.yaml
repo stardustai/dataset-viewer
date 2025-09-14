@@ -9,23 +9,26 @@ importers:
   .:
     dependencies:
       '@mlightcad/cad-simple-viewer':
-        specifier: ^1.0.13
-        version: 1.0.13(@mlightcad/data-model@1.2.2)(lodash-es@4.17.21)(three@0.179.1)
+        specifier: 1.0.16
+        version: 1.0.16(@mlightcad/data-model@1.2.5)(@mlightcad/libredwg-web@0.2.1)(lodash-es@4.17.21)(three@0.179.1)
       '@mlightcad/data-model':
-        specifier: ^1.2.2
-        version: 1.2.2
+        specifier: 1.2.5
+        version: 1.2.5
       '@mlightcad/libredwg-converter':
         specifier: ^3.0.2
-        version: 3.0.2(@mlightcad/data-model@1.2.2)(@mlightcad/libredwg-web@0.2.1)
+        version: 3.0.2(@mlightcad/data-model@1.2.5)(@mlightcad/libredwg-web@0.2.1)
       '@mlightcad/libredwg-web':
         specifier: ^0.2.1
         version: 0.2.1
       lucide-react:
-        specifier: ^0.263.1
-        version: 0.263.1(react@18.3.1)
+        specifier: ^0.525.0
+        version: 0.525.0(react@18.3.1)
       react:
-        specifier: ^18.0.0
+        specifier: ^18.3.1
         version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
       three:
         specifier: ^0.179.1
         version: 0.179.1
@@ -236,15 +239,15 @@ packages:
   '@microsoft/tsdoc@0.14.2':
     resolution: {integrity: sha512-9b8mPpKrfeGRuhFH5iO1iwCLeIIsV6+H1sRfxbkoGXIyQE2BTsPd9zqSqQJ+pv5sJ/hT5M1zvOFL02MnEezFug==}
 
-  '@mlightcad/cad-simple-viewer@1.0.13':
-    resolution: {integrity: sha512-mkLT1QcFmx+WzrYlCaLFnkkAKad4db9JXYxLHbebzPBf3RobN6H2DaUsI9U8Zv3QrxASDMNYVdkjRdYhW5jEMQ==}
+  '@mlightcad/cad-simple-viewer@1.0.16':
+    resolution: {integrity: sha512-tgTe+rDoVoBQtfhpcHcGNSTlkzjcJpndSDoxLRObfNY02oo424z38ctOXW8H2VOzw3mYV4wcB9921vXXeHlrTw==}
     peerDependencies:
-      '@mlightcad/data-model': 1.2.2
+      '@mlightcad/data-model': 1.2.5
       lodash-es: 4.17.21
       three: ^0.172.0
 
-  '@mlightcad/data-model@1.2.2':
-    resolution: {integrity: sha512-Qj2FSXelLjra7vGaRZ+oia+HB85cZdpoZVrfP3zFmN9T2CoVaBIN9Z5rC201bdmDZeTkUGHKLgi8ZYapBOpWEw==}
+  '@mlightcad/data-model@1.2.5':
+    resolution: {integrity: sha512-6vlA/5Z0lmPSib0I4r0cryCuvDifr8mGNgsz/yFSe1b7C60hlejuo8mT6A2m2omFgHRRGxyoemb5SyOirQq4qw==}
 
   '@mlightcad/dxf-json@1.0.8':
     resolution: {integrity: sha512-NOLt3LcyOti+Ero9PMbvZaYWvn2IwVL7ysty0aYxTdeYc3gs1+Xnj+VjaCEL6ACMXLlmQd8pFQjMdRsuIIUd2A==}
@@ -253,6 +256,12 @@ packages:
     resolution: {integrity: sha512-IWwxXJeux15H8tkpCUqMmOqtY4U7hq7A5W2X2RD+0l3Y6i+kB4APDiv8n464fpc3g4tzrtNoDLPmOQ4sD5a7cA==}
     peerDependencies:
       '@mlightcad/data-model': 1.2.2
+      '@mlightcad/libredwg-web': 0.2.1
+
+  '@mlightcad/libredwg-converter@3.0.6':
+    resolution: {integrity: sha512-8End6HVuLHQJUaPHpNjr7IcxEYQ/PoZmttwkS/Rs2jBDf9UxRX7EWz/7yQ2EvPddYpOpXN0DbW31Qrj7CySG5Q==}
+    peerDependencies:
+      '@mlightcad/data-model': 1.2.5
       '@mlightcad/libredwg-web': 0.2.1
 
   '@mlightcad/libredwg-web@0.2.1':
@@ -471,10 +480,10 @@ packages:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
 
-  lucide-react@0.263.1:
-    resolution: {integrity: sha512-keqxAx97PlaEN89PXZ6ki1N8nRjGWtDa4021GFYLNj0RgruM5odbpl8GHTExj0hhPq3sF6Up0gnxt6TSHu+ovw==}
+  lucide-react@0.525.0:
+    resolution: {integrity: sha512-Tm1txJ2OkymCGkvwoHt33Y2JpN5xucVq1slHcgE6Lk0WjDfjgKWor5CdVER8U6DvcfMwh4M8XxmpTiyzfmfDYQ==}
     peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   magic-string@0.30.18:
     resolution: {integrity: sha512-yi8swmWbO17qHhwIBNeeZxTceJMeBvWJaId6dyvTSOwTipqeHhMhOrz6513r1sOKnpvQ7zkhlG8tPrpilwTxHQ==}
@@ -527,6 +536,11 @@ packages:
   rbush@4.0.1:
     resolution: {integrity: sha512-IP0UpfeWQujYC8Jg162rMNc01Rf0gWMMAb2Uxus/Q0qOFw4lCcq6ZnQEZwUoJqWyUGJ9th7JjwI4yIWo+uvoAQ==}
 
+  react-dom@18.3.1:
+    resolution: {integrity: sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==}
+    peerDependencies:
+      react: ^18.3.1
+
   react@18.3.1:
     resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
     engines: {node: '>=0.10.0'}
@@ -543,6 +557,9 @@ packages:
     resolution: {integrity: sha512-GVsDdsbJzzy4S/v3dqWPJ7EfvZJfCHiDqe80IyrF59LYuP+e6U1LJoUqeuqRbwAWoMNoXivMNeNAOf5E22VA1w==}
     engines: {node: '>=14.18.0', npm: '>=8.0.0'}
     hasBin: true
+
+  scheduler@0.23.2:
+    resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
 
   semver@7.5.4:
     resolution: {integrity: sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA==}
@@ -819,15 +836,18 @@ snapshots:
 
   '@microsoft/tsdoc@0.14.2': {}
 
-  '@mlightcad/cad-simple-viewer@1.0.13(@mlightcad/data-model@1.2.2)(lodash-es@4.17.21)(three@0.179.1)':
+  '@mlightcad/cad-simple-viewer@1.0.16(@mlightcad/data-model@1.2.5)(@mlightcad/libredwg-web@0.2.1)(lodash-es@4.17.21)(three@0.179.1)':
     dependencies:
-      '@mlightcad/data-model': 1.2.2
+      '@mlightcad/data-model': 1.2.5
+      '@mlightcad/libredwg-converter': 3.0.6(@mlightcad/data-model@1.2.5)(@mlightcad/libredwg-web@0.2.1)
       lodash-es: 4.17.21
       mitt: 3.0.1
       rbush: 4.0.1
       three: 0.179.1
+    transitivePeerDependencies:
+      - '@mlightcad/libredwg-web'
 
-  '@mlightcad/data-model@1.2.2':
+  '@mlightcad/data-model@1.2.5':
     dependencies:
       '@mlightcad/dxf-json': 1.0.8
       uid: 2.0.2
@@ -836,9 +856,14 @@ snapshots:
     dependencies:
       '@fxts/core': 1.15.0
 
-  '@mlightcad/libredwg-converter@3.0.2(@mlightcad/data-model@1.2.2)(@mlightcad/libredwg-web@0.2.1)':
+  '@mlightcad/libredwg-converter@3.0.2(@mlightcad/data-model@1.2.5)(@mlightcad/libredwg-web@0.2.1)':
     dependencies:
-      '@mlightcad/data-model': 1.2.2
+      '@mlightcad/data-model': 1.2.5
+      '@mlightcad/libredwg-web': 0.2.1
+
+  '@mlightcad/libredwg-converter@3.0.6(@mlightcad/data-model@1.2.5)(@mlightcad/libredwg-web@0.2.1)':
+    dependencies:
+      '@mlightcad/data-model': 1.2.5
       '@mlightcad/libredwg-web': 0.2.1
 
   '@mlightcad/libredwg-web@0.2.1': {}
@@ -1071,7 +1096,7 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  lucide-react@0.263.1(react@18.3.1):
+  lucide-react@0.525.0(react@18.3.1):
     dependencies:
       react: 18.3.1
 
@@ -1117,6 +1142,12 @@ snapshots:
     dependencies:
       quickselect: 3.0.0
 
+  react-dom@18.3.1(react@18.3.1):
+    dependencies:
+      loose-envify: 1.4.0
+      react: 18.3.1
+      scheduler: 0.23.2
+
   react@18.3.1:
     dependencies:
       loose-envify: 1.4.0
@@ -1135,6 +1166,10 @@ snapshots:
   rollup@3.29.5:
     optionalDependencies:
       fsevents: 2.3.3
+
+  scheduler@0.23.2:
+    dependencies:
+      loose-envify: 1.4.0
 
   semver@7.5.4:
     dependencies:

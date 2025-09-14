@@ -4,8 +4,23 @@ use std::fs;
 use std::path::Path;
 use tauri::command;
 
-// 导入插件安装模块以访问缓存目录函数
-use super::plugin_installer::get_plugin_cache_dir;
+/**
+ * 检查插件是否被显式启用
+ * 只有在 enabled_plugins.json 文件中的插件才被认为是启用的
+ */
+fn is_plugin_enabled(plugin_id: &str) -> bool {
+    if let Ok(cache_dir) = crate::commands::plugin_installer::get_plugin_cache_dir() {
+        let enabled_plugins_file = cache_dir.join("enabled_plugins.json");
+        if enabled_plugins_file.exists() {
+            if let Ok(content) = fs::read_to_string(&enabled_plugins_file) {
+                if let Ok(enabled_plugins) = serde_json::from_str::<Vec<String>>(&content) {
+                    return enabled_plugins.contains(&plugin_id.to_string());
+                }
+            }
+        }
+    }
+    false // 新插件默认禁用
+}
 
 /**
  * 计算插件的入口文件路径
@@ -36,23 +51,6 @@ fn calculate_entry_path(
 
     // 如果都没找到，返回 None
     None
-}
-
-/**
- * 检查插件是否被永久禁用
- */
-fn is_plugin_disabled(plugin_id: &str) -> bool {
-    if let Ok(cache_dir) = get_plugin_cache_dir() {
-        let disabled_plugins_file = cache_dir.join("disabled_plugins.json");
-        if disabled_plugins_file.exists() {
-            if let Ok(content) = fs::read_to_string(&disabled_plugins_file) {
-                if let Ok(disabled_plugins) = serde_json::from_str::<Vec<String>>(&content) {
-                    return disabled_plugins.contains(&plugin_id.to_string());
-                }
-            }
-        }
-    }
-    false
 }
 
 #[derive(Debug, Serialize, Deserialize, Type)]
@@ -114,6 +112,7 @@ pub struct LocalPluginInfo {
     pub local_path: String,
     pub enabled: bool,              // 插件是否启用
     pub entry_path: Option<String>, // 插件的入口文件路径
+    pub source: String,             // 插件来源：npm-link, npm-registry, local-cache
 }
 
 /**
@@ -136,7 +135,7 @@ pub async fn discover_plugins() -> Result<Vec<LocalPluginInfo>, String> {
             // 通过 enabled 字段来区分是否启用
             for plugin in &mut linked_plugins {
                 plugin.local = true; // npm link 的插件都算已安装
-                plugin.enabled = !is_plugin_disabled(&plugin.id); // 根据禁用列表设置启用状态
+                plugin.enabled = is_plugin_enabled(&plugin.id); // 根据启用列表设置启用状态
 
                 if plugin.enabled {
                     println!("Plugin {} is installed and enabled", plugin.id);
@@ -270,8 +269,9 @@ fn parse_plugin_package_for_validation(
             .unwrap_or_else(|| Path::new(""))
             .to_string_lossy()
             .to_string(),
-        enabled: !is_plugin_disabled(&plugin_id), // 检查插件是否被禁用
+        enabled: is_plugin_enabled(&plugin_id), // 检查插件是否被启用
         entry_path,
+        source: "local-validation".to_string(), // 验证路径的插件
     })
 }
 
@@ -326,11 +326,14 @@ pub async fn get_npm_linked_plugins_internal() -> Result<Vec<LocalPluginInfo>, S
                 println!("=== pnpm list output END ===");
 
                 let mut found_any_plugin_line = false;
-                // 解析输出，查找 @dataset-viewer/plugin- 开头的包
+                // 解析输出，查找插件包（支持两种命名方式）
                 for (line_num, line) in stdout.lines().enumerate() {
                     println!("Line {}: '{}'", line_num, line);
 
-                    if line.contains("@dataset-viewer/plugin-") {
+                    // 支持官方插件和第三方插件两种命名方式
+                    if line.contains("@dataset-viewer/plugin-")
+                        || line.contains("dataset-viewer-plugin")
+                    {
                         found_any_plugin_line = true;
                         println!("*** Found plugin line at {}: '{}'", line_num, line);
 
@@ -381,7 +384,7 @@ pub async fn get_npm_linked_plugins_internal() -> Result<Vec<LocalPluginInfo>, S
                 }
 
                 if !found_any_plugin_line {
-                    println!("*** No @dataset-viewer/plugin- lines found in output");
+                    println!("*** No plugin packages found in output");
                 }
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
@@ -393,6 +396,18 @@ pub async fn get_npm_linked_plugins_internal() -> Result<Vec<LocalPluginInfo>, S
             println!("Failed to execute pnpm command: {}", e);
             // 如果 pnpm 命令失败，尝试 npm
             return try_npm_list_global().await;
+        }
+    }
+
+    // 设置插件状态
+    for plugin in &mut plugins {
+        plugin.local = true; // 所有发现的插件都标记为已安装
+        plugin.enabled = is_plugin_enabled(&plugin.id); // 根据启用列表设置启用状态
+
+        if plugin.enabled {
+            println!("Plugin {} is installed and enabled", plugin.id);
+        } else {
+            println!("Plugin {} is installed but disabled", plugin.id);
         }
     }
 
@@ -413,10 +428,20 @@ fn parse_npm_linked_plugin(
     let package_info: PluginPackageInfo = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse package.json: {}", e))?;
 
-    // 检查包名是否符合插件命名规范
-    if !package_info.name.starts_with("@dataset-viewer/plugin-") {
+    // 检查包名是否符合插件命名规范（支持官方和第三方插件）
+    let (plugin_id, is_official) = if package_info.name.starts_with("@dataset-viewer/plugin-") {
+        (
+            package_info.name.replace("@dataset-viewer/plugin-", ""),
+            true,
+        )
+    } else if package_info.name.starts_with("dataset-viewer-plugin") {
+        (
+            package_info.name.replace("dataset-viewer-plugin-", ""),
+            false,
+        )
+    } else {
         return Err("Package name does not match plugin naming convention".to_string());
-    }
+    };
 
     // 检查是否包含插件相关关键字
     let keywords = package_info.keywords.clone().unwrap_or_default();
@@ -429,27 +454,12 @@ fn parse_npm_linked_plugin(
         return Err("Package does not appear to be a dataset-viewer plugin".to_string());
     }
 
-    // 提取插件ID（移除前缀）
-    let plugin_id = package_info.name.replace("@dataset-viewer/plugin-", "");
-
     // 简化的扩展名提取
     let supported_extensions = keywords
         .iter()
         .filter(|k| k.len() >= 2 && k.len() <= 5 && k.chars().all(|c| c.is_ascii_alphanumeric()))
         .cloned()
         .collect();
-
-    // 检查是否是官方插件
-    let is_official = package_info
-        .author
-        .as_ref()
-        .map(|a| {
-            let author_lower = a.to_lowercase();
-            author_lower.contains("dataset-viewer")
-                || author_lower.contains("datasetviewer")
-                || author_lower.contains("dataset-viewer-team")
-        })
-        .unwrap_or(false);
 
     // 先计算入口路径，避免后面借用冲突
     let entry_path = calculate_entry_path(&package_json_path, &package_info);
@@ -480,8 +490,9 @@ fn parse_npm_linked_plugin(
         keywords,
         local: true,
         local_path: link_path.to_string(),
-        enabled: !is_plugin_disabled(&plugin_id), // 检查插件是否被禁用
+        enabled: is_plugin_enabled(&plugin_id), // 检查插件是否被启用
         entry_path,
+        source: "npm-link".to_string(), // npm link 插件
     })
 }
 
