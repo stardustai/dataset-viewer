@@ -128,20 +128,22 @@ export const ossStorageAdapter: StorageAdapter = {
   // === 新增的标准方法实现 ===
 
   getDefaultConfig: () => ({
-    region: 'us-east-1',
+    platform: 'aliyun',
+    region: 'cn-hangzhou',
+    endpoint: 'https://oss-cn-hangzhou.aliyuncs.com',
   }),
 
   buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
     const config: ConnectionConfig = {
       type: 'oss',
-      url: formData.url?.trim(),
-      region: formData.region?.trim() || 'us-east-1',
+      url: formData.endpoint?.trim() || formData.url?.trim(), // 优先使用 endpoint，兼容 url
+      region: formData.region?.trim() || 'cn-hangzhou', // 默认使用阿里云杭州区域
       bucket: formData.bucket?.trim(),
-      username: formData.username?.trim(),
+      username: formData.accessKey?.trim() || formData.username?.trim(), // 优先使用 accessKey，兼容 username
       password:
         formData.isPasswordFromStorage && existingConnection?.config.password
           ? existingConnection.config.password
-          : formData.password,
+          : formData.secretKey || formData.password, // 优先使用 secretKey，兼容 password
       name: existingConnection
         ? existingConnection.name
         : `OSS (${formData.bucket?.trim()?.split('/')[0] || 'unknown'})`,
@@ -151,11 +153,11 @@ export const ossStorageAdapter: StorageAdapter = {
   },
 
   extractFormData: (config: ConnectionConfig) => ({
-    url: config.url || '',
-    region: config.region || 'us-east-1',
+    endpoint: config.url || '', // 将 config.url 映射到 endpoint 字段
+    region: config.region || 'cn-hangzhou', // 默认使用阿里云杭州区域
     bucket: config.bucket || '',
-    username: config.username || '',
-    password: config.password ? '******' : '', // 使用占位符回显已保存的密钥
+    accessKey: config.username || '', // 将 config.username 映射到 accessKey 字段
+    secretKey: config.password ? '******' : '', // 使用占位符回显已保存的密钥，映射到 secretKey 字段
     isPasswordFromStorage: !!config.password, // 如果有密钥，标记为来自存储
   }),
 };
