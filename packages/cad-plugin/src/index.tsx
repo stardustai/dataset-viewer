@@ -1,10 +1,10 @@
 import { Layers, Box, FileImage, Shapes } from 'lucide-react';
 import { CADViewer } from './CADViewer';
-import type { PluginBundle } from './plugin-types';
+import { createPlugin } from '@dataset-viewer/sdk';
 import { resources } from './i18n';
 import { cadModuleManager } from './utils/cadModuleManager';
 
-const pluginBundle: PluginBundle = {
+const plugin = createPlugin({
   metadata: {
     id: 'cad',
     name: 'CAD Viewer',
@@ -50,6 +50,6 @@ const pluginBundle: PluginBundle = {
 
     console.log('✅ CAD Plugin cleaned up');
   },
-};
+});
 
-export default pluginBundle;
+export default plugin;

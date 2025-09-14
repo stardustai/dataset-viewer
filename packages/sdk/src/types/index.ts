@@ -105,17 +105,6 @@ export interface PluginViewerProps {
 }
 
 /**
- * 插件源类型
- */
-export interface PluginSource {
-  type: 'local' | 'npm' | 'url';
-  path?: string;
-  packageName?: string;
-  version?: string;
-  url?: string;
-}
-
-/**
  * 插件实例
  */
 export interface PluginInstance {
@@ -153,4 +142,15 @@ export interface PluginInstallInfo {
   installedAt?: Date;
   source: 'npm' | 'local' | 'url';
   sourcePath: string;
+}
+
+/**
+ * 插件源类型
+ */
+export interface PluginSource {
+  type: 'local' | 'npm' | 'url';
+  path?: string;
+  packageName?: string;
+  version?: string;
+  url?: string;
 }

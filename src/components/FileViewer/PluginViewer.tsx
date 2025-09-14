@@ -4,7 +4,7 @@ import i18n from '../../i18n';
 import { pluginManager } from '../../services/plugin/pluginManager';
 import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
 import type { StorageFile } from '../../types';
-import type { FileAccessor, PluginViewerProps } from '../../types/plugin-framework';
+import type { FileAccessor, PluginViewerProps } from '@dataset-viewer/sdk';
 
 interface LocalPluginViewerProps {
   file: StorageFile;

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { PluginBundle, PluginInstance } from '../../types/plugin-framework';
+import { PluginBundle, PluginInstance } from '@dataset-viewer/sdk';
 import i18n from '../../i18n';
 
 /**

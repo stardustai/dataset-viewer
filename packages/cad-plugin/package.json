@@ -1,6 +1,6 @@
 {
   "name": "@dataset-viewer/plugin-cad",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "CAD文件查看插件，支持DWG、DXF、STEP等格式",
   "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",
@@ -27,7 +27,8 @@
   "peerDependencies": {
     "lucide-react": "^0.525.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@dataset-viewer/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.4.5",

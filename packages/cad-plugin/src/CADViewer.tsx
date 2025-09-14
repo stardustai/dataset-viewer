@@ -3,7 +3,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { AcApDocManager, AcApSettingManager } from '@mlightcad/cad-simple-viewer';
 import { AcDbOpenDatabaseOptions } from '@mlightcad/data-model';
 import { cadModuleManager } from './utils/cadModuleManager';
-import { PluginViewerProps } from './plugin-types';
+import { PluginViewerProps } from '@dataset-viewer/sdk';
 
 interface CADViewerState {
   isLoading: boolean;
