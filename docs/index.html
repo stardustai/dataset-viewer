@@ -244,23 +244,23 @@
 </head>
 <body class="gradient-bg min-h-screen overflow-x-hidden text-primary">
     <!-- Theme & Language Switch -->
-    <div class="fixed top-6 right-6 z-50 flex items-center space-x-3">
+    <div class="fixed top-4 sm:top-6 right-4 sm:right-6 z-50 flex items-center space-x-2 sm:space-x-3">
         <!-- Theme Switch -->
-        <div class="theme-switch rounded-full p-1">
-            <button onclick="toggleTheme()" id="theme-btn" class="theme-btn p-2 text-sm font-medium rounded-full transition-all duration-200 flex items-center" title="切换主题">
-                <svg id="theme-icon-light" class="w-4 h-4 theme-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="theme-switch rounded-full p-0.5 sm:p-1">
+            <button onclick="toggleTheme()" id="theme-btn" class="theme-btn p-1.5 sm:p-2 text-sm font-medium rounded-full transition-all duration-200 flex items-center" title="切换主题">
+                <svg id="theme-icon-light" class="w-3.5 h-3.5 sm:w-4 sm:h-4 theme-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
                 </svg>
-                <svg id="theme-icon-dark" class="w-4 h-4 theme-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg id="theme-icon-dark" class="w-3.5 h-3.5 sm:w-4 sm:h-4 theme-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
                 </svg>
             </button>
         </div>
 
         <!-- Language Switch -->
-        <div class="lang-switch rounded-full p-1">
-            <button onclick="switchLanguage('zh')" id="btn-zh" class="lang-btn active px-4 py-2 text-sm font-medium rounded-full transition-all duration-200">中文</button>
-            <button onclick="switchLanguage('en')" id="btn-en" class="lang-btn px-4 py-2 text-sm font-medium rounded-full transition-all duration-200">English</button>
+        <div class="lang-switch rounded-full p-0.5 sm:p-1">
+            <button onclick="switchLanguage('zh')" id="btn-zh" class="lang-btn active px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all duration-200">中文</button>
+            <button onclick="switchLanguage('en')" id="btn-en" class="lang-btn px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all duration-200">English</button>
         </div>
     </div>
 
@@ -669,6 +669,7 @@
                 'app.crossplatform': '跨平台',
                 'theme.switch_to_light': '切换到亮色主题',
                 'theme.switch_to_dark': '切换到暗色主题',
+                'theme.auto_follow': ' (自动跟随系统)',
                 'platform.macos': 'macOS',
                 'platform.macos_desc': 'Apple Silicon 原生优化',
                 'platform.macos_chip': '✓ M1/M2/M3/M4 芯片',
@@ -741,6 +742,7 @@
                 'app.crossplatform': 'Cross-platform',
                 'theme.switch_to_light': 'Switch to light theme',
                 'theme.switch_to_dark': 'Switch to dark theme',
+                'theme.auto_follow': ' (auto follow system)',
                 'platform.macos': 'macOS',
                 'platform.macos_desc': 'Apple Silicon Optimized',
                 'platform.macos_chip': '✓ M1/M2/M3/M4 Chips',
@@ -806,8 +808,9 @@
         // 当前语言 - 根据浏览器语言自动设置
         let currentLang = getDefaultLanguage();
 
-        // 当前主题 - 根据系统偏好或本地存储设置
-        let currentTheme = getDefaultTheme();
+        // 主题设置 - 支持系统跟随
+        let themeMode = getDefaultThemeMode(); // 'auto', 'light', 'dark'
+        let currentTheme = getActualTheme(); // 实际显示的主题
 
         // 获取默认语言
         function getDefaultLanguage() {
@@ -826,19 +829,37 @@
             }
         }
 
-        // 获取默认主题
-        function getDefaultTheme() {
+        // 获取默认主题模式
+        function getDefaultThemeMode() {
             // 首先检查本地存储
-            const savedTheme = localStorage.getItem('dataset-viewer-theme');
-            if (savedTheme) {
-                return savedTheme;
+            const savedMode = localStorage.getItem('dataset-viewer-theme-mode');
+            if (savedMode) {
+                return savedMode;
             }
+            // 默认跟随系统
+            return 'auto';
+        }
 
-            // 检查系统主题偏好
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-                return 'light';
-            } else {
-                return 'dark';
+        // 获取实际显示的主题
+        function getActualTheme() {
+            if (themeMode === 'auto') {
+                // 跟随系统主题
+                return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            }
+            return themeMode;
+        }
+
+        // 监听系统主题变化
+        function setupThemeListener() {
+            if (window.matchMedia) {
+                const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+                mediaQuery.addEventListener('change', (e) => {
+                    if (themeMode === 'auto') {
+                        currentTheme = e.matches ? 'light' : 'dark';
+                        applyTheme();
+                        updateThemeButton();
+                    }
+                });
             }
         }
 
@@ -853,8 +874,28 @@
 
         // 切换主题
         function toggleTheme() {
-            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('dataset-viewer-theme', currentTheme);
+            if (themeMode === 'auto') {
+                // 从自动模式切换到固定模式
+                // 切换到与当前显示相反的主题
+                themeMode = currentTheme === 'dark' ? 'light' : 'dark';
+                currentTheme = themeMode;
+            } else {
+                // 在固定模式之间切换
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                const systemTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+
+                if (newTheme === systemTheme) {
+                    // 如果切换后的主题与系统主题一致，则回到自动模式
+                    themeMode = 'auto';
+                    currentTheme = systemTheme;
+                } else {
+                    // 否则保持固定模式
+                    themeMode = newTheme;
+                    currentTheme = newTheme;
+                }
+            }
+
+            localStorage.setItem('dataset-viewer-theme-mode', themeMode);
             applyTheme();
             updateThemeButton();
         }
@@ -880,15 +921,26 @@
             const themeBtn = document.getElementById('theme-btn');
             const texts = translations[currentLang];
 
+            let titleText = '';
             if (currentTheme === 'light') {
                 lightIcon.classList.add('hidden');
                 darkIcon.classList.remove('hidden');
-                themeBtn.setAttribute('title', texts['theme.switch_to_dark']);
+                titleText = texts['theme.switch_to_dark'];
             } else {
                 lightIcon.classList.remove('hidden');
                 darkIcon.classList.add('hidden');
-                themeBtn.setAttribute('title', texts['theme.switch_to_light']);
+                titleText = texts['theme.switch_to_light'];
             }
+
+            // 添加自动模式的视觉提示
+            if (themeMode === 'auto') {
+                themeBtn.classList.add('ring-2', 'ring-blue-400/50');
+                titleText += texts['theme.auto_follow'];
+            } else {
+                themeBtn.classList.remove('ring-2', 'ring-blue-400/50');
+            }
+
+            themeBtn.setAttribute('title', titleText);
         }
 
         // 更新下载按钮字体大小
@@ -1286,6 +1338,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             // 预设语言，避免闪动
             document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+
+            // 设置主题监听器
+            setupThemeListener();
 
             // 初始化主题
             applyTheme();
