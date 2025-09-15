@@ -164,7 +164,8 @@ export class PluginFramework {
       for (const [lang, resources] of Object.entries(bundle.i18nResources)) {
         // 使用插件ID作为命名空间，避免冲突
         const namespace = `plugin:${bundle.metadata.id}`;
-        i18n.addResourceBundle(lang, namespace, resources.translation, true, true);
+        const translation = (resources as any)?.translation || resources;
+        i18n.addResourceBundle(lang, namespace, translation, true, true);
       }
     }
 
@@ -185,7 +186,7 @@ export class PluginFramework {
         if (!ext) return false;
 
         // 检查插件支持的扩展名，支持带点和不带点的格式
-        return bundle.metadata.supportedExtensions.some(supportedExt => {
+        return bundle.metadata.supportedExtensions.some((supportedExt: string) => {
           const normalizedExt = supportedExt.startsWith('.') ? supportedExt.slice(1) : supportedExt;
           return normalizedExt.toLowerCase() === ext;
         });

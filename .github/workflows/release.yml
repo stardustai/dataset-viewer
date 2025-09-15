@@ -170,6 +170,9 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      - name: Build SDK package
+        run: pnpm --filter "@dataset-viewer/sdk" build
+
       - name: Fix version for Windows MSI (Windows only)
         if: matrix.platform == 'windows-latest'
         run: |
