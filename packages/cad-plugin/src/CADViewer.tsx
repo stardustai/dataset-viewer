@@ -20,7 +20,6 @@ export const CADViewer: FC<PluginViewerProps> = ({
   fileAccessor,
   isLargeFile,
   onError,
-  onLoadingChange,
   t
 }) => {
   const [retryTimers, setRetryTimers] = useState<NodeJS.Timeout[]>([]);
@@ -211,7 +210,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
 
       console.log('✅ CAD Simple Viewer initialized successfully');
     } catch (error) {
-      const errorMsg = t?.('cad.initError') || 'CAD viewer initialization failed';
+      const errorMsg = t('cad.initError') || 'CAD viewer initialization failed';
       setState(prev => ({
         ...prev,
         error: errorMsg,
@@ -253,7 +252,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
       return fileData;
     }
 
-    throw new Error(t?.('cad.unsupportedFile') || 'Unsupported file type');
+    throw new Error(t('cad.unsupportedFile') || 'Unsupported file type');
   };
 
   // 加载 CAD 文件 - 简化的逻辑
@@ -288,7 +287,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
       const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
 
       if (!isSupported) {
-        throw new Error(t?.('cad.unsupportedFile') || 'Unsupported file type');
+        throw new Error(t('cad.unsupportedFile') || 'Unsupported file type');
       }
 
       setState(prev => ({
@@ -358,7 +357,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
       });
 
     } catch (error) {
-      const errorMsg = t?.('cad.loadError', { error: (error as Error).message }) ||
+      const errorMsg = t('cad.loadError', { error: (error as Error).message }) ||
         `Failed to load: ${(error as Error).message}`;
 
       setState(prev => ({
@@ -409,11 +408,6 @@ export const CADViewer: FC<PluginViewerProps> = ({
 
     return () => clearTimeout(timeoutId);
   }, []); // 只依赖组件挂载
-
-  // 向主应用同步加载状态
-  useEffect(() => {
-    onLoadingChange?.(state.isLoading);
-  }, [state.isLoading, onLoadingChange]);
 
   // 文件加载effect - 当初始化完成且文件信息变化时运行
   useEffect(() => {
@@ -510,7 +504,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
       >
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
         <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
-          {t?.('cad.loadFailedTitle') || 'CAD File Loading Failed'}
+          {t('cad.loadFailedTitle') || 'CAD File Loading Failed'}
         </h3>
         <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
           {state.error}
@@ -531,7 +525,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
           <div className="flex flex-col items-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-96 max-w-sm">
             <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2 text-center">
-              {t?.('cad.loading') || 'Loading CAD file...'}
+              {t('cad.loading') || 'Loading CAD file...'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center h-10 flex items-center justify-center">
               {state.loadingStage}

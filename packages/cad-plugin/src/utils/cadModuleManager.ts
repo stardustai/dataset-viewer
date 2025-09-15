@@ -96,10 +96,17 @@ class CADModuleManager {
     }
 
     try {
-      const module = await this.preloadLibreDwgModule();
+      // 确保 LibreDWG 模块已加载
+      await this.preloadLibreDwgModule();
 
       if (!this.cache.converter) {
-        this.cache.converter = new AcDbLibreDwgConverter(module);
+        // 配置 worker 路径，根据当前环境动态设置
+        const workerConfig = {
+          useWorker: true,
+          parserWorkerUrl: this.getWorkerUrl()
+        };
+
+        this.cache.converter = new AcDbLibreDwgConverter(workerConfig);
 
         // 注册转换器到数据库转换器管理器
         try {
@@ -118,6 +125,33 @@ class CADModuleManager {
       console.error('❌ Failed to create DWG converter:', error);
       throw error;
     }
+  }
+
+  private static pluginBasePath: string | null = null;
+
+  /**
+   * 设置插件基础路径（由主应用注入）
+   */
+  static setPluginBasePath(basePath: string): void {
+    CADModuleManager.pluginBasePath = basePath;
+    console.log('CAD plugin base path set to:', basePath);
+  }
+
+  /**
+   * 获取 worker 文件的 URL
+   * 根据当前运行环境动态设置正确的路径
+   */
+  private getWorkerUrl(): string {
+    // 优先使用注入的插件基础路径
+    if (CADModuleManager.pluginBasePath) {
+      const baseUrl = CADModuleManager.pluginBasePath.endsWith('/')
+        ? CADModuleManager.pluginBasePath
+        : `${CADModuleManager.pluginBasePath}/`;
+      return `${baseUrl}libredwg-parser-worker.js`;
+    }
+
+    // 最后备用：相对路径
+    return './libredwg-parser-worker.js';
   }
 
   /**
@@ -218,3 +252,4 @@ class CADModuleManager {
 }
 
 export const cadModuleManager = CADModuleManager.getInstance();
+export { CADModuleManager };

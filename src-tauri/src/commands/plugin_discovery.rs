@@ -1,8 +1,9 @@
 use crate::commands::plugin_installer::get_plugin_cache_dir;
 use serde::{Deserialize, Serialize};
 use specta::Type;
+
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::command;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,6 +23,7 @@ struct NpmSearchObject {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct NpmScore {
+    #[serde(rename = "final")]
     final_score: f64,
     detail: NpmScoreDetail,
 }
@@ -95,32 +97,80 @@ fn is_plugin_enabled(plugin_id: &str) -> bool {
 /**
  * 计算插件的入口文件路径
  */
-fn calculate_entry_path(
+pub fn calculate_entry_path(
     package_json_path: &Path,
     package_info: &PluginPackageInfo,
 ) -> Option<String> {
     let plugin_dir = package_json_path.parent()?;
     let dist_dir = plugin_dir.join("dist");
 
-    // 如果 package.json 中指定了 main 字段，优先使用
+    println!("Calculating entry path for package: {}", package_info.name);
+    println!("Plugin dir: {:?}", plugin_dir);
+
+    // 读取完整的 package.json 来检查 module 字段
+    if let Ok(package_content) = std::fs::read_to_string(&package_json_path) {
+        if let Ok(package_json) = serde_json::from_str::<serde_json::Value>(&package_content) {
+            // 优先检查 module 字段（ESM格式，更适合浏览器环境）
+            if let Some(module) = package_json.get("module").and_then(|v| v.as_str()) {
+                let entry_path = plugin_dir.join(module);
+                println!("Module field: {:?}", module);
+                println!("Checking module field path: {:?}", entry_path);
+                if entry_path.exists() {
+                    let result = convert_to_relative_path(&entry_path);
+                    println!("Using module field, relative path: {:?}", result);
+                    return result;
+                }
+            }
+        }
+    }
+
+    println!("Main field: {:?}", package_info.main);
+
+    // 回退到 main 字段
     if let Some(main) = &package_info.main {
         let entry_path = plugin_dir.join(main);
+        println!("Checking main field path: {:?}", entry_path);
         if entry_path.exists() {
-            return Some(entry_path.to_string_lossy().to_string());
+            let result = convert_to_relative_path(&entry_path);
+            println!("Using main field, relative path: {:?}", result);
+            return result;
         }
     }
 
-    // 否则按优先级查找常见的入口文件
-    let possible_entries = ["index.esm.js", "index.js", "index.mjs"];
+    // 否则按优先级查找常见的入口文件（优先ESM格式，配合依赖替换使用）
+    let possible_entries = ["index.esm.js", "index.mjs", "index.js", "index.cjs.js"];
     for entry in possible_entries.iter() {
         let entry_path = dist_dir.join(entry);
+        println!("Checking fallback path: {:?}", entry_path);
         if entry_path.exists() {
-            return Some(entry_path.to_string_lossy().to_string());
+            let result = convert_to_relative_path(&entry_path);
+            println!("Using fallback, relative path: {:?}", result);
+            return result;
         }
     }
 
+    println!("No entry path found!");
     // 如果都没找到，返回 None
     None
+}
+
+/**
+ * 将绝对路径转换为相对于项目根目录的路径
+ */
+pub fn convert_to_relative_path(absolute_path: &Path) -> Option<String> {
+    // 获取项目根目录（src-tauri的父目录）
+    let current_dir = std::env::current_dir().ok()?;
+    let project_root = if current_dir.ends_with("src-tauri") {
+        current_dir.parent()?
+    } else {
+        &current_dir
+    };
+
+    // 计算相对路径
+    let relative_path = absolute_path.strip_prefix(project_root).ok()?;
+
+    // 转换为字符串，使用 / 作为分隔符（Web 标准）
+    Some(relative_path.to_string_lossy().replace('\\', "/"))
 }
 
 #[derive(Debug, Serialize, Deserialize, Type)]
@@ -186,16 +236,42 @@ pub struct LocalPluginInfo {
 }
 
 /**
+ * 获取npm link链接的插件（内部方法）
+ */
+
+/**
  * 统一的插件发现接口
  * 返回所有可用的插件，包括npm link的和本地目录的
+ *
+ * @param include_registry 是否包含npm仓库搜索（默认true，设为false可快速获取已安装插件）
  */
 #[command]
 #[specta::specta]
-pub async fn plugin_discover() -> Result<Vec<LocalPluginInfo>, String> {
-    println!("Starting plugin discovery...");
+pub async fn plugin_discover(
+    include_registry: Option<bool>,
+) -> Result<Vec<LocalPluginInfo>, String> {
+    let include_registry = include_registry.unwrap_or(true);
+
+    if include_registry {
+        println!("Loading plugin market (npm registry only)...");
+        // 插件市场：只返回 npm 仓库中的插件，不包含已安装的
+        search_npm_registry().await
+    } else {
+        println!("Loading installed plugins (local only)...");
+        // 已安装插件：只返回本地已安装的插件
+        get_installed_plugins().await
+    }
+}
+
+/**
+ * 获取已安装的插件（内部方法）
+ * 只扫描本地缓存和npm link，不访问网络
+ */
+async fn get_installed_plugins() -> Result<Vec<LocalPluginInfo>, String> {
+    println!("Getting installed plugins (local only)...");
     let mut all_plugins = Vec::new();
 
-    // 1. 获取npm link的插件（包括被禁用的，因为可以重新安装）
+    // 1. 获取npm link的插件
     println!("Discovering npm linked plugins...");
     match get_npm_linked_plugins_internal().await {
         Ok(mut linked_plugins) => {
@@ -238,23 +314,11 @@ pub async fn plugin_discover() -> Result<Vec<LocalPluginInfo>, String> {
         }
     }
 
-    // 3. 搜索npm仓库中的官方插件
-    println!("Searching npm registry for official plugins...");
-    match search_npm_registry().await {
-        Ok(mut npm_plugins) => {
-            println!("Found {} plugins from npm registry", npm_plugins.len());
-            all_plugins.append(&mut npm_plugins);
-        }
-        Err(e) => {
-            println!("Failed to search npm registry: {}", e);
-            // 继续执行，不因为npm搜索失败而停止
-        }
-    }
-
     println!(
-        "Plugin discovery complete. Total found: {}",
+        "Installed plugins discovery complete. Total found: {}",
         all_plugins.len()
     );
+
     Ok(all_plugins)
 }
 
@@ -334,6 +398,12 @@ pub async fn get_npm_linked_plugins_internal() -> Result<Vec<LocalPluginInfo>, S
                                     package_json_path.display()
                                 );
 
+                                // 首先检查链接的目录是否存在
+                                if !std::path::Path::new(&link_path).exists() {
+                                    println!("*** Link path does not exist: {}", link_path);
+                                    continue;
+                                }
+
                                 if package_json_path.exists() {
                                     println!("*** Found package.json, parsing...");
                                     match parse_npm_linked_plugin(&package_json_path, &link_path) {
@@ -353,7 +423,7 @@ pub async fn get_npm_linked_plugins_internal() -> Result<Vec<LocalPluginInfo>, S
                                     }
                                 } else {
                                     println!(
-                                        "*** package.json not found at: {}",
+                                        "*** package.json not found at: {} (link path may be stale)",
                                         package_json_path.display()
                                     );
                                 }
@@ -412,7 +482,8 @@ fn parse_npm_linked_plugin(
         .map_err(|e| format!("Failed to parse package.json: {}", e))?;
 
     // 检查包名是否符合插件命名规范（支持官方和第三方插件）
-    let (plugin_id, is_official) = if package_info.name.starts_with("@dataset-viewer/plugin-") {
+    let (base_plugin_id, is_official) = if package_info.name.starts_with("@dataset-viewer/plugin-")
+    {
         (
             package_info.name.replace("@dataset-viewer/plugin-", ""),
             true,
@@ -425,6 +496,9 @@ fn parse_npm_linked_plugin(
     } else {
         return Err("Package name does not match plugin naming convention".to_string());
     };
+
+    // 为npm link的插件添加后缀以区分开发版本
+    let plugin_id = format!("{}-dev", base_plugin_id);
 
     // 检查是否包含插件相关关键字
     let keywords = package_info.keywords.clone().unwrap_or_default();
@@ -449,25 +523,30 @@ fn parse_npm_linked_plugin(
 
     Ok(LocalPluginInfo {
         id: plugin_id.clone(),
-        name: plugin_id
-            .split('-')
-            .map(|word| {
-                let mut chars = word.chars();
-                match chars.next() {
-                    None => String::new(),
-                    Some(first) => {
-                        first.to_uppercase().collect::<String>() + &chars.collect::<String>()
+        name: format!(
+            "{} (Dev)",
+            base_plugin_id
+                .split('-')
+                .map(|word| {
+                    let mut chars = word.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => {
+                            first.to_uppercase().collect::<String>() + &chars.collect::<String>()
+                        }
                     }
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
-            + " Viewer",
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
+                + " Viewer"
+        ),
         version: package_info.version,
         description: package_info
             .description
-            .unwrap_or_else(|| "Linked plugin".to_string()),
-        author: package_info.author.unwrap_or_else(|| "Unknown".to_string()),
+            .unwrap_or_else(|| "Development plugin".to_string()),
+        author: package_info
+            .author
+            .unwrap_or_else(|| "Developer".to_string()),
         supported_extensions,
         official: is_official,
         keywords,
@@ -484,11 +563,11 @@ fn parse_npm_linked_plugin(
  * 只搜索 @dataset-viewer/plugin-* 格式的包
  */
 async fn search_npm_registry() -> Result<Vec<LocalPluginInfo>, String> {
-    println!("Searching npm registry for official dataset-viewer plugins...");
+    println!("Searching npm registry for dataset-viewer plugins...");
 
-    // 使用 npm search API 搜索官方插件
+    // 使用 npm search API 搜索插件，通过关键词搜索
     let search_url = "https://registry.npmjs.org/-/v1/search";
-    let query = "scope:dataset-viewer plugin";
+    let query = "keywords:dataset-viewer keywords:plugin";
     let size = 50; // 最多返回50个结果
 
     let client = reqwest::Client::new();
@@ -718,74 +797,150 @@ async fn get_cached_plugins() -> Result<Vec<LocalPluginInfo>, String> {
 
     let mut plugins = Vec::new();
 
-    // 读取缓存目录内容
-    let entries =
-        fs::read_dir(&cache_dir).map_err(|e| format!("Failed to read cache directory: {}", e))?;
+    // 递归扫描缓存目录，处理scope和版本化的目录结构
+    fn scan_directory(
+        dir: &std::path::Path,
+        plugins: &mut Vec<LocalPluginInfo>,
+        depth: usize,
+    ) -> Result<(), String> {
+        if depth > 3 {
+            // 防止无限递归
+            return Ok(());
+        }
 
-    for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
-        let path = entry.path();
+        let entries = fs::read_dir(dir)
+            .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
 
-        if path.is_dir() {
-            // 每个子目录应该是一个插件包
-            if let Some(plugin_name) = path.file_name().and_then(|n| n.to_str()) {
-                // 查找 package.json
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+
+            if path.is_dir() && !path.is_symlink() {
+                // 跳过符号链接，避免重复扫描
+                // 检查是否有package.json
                 let package_json_path = path.join("package.json");
                 if package_json_path.exists() {
+                    // 这是一个包目录
                     match read_package_json(&package_json_path) {
-                        Ok(package_info) => {
-                            // 查找入口文件
-                            let main_file =
-                                package_info.main.unwrap_or_else(|| "index.js".to_string());
-                            let entry_path = path.join(&main_file);
+                        Ok(basic_info) => {
+                            // 检查是否是插件包
+                            if basic_info.name.contains("plugin")
+                                || basic_info.name.contains("@dataset-viewer")
+                            {
+                                println!("Found cached plugin package: {}", basic_info.name);
 
-                            if entry_path.exists() {
-                                let plugin = LocalPluginInfo {
-                                    id: package_info.name.clone(),
-                                    name: package_info.name.clone(),
-                                    version: package_info.version.clone(),
-                                    description: "Cached plugin".to_string(),
-                                    author: "Unknown".to_string(),
-                                    supported_extensions: Vec::new(),
-                                    official: false,
-                                    keywords: Vec::new(),
-                                    local: true,
-                                    local_path: path.to_string_lossy().to_string(),
-                                    enabled: true,
-                                    entry_path: Some(entry_path.to_string_lossy().to_string()),
-                                    source: "cache".to_string(),
-                                };
+                                // 读取完整的插件包信息以获取正确的main字段
+                                let content = fs::read_to_string(&package_json_path)
+                                    .map_err(|e| format!("Failed to read package.json: {}", e))?;
+                                let package_info: PluginPackageInfo =
+                                    serde_json::from_str(&content).map_err(|e| {
+                                        format!("Failed to parse package.json: {}", e)
+                                    })?;
 
-                                println!(
-                                    "Found cached plugin: {} v{}",
-                                    plugin.name, plugin.version
-                                );
-                                plugins.push(plugin);
-                            } else {
-                                println!(
-                                    "Cached plugin {} missing entry file: {}",
-                                    plugin_name, main_file
-                                );
+                                // 提取插件ID
+                                let base_plugin_id =
+                                    if package_info.name.starts_with("@dataset-viewer/plugin-") {
+                                        package_info.name.replace("@dataset-viewer/plugin-", "")
+                                    } else {
+                                        package_info.name.clone()
+                                    };
+
+                                // 为缓存的插件使用原始ID（已安装版本）
+                                let plugin_id = base_plugin_id.clone();
+
+                                // 使用与npm link插件相同的入口文件查找逻辑
+                                let entry_path =
+                                    calculate_entry_path(&package_json_path, &package_info);
+
+                                if let Some(entry_path) = entry_path {
+                                    println!(
+                                        "Final entry path for {}: {}",
+                                        package_info.name, entry_path
+                                    );
+
+                                    // 从package.json提取支持的扩展名
+                                    let keywords =
+                                        package_info.keywords.clone().unwrap_or_default();
+                                    let supported_extensions = keywords
+                                        .iter()
+                                        .filter(|k| {
+                                            k.len() >= 2
+                                                && k.len() <= 5
+                                                && k.chars().all(|c| c.is_ascii_alphanumeric())
+                                        })
+                                        .cloned()
+                                        .collect();
+
+                                    let plugin = LocalPluginInfo {
+                                        id: plugin_id.clone(),
+                                        name: base_plugin_id
+                                            .split('-')
+                                            .map(|word| {
+                                                let mut chars = word.chars();
+                                                match chars.next() {
+                                                    None => String::new(),
+                                                    Some(first) => {
+                                                        first.to_uppercase().collect::<String>()
+                                                            + &chars.collect::<String>()
+                                                    }
+                                                }
+                                            })
+                                            .collect::<Vec<_>>()
+                                            .join(" ")
+                                            + " Viewer",
+                                        version: package_info.version.clone(),
+                                        description: package_info
+                                            .description
+                                            .clone()
+                                            .unwrap_or_else(|| "Installed plugin".to_string()),
+                                        author: package_info
+                                            .author
+                                            .clone()
+                                            .unwrap_or_else(|| "Unknown".to_string()),
+                                        supported_extensions,
+                                        official: package_info.name.starts_with("@dataset-viewer/"),
+                                        keywords,
+                                        local: true, // 缓存中的插件都是已安装的
+                                        local_path: path.to_string_lossy().to_string(),
+                                        enabled: is_plugin_enabled(&plugin_id), // 检查是否启用
+                                        entry_path: Some(entry_path),
+                                        source: "local-cache".to_string(),
+                                    };
+
+                                    println!(
+                                        "Found cached plugin: {} v{} (enabled: {})",
+                                        plugin.name, plugin.version, plugin.enabled
+                                    );
+                                    plugins.push(plugin);
+                                } else {
+                                    println!(
+                                        "Cached plugin {} missing entry file",
+                                        package_info.name
+                                    );
+                                }
                             }
                         }
                         Err(e) => {
-                            println!(
-                                "Failed to read package.json for cached plugin {}: {}",
-                                plugin_name, e
-                            );
+                            println!("Failed to read package.json for {}: {}", path.display(), e);
                         }
                     }
                 } else {
-                    println!("Cached directory {} has no package.json", plugin_name);
+                    // 没有package.json，递归扫描子目录
+                    scan_directory(&path, plugins, depth + 1)?;
                 }
             }
         }
+
+        Ok(())
     }
+
+    scan_directory(&cache_dir, &mut plugins, 0)?;
 
     Ok(plugins)
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct PackageJsonInfo {
     name: String,
     version: String,
@@ -802,4 +957,49 @@ fn read_package_json(path: &std::path::Path) -> Result<PackageJsonInfo, String> 
         .map_err(|e| format!("Failed to parse package.json: {}", e))?;
 
     Ok(package_info)
+}
+
+/**
+ * 读取插件文件内容
+ */
+#[command]
+#[specta::specta]
+pub async fn plugin_read_file(plugin_path: String) -> Result<String, String> {
+    println!("Reading plugin file: {}", plugin_path);
+
+    // 处理相对路径：如果是相对路径，转换为绝对路径
+    let absolute_path = if Path::new(&plugin_path).is_absolute() {
+        PathBuf::from(&plugin_path)
+    } else {
+        // 获取项目根目录
+        let current_dir = std::env::current_dir()
+            .map_err(|e| format!("Failed to get current directory: {}", e))?;
+        let project_root = if current_dir.ends_with("src-tauri") {
+            current_dir
+                .parent()
+                .ok_or("Failed to get project root directory")?
+                .to_path_buf()
+        } else {
+            current_dir
+        };
+
+        // 拼接相对路径
+        project_root.join(&plugin_path)
+    };
+
+    println!("Resolved absolute path: {:?}", absolute_path);
+
+    // 安全检查：确保路径在允许的插件目录内
+    let cache_dir = crate::commands::plugin_installer::get_plugin_cache_dir()
+        .map_err(|e| format!("Failed to get plugin cache dir: {}", e))?;
+
+    if !absolute_path.starts_with(&cache_dir) && !plugin_path.contains("@dataset-viewer/plugin-") {
+        return Err(format!(
+            "Access denied: plugin path not in allowed directories. Path: {:?}, Cache dir: {:?}",
+            absolute_path, cache_dir
+        ));
+    }
+
+    // 读取文件内容
+    fs::read_to_string(&absolute_path).map_err(|e| format!("Failed to read plugin file: {}", e))
 }

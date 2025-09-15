@@ -56,6 +56,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
   const { t } = useTranslation();
   const [pluginComponent, setPluginComponent] =
     useState<React.ComponentType<PluginViewerProps> | null>(null);
+  const [pluginNamespace, setPluginNamespace] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,8 +75,9 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
           return;
         }
 
-        // 设置插件组件
+        // 设置插件组件和命名空间
         setPluginComponent(() => plugin.component);
+        setPluginNamespace(`plugin:${plugin.metadata.id}`);
         // 插件组件加载完成，初始设置为不加载，让插件自己决定是否需要 loading
         setLoading(false);
       } catch (err) {
@@ -97,11 +99,17 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
     return <ErrorDisplay message={error} className="h-full" />;
   }
 
-  if (!pluginComponent) {
+  if (!pluginComponent || !pluginNamespace) {
     return <ErrorDisplay message={t('plugin.noSuitablePlugin')} className="h-full" />;
   }
 
   const PluginComponent = pluginComponent;
+
+  // 创建绑定到插件命名空间的翻译函数
+  const pluginT = (key: string, options?: any): string => {
+    const result = i18n.t(key, { ...options, ns: pluginNamespace });
+    return typeof result === 'string' ? result : String(result);
+  };
 
   return (
     <div className="flex-1 overflow-hidden">
@@ -117,7 +125,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
         onError={(error: string) => setError(error)}
         onLoadingChange={(loading: boolean) => setLoading(loading)}
         language={i18n.language}
-        t={t}
+        t={pluginT}
       />
     </div>
   );

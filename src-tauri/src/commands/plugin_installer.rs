@@ -379,7 +379,7 @@ pub async fn plugin_check_updates(plugin_id: String) -> Result<PluginVersionInfo
     println!("Checking updates for plugin: {}", plugin_id);
 
     // 获取当前安装的版本
-    let all_plugins = crate::commands::plugin_discovery::plugin_discover().await?;
+    let all_plugins = crate::commands::plugin_discovery::plugin_discover(Some(false)).await?;
     let current_plugin = all_plugins
         .iter()
         .find(|p| p.id == plugin_id && p.local)
@@ -400,6 +400,97 @@ pub async fn plugin_check_updates(plugin_id: String) -> Result<PluginVersionInfo
         )),
         publish_date: None, // 可以从 npm API 获取
     })
+}
+
+/**
+ * 删除插件文件（用于更新和卸载时清理）
+ */
+async fn remove_plugin_files(plugin_id: &str) -> Result<i32, String> {
+    let cache_dir = get_plugin_cache_dir()?;
+    let package_name = format!("@dataset-viewer/plugin-{}", plugin_id);
+
+    // 删除所有版本的插件文件
+    let mut removed_count = 0;
+    let mut removal_errors = Vec::new();
+
+    // 递归扫描缓存目录，找到所有匹配的插件版本
+    fn scan_and_remove_plugin_dirs(
+        dir: &std::path::Path,
+        package_name: &str,
+        removed_count: &mut i32,
+        removal_errors: &mut Vec<String>,
+    ) -> std::io::Result<()> {
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let entry_path = entry.path();
+            let entry_name = entry.file_name().to_string_lossy().to_string();
+
+            if entry_path.is_dir() {
+                // 检查是否是该插件的版本目录（格式：plugin-{id}@{version}）
+                let plugin_basename = package_name.split('/').last().unwrap_or(package_name);
+                if entry_name.starts_with(&format!("{}@", plugin_basename)) {
+                    println!("Removing plugin directory: {:?}", entry_path);
+
+                    match std::fs::remove_dir_all(&entry_path) {
+                        Ok(_) => {
+                            *removed_count += 1;
+                            println!("Successfully removed: {:?}", entry_path);
+                        }
+                        Err(e) => {
+                            removal_errors.push(format!("Failed to remove {}: {}", entry_name, e));
+                        }
+                    }
+                } else {
+                    // 递归搜索子目录
+                    let _ = scan_and_remove_plugin_dirs(
+                        &entry_path,
+                        package_name,
+                        removed_count,
+                        removal_errors,
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    match scan_and_remove_plugin_dirs(
+        &cache_dir,
+        &package_name,
+        &mut removed_count,
+        &mut removal_errors,
+    ) {
+        Ok(_) => {}
+        Err(e) => {
+            return Err(format!("Failed to scan cache directory: {}", e));
+        }
+    }
+
+    // 也尝试删除符号链接（如果存在）
+    let symlink_path = cache_dir.join(&package_name);
+    if symlink_path.exists() {
+        if let Err(e) = std::fs::remove_file(&symlink_path) {
+            println!(
+                "Warning: Failed to remove symlink {:?}: {}",
+                symlink_path, e
+            );
+        } else {
+            println!("Removed symlink: {:?}", symlink_path);
+        }
+    }
+
+    if !removal_errors.is_empty() {
+        return Err(format!(
+            "Some files could not be removed: {}",
+            removal_errors.join("; ")
+        ));
+    }
+
+    println!(
+        "Removed {} versions of plugin: {}",
+        removed_count, plugin_id
+    );
+    Ok(removed_count)
 }
 
 /**
@@ -428,6 +519,12 @@ pub async fn plugin_update(plugin_id: String) -> Result<PluginUpdateResult, Stri
 
     // 先停用插件
     let _ = plugin_toggle(plugin_id.clone(), false).await;
+
+    // 删除旧版本（类似卸载，但不删除配置）
+    if let Err(e) = remove_plugin_files(&plugin_id).await {
+        println!("Warning: Failed to remove old plugin files: {}", e);
+        // 继续执行，不因为删除失败而中断更新
+    }
 
     // 安装新版本
     let install_options = PluginInstallOptions {
@@ -570,9 +667,12 @@ async fn extract_and_install_plugin(
     use std::io::Cursor;
     use tar::Archive;
 
-    // 1. 创建安装目录
+    // 1. 清理旧版本并创建安装目录
     let cache_dir = get_plugin_cache_dir()?;
     let install_dir = cache_dir.join(format!("{}@{}", package_name, version));
+
+    // 清理同一插件的所有旧版本
+    cleanup_old_plugin_versions(package_name, version, &cache_dir)?;
 
     if install_dir.exists() {
         fs::remove_dir_all(&install_dir)
@@ -649,21 +749,60 @@ async fn extract_and_install_plugin(
             .map_err(|e| format!("Failed to create symlink: {}", e))?;
     }
 
+    // 5. 自动启用新安装的插件
+    let plugin_id = package_name
+        .strip_prefix("@dataset-viewer/plugin-")
+        .unwrap_or(package_name);
+
+    // 使用现有的toggle函数来启用插件
+    match plugin_toggle(plugin_id.to_string(), true).await {
+        Ok(_) => println!("Plugin {} installed and enabled successfully", plugin_id),
+        Err(e) => {
+            println!("Warning: Failed to auto-enable plugin {}: {}", plugin_id, e);
+            // 不返回错误，因为安装已经成功
+        }
+    }
+
     Ok(install_dir.to_string_lossy().to_string())
 }
 
 /**
  * 获取插件缓存目录
+ *
+ * 目录策略:
+ * - 开发模式: 项目根目录/.plugins (便于前端HTTP访问)
+ * - 生产模式: ~/.dataset-viewer/plugins (用户数据目录)
  */
 pub fn get_plugin_cache_dir() -> Result<PathBuf, String> {
-    let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
+    if is_development_mode() {
+        // 开发模式：使用项目根目录下的 .plugins 文件夹
+        // 这样 Vite 静态文件服务可以直接访问插件文件
+        let current_dir = std::env::current_dir()
+            .map_err(|e| format!("Failed to get current directory: {}", e))?;
 
-    let cache_dir = home_dir.join(".dataset-viewer").join("plugins");
+        let project_root = if current_dir.ends_with("src-tauri") {
+            current_dir
+                .parent()
+                .ok_or("Failed to get project root directory")?
+        } else {
+            &current_dir
+        };
 
-    fs::create_dir_all(&cache_dir)
-        .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+        let plugins_dir = project_root.join(".plugins");
+        fs::create_dir_all(&plugins_dir)
+            .map_err(|e| format!("Failed to create .plugins directory: {}", e))?;
 
-    Ok(cache_dir)
+        Ok(plugins_dir)
+    } else {
+        // 生产模式：使用用户目录
+        let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
+        let cache_dir = home_dir.join(".dataset-viewer").join("plugins");
+
+        fs::create_dir_all(&cache_dir)
+            .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+
+        Ok(cache_dir)
+    }
 }
 
 /**
@@ -685,7 +824,7 @@ pub async fn plugin_uninstall(plugin_id: String) -> Result<PluginUninstallResult
     println!("Uninstalling plugin: {}", plugin_id);
 
     // 首先获取插件信息以确定来源
-    let all_plugins = crate::commands::plugin_discovery::plugin_discover().await?;
+    let all_plugins = crate::commands::plugin_discovery::plugin_discover(Some(false)).await?;
     let plugin_info = all_plugins.iter().find(|p| p.id == plugin_id);
 
     match plugin_info {
@@ -706,33 +845,35 @@ pub async fn plugin_uninstall(plugin_id: String) -> Result<PluginUninstallResult
                 }
                 "npm-registry" | "local-cache" => {
                     // npm 仓库安装的插件可以真正删除
-                    let cache_dir = get_plugin_cache_dir()?;
-                    let package_name = format!("@dataset-viewer/plugin-{}", plugin_id);
-                    let plugin_dir = cache_dir.join(&package_name);
-
                     // 先禁用插件
                     let _ = plugin_toggle(plugin_id.clone(), false).await;
 
-                    // 删除插件文件
-                    if plugin_dir.exists() {
-                        match std::fs::remove_dir_all(&plugin_dir) {
-                            Ok(_) => {
-                                println!("Removed plugin directory: {:?}", plugin_dir);
+                    // 使用复用的删除函数
+                    match remove_plugin_files(&plugin_id).await {
+                        Ok(removed_count) => {
+                            if removed_count > 0 {
                                 Ok(PluginUninstallResult {
                                     success: true,
                                     plugin_id,
-                                    message: "Plugin has been completely uninstalled.".to_string(),
+                                    message: format!("Plugin has been completely uninstalled. ({} directories removed)", removed_count),
+                                })
+                            } else {
+                                Ok(PluginUninstallResult {
+                                    success: true,
+                                    plugin_id,
+                                    message: "Plugin has been disabled. (No files found to remove)"
+                                        .to_string(),
                                 })
                             }
-                            Err(e) => Err(format!("Failed to remove plugin directory: {}", e)),
                         }
-                    } else {
-                        // 文件不存在，只禁用
-                        Ok(PluginUninstallResult {
-                            success: true,
-                            plugin_id,
-                            message: "Plugin has been disabled. (Files not found)".to_string(),
-                        })
+                        Err(e) => {
+                            // 即使删除失败，也算作部分成功
+                            Ok(PluginUninstallResult {
+                                success: true,
+                                plugin_id,
+                                message: format!("Plugin partially uninstalled: {}", e),
+                            })
+                        }
                     }
                 }
                 _ => {
@@ -813,7 +954,7 @@ pub async fn plugin_get_active(
     };
     use std::collections::HashMap;
 
-    let all_plugins = plugin_discover().await?;
+    let all_plugins = plugin_discover(Some(false)).await?;
 
     // 过滤出已安装且激活的插件，并转换为 PluginInfo 类型
     let active_plugins: Vec<PluginInfo> = all_plugins
@@ -850,30 +991,23 @@ pub async fn plugin_get_active(
                 installed: plugin.local,
                 active: plugin.enabled,
                 entry_path: if plugin.local && plugin.enabled {
-                    // 尝试从 package.json 读取入口文件
-                    let package_json_path = format!("{}/package.json", plugin.local_path);
+                    // 使用与插件发现相同的逻辑生成入口路径
+                    use crate::commands::plugin_discovery::{
+                        calculate_entry_path, PluginPackageInfo,
+                    };
+                    use std::path::Path;
+
+                    let package_json_path = Path::new(&plugin.local_path).join("package.json");
                     if let Ok(package_content) = std::fs::read_to_string(&package_json_path) {
-                        if let Ok(package_json) =
-                            serde_json::from_str::<serde_json::Value>(&package_content)
+                        if let Ok(package_info) =
+                            serde_json::from_str::<PluginPackageInfo>(&package_content)
                         {
-                            // 优先使用 module 字段（ES模块），然后是 main 字段
-                            if let Some(module_path) =
-                                package_json.get("module").and_then(|v| v.as_str())
-                            {
-                                Some(format!("{}/{}", plugin.local_path, module_path))
-                            } else if let Some(main_path) =
-                                package_json.get("main").and_then(|v| v.as_str())
-                            {
-                                Some(format!("{}/{}", plugin.local_path, main_path))
-                            } else {
-                                // 回退到默认的 index.js
-                                Some(format!("{}/index.js", plugin.local_path))
-                            }
+                            calculate_entry_path(&package_json_path, &package_info)
                         } else {
-                            Some(format!("{}/index.js", plugin.local_path))
+                            None
                         }
                     } else {
-                        Some(format!("{}/index.js", plugin.local_path))
+                        None
                     }
                 } else {
                     None
@@ -902,5 +1036,62 @@ fn copy_dir(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
         }
     }
 
+    Ok(())
+}
+
+/**
+ * 清理指定插件的旧版本
+ * 保留当前要安装的版本，删除其他所有版本
+ */
+fn cleanup_old_plugin_versions(
+    package_name: &str,
+    current_version: &str,
+    cache_dir: &PathBuf,
+) -> Result<(), String> {
+    println!("Cleaning up old versions of plugin: {}", package_name);
+
+    // 读取缓存目录下所有条目
+    let entries = match std::fs::read_dir(cache_dir) {
+        Ok(entries) => entries,
+        Err(_) => {
+            // 缓存目录不存在或无法读取，不是错误
+            return Ok(());
+        }
+    };
+
+    let package_prefix = format!("{}@", package_name);
+    let current_dir_name = format!("{}@{}", package_name, current_version);
+    let mut removed_count = 0;
+
+    for entry in entries {
+        if let Ok(entry) = entry {
+            let entry_name = entry.file_name().to_string_lossy().to_string();
+
+            // 检查是否是同一个插件的不同版本目录
+            if entry_name.starts_with(&package_prefix) && entry_name != current_dir_name {
+                let entry_path = entry.path();
+
+                if entry_path.is_dir() {
+                    println!("Removing old plugin version: {}", entry_name);
+
+                    if let Err(e) = std::fs::remove_dir_all(&entry_path) {
+                        println!(
+                            "Warning: Failed to remove old version {}: {}",
+                            entry_name, e
+                        );
+                        // 继续处理其他版本，不中断整个过程
+                    } else {
+                        removed_count += 1;
+                        println!("Successfully removed old version: {}", entry_name);
+                    }
+                }
+            }
+        }
+    }
+
+    println!(
+        "Cleaned up {} old versions of plugin: {}",
+        removed_count, package_name
+    );
     Ok(())
 }

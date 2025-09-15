@@ -68,8 +68,8 @@ export class PluginManager {
     try {
       console.log('Syncing plugin state...');
 
-      // 获取后端所有插件状态
-      const allPluginsResult = await commands.pluginDiscover();
+      // 获取后端已安装插件状态
+      const allPluginsResult = await commands.pluginDiscover(false); // 只获取已安装插件
       if (allPluginsResult.status === 'error') {
         throw new Error(allPluginsResult.error);
       }
@@ -152,8 +152,8 @@ export class PluginManager {
         throw new Error(activateResult.error);
       }
 
-      // 获取所有插件信息找到激活的插件
-      const pluginsResult = await commands.pluginDiscover();
+      // 获取已安装插件信息找到激活的插件
+      const pluginsResult = await commands.pluginDiscover(false); // 只获取已安装插件
       if (pluginsResult.status === 'error') {
         throw new Error(pluginsResult.error);
       }
@@ -217,7 +217,7 @@ export class PluginManager {
    */
   async getAllPlugins(): Promise<LocalPluginInfo[]> {
     try {
-      const result = await commands.pluginDiscover();
+      const result = await commands.pluginDiscover(false); // 只获取已安装插件
       if (result.status === 'error') {
         throw new Error(result.error);
       }

@@ -4,6 +4,13 @@ import i18n from '../../i18n';
 
 /**
  * 插件框架 - 负责插件的管理和动态加载
+ *
+ * 加载策略:
+ * - HTTP 协议: 通过 Vite 静态服务加载，支持相对导入 (唯一方案)
+ *
+ * 插件存储:
+ * - 开发模式: .plugins/ (项目根目录)
+ * - 生产模式: ~/.dataset-viewer/plugins/
  */
 export class PluginFramework {
   private static instance: PluginFramework;
@@ -23,88 +30,186 @@ export class PluginFramework {
    */
   async loadPlugin(pluginPath: string): Promise<PluginInstance> {
     try {
-      // 动态导入插件包
-      const pluginModule = await import(/* @vite-ignore */ pluginPath);
-      const bundle: PluginBundle = pluginModule.default || pluginModule;
+      console.log('🔌 Loading plugin:', pluginPath);
 
-      // 验证插件包格式
-      if (!this.validatePluginBundle(bundle)) {
-        throw new Error('Invalid plugin bundle format');
+      // 检查是否为 npm link 路径（开发模式）
+      const isNpmLink = pluginPath.includes('node_modules');
+      const isRelativePath =
+        pluginPath.startsWith('./') ||
+        pluginPath.startsWith('.plugins/') ||
+        !pluginPath.startsWith('/');
+
+      if (isNpmLink) {
+        // 开发模式：npm link，直接导入
+        console.log('📦 Loading npm-linked plugin');
+        this.ensureGlobalDependencies();
+        const pluginModule = await import(/* @vite-ignore */ pluginPath);
+        return await this.processPluginModule(pluginModule, pluginPath);
+      } else if (isRelativePath) {
+        // 已安装插件：通过 HTTP 协议加载
+        console.log('🔧 Loading installed plugin via HTTP');
+        return await this.loadInstalledPlugin(pluginPath);
+      } else {
+        // 绝对路径：直接加载
+        const pluginModule = await import(/* @vite-ignore */ pluginPath);
+        return await this.processPluginModule(pluginModule, pluginPath);
       }
-
-      // 防重复加载
-      if (this.plugins.has(bundle.metadata.id)) {
-        console.warn(`Plugin "${bundle.metadata.id}" 已加载，跳过重复加载。`);
-        return this.plugins.get(bundle.metadata.id)!;
-      }
-
-      // 在开发模式下验证插件 ID 与路径的一致性
-      if (import.meta.env.DEV) {
-        this.validatePluginIdConsistency(bundle.metadata.id, pluginPath);
-      }
-
-      // 执行插件初始化
-      if (bundle.initialize) {
-        await bundle.initialize();
-      }
-
-      // 如果插件有翻译资源，合并到主应用的 i18n 系统
-      if (bundle.i18nResources) {
-        for (const [lang, resources] of Object.entries(bundle.i18nResources)) {
-          // 使用插件ID作为命名空间，避免冲突
-          const namespace = `plugin:${bundle.metadata.id}`;
-          i18n.addResourceBundle(lang, namespace, resources.translation, true, true);
-        }
-      }
-
-      // 自动识别官方插件（基于路径中是否包含 @dataset-viewer）
-      const isOfficial = pluginPath.includes('@dataset-viewer/plugin-');
-
-      // 创建插件实例，自动设置 official 字段
-      const enhancedMetadata = {
-        ...bundle.metadata,
-        official: isOfficial,
-      };
-
-      const instance: PluginInstance = {
-        metadata: enhancedMetadata,
-        component: bundle.component,
-        canHandle: (filename: string) => {
-          const ext = filename.split('.').pop()?.toLowerCase();
-          if (!ext) return false;
-
-          // 检查插件支持的扩展名，支持带点和不带点的格式
-          return bundle.metadata.supportedExtensions.some(supportedExt => {
-            const normalizedExt = supportedExt.startsWith('.')
-              ? supportedExt.slice(1)
-              : supportedExt;
-            return normalizedExt.toLowerCase() === ext;
-          });
-        },
-        getFileType: () => bundle.metadata.id, // 使用插件ID作为文件类型标识符
-        getFileIcon: (filename?: string) => {
-          // 如果提供了文件名且存在图标映射，尝试根据扩展名获取特定图标
-          if (filename && bundle.metadata.iconMapping) {
-            const ext = '.' + filename.split('.').pop()?.toLowerCase();
-            const specificIcon = bundle.metadata.iconMapping[ext];
-            if (specificIcon) {
-              return specificIcon;
-            }
-          }
-          // 返回默认图标
-          return bundle.metadata.icon || '';
-        },
-      };
-
-      // 缓存插件
-      this.loadedBundles.set(bundle.metadata.id, bundle);
-      this.plugins.set(bundle.metadata.id, instance);
-
-      return instance;
     } catch (error) {
-      console.error(`Failed to load plugin from ${pluginPath}:`, error);
+      console.error(`❌ Failed to load plugin ${pluginPath}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * 加载已安装的插件 - HTTP协议方案
+   * 利用 Vite 静态文件服务，支持相对导入的天然工作
+   */
+  private async loadInstalledPlugin(pluginPath: string): Promise<PluginInstance> {
+    // 构造 HTTP URL，利用 Vite 静态文件服务
+    const httpUrl = `/${pluginPath}`;
+    console.log('🌐 Loading via HTTP:', httpUrl);
+
+    // 确保全局React依赖可用
+    this.ensureGlobalDependencies();
+
+    const pluginModule = await import(/* @vite-ignore */ httpUrl);
+    return await this.processPluginModule(pluginModule, pluginPath);
+  }
+
+  /**
+   * 确保全局依赖可用
+   * 为插件提供React等外部依赖
+   */
+  private ensureGlobalDependencies(): void {
+    // 确保全局React实例可用
+    if (typeof window !== 'undefined') {
+      // 如果主应用已经暴露React，确保它们可用
+      if (window.React && window.ReactDOM) {
+        // React实例已可用，无需额外处理
+        console.log('✅ Global React dependencies available for plugins');
+      } else {
+        console.warn('⚠️ Global React dependencies not found, plugins may fail to load');
+      }
+
+      // 确保全局对象存在，避免插件访问undefined
+      if (!window.React) {
+        console.error('❌ window.React is not available, plugins requiring React will fail');
+      }
+      if (!window.ReactDOM) {
+        console.error('❌ window.ReactDOM is not available, plugins requiring ReactDOM will fail');
+      }
+    }
+  }
+
+  /**
+   * 从插件路径中提取基础路径
+   */
+  private extractPluginBasePath(pluginPath: string): string {
+    if (typeof window === 'undefined') {
+      return './';
+    }
+
+    const baseUrl = window.location.origin;
+
+    // 如果是相对路径，构造完整的HTTP路径
+    if (
+      pluginPath.startsWith('./') ||
+      pluginPath.startsWith('.plugins/') ||
+      !pluginPath.startsWith('/')
+    ) {
+      // 提取目录路径（去掉文件名）
+      const dirPath = pluginPath.substring(0, pluginPath.lastIndexOf('/') + 1);
+      return `${baseUrl}/${dirPath}`;
+    }
+
+    // 绝对路径或其他情况
+    const dirPath = pluginPath.substring(0, pluginPath.lastIndexOf('/') + 1);
+    return `${baseUrl}${dirPath}`;
+  }
+
+  /**
+   * 处理插件模块（通用逻辑）
+   */
+  private async processPluginModule(
+    pluginModule: any,
+    pluginPath: string
+  ): Promise<PluginInstance> {
+    const bundle: PluginBundle = pluginModule.default || pluginModule;
+
+    // 验证插件包格式
+    if (!this.validatePluginBundle(bundle)) {
+      throw new Error('Invalid plugin bundle format');
+    }
+
+    // 防重复加载
+    if (this.plugins.has(bundle.metadata.id)) {
+      console.warn(`Plugin "${bundle.metadata.id}" 已加载，跳过重复加载。`);
+      return this.plugins.get(bundle.metadata.id)!;
+    }
+
+    // 在开发模式下验证插件 ID 与路径的一致性
+    if (import.meta.env.DEV) {
+      this.validatePluginIdConsistency(bundle.metadata.id, pluginPath);
+    }
+
+    // 执行插件初始化
+    if (bundle.initialize) {
+      // 从插件路径中提取基础路径
+      const basePath = this.extractPluginBasePath(pluginPath);
+      await bundle.initialize({ pluginBasePath: basePath });
+    }
+
+    // 如果插件有翻译资源，合并到主应用的 i18n 系统
+    if (bundle.i18nResources) {
+      for (const [lang, resources] of Object.entries(bundle.i18nResources)) {
+        // 使用插件ID作为命名空间，避免冲突
+        const namespace = `plugin:${bundle.metadata.id}`;
+        i18n.addResourceBundle(lang, namespace, resources.translation, true, true);
+      }
+    }
+
+    // 自动识别官方插件（基于路径中是否包含 @dataset-viewer）
+    const isOfficial = pluginPath.includes('@dataset-viewer/plugin-');
+
+    // 创建插件实例，自动设置 official 字段
+    const enhancedMetadata = {
+      ...bundle.metadata,
+      official: isOfficial,
+    };
+
+    const instance: PluginInstance = {
+      metadata: enhancedMetadata,
+      component: bundle.component,
+      canHandle: (filename: string) => {
+        const ext = filename.split('.').pop()?.toLowerCase();
+        if (!ext) return false;
+
+        // 检查插件支持的扩展名，支持带点和不带点的格式
+        return bundle.metadata.supportedExtensions.some(supportedExt => {
+          const normalizedExt = supportedExt.startsWith('.') ? supportedExt.slice(1) : supportedExt;
+          return normalizedExt.toLowerCase() === ext;
+        });
+      },
+      getFileType: () => bundle.metadata.id, // 使用插件ID作为文件类型标识符
+      getFileIcon: (filename?: string) => {
+        // 如果提供了文件名且存在图标映射，尝试根据扩展名获取特定图标
+        if (filename && bundle.metadata.iconMapping) {
+          const ext = '.' + filename.split('.').pop()?.toLowerCase();
+          const specificIcon = bundle.metadata.iconMapping[ext];
+          if (specificIcon) {
+            return specificIcon;
+          }
+        }
+        // 返回默认图标
+        return bundle.metadata.icon || '';
+      },
+    };
+
+    // 缓存插件
+    this.loadedBundles.set(bundle.metadata.id, bundle);
+    this.plugins.set(bundle.metadata.id, instance);
+
+    return instance;
   }
 
   /**

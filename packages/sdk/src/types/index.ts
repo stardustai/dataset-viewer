@@ -1,12 +1,19 @@
 import type { ComponentType, ReactNode } from 'react';
 
 /**
+ * 插件初始化上下文
+ */
+export interface PluginInitializeContext {
+  pluginBasePath?: string;
+}
+
+/**
  * 插件包接口
  */
 export interface PluginBundle {
   metadata: PluginMetadata;
   component: ComponentType<PluginViewerProps>;
-  initialize?: () => Promise<void>;
+  initialize?: (context?: PluginInitializeContext) => Promise<void>;
   cleanup?: () => Promise<void>;
   // 插件翻译资源
   i18nResources?: {
@@ -100,8 +107,8 @@ export interface PluginViewerProps {
   onError: (error: string) => void;
   onLoadingChange: (loading: boolean) => void;
   // 语言设置
-  language?: string;
-  t?: (key: string, options?: any) => string;
+  language: string;
+  t: (key: string, options?: any) => string;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { PluginBundle, PluginMetadata } from '../types';
+import { PluginBundle, PluginMetadata, PluginInitializeContext } from '../types';
 
 /**
  * 插件构建选项
@@ -9,7 +9,7 @@ export interface CreatePluginOptions {
   /** 插件组件 */
   component: React.ComponentType<any>;
   /** 初始化函数 */
-  initialize?: () => Promise<void>;
+  initialize?: (context?: PluginInitializeContext) => Promise<void>;
   /** 清理函数 */
   cleanup?: () => Promise<void>;
   /** 国际化资源 */

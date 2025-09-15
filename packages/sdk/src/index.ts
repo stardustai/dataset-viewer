@@ -8,6 +8,7 @@ export type {
   PluginInstallInfo,
   PluginSource,
   FileAccessor,
+  PluginInitializeContext,
 } from './types';
 
 // 工具函数导出
