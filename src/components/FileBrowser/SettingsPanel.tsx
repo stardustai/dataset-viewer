@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2 } from 'lucide-react';
+import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
@@ -15,7 +15,7 @@ interface SettingsPanelProps {
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -148,7 +148,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             </div>
             {/* 纯黑色背景开关 */}
             <div className="flex items-center justify-between mt-2">
-              <span className="text-sm text-gray-600 dark:text-gray-300">纯黑色背景</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('pure.black.bg')}</span>
               <button
                 onClick={handlePureBlackBgToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -160,6 +160,33 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     usePureBlackBg ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
+              </button>
+            </div>
+          </div>
+
+          {/* Language Settings */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              {t('settings.language')}
+            </h3>
+            <div className="space-y-3">
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                {t('language.description')}
+              </p>
+              <button
+                onClick={() => {
+                  const newLang = i18n.language === 'zh' ? 'en' : 'zh';
+                  i18n.changeLanguage(newLang);
+                  // 保存语言设置到持久化存储
+                  settingsStorage.updateSetting('language', newLang);
+                }}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="text-sm">
+                  {t('language.switch.to')}
+                  {i18n.language === 'zh' ? t('language.english') : t('language.chinese')}
+                </span>
               </button>
             </div>
           </div>

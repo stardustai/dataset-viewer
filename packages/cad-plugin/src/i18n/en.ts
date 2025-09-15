@@ -1,0 +1,16 @@
+export const en = {
+  'cad.viewer': 'CAD Viewer',
+  'cad.previewing': 'Previewing: {{filename}}',
+  'cad.fileSize': 'File size: {{size}} MB',
+  'cad.largeFile.warning': '⚠️ Large file, may take longer to load',
+  'cad.developing': 'CAD file viewer is under development...',
+  'cad.supportedFormats': 'Supported formats: DWG, DXF',
+  'cad.loading': 'Loading CAD file...',
+  'cad.loadSuccess': 'Successfully loaded: {{filename}}',
+  'cad.loadError': 'Failed to load: {{error}}',
+  'cad.loadFailedTitle': 'CAD File Loading Failed',
+  'cad.initError': 'CAD viewer initialization failed',
+  'cad.unsupportedFile': 'Please select a DWG or DXF file',
+  'cad.canvas.dropFile': 'Drop DWG/DXF files here',
+  'cad.canvas.clickToOpen': 'Click to open file',
+} as const satisfies Readonly<Record<string, string>>;

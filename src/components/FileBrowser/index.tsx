@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Download,
   Loader2,
+  Package,
 } from 'lucide-react';
 import { StorageFile } from '../../types';
 import { commands } from '../../types/tauri-commands';
@@ -21,11 +22,11 @@ import { ListOptions } from '../../services/storage/types';
 import { cleanPath } from '../../utils/pathUtils';
 import type { StorageClient as IStorageClient } from '../../services/storage/types';
 import { navigationHistoryService } from '../../services/navigationHistory';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { VirtualizedFileList } from './VirtualizedFileList';
 import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { PluginManager } from '../PluginManager';
 import {
   LoadingDisplay,
   HiddenFilesDisplay,
@@ -95,10 +96,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const [loadingRequest, setLoadingRequest] = useState<string | null>(null); // 跟踪当前正在加载的路径
   const [isRefreshing, setIsRefreshing] = useState(false); // 专门跟踪刷新按钮状态
   const [failedPath, setFailedPath] = useState<string>(''); // 记录失败的路径
-  const [containerHeight, setContainerHeight] = useState(600); // 容器高度
-  const [tableHeaderHeight, setTableHeaderHeight] = useState(40); // 表头高度
   const [searchTerm, setSearchTerm] = useState(''); // 文件名搜索
   const [showSettings, setShowSettings] = useState(false); // 设置面板显示状态
+  const [showPluginManager, setShowPluginManager] = useState(false); // 插件管理器显示状态
   const [currentView, setCurrentView] = useState<'directory' | 'remote-search'>('directory'); // 当前显示的内容类型
   const [remoteSearchQuery, setRemoteSearchQuery] = useState(''); // 远程搜索查询词
   // OSS 分页状态
@@ -792,43 +792,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     };
   }, [currentPath]);
 
-  // 监听容器大小变化
-  useEffect(() => {
-    const updateContainerHeight = () => {
-      if (containerRef.current && tableHeaderRef.current) {
-        const mainRect = containerRef.current.getBoundingClientRect();
-        const headerRect = tableHeaderRef.current.getBoundingClientRect();
-        setContainerHeight(mainRect.height);
-        setTableHeaderHeight(headerRect.height);
-      } else if (containerRef.current) {
-        // 如果表头还没有渲染，使用默认值
-        const rect = containerRef.current.getBoundingClientRect();
-        setContainerHeight(rect.height);
-      }
-    };
-
-    updateContainerHeight();
-    window.addEventListener('resize', updateContainerHeight);
-
-    return () => {
-      window.removeEventListener('resize', updateContainerHeight);
-    };
-  }, []);
-
-  // 当文件列表变化时重新计算高度（确保表头已渲染）
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (containerRef.current && tableHeaderRef.current) {
-        const mainRect = containerRef.current.getBoundingClientRect();
-        const headerRect = tableHeaderRef.current.getBoundingClientRect();
-        setContainerHeight(mainRect.height);
-        setTableHeaderHeight(headerRect.height);
-      }
-    }, 50); // 给一点时间让DOM更新
-
-    return () => clearTimeout(timer);
-  }, [files.length, loading, error]); // 当这些状态变化时重新计算
-
   const navigateUp = () => {
     if (currentPath === '') return; // Already at root
 
@@ -969,7 +932,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
               {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               <span className="hidden lg:inline">{t('hide.hidden')}</span>
             </button>
-            <LanguageSwitcher />
+            {/* 插件管理按钮 */}
+            <button
+              onClick={() => setShowPluginManager(true)}
+              className="flex items-center space-x-2 p-2 sm:px-3 sm:py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={t('plugin.management')}
+            >
+              <Package className="w-4 h-4" />
+              <span className="hidden lg:inline">{t('plugin.management')}</span>
+            </button>
             {/* 响应式设置按钮 */}
             <button
               onClick={() => setShowSettings(true)}
@@ -1210,12 +1181,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     />
                   )
                 ) : (
-                  <div ref={fileListRef} className="bg-white dark:bg-gray-800 relative">
+                  <div
+                    ref={fileListRef}
+                    className="bg-white dark:bg-gray-800 relative flex-1 overflow-hidden"
+                  >
                     <VirtualizedFileList
                       files={getDisplayFiles()}
                       onFileClick={handleItemClick}
                       onFileOpenAsText={handleOpenAsText}
-                      height={containerHeight - tableHeaderHeight} // 恢复原来的高度
                       onScrollToBottom={handleScrollToBottom}
                     />
                     {/* Loading more indicator - 绝对定位覆盖层 */}
@@ -1239,6 +1212,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       {/* 设置面板 */}
       <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
+
+      {/* 插件管理器 */}
+      {showPluginManager && <PluginManager onClose={() => setShowPluginManager(false)} />}
     </div>
   );
 };

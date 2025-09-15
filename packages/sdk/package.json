@@ -1,0 +1,62 @@
+{
+  "name": "@dataset-viewer/sdk",
+  "version": "0.1.1",
+  "description": "Dataset Viewer Plugin SDK - Types, utilities, and tools for plugin development",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "dataset-viewer",
+    "plugin",
+    "sdk",
+    "typescript",
+    "development-kit"
+  ],
+  "author": "DatasetViewer Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stardustai/dataset-viewer.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/stardustai/dataset-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/stardustai/dataset-viewer/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.5",
+    "@types/react": "^18.2.15",
+    "typescript": "^5.1.6",
+    "vite": "^4.4.0",
+    "vite-plugin-dts": "^3.3.1"
+  },
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "dev": "vite build --watch",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=16",
+    "npm": ">=8"
+  }
+}

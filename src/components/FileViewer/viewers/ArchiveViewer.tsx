@@ -3,6 +3,7 @@ import { Archive, Copy, Folder, Download, Loader2 } from 'lucide-react';
 import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { CompressionService } from '../../../services/compression';
 import { StorageServiceManager } from '../../../services/storage/StorageManager';
+import type { StorageClient } from '../../../services/storage/types';
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
 import {
   getFileType,
@@ -60,8 +61,8 @@ const extractErrorMessage = (
 interface ArchiveViewerProps {
   url: string;
   filename: string;
-  // 新增：可选的存储客户端，用于本地文件处理
-  storageClient?: any;
+  // 存储客户端，包含档案处理方法
+  storageClient?: StorageClient;
 }
 
 // 移除不再需要的LoadMoreProgress接口
@@ -118,7 +119,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       let info: ArchiveInfo;
 
       // 检查是否有存储客户端，如果有则优先使用存储客户端接口
-      if (storageClient && storageClient.analyzeArchive) {
+      if (storageClient?.analyzeArchive) {
         // 使用存储客户端的统一接口
         const maxSize = 1024 * 1024; // 1MB
         info = await storageClient.analyzeArchive(url, filename, maxSize);
@@ -152,7 +153,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       let detailedInfo: ArchiveInfo;
 
-      if (storageClient && storageClient.analyzeArchive) {
+      if (storageClient?.analyzeArchive) {
         // 使用存储客户端的统一接口，不限制大小以获取详细信息
         detailedInfo = await storageClient.analyzeArchive(url, filename);
       } else {
@@ -253,7 +254,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
         const loadSize = fileSize;
         let preview: FilePreview;
 
-        if (storageClient && storageClient.getArchiveFilePreview) {
+        if (storageClient?.getArchiveFilePreview) {
           preview = await storageClient.getArchiveFilePreview(url, filename, entry.path, loadSize);
         } else {
           preview = await CompressionService.extractFilePreview(
@@ -277,7 +278,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       let preview: FilePreview;
 
-      if (storageClient && storageClient.getArchiveFilePreview) {
+      if (storageClient?.getArchiveFilePreview) {
         preview = await storageClient.getArchiveFilePreview(
           url,
           filename,
@@ -357,8 +358,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
         let additionalPreview: FilePreview;
         if (
-          storageClient &&
-          storageClient.getArchiveFilePreview &&
+          storageClient?.getArchiveFilePreview &&
           typeof storageClient.getArchiveFilePreview === 'function'
         ) {
           // 检查storageClient是否支持偏移量参数
@@ -513,7 +513,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       setFileLoadState(prev => ({ ...prev, manualLoading: true }));
       try {
         let fullPreview: FilePreview;
-        if (storageClient && storageClient.getArchiveFilePreview) {
+        if (storageClient?.getArchiveFilePreview) {
           fullPreview = await storageClient.getArchiveFilePreview(
             url,
             filename,
@@ -562,7 +562,7 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       setFileLoadState(prev => ({ ...prev, manualLoading: true }));
       try {
         let fullPreview: FilePreview;
-        if (storageClient && storageClient.getArchiveFilePreview) {
+        if (storageClient?.getArchiveFilePreview) {
           fullPreview = await storageClient.getArchiveFilePreview(
             url,
             filename,

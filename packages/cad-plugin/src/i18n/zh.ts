@@ -1,0 +1,16 @@
+export const zh = {
+  'cad.viewer': 'CAD 查看器',
+  'cad.previewing': '正在预览: {{filename}}',
+  'cad.fileSize': '文件大小: {{size}} MB',
+  'cad.largeFile.warning': '⚠️ 大文件，可能需要更长时间加载',
+  'cad.developing': 'CAD 文件查看功能正在开发中...',
+  'cad.supportedFormats': '支持的格式: DWG, DXF',
+  'cad.loading': '正在加载 CAD 文件...',
+  'cad.loadSuccess': '成功加载: {{filename}}',
+  'cad.loadError': '加载失败: {{error}}',
+  'cad.loadFailedTitle': 'CAD 文件加载失败',
+  'cad.initError': 'CAD 查看器初始化失败',
+  'cad.unsupportedFile': '请选择 DWG 或 DXF 文件',
+  'cad.canvas.dropFile': '拖拽 DWG/DXF 文件到此处',
+  'cad.canvas.clickToOpen': '点击打开文件',
+} as const satisfies Readonly<Record<string, string>>;

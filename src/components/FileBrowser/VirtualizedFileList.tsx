@@ -124,7 +124,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   // 渲染文件图标
   const renderFileIcon = (file: StorageFile) => {
     const fileType = file.type === 'directory' ? 'directory' : getFileType(file.filename);
-    return <FileIcon fileType={fileType} size="md" className="mr-3" />;
+    return <FileIcon fileType={fileType} size="md" className="mr-3" filename={file.filename} />;
   };
 
   // Handle right-click context menu
@@ -192,74 +192,72 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   };
 
   return (
-    <>
+    <div
+      ref={parentRef}
+      style={{ height: height ? `${height}px` : '100%' }}
+      className="h-full overflow-auto"
+      data-virtualized-container="true"
+    >
       <div
-        ref={parentRef}
-        style={{ height: height ? `${height}px` : '100%' }}
-        className="h-full overflow-auto"
-        data-virtualized-container
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
       >
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {virtualizer.getVirtualItems().map(virtualItem => {
-            const file = processedFiles[virtualItem.index];
+        {virtualizer.getVirtualItems().map(virtualItem => {
+          const file = processedFiles[virtualItem.index];
 
-            return (
+          return (
+            <div
+              key={virtualItem.key}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualItem.size}px`,
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+              className="border-b border-gray-200 dark:border-gray-700"
+            >
               <div
-                key={virtualItem.key}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
+                role="button"
+                tabIndex={0}
+                onClick={() => onFileClick(file)}
+                onContextMenu={e => handleContextMenu(e, file)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onFileClick(file);
+                  }
                 }}
-                className="border-b border-gray-200 dark:border-gray-700"
+                className="flex items-center px-4 lg:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
               >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onFileClick(file)}
-                  onContextMenu={e => handleContextMenu(e, file)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onFileClick(file);
-                    }
-                  }}
-                  className="flex items-center px-4 lg:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
-                >
-                  {/* 文件图标和名称 */}
-                  <div className="flex items-center flex-1 min-w-0 pr-2 lg:pr-4">
-                    {renderFileIcon(file)}
-                    <span
-                      className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
-                      title={file.basename}
-                    >
-                      {file.basename}
-                    </span>
-                  </div>
+                {/* 文件图标和名称 */}
+                <div className="flex items-center flex-1 min-w-0 pr-2 lg:pr-4">
+                  {renderFileIcon(file)}
+                  <span
+                    className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
+                    title={file.basename}
+                  >
+                    {file.basename}
+                  </span>
+                </div>
 
-                  {/* 文件大小 */}
-                  <div className="w-16 sm:w-20 lg:w-24 text-sm text-gray-500 dark:text-gray-400 text-right pr-2 lg:pr-4 flex-shrink-0">
-                    {file.type === 'file' ? formatFileSize(file.size) : '—'}
-                  </div>
+                {/* 文件大小 */}
+                <div className="w-16 sm:w-20 lg:w-24 text-sm text-gray-500 dark:text-gray-400 text-right pr-2 lg:pr-4 flex-shrink-0">
+                  {file.type === 'file' ? formatFileSize(file.size) : '—'}
+                </div>
 
-                  {/* 修改时间 */}
-                  <div className="w-24 sm:w-32 lg:w-48 text-sm text-gray-500 dark:text-gray-400 text-right flex-shrink-0">
-                    {formatDate(file.lastmod)}
-                  </div>
+                {/* 修改时间 */}
+                <div className="w-24 sm:w-32 lg:w-48 text-sm text-gray-500 dark:text-gray-400 text-right flex-shrink-0">
+                  {formatDate(file.lastmod)}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Context Menu */}
@@ -271,6 +269,6 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
           onClose={handleCloseContextMenu}
         />
       )}
-    </>
+    </div>
   );
 };

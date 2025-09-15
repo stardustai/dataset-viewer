@@ -5,6 +5,7 @@ import { fileViewer } from './fileViewer';
 import { errors } from './errors';
 import { settings } from './settings';
 import { download } from './download';
+import { pluginManager } from './pluginManager';
 
 export const zh = {
   ...common,
@@ -14,4 +15,5 @@ export const zh = {
   ...errors,
   ...settings,
   ...download,
+  ...pluginManager,
 };

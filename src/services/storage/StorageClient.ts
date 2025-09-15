@@ -13,6 +13,11 @@ import {
 } from './types';
 import { ArchiveInfo, FilePreview } from '../../types';
 
+// 通用连接对象接口 - 不同存储类型有不同的连接对象结构
+interface BaseConnection {
+  [key: string]: any; // 允许任何属性，因为不同存储类型有不同的连接对象
+}
+
 // 导入平台特定的适配器
 import { webdavStorageAdapter } from './adapters/WebDAVAdapter';
 import { localStorageAdapter } from './adapters/LocalAdapter';
@@ -50,20 +55,20 @@ export interface StorageAdapter {
   supportsCustomRootDisplay: boolean;
 
   /** 路径预处理逻辑 */
-  preprocessPath?: (path: string, connection: any, config?: ConnectionConfig) => string;
+  preprocessPath?: (path: string, connection: BaseConnection, config?: ConnectionConfig) => string;
   /** 连接配置预处理 */
-  preprocessConnection?: (config: ConnectionConfig) => any;
+  preprocessConnection?: (config: ConnectionConfig) => BaseConnection;
   /** URL 构建逻辑 */
-  buildProtocolUrl: (path: string, connection: any, config?: ConnectionConfig) => string;
+  buildProtocolUrl: (path: string, connection: BaseConnection, config?: ConnectionConfig) => string;
   /** 连接名称生成逻辑 */
   generateConnectionName: (config: ConnectionConfig) => string;
   /** 根路径显示信息 */
   getRootDisplayInfo?: (
-    connection: any,
+    connection: BaseConnection,
     config?: ConnectionConfig
   ) => { showWelcome?: boolean; customMessage?: string };
   /** 特定的连接后处理 */
-  postConnect?: (connection: any, config: ConnectionConfig) => any;
+  postConnect?: (connection: BaseConnection, config: ConnectionConfig) => BaseConnection;
 
   // === 新增的标准方法（用于重构连接管理逻辑） ===
 
@@ -73,7 +78,7 @@ export interface StorageAdapter {
   /** 构建完整的连接配置（用于替代组件中的配置构建逻辑） */
   buildConnectionConfig?: (
     formData: Record<string, any>,
-    existingConnection?: any
+    existingConnection?: BaseConnection
   ) => ConnectionConfig;
 
   /** 从存储的连接中提取表单数据（用于表单回填） */
@@ -104,7 +109,7 @@ export class StorageClient implements IStorageClient {
 
   private storageType: StorageClientType;
   private adapter: StorageAdapter;
-  private connection: any = null;
+  private connection: BaseConnection | null = null;
   private connectionConfig: ConnectionConfig | null = null;
 
   constructor(storageType: StorageClientType) {
@@ -143,10 +148,16 @@ export class StorageClient implements IStorageClient {
   }
 
   toProtocolUrl(path: string): string {
+    if (!this.connection) {
+      throw new Error('Not connected');
+    }
     return this.adapter.buildProtocolUrl(path, this.connection, this.connectionConfig || undefined);
   }
 
   getRootDisplayInfo(): { showWelcome?: boolean; customMessage?: string } {
+    if (!this.connection) {
+      return { showWelcome: false };
+    }
     if (this.adapter.getRootDisplayInfo) {
       return this.adapter.getRootDisplayInfo(this.connection, this.connectionConfig || undefined);
     }
@@ -210,7 +221,7 @@ export class StorageClient implements IStorageClient {
     try {
       // 使用适配器的路径预处理逻辑
       let actualPath = path;
-      if (this.adapter.preprocessPath) {
+      if (this.adapter.preprocessPath && this.connection) {
         actualPath = this.adapter.preprocessPath(
           path,
           this.connection,
@@ -455,7 +466,7 @@ export class StorageClient implements IStorageClient {
    * @param path 路径字符串
    * @returns 解析后的路径信息
    */
-  protected parsePath(path: string): any {
+  protected parsePath(path: string): { normalizedPath: string } {
     return { normalizedPath: this.normalizePath(path) };
   }
 
@@ -472,7 +483,7 @@ export class StorageClient implements IStorageClient {
     region?: string | null;
     bucket?: string | null;
     endpoint?: string | null;
-    extraOptions?: any;
+    extraOptions?: Record<string, any> | null;
   }): Promise<boolean> {
     try {
       // 构建符合 Tauri 后端 ConnectionConfig 的对象
@@ -566,7 +577,7 @@ export class StorageClient implements IStorageClient {
   /**
    * 构建后端连接配置
    */
-  private buildBackendConfig(config: any): TauriConnectionConfig {
+  private buildBackendConfig(config: BaseConnection): TauriConnectionConfig {
     return {
       protocol: this.protocol,
       url: config.url || null,

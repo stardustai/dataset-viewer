@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
+import type { StorageClient } from '../../services/storage/types';
 import { LazyComponentWrapper } from './common';
+import { pluginManager } from '../../services/plugin/pluginManager';
+import { PluginViewer } from './PluginViewer';
 import {
   VirtualizedTextViewer,
   WordViewer,
@@ -27,7 +30,7 @@ interface FileViewerContentProps {
   file: StorageFile;
   filePath: string;
   fileType: string;
-  storageClient?: any;
+  storageClient?: StorageClient;
   hasAssociatedFiles?: boolean;
   content: string;
   searchTerm: string;
@@ -35,7 +38,6 @@ interface FileViewerContentProps {
   searchResults: SearchResult[];
   fullFileSearchResults: FullFileSearchResult[];
   fullFileSearchMode: boolean;
-  containerHeight: number;
   calculateStartLineNumber?: (filePosition: number) => number;
   fileInfo: {
     fileType: string;
@@ -88,7 +90,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       searchResults,
       fullFileSearchResults,
       fullFileSearchMode,
-      containerHeight,
       calculateStartLineNumber,
       fileInfo,
       isLargeFile,
@@ -134,6 +135,24 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
       );
     }
 
+    // 检查是否有插件可以处理此文件（但不在强制文本模式下）
+    if (
+      !forceTextMode &&
+      !openAsText &&
+      storageClient &&
+      pluginManager.findViewerForFile(file.basename)
+    ) {
+      return (
+        <PluginViewer
+          file={file}
+          filePath={filePath}
+          content={content}
+          storageClient={storageClient}
+          isLargeFile={isLargeFile}
+        />
+      );
+    }
+
     // 如果强制文本模式或用户选择以文本格式打开，或者是文本/Markdown文件
     if (forceTextMode || openAsText || fileInfo.isText || fileInfo.isMarkdown) {
       return (
@@ -161,7 +180,6 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
               searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
               fileName={file.basename}
               isMarkdown={fileInfo.isMarkdown && !openAsText}
-              height={containerHeight}
               isMarkdownPreviewOpen={isMarkdownPreviewOpen}
               setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
             />

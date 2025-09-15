@@ -31,7 +31,6 @@ interface VirtualizedTextViewerProps {
   onScrollToBottom?: () => void;
   onScrollToTop?: (userScrollDirection?: 'up' | 'down') => Promise<number | void>; // 新增：向前加载回调，包含滚动方向
   className?: string;
-  height?: number;
   startLineNumber?: number;
   currentSearchIndex?: number;
   searchResults?: Array<{ line: number; column: number; text: string; match: string }>;

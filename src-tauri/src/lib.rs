@@ -121,6 +121,17 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         // 压缩包处理命令（统一接口）
         archive_get_file_info,
         archive_get_file_content,
+        // 插件发现命令
+        plugin_discover,
+        plugin_read_file,
+        // 插件管理命令
+        plugin_install,
+        plugin_uninstall,
+        plugin_toggle,
+        plugin_get_active,
+        // 插件版本管理命令
+        plugin_check_updates,
+        plugin_update,
         // 窗口主题设置命令
         system_set_theme
     ])

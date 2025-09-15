@@ -20,9 +20,7 @@ export const LanguageSwitcher: React.FC = () => {
       title={t('language')}
     >
       <Globe className="w-4 h-4" />
-      <span className="hidden lg:inline">
-        {i18n.language === 'zh' ? t('language.english') : t('language.chinese')}
-      </span>
+      <span className="hidden lg:inline">{i18n.language === 'zh' ? 'English' : '中文'}</span>
     </button>
   );
 };

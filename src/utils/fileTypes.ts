@@ -1,3 +1,5 @@
+import { pluginManager } from '../services/plugin/pluginManager';
+
 export type FileType =
   | 'text'
   | 'markdown'
@@ -142,7 +144,19 @@ const FILE_EXTENSIONS: Record<string, { type: FileType; mime: string }> = {
   br: { type: 'archive', mime: 'application/x-brotli' },
 };
 
-export const getFileType = (filename: string): FileType => {
+export const getFileType = (filename: string): FileType | string => {
+  // 首先检查插件是否支持此文件类型
+  try {
+    const plugin = pluginManager.findViewerForFile(filename);
+    if (plugin) {
+      const pluginFileType = plugin.getFileType();
+      return pluginFileType;
+    }
+  } catch (error) {
+    // 如果插件系统不可用，继续使用默认逻辑
+    console.log(`⚠️ Plugin system error for ${filename}:`, error);
+  }
+
   const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
 
   const fileInfo = FILE_EXTENSIONS[ext];

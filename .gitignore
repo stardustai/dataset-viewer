@@ -35,3 +35,6 @@ dist-ssr
 
 # Package lock files (keep pnpm-lock.yaml if using pnpm)
 package-lock.json
+
+# Development plugins directory
+.plugins
