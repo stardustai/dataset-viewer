@@ -21,6 +21,9 @@ export const pluginManager = {
   'plugin.action.disable': '禁用',
   'plugin.action.refresh': '刷新',
   'plugin.action.toggle': '切换状态',
+  'plugin.action.update': '更新',
+  'plugin.action.check_update': '检查更新',
+  'plugin.action.check_all_updates': '检查所有更新',
 
   // 插件来源
   'plugin.source.dev': '开发版',
@@ -33,15 +36,27 @@ export const pluginManager = {
   'plugin.info.supports': '支持: {{extensions}}',
   'plugin.info.path': '路径: {{path}}',
 
+  // 版本更新
+  'plugin.update.available': '有可用更新',
+  'plugin.update.current': '当前版本: {{version}}',
+  'plugin.update.latest': '最新版本: {{version}}',
+  'plugin.update.checking': '检查更新中...',
+  'plugin.update.updating': '更新中...',
+  'plugin.update.success': '更新成功',
+  'plugin.update.failed': '更新失败',
+  'plugin.update.up_to_date': '已是最新版本',
+
   // 状态消息
   'plugin.loading': '加载中...',
   'plugin.empty.installed': '还没有安装任何插件',
   'plugin.empty.available': '暂无可用插件',
   'plugin.empty.search': '没有找到匹配的插件',
+  'plugin.installing': '安装中...',
 
   // 底部提示
   'plugin.security.notice': '插件从npm registry或本地路径安装，请确保来源可信',
   'plugin.naming.convention': '命名规范:',
+  'plugin.updates.available': '有可用更新',
 
   // 描述
   'plugin.description': '安装和管理文件查看器插件，扩展更多文件格式支持',

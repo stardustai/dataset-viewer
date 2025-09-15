@@ -21,10 +21,54 @@ pub struct PluginUninstallResult {
     pub message: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Type)]
+pub struct PluginVersionInfo {
+    pub current: String,
+    pub latest: String,
+    pub has_update: bool,
+    pub changelog_url: Option<String>,
+    pub publish_date: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Type)]
+pub struct PluginUpdateResult {
+    pub success: bool,
+    pub plugin_id: String,
+    pub old_version: String,
+    pub new_version: String,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Type, Default)]
+pub struct PluginInstallOptions {
+    pub version: Option<String>,
+    pub force_reinstall: bool,
+    pub verify_integrity: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Type)]
+pub enum PluginInstallSource {
+    Registry { package_name: String },
+    Local { path: String },
+    Url { url: String },
+}
+
+#[derive(Debug, Serialize, Deserialize, Type)]
+pub struct PluginInstallRequest {
+    pub source: PluginInstallSource,
+    pub options: Option<PluginInstallOptions>,
+}
+
 #[derive(Debug, Deserialize)]
 struct NpmPackageInfo {
     #[allow(dead_code)]
     name: String,
+    version: String,
+    dist: NpmDist,
+}
+
+#[derive(Debug, Deserialize)]
+struct NpmVersionDetail {
     version: String,
     dist: NpmDist,
 }
@@ -36,43 +80,132 @@ struct NpmDist {
 
 /**
  * 统一的插件安装接口
- * 自动判断使用 npm link、本地缓存还是 npm registry
- * 新安装的插件默认为禁用状态
+ * 支持从 npm registry、本地路径、URL 等多种来源安装插件
+ * 前端无需感知安装细节，后端自动路由到相应的处理逻辑
  */
 #[command]
 #[specta::specta]
-pub async fn install_plugin(package_name: String) -> Result<PluginInstallResult, String> {
-    println!("Installing plugin: {}", package_name);
+pub async fn plugin_install(request: PluginInstallRequest) -> Result<PluginInstallResult, String> {
+    println!("Installing plugin with request: {:?}", request);
 
-    let _plugin_id = if package_name.starts_with("@dataset-viewer/plugin-") {
-        package_name
-            .strip_prefix("@dataset-viewer/plugin-")
-            .unwrap_or(&package_name)
-            .to_string()
-    } else if package_name.starts_with("dataset-viewer-plugin") {
-        package_name
-            .strip_prefix("dataset-viewer-plugin-")
-            .unwrap_or(&package_name)
-            .to_string()
-    } else {
-        package_name.clone()
-    };
+    match request.source {
+        PluginInstallSource::Registry { package_name } => {
+            install_from_registry(package_name, request.options.unwrap_or_default()).await
+        }
+        PluginInstallSource::Local { path } => install_from_local(path).await,
+        PluginInstallSource::Url { url } => install_from_url(url).await,
+    }
+}
+
+/**
+ * 从 npm registry 安装插件的内部实现
+ */
+async fn install_from_registry(
+    package_name: String,
+    options: PluginInstallOptions,
+) -> Result<PluginInstallResult, String> {
+    println!(
+        "Installing plugin from registry: {}, {:?}",
+        package_name, options
+    );
+
+    // 如果指定了版本，直接从 npm registry 下载
+    if let Some(version) = &options.version {
+        return download_and_install_plugin_version(&package_name, version, &options).await;
+    }
 
     // 1. 优先检查 npm link（开发环境）
-    if let Ok(result) = try_npm_link_plugin(&package_name).await {
-        println!("Found npm linked plugin: {}", package_name);
-        return Ok(result);
+    if !options.force_reinstall {
+        if let Ok(result) = try_npm_link_plugin(&package_name).await {
+            println!("Found npm linked plugin: {}", package_name);
+            return Ok(result);
+        }
     }
 
-    // 2. 检查本地缓存
-    if let Ok(result) = try_local_cache_plugin(&package_name).await {
-        println!("Found cached plugin: {}", package_name);
-        return Ok(result);
+    // 2. 检查本地缓存（如果不强制重装）
+    if !options.force_reinstall {
+        if let Ok(result) = try_local_cache_plugin(&package_name).await {
+            println!("Found cached plugin: {}", package_name);
+            return Ok(result);
+        }
     }
 
-    // 3. 从 npm registry 下载
+    // 3. 从 npm registry 下载最新版本
     println!("Downloading plugin from npm registry: {}", package_name);
     download_and_install_plugin(&package_name).await
+}
+
+/**
+ * 从本地路径安装插件的内部实现
+ */
+async fn install_from_local(plugin_path: String) -> Result<PluginInstallResult, String> {
+    use std::fs;
+    use std::path::Path;
+
+    println!("Installing plugin from local path: {}", plugin_path);
+
+    let path = Path::new(&plugin_path);
+    if !path.exists() {
+        return Err("Plugin path does not exist".to_string());
+    }
+
+    if !path.is_dir() {
+        return Err("Plugin path must be a directory".to_string());
+    }
+
+    // 检查 plugin.json 文件
+    let plugin_json_path = path.join("plugin.json");
+    if !plugin_json_path.exists() {
+        return Err("plugin.json not found in the specified directory".to_string());
+    }
+
+    // 解析插件元数据
+    let plugin_json_content = fs::read_to_string(&plugin_json_path)
+        .map_err(|e| format!("Failed to read plugin.json: {}", e))?;
+
+    let plugin_metadata: serde_json::Value = serde_json::from_str(&plugin_json_content)
+        .map_err(|e| format!("Invalid plugin.json format: {}", e))?;
+
+    let plugin_id = plugin_metadata["id"]
+        .as_str()
+        .ok_or("Missing plugin id in plugin.json")?
+        .to_string();
+
+    // 获取缓存目录
+    let cache_dir =
+        get_plugin_cache_dir().map_err(|e| format!("Failed to get cache directory: {}", e))?;
+
+    let plugin_cache_dir = cache_dir.join(&plugin_id);
+
+    // 复制插件文件到缓存目录
+    if plugin_cache_dir.exists() {
+        fs::remove_dir_all(&plugin_cache_dir)
+            .map_err(|e| format!("Failed to remove existing plugin cache: {}", e))?;
+    }
+
+    copy_dir(&path.to_path_buf(), &plugin_cache_dir)
+        .map_err(|e| format!("Failed to copy plugin files: {}", e))?;
+
+    // 转换为 PluginInstallResult
+    Ok(PluginInstallResult {
+        success: true,
+        plugin_id,
+        version: plugin_metadata["version"]
+            .as_str()
+            .unwrap_or("unknown")
+            .to_string(),
+        install_path: plugin_cache_dir.to_string_lossy().to_string(),
+        source: "local".to_string(),
+    })
+}
+
+/**
+ * 从 URL 安装插件的内部实现
+ */
+async fn install_from_url(plugin_url: String) -> Result<PluginInstallResult, String> {
+    // TODO: 实现从URL下载和安装插件的逻辑
+    println!("Installing plugin from URL: {}", plugin_url);
+    Err("install_plugin_from_url not implemented yet".to_string())
 }
 
 /**
@@ -141,6 +274,154 @@ async fn try_local_cache_plugin(package_name: &str) -> Result<PluginInstallResul
 }
 
 /**
+ * 从 npm registry 下载并安装指定版本的插件
+ */
+async fn download_and_install_plugin_version(
+    package_name: &str,
+    version: &str,
+    _options: &PluginInstallOptions,
+) -> Result<PluginInstallResult, String> {
+    // 1. 获取特定版本的包信息
+    let registry_url = format!("https://registry.npmjs.org/{}/{}", package_name, version);
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(&registry_url)
+        .header("User-Agent", "dataset-viewer")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch package version info: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Version {} of package {} not found in npm registry",
+            version, package_name
+        ));
+    }
+
+    let package_info: NpmVersionDetail = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse package version info: {}", e))?;
+
+    // 2. 下载 tarball
+    let tarball_response = client
+        .get(&package_info.dist.tarball)
+        .header("User-Agent", "dataset-viewer")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download tarball: {}", e))?;
+
+    let tarball_bytes = tarball_response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read tarball: {}", e))?;
+
+    // 3. 解压并安装
+    let install_path =
+        extract_and_install_plugin(&package_name, &package_info.version, &tarball_bytes).await?;
+
+    let plugin_id = package_name
+        .strip_prefix("@dataset-viewer/plugin-")
+        .unwrap_or(package_name);
+
+    Ok(PluginInstallResult {
+        success: true,
+        plugin_id: plugin_id.to_string(),
+        version: package_info.version,
+        install_path,
+        source: "npm-registry".to_string(),
+    })
+}
+
+/**
+ * 检查插件是否有可用更新
+ */
+#[command]
+#[specta::specta]
+pub async fn plugin_check_updates(plugin_id: String) -> Result<PluginVersionInfo, String> {
+    println!("Checking updates for plugin: {}", plugin_id);
+
+    // 获取当前安装的版本
+    let all_plugins = crate::commands::plugin_discovery::plugin_discover().await?;
+    let current_plugin = all_plugins
+        .iter()
+        .find(|p| p.id == plugin_id && p.local)
+        .ok_or_else(|| format!("Plugin {} not found or not installed", plugin_id))?;
+
+    let current_version = &current_plugin.version;
+    let package_name = format!("@dataset-viewer/plugin-{}", plugin_id);
+
+    // 从 npm registry 获取最新版本信息
+    let latest_version = get_latest_plugin_version(&package_name).await?;
+
+    // 比较版本号
+    let has_update = compare_versions(current_version, &latest_version)?;
+
+    Ok(PluginVersionInfo {
+        current: current_version.clone(),
+        latest: latest_version,
+        has_update,
+        changelog_url: Some(format!(
+            "https://www.npmjs.com/package/{}/v/{}",
+            package_name, current_version
+        )),
+        publish_date: None, // 可以从 npm API 获取
+    })
+}
+
+/**
+ * 更新插件到最新版本
+ */
+#[command]
+#[specta::specta]
+pub async fn plugin_update(plugin_id: String) -> Result<PluginUpdateResult, String> {
+    println!("Updating plugin: {}", plugin_id);
+
+    // 获取当前版本信息
+    let version_info = plugin_check_updates(plugin_id.clone()).await?;
+
+    if !version_info.has_update {
+        return Ok(PluginUpdateResult {
+            success: true,
+            plugin_id,
+            old_version: version_info.current.clone(),
+            new_version: version_info.current,
+            message: "Plugin is already up to date".to_string(),
+        });
+    }
+
+    let package_name = format!("@dataset-viewer/plugin-{}", plugin_id);
+
+    // 先停用插件
+    let _ = plugin_toggle(plugin_id.clone(), false).await;
+
+    // 安装新版本
+    let install_options = PluginInstallOptions {
+        version: Some(version_info.latest.clone()),
+        force_reinstall: true,
+        verify_integrity: false,
+    };
+
+    let install_request = PluginInstallRequest {
+        source: PluginInstallSource::Registry {
+            package_name: package_name.clone(),
+        },
+        options: Some(install_options),
+    };
+
+    match plugin_install(install_request).await {
+        Ok(_) => Ok(PluginUpdateResult {
+            success: true,
+            plugin_id,
+            old_version: version_info.current,
+            new_version: version_info.latest,
+            message: "Plugin updated successfully".to_string(),
+        }),
+        Err(e) => Err(format!("Failed to update plugin: {}", e)),
+    }
+}
+/**
  * 从 npm registry 下载并安装插件
  */
 async fn download_and_install_plugin(package_name: &str) -> Result<PluginInstallResult, String> {
@@ -195,6 +476,62 @@ async fn download_and_install_plugin(package_name: &str) -> Result<PluginInstall
         install_path,
         source: "npm-registry".to_string(),
     })
+}
+
+/**
+ * 获取插件的最新版本号
+ */
+async fn get_latest_plugin_version(package_name: &str) -> Result<String, String> {
+    let registry_url = format!("https://registry.npmjs.org/{}", package_name);
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(&registry_url)
+        .header("User-Agent", "dataset-viewer")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch package info: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Package {} not found", package_name));
+    }
+
+    let package_info: NpmPackageInfo = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse package info: {}", e))?;
+
+    Ok(package_info.version)
+}
+
+/**
+ * 比较两个版本号，返回是否有更新可用
+ * 使用简单的语义版本比较
+ */
+fn compare_versions(current: &str, latest: &str) -> Result<bool, String> {
+    if current == latest {
+        return Ok(false);
+    }
+
+    // 简单的版本比较实现
+    // 实际项目中可以使用 semver crate 进行更精确的比较
+    let current_parts: Vec<u32> = current.split('.').map(|s| s.parse().unwrap_or(0)).collect();
+    let latest_parts: Vec<u32> = latest.split('.').map(|s| s.parse().unwrap_or(0)).collect();
+
+    let max_len = std::cmp::max(current_parts.len(), latest_parts.len());
+
+    for i in 0..max_len {
+        let current_part = current_parts.get(i).unwrap_or(&0);
+        let latest_part = latest_parts.get(i).unwrap_or(&0);
+
+        if latest_part > current_part {
+            return Ok(true); // 有更新
+        } else if latest_part < current_part {
+            return Ok(false); // 当前版本更新
+        }
+    }
+
+    Ok(false) // 版本相同
 }
 
 /**
@@ -320,11 +657,11 @@ fn is_development_mode() -> bool {
  */
 #[command]
 #[specta::specta]
-pub async fn uninstall_plugin(plugin_id: String) -> Result<PluginUninstallResult, String> {
+pub async fn plugin_uninstall(plugin_id: String) -> Result<PluginUninstallResult, String> {
     println!("Uninstalling plugin: {}", plugin_id);
 
     // 首先获取插件信息以确定来源
-    let all_plugins = crate::commands::plugin_discovery::discover_plugins().await?;
+    let all_plugins = crate::commands::plugin_discovery::plugin_discover().await?;
     let plugin_info = all_plugins.iter().find(|p| p.id == plugin_id);
 
     match plugin_info {
@@ -332,7 +669,7 @@ pub async fn uninstall_plugin(plugin_id: String) -> Result<PluginUninstallResult
             match plugin.source.as_str() {
                 "npm-link" => {
                     // npm link 插件只禁用，不删除
-                    match toggle_plugin(plugin_id.clone(), false).await {
+                    match plugin_toggle(plugin_id.clone(), false).await {
                         Ok(_) => Ok(PluginUninstallResult {
                             success: true,
                             plugin_id,
@@ -350,7 +687,7 @@ pub async fn uninstall_plugin(plugin_id: String) -> Result<PluginUninstallResult
                     let plugin_dir = cache_dir.join(&package_name);
 
                     // 先禁用插件
-                    let _ = toggle_plugin(plugin_id.clone(), false).await;
+                    let _ = plugin_toggle(plugin_id.clone(), false).await;
 
                     // 删除插件文件
                     if plugin_dir.exists() {
@@ -376,7 +713,7 @@ pub async fn uninstall_plugin(plugin_id: String) -> Result<PluginUninstallResult
                 }
                 _ => {
                     // 未知来源，只禁用
-                    match toggle_plugin(plugin_id.clone(), false).await {
+                    match plugin_toggle(plugin_id.clone(), false).await {
                         Ok(_) => Ok(PluginUninstallResult {
                             success: true,
                             plugin_id,
@@ -397,7 +734,7 @@ pub async fn uninstall_plugin(plugin_id: String) -> Result<PluginUninstallResult
  */
 #[command]
 #[specta::specta]
-pub async fn toggle_plugin(plugin_id: String, enabled: bool) -> Result<bool, String> {
+pub async fn plugin_toggle(plugin_id: String, enabled: bool) -> Result<bool, String> {
     println!("Toggling plugin {}: enabled = {}", plugin_id, enabled);
 
     let cache_dir =
@@ -445,14 +782,14 @@ pub async fn toggle_plugin(plugin_id: String, enabled: bool) -> Result<bool, Str
  */
 #[command]
 #[specta::specta]
-pub async fn get_active_plugins(
+pub async fn plugin_get_active(
 ) -> Result<Vec<crate::commands::plugin_discovery::PluginInfo>, String> {
     use crate::commands::plugin_discovery::{
-        discover_plugins, PluginInfo, PluginMetadata, PluginSource,
+        plugin_discover, PluginInfo, PluginMetadata, PluginSource,
     };
     use std::collections::HashMap;
 
-    let all_plugins = discover_plugins().await?;
+    let all_plugins = plugin_discover().await?;
 
     // 过滤出已安装且激活的插件，并转换为 PluginInfo 类型
     let active_plugins: Vec<PluginInfo> = all_plugins
@@ -522,152 +859,6 @@ pub async fn get_active_plugins(
         .collect();
 
     Ok(active_plugins)
-}
-
-/**
- * 激活插件 (别名为 toggle_plugin(plugin_id, true))
- */
-#[command]
-#[specta::specta]
-pub async fn activate_plugin(plugin_id: String) -> Result<bool, String> {
-    toggle_plugin(plugin_id, true).await
-}
-
-/**
- * 停用插件 (别名为 toggle_plugin(plugin_id, false))
- */
-#[command]
-#[specta::specta]
-pub async fn deactivate_plugin(plugin_id: String) -> Result<bool, String> {
-    toggle_plugin(plugin_id, false).await
-}
-
-/**
- * 从本地路径安装插件
- */
-#[command]
-#[specta::specta]
-pub async fn install_plugin_from_local(
-    plugin_path: String,
-) -> Result<crate::commands::plugin_discovery::PluginInfo, String> {
-    use crate::commands::plugin_discovery::{
-        discover_plugins, PluginInfo, PluginMetadata, PluginSource,
-    };
-    use std::collections::HashMap;
-
-    // 验证插件路径
-    let path = PathBuf::from(&plugin_path);
-    if !path.exists() {
-        return Err("Plugin path does not exist".to_string());
-    }
-
-    let plugin_json = path.join("plugin.json");
-    if !plugin_json.exists() {
-        return Err("plugin.json not found in the specified path".to_string());
-    }
-
-    // 读取和验证 plugin.json
-    let plugin_content = fs::read_to_string(&plugin_json)
-        .map_err(|e| format!("Failed to read plugin.json: {}", e))?;
-
-    let plugin_metadata: serde_json::Value = serde_json::from_str(&plugin_content)
-        .map_err(|e| format!("Invalid plugin.json format: {}", e))?;
-
-    let plugin_id = plugin_metadata["id"]
-        .as_str()
-        .ok_or("Missing plugin id in plugin.json")?
-        .to_string();
-
-    // 获取缓存目录
-    let cache_dir =
-        get_plugin_cache_dir().map_err(|e| format!("Failed to get cache directory: {}", e))?;
-
-    let plugin_cache_dir = cache_dir.join(&plugin_id);
-
-    // 复制插件文件到缓存目录
-    if plugin_cache_dir.exists() {
-        fs::remove_dir_all(&plugin_cache_dir)
-            .map_err(|e| format!("Failed to remove existing plugin cache: {}", e))?;
-    }
-
-    copy_dir(&path, &plugin_cache_dir)
-        .map_err(|e| format!("Failed to copy plugin files: {}", e))?;
-
-    println!(
-        "Plugin {} installed from local path: {}",
-        plugin_id, plugin_path
-    );
-
-    // 返回插件信息 - 转换为 PluginInfo 类型
-    let all_plugins = discover_plugins().await?;
-
-    if let Some(local_plugin) = all_plugins.into_iter().find(|p| p.id == plugin_id) {
-        let version = local_plugin.version.clone(); // 先克隆版本
-        Ok(PluginInfo {
-            metadata: PluginMetadata {
-                id: local_plugin.id.clone(),
-                name: local_plugin.name,
-                version: version.clone(),
-                description: local_plugin.description,
-                author: local_plugin.author,
-                supported_extensions: local_plugin.supported_extensions,
-                mime_types: HashMap::new(),
-                icon: None,
-                official: local_plugin.official,
-                category: "viewer".to_string(),
-                min_app_version: "1.0.0".to_string(),
-            },
-            source: PluginSource {
-                source_type: "local".to_string(),
-                path: Some(local_plugin.local_path.clone()),
-                package_name: Some(format!("@dataset-viewer/plugin-{}", local_plugin.id)),
-                version: Some(version),
-                url: None,
-            },
-            installed: local_plugin.local,
-            active: local_plugin.enabled,
-            entry_path: {
-                // 从 package.json 读取正确的入口文件
-                let package_json_path = format!("{}/package.json", local_plugin.local_path);
-                if let Ok(package_content) = std::fs::read_to_string(&package_json_path) {
-                    if let Ok(package_json) =
-                        serde_json::from_str::<serde_json::Value>(&package_content)
-                    {
-                        // 优先使用 module 字段（ES模块），然后是 main 字段
-                        if let Some(module_path) =
-                            package_json.get("module").and_then(|v| v.as_str())
-                        {
-                            Some(format!("{}/{}", local_plugin.local_path, module_path))
-                        } else if let Some(main_path) =
-                            package_json.get("main").and_then(|v| v.as_str())
-                        {
-                            Some(format!("{}/{}", local_plugin.local_path, main_path))
-                        } else {
-                            Some(format!("{}/index.js", local_plugin.local_path))
-                        }
-                    } else {
-                        Some(format!("{}/index.js", local_plugin.local_path))
-                    }
-                } else {
-                    Some(format!("{}/index.js", local_plugin.local_path))
-                }
-            },
-        })
-    } else {
-        Err(format!("Failed to find installed plugin: {}", plugin_id))
-    }
-}
-
-/**
- * 从 URL 安装插件
- */
-#[command]
-#[specta::specta]
-pub async fn install_plugin_from_url(
-    _plugin_url: String,
-) -> Result<crate::commands::plugin_discovery::PluginInfo, String> {
-    // TODO: 实现从URL下载和安装插件的逻辑
-    Err("install_plugin_from_url not implemented yet".to_string())
 }
 
 /// 递归复制目录的辅助函数

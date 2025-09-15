@@ -17,7 +17,7 @@ CAD文件查看插件，为Dataset Viewer应用提供CAD文件格式支持。
 
 ## 安装
 
-在Dataset Viewer的插件管理器中搜索 `@datasetviewer/cad-plugin` 或直接输入包名安装。
+在Dataset Viewer的插件管理器中搜索 `@dataset-viewer/cad-plugin` 或直接输入包名安装。
 
 ## 技术实现
 

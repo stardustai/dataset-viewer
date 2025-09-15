@@ -4,6 +4,75 @@ use std::fs;
 use std::path::Path;
 use tauri::command;
 
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmSearchResult {
+    objects: Vec<NpmSearchObject>,
+    total: u32,
+    time: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmSearchObject {
+    package: NpmPackageInfo,
+    score: NpmScore,
+    #[serde(rename = "searchScore")]
+    search_score: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmScore {
+    final_score: f64,
+    detail: NpmScoreDetail,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmScoreDetail {
+    quality: f64,
+    popularity: f64,
+    maintenance: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmPackageInfo {
+    name: String,
+    scope: Option<String>,
+    version: String,
+    description: Option<String>,
+    keywords: Option<Vec<String>>,
+    date: String,
+    links: Option<NpmLinks>,
+    author: Option<NpmAuthor>,
+    publisher: Option<NpmPublisher>,
+    maintainers: Option<Vec<NpmMaintainer>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmLinks {
+    npm: Option<String>,
+    homepage: Option<String>,
+    repository: Option<String>,
+    bugs: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmAuthor {
+    name: String,
+    email: Option<String>,
+    username: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmPublisher {
+    username: String,
+    email: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NpmMaintainer {
+    username: String,
+    email: Option<String>,
+}
+
 /**
  * 检查插件是否被显式启用
  * 只有在 enabled_plugins.json 文件中的插件才被认为是启用的
@@ -121,7 +190,7 @@ pub struct LocalPluginInfo {
  */
 #[command]
 #[specta::specta]
-pub async fn discover_plugins() -> Result<Vec<LocalPluginInfo>, String> {
+pub async fn plugin_discover() -> Result<Vec<LocalPluginInfo>, String> {
     println!("Starting plugin discovery...");
     let mut all_plugins = Vec::new();
 
@@ -154,10 +223,17 @@ pub async fn discover_plugins() -> Result<Vec<LocalPluginInfo>, String> {
 
     // 注意：不再扫描本地目录，插件应该通过 npm link 方式发现
 
-    // 2. 在生产模式下，可以在这里添加npm仓库搜索逻辑
-    if !is_development_mode() {
-        println!("Production mode: would search npm registry here");
-        // TODO: 添加npm仓库搜索功能
+    // 2. 搜索npm仓库中的官方插件
+    println!("Searching npm registry for official plugins...");
+    match search_npm_registry().await {
+        Ok(mut npm_plugins) => {
+            println!("Found {} plugins from npm registry", npm_plugins.len());
+            all_plugins.append(&mut npm_plugins);
+        }
+        Err(e) => {
+            println!("Failed to search npm registry: {}", e);
+            // 继续执行，不因为npm搜索失败而停止
+        }
     }
 
     println!(
@@ -165,114 +241,6 @@ pub async fn discover_plugins() -> Result<Vec<LocalPluginInfo>, String> {
         all_plugins.len()
     );
     Ok(all_plugins)
-}
-
-/**
- * 检查插件是否有效
- */
-#[command]
-#[specta::specta]
-pub async fn validate_plugin_path(path: String) -> Result<Option<LocalPluginInfo>, String> {
-    let plugin_path = Path::new(&path);
-    let package_json_path = plugin_path.join("package.json");
-
-    if !package_json_path.exists() {
-        return Ok(None);
-    }
-
-    match parse_plugin_package_for_validation(&package_json_path) {
-        Ok(plugin_info) => Ok(Some(plugin_info)),
-        Err(_) => Ok(None), // 不是有效的插件，但不返回错误
-    }
-}
-
-/**
- * 简化的插件package.json解析（仅用于验证）
- */
-fn parse_plugin_package_for_validation(
-    package_json_path: &Path,
-) -> Result<LocalPluginInfo, String> {
-    let content = std::fs::read_to_string(package_json_path)
-        .map_err(|e| format!("Failed to read package.json: {}", e))?;
-
-    let package_info: PluginPackageInfo = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse package.json: {}", e))?;
-
-    // 检查包名是否符合插件命名规范
-    if !package_info.name.starts_with("@dataset-viewer/plugin-") {
-        return Err("Package name does not match plugin naming convention".to_string());
-    }
-
-    // 检查是否包含插件相关关键字
-    let keywords = package_info.keywords.clone().unwrap_or_default();
-    let is_plugin = keywords.iter().any(|k| {
-        let kw = k.to_lowercase();
-        kw.contains("dataset-viewer") || kw.contains("plugin")
-    });
-
-    if !is_plugin {
-        return Err("Package does not appear to be a dataset-viewer plugin".to_string());
-    }
-
-    // 提取插件ID（移除前缀）
-    let plugin_id = package_info.name.replace("@dataset-viewer/plugin-", "");
-
-    // 简化的扩展名提取
-    let supported_extensions = keywords
-        .iter()
-        .filter(|k| k.len() >= 2 && k.len() <= 5 && k.chars().all(|c| c.is_ascii_alphanumeric()))
-        .cloned()
-        .collect();
-
-    // 检查是否是官方插件
-    let is_official = package_info
-        .author
-        .as_ref()
-        .map(|a| {
-            let author_lower = a.to_lowercase();
-            author_lower.contains("dataset-viewer")
-                || author_lower.contains("datasetviewer")
-                || author_lower.contains("dataset-viewer-team")
-        })
-        .unwrap_or(false);
-
-    // 先计算入口路径，避免后面借用冲突
-    let entry_path = calculate_entry_path(&package_json_path, &package_info);
-
-    Ok(LocalPluginInfo {
-        id: plugin_id.clone(),
-        name: plugin_id
-            .split('-')
-            .map(|word| {
-                let mut chars = word.chars();
-                match chars.next() {
-                    None => String::new(),
-                    Some(first) => {
-                        first.to_uppercase().collect::<String>() + &chars.collect::<String>()
-                    }
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
-            + " Viewer",
-        version: package_info.version,
-        description: package_info
-            .description
-            .unwrap_or_else(|| "Local plugin".to_string()),
-        author: package_info.author.unwrap_or_else(|| "Unknown".to_string()),
-        supported_extensions,
-        official: is_official,
-        keywords,
-        local: true,
-        local_path: package_json_path
-            .parent()
-            .unwrap_or_else(|| Path::new(""))
-            .to_string_lossy()
-            .to_string(),
-        enabled: is_plugin_enabled(&plugin_id), // 检查插件是否被启用
-        entry_path,
-        source: "local-validation".to_string(), // 验证路径的插件
-    })
 }
 
 /**
@@ -497,6 +465,126 @@ fn parse_npm_linked_plugin(
 }
 
 /**
+ * 搜索 npm 仓库中的官方插件
+ * 只搜索 @dataset-viewer/plugin-* 格式的包
+ */
+async fn search_npm_registry() -> Result<Vec<LocalPluginInfo>, String> {
+    println!("Searching npm registry for official dataset-viewer plugins...");
+
+    // 使用 npm search API 搜索官方插件
+    let search_url = "https://registry.npmjs.org/-/v1/search";
+    let query = "scope:dataset-viewer plugin";
+    let size = 50; // 最多返回50个结果
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(search_url)
+        .query(&[("text", query), ("size", &size.to_string())])
+        .header("User-Agent", "dataset-viewer/1.0.0")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to search npm registry: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "npm search API returned status: {}",
+            response.status()
+        ));
+    }
+
+    let search_result: NpmSearchResult = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse npm search response: {}", e))?;
+
+    println!(
+        "npm search returned {} results",
+        search_result.objects.len()
+    );
+
+    let mut plugins = Vec::new();
+
+    for search_object in search_result.objects {
+        let package = search_object.package;
+
+        // 只处理官方插件包 (@dataset-viewer/plugin-*)
+        if !package.name.starts_with("@dataset-viewer/plugin-") {
+            continue;
+        }
+
+        let plugin_id = package.name.replace("@dataset-viewer/plugin-", "");
+
+        // 检查关键字中是否包含插件相关信息
+        let keywords = package.keywords.clone().unwrap_or_default();
+        let is_plugin = keywords.iter().any(|k| {
+            let kw = k.to_lowercase();
+            kw.contains("dataset-viewer") || kw.contains("plugin")
+        });
+
+        if !is_plugin {
+            println!("Skipping {} - doesn't appear to be a plugin", package.name);
+            continue;
+        }
+
+        // 提取支持的文件扩展名
+        let supported_extensions = keywords
+            .iter()
+            .filter(|k| {
+                k.len() >= 2 && k.len() <= 5 && k.chars().all(|c| c.is_ascii_alphanumeric())
+            })
+            .cloned()
+            .collect();
+
+        let plugin_info = LocalPluginInfo {
+            id: plugin_id.clone(),
+            name: plugin_id
+                .split('-')
+                .map(|word| {
+                    let mut chars = word.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => {
+                            first.to_uppercase().collect::<String>() + &chars.collect::<String>()
+                        }
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
+                + " Viewer",
+            version: package.version,
+            description: package
+                .description
+                .unwrap_or_else(|| "Official plugin".to_string()),
+            author: package
+                .author
+                .map(|a| a.name)
+                .or_else(|| package.publisher.map(|p| p.username))
+                .unwrap_or_else(|| "Dataset Viewer Team".to_string()),
+            supported_extensions,
+            official: true, // npm 仓库中的都是官方插件
+            keywords,
+            local: false, // npm 仓库中的插件未安装
+            local_path: String::new(),
+            enabled: false, // 未安装的插件默认禁用
+            entry_path: None,
+            source: "npm-registry".to_string(),
+        };
+
+        println!(
+            "Found npm plugin: {} v{}",
+            plugin_info.name, plugin_info.version
+        );
+        plugins.push(plugin_info);
+    }
+
+    println!(
+        "Successfully parsed {} official plugins from npm",
+        plugins.len()
+    );
+    Ok(plugins)
+}
+
+/**
  * 检查是否为开发模式
  */
 fn is_development_mode() -> bool {
@@ -523,7 +611,9 @@ fn extract_pnpm_link_info(line: &str) -> Option<(String, String)> {
             .to_string();
         println!("Extracted package name: '{}'", package_name);
 
-        if package_name.starts_with("@dataset-viewer/plugin-") {
+        if package_name.starts_with("@dataset-viewer/plugin-")
+            || package_name.starts_with("dataset-viewer-plugin")
+        {
             // 将相对路径转换为绝对路径
             let link_path = resolve_relative_path(after_link);
             println!("Resolved path: '{}' -> '{}'", after_link, link_path);

@@ -122,17 +122,15 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         archive_get_file_info,
         archive_get_file_content,
         // 插件发现命令
-        discover_plugins,
-        validate_plugin_path,
+        plugin_discover,
         // 插件管理命令
-        install_plugin,
-        uninstall_plugin,
-        toggle_plugin,
-        get_active_plugins,
-        activate_plugin,
-        deactivate_plugin,
-        install_plugin_from_local,
-        install_plugin_from_url,
+        plugin_install,
+        plugin_uninstall,
+        plugin_toggle,
+        plugin_get_active,
+        // 插件版本管理命令
+        plugin_check_updates,
+        plugin_update,
         // 窗口主题设置命令
         system_set_theme
     ])

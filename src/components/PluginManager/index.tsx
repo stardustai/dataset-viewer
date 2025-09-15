@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Package, Download, AlertCircle, Loader, RefreshCw, X } from 'lucide-react';
+import {
+  Package,
+  Download,
+  AlertCircle,
+  Loader,
+  RefreshCw,
+  X,
+  ArrowUp,
+  MoreVertical,
+  Trash2,
+} from 'lucide-react';
 import { commands } from '../../types/tauri-commands';
-import type { LocalPluginInfo } from '../../types/tauri-commands';
+import type {
+  LocalPluginInfo,
+  PluginVersionInfo,
+  PluginInstallOptions,
+} from '../../types/tauri-commands';
 import { pluginManager } from '../../services/plugin/pluginManager';
 import { showToast, showErrorToast } from '../../utils/clipboard';
 
@@ -10,12 +24,20 @@ interface PluginManagerProps {
   onClose: () => void;
 }
 
+interface ExtendedPluginInfo extends LocalPluginInfo {
+  updateInfo?: PluginVersionInfo;
+  isUpdating?: boolean;
+  isInstalling?: boolean;
+}
+
 interface PluginCardProps {
-  plugin: LocalPluginInfo;
+  plugin: ExtendedPluginInfo;
   isInstalled: boolean;
   onToggle: (pluginId: string, enabled: boolean) => void;
-  onInstall: (packageName: string) => void;
+  onInstall: (packageName: string, options?: PluginInstallOptions) => void;
+  onUpdate: (pluginId: string) => void;
   onUninstall: (pluginId: string) => void;
+  onCheckUpdate: (pluginId: string) => void;
 }
 
 const PluginCard: React.FC<PluginCardProps> = ({
@@ -23,13 +45,19 @@ const PluginCard: React.FC<PluginCardProps> = ({
   isInstalled,
   onToggle,
   onInstall,
+  onUpdate,
   onUninstall,
+  onCheckUpdate,
 }) => {
   const { t } = useTranslation();
   const pluginId = plugin.id;
+  const [showDropdown, setShowDropdown] = useState(false);
 
   // 根据插件来源决定是否显示删除按钮
   const canDelete = plugin.source === 'npm-registry' || plugin.source === 'local-cache';
+  const hasUpdate = plugin.updateInfo?.has_update || false;
+  const isUpdating = plugin.isUpdating || false;
+  const isInstalling = plugin.isInstalling || false;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
@@ -52,19 +80,37 @@ const PluginCard: React.FC<PluginCardProps> = ({
                   title={plugin.enabled ? '已启用' : '已禁用'}
                 />
               )}
-              <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300 flex-shrink-0">
-                v{plugin.version}
-              </span>
+
+              {/* 版本信息 */}
+              <div className="flex items-center space-x-1">
+                <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300 flex-shrink-0">
+                  v{plugin.version}
+                </span>
+
+                {/* 更新提示 */}
+                {hasUpdate && (
+                  <div className="flex items-center space-x-1">
+                    <ArrowUp className="w-3 h-3 text-blue-500" />
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
+                      v{plugin.updateInfo?.latest}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 标签 */}
               {plugin.official && (
                 <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-1.5 py-0.5 rounded flex-shrink-0">
                   {t('plugin.status.official')}
                 </span>
               )}
+
               {plugin.local && (
                 <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded flex-shrink-0">
                   {t('plugin.status.installed')}
                 </span>
               )}
+
               {/* 插件来源标识 */}
               {plugin.source === 'npm-link' && (
                 <span className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 px-1.5 py-0.5 rounded flex-shrink-0">
@@ -85,38 +131,99 @@ const PluginCard: React.FC<PluginCardProps> = ({
         <div className="flex items-center space-x-2 flex-shrink-0 ml-3">
           {isInstalled ? (
             <>
+              {/* 更新按钮 */}
+              {hasUpdate && !isUpdating && (
+                <button
+                  onClick={() => onUpdate(pluginId)}
+                  className="px-3 py-1.5 bg-blue-500 text-white hover:bg-blue-600 rounded text-sm font-medium transition-colors flex items-center space-x-1"
+                  title={t('plugin.action.update')}
+                >
+                  <ArrowUp className="w-3 h-3" />
+                  <span>更新</span>
+                </button>
+              )}
+
+              {/* 更新中状态 */}
+              {isUpdating && (
+                <div className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded text-sm font-medium flex items-center space-x-1">
+                  <Loader className="w-3 h-3 animate-spin" />
+                  <span>更新中</span>
+                </div>
+              )}
+
+              {/* 启用/禁用按钮 */}
               <button
                 onClick={() => onToggle(pluginId, !plugin.enabled)}
+                disabled={isUpdating}
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                   plugin.enabled
                     ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-200'
                     : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200'
-                }`}
+                } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {plugin.enabled ? t('plugin.action.disable') : t('plugin.action.enable')}
               </button>
-              {/* 只有 npm-registry 和 local-cache 插件显示删除按钮 */}
-              {canDelete && (
+
+              {/* 更多操作菜单 */}
+              <div className="relative">
                 <button
-                  onClick={() => onUninstall(pluginId)}
-                  className="px-3 py-1.5 bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 rounded text-sm font-medium transition-colors"
-                  title={t('plugin.action.uninstall')}
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
-                  {t('plugin.action.delete')}
+                  <MoreVertical className="w-4 h-4" />
                 </button>
-              )}
+
+                {showDropdown && (
+                  <div className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 min-w-32">
+                    <button
+                      onClick={() => {
+                        onCheckUpdate(pluginId);
+                        setShowDropdown(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>检查更新</span>
+                    </button>
+
+                    {canDelete && (
+                      <button
+                        onClick={() => {
+                          onUninstall(pluginId);
+                          setShowDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>卸载</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <button
               onClick={() => {
-                // 使用统一的包名格式
                 const packageName = `@dataset-viewer/plugin-${plugin.id}`;
                 onInstall(packageName);
               }}
-              className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center space-x-1 text-sm"
+              disabled={isInstalling}
+              className={`px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center space-x-1 text-sm ${
+                isInstalling ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              <Download className="w-4 h-4" />
-              <span>{t('plugin.action.install')}</span>
+              {isInstalling ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  <span>安装中</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>{t('plugin.action.install')}</span>
+                </>
+              )}
             </button>
           )}
         </div>
@@ -128,7 +235,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
 export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'installed' | 'available'>('installed');
-  const [allPlugins, setAllPlugins] = useState<LocalPluginInfo[]>([]);
+  const [allPlugins, setAllPlugins] = useState<ExtendedPluginInfo[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 加载插件数据
@@ -140,15 +247,23 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     setLoading(true);
     try {
       console.log('正在加载插件数据...');
-      const result = await commands.discoverPlugins();
+      const result = await commands.pluginDiscover();
 
       if (result.status === 'error') {
         console.error('Failed to discover plugins:', result.error);
         return;
       }
 
-      console.log('发现的所有插件:', result.data);
-      setAllPlugins(result.data);
+      // 转换为扩展的插件信息
+      const extendedPlugins: ExtendedPluginInfo[] = result.data.map(plugin => ({
+        ...plugin,
+        updateInfo: undefined,
+        isUpdating: false,
+        isInstalling: false,
+      }));
+
+      console.log('发现的所有插件:', extendedPlugins);
+      setAllPlugins(extendedPlugins);
     } catch (error) {
       console.error('Failed to load plugin data:', error);
     } finally {
@@ -174,28 +289,95 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     }
   };
 
+  // 检查单个插件更新
+  const handleCheckUpdate = async (pluginId: string) => {
+    try {
+      const result = await commands.pluginCheckUpdates(pluginId);
+      if (result.status === 'ok') {
+        setAllPlugins(prev =>
+          prev.map(plugin =>
+            plugin.id === pluginId ? { ...plugin, updateInfo: result.data } : plugin
+          )
+        );
+
+        if (result.data.has_update) {
+          showToast(`${pluginId} 有可用更新: v${result.data.latest}`, 'success');
+        } else {
+          showToast(`${pluginId} 已是最新版本`, 'info');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check update:', error);
+      showErrorToast(`检查更新失败: ${error}`);
+    }
+  };
+
+  // 更新插件
+  const handleUpdatePlugin = async (pluginId: string) => {
+    try {
+      // 设置更新状态
+      setAllPlugins(prev =>
+        prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isUpdating: true } : plugin))
+      );
+
+      const result = await commands.pluginUpdate(pluginId);
+
+      if (result.status === 'ok' && result.data.success) {
+        showToast(
+          `插件 ${pluginId} 更新成功: v${result.data.old_version} → v${result.data.new_version}`,
+          'success'
+        );
+        await refreshPluginData();
+      } else {
+        throw new Error(result.status === 'error' ? result.error : 'Update failed');
+      }
+    } catch (error) {
+      console.error('Failed to update plugin:', error);
+      showErrorToast(`更新插件失败: ${error}`);
+    } finally {
+      // 清除更新状态
+      setAllPlugins(prev =>
+        prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isUpdating: false } : plugin))
+      );
+    }
+  };
+
   // 刷新插件数据（包含状态同步）
   const handleRefresh = async () => {
     await refreshPluginData();
   };
 
   // 获取已安装的插件
-  const getInstalledPlugins = (): LocalPluginInfo[] => {
+  const getInstalledPlugins = (): ExtendedPluginInfo[] => {
     return allPlugins.filter(plugin => plugin.local);
   };
 
   // 获取可用的插件（未安装的插件）
-  const getAvailablePlugins = (): LocalPluginInfo[] => {
+  const getAvailablePlugins = (): ExtendedPluginInfo[] => {
     return allPlugins.filter(plugin => !plugin.local);
   };
 
   // 安装/激活插件（统一接口）
-  const handleInstallPlugin = async (packageName: string) => {
+  const handleInstallPlugin = async (packageName: string, options?: PluginInstallOptions) => {
+    const pluginId = packageName.replace('@dataset-viewer/plugin-', '');
+
     try {
-      console.log('Installing plugin:', packageName);
+      // 设置安装状态
+      setAllPlugins(prev =>
+        prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isInstalling: true } : plugin))
+      );
+
+      console.log('Installing plugin:', packageName, options);
+
+      // 构建统一的安装请求
+      const installRequest = {
+        source: { Registry: { package_name: packageName } },
+        options: options || null,
+      };
 
       // 调用统一的后端安装接口
-      const result = await commands.installPlugin(packageName);
+      const result = await commands.pluginInstall(installRequest);
+
       console.log('Plugin installation result:', result);
 
       if (result.status === 'ok' && result.data.success) {
@@ -214,6 +396,11 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       console.error('Failed to install plugin:', error);
       showErrorToast(`安装插件失败: ${error}`);
       throw error;
+    } finally {
+      // 清除安装状态
+      setAllPlugins(prev =>
+        prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isInstalling: false } : plugin))
+      );
     }
   };
 
@@ -245,7 +432,7 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     try {
       console.log('Uninstalling plugin:', pluginId);
 
-      const result = await commands.uninstallPlugin(pluginId);
+      const result = await commands.pluginUninstall(pluginId);
       console.log('Plugin uninstall result:', result);
 
       if (result.status === 'ok' && result.data.success) {
@@ -264,9 +451,14 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     }
   };
 
+  // 统计信息
+  const installedPlugins = getInstalledPlugins();
+  const availablePlugins = getAvailablePlugins();
+  const hasUpdates = installedPlugins.some(plugin => plugin.updateInfo?.has_update);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
         {/* 头部 */}
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
@@ -278,12 +470,14 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
               <p className="text-sm text-gray-500 dark:text-gray-400">{t('plugin.description')}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center">
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* 标签页 */}
@@ -291,13 +485,16 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           <div className="flex">
             <button
               onClick={() => setActiveTab('installed')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors relative ${
                 activeTab === 'installed'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              {t('plugin.manager.installed')} ({getInstalledPlugins().length})
+              {t('plugin.manager.installed')} ({installedPlugins.length})
+              {hasUpdates && (
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+              )}
             </button>
             <button
               onClick={() => {
@@ -311,16 +508,17 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              {t('plugin.manager.available')}
+              {t('plugin.manager.available')} ({availablePlugins.length})
             </button>
           </div>
 
           <button
             onClick={handleRefresh}
-            className="mr-6 p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+            disabled={loading}
+            className="mr-6 p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
             title={t('plugin.action.refresh')}
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
@@ -333,40 +531,44 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
             </div>
           ) : activeTab === 'installed' ? (
             <div className="space-y-3">
-              {getInstalledPlugins().length === 0 ? (
-                <div className="text-center py-12">
-                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">{t('plugin.empty.installed')}</p>
+              {installedPlugins.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>{t('plugin.empty.installed')}</p>
                 </div>
               ) : (
-                getInstalledPlugins().map(plugin => (
+                installedPlugins.map(plugin => (
                   <PluginCard
                     key={`${plugin.id}-${plugin.local}-${plugin.enabled}`}
                     plugin={plugin}
                     isInstalled={true}
                     onToggle={handleTogglePlugin}
                     onInstall={handleInstallPlugin}
+                    onUpdate={handleUpdatePlugin}
                     onUninstall={handleUninstallPlugin}
+                    onCheckUpdate={handleCheckUpdate}
                   />
                 ))
               )}
             </div>
           ) : (
             <div className="space-y-3">
-              {getAvailablePlugins().length === 0 ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400">{t('plugin.empty.available')}</p>
+              {availablePlugins.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>{t('plugin.empty.available')}</p>
                 </div>
               ) : (
-                getAvailablePlugins().map(plugin => (
+                availablePlugins.map(plugin => (
                   <PluginCard
                     key={`${plugin.id}-${plugin.local}-${plugin.enabled}`}
                     plugin={plugin}
-                    isInstalled={getInstalledPlugins().some(p => p.id === plugin.id)}
+                    isInstalled={installedPlugins.some(p => p.id === plugin.id)}
                     onToggle={handleTogglePlugin}
                     onInstall={handleInstallPlugin}
+                    onUpdate={handleUpdatePlugin}
                     onUninstall={handleUninstallPlugin}
+                    onCheckUpdate={handleCheckUpdate}
                   />
                 ))
               )}
@@ -377,9 +579,17 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         {/* 底部提示 */}
         <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800 rounded-b-lg border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4" />
-              <span>{t('plugin.security.notice')}</span>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>{t('plugin.security.notice')}</span>
+              </div>
+              {hasUpdates && (
+                <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400">
+                  <ArrowUp className="w-4 h-4" />
+                  <span>有可用更新</span>
+                </div>
+              )}
             </div>
             <div className="text-xs">
               {t('plugin.naming.convention')}{' '}
