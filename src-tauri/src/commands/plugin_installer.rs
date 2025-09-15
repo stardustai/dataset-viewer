@@ -1,5 +1,7 @@
+use hex;
 use reqwest;
 use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 use specta::Type;
 use std::fs;
 use std::path::PathBuf;
@@ -25,7 +27,6 @@ pub struct PluginUninstallResult {
 pub struct PluginVersionInfo {
     pub current: String,
     pub latest: String,
-    pub has_update: bool,
     pub changelog_url: Option<String>,
     pub publish_date: Option<String>,
 }
@@ -43,7 +44,6 @@ pub struct PluginUpdateResult {
 pub struct PluginInstallOptions {
     pub version: Option<String>,
     pub force_reinstall: bool,
-    pub verify_integrity: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Type)]
@@ -63,8 +63,14 @@ pub struct PluginInstallRequest {
 struct NpmPackageInfo {
     #[allow(dead_code)]
     name: String,
-    version: String,
-    dist: NpmDist,
+    #[serde(rename = "dist-tags")]
+    dist_tags: NpmDistTags,
+    versions: std::collections::HashMap<String, NpmVersionDetail>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NpmDistTags {
+    latest: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,6 +82,26 @@ struct NpmVersionDetail {
 #[derive(Debug, Deserialize)]
 struct NpmDist {
     tarball: String,
+    shasum: Option<String>,
+}
+
+/**
+ * 验证 tarball 的完整性
+ */
+fn verify_tarball_integrity(data: &[u8], expected_shasum: &str) -> Result<(), String> {
+    let mut hasher = Sha1::new();
+    hasher.update(data);
+    let result = hasher.finalize();
+    let actual_shasum = hex::encode(result);
+
+    if actual_shasum == expected_shasum {
+        Ok(())
+    } else {
+        Err(format!(
+            "Tarball integrity verification failed. Expected: {}, Actual: {}",
+            expected_shasum, actual_shasum
+        ))
+    }
 }
 
 /**
@@ -132,7 +158,7 @@ async fn install_from_registry(
 
     // 3. 从 npm registry 下载最新版本
     println!("Downloading plugin from npm registry: {}", package_name);
-    download_and_install_plugin(&package_name).await
+    download_and_install_plugin(&package_name, &options).await
 }
 
 /**
@@ -317,6 +343,16 @@ async fn download_and_install_plugin_version(
         .await
         .map_err(|e| format!("Failed to read tarball: {}", e))?;
 
+    // 2.5. 验证完整性（默认启用）
+    if let Some(expected_shasum) = &package_info.dist.shasum {
+        println!("Verifying tarball integrity for version {}...", version);
+        verify_tarball_integrity(&tarball_bytes, expected_shasum)
+            .map_err(|e| format!("Integrity verification failed: {}", e))?;
+        println!("Tarball integrity verified successfully");
+    } else {
+        println!("Warning: No shasum available from npm registry for integrity verification");
+    }
+
     // 3. 解压并安装
     let install_path =
         extract_and_install_plugin(&package_name, &package_info.version, &tarball_bytes).await?;
@@ -355,13 +391,9 @@ pub async fn plugin_check_updates(plugin_id: String) -> Result<PluginVersionInfo
     // 从 npm registry 获取最新版本信息
     let latest_version = get_latest_plugin_version(&package_name).await?;
 
-    // 比较版本号
-    let has_update = compare_versions(current_version, &latest_version)?;
-
     Ok(PluginVersionInfo {
         current: current_version.clone(),
         latest: latest_version,
-        has_update,
         changelog_url: Some(format!(
             "https://www.npmjs.com/package/{}/v/{}",
             package_name, current_version
@@ -381,7 +413,8 @@ pub async fn plugin_update(plugin_id: String) -> Result<PluginUpdateResult, Stri
     // 获取当前版本信息
     let version_info = plugin_check_updates(plugin_id.clone()).await?;
 
-    if !version_info.has_update {
+    // 直接更新到最新版本（版本比较由前端处理）
+    if version_info.current == version_info.latest {
         return Ok(PluginUpdateResult {
             success: true,
             plugin_id,
@@ -400,7 +433,6 @@ pub async fn plugin_update(plugin_id: String) -> Result<PluginUpdateResult, Stri
     let install_options = PluginInstallOptions {
         version: Some(version_info.latest.clone()),
         force_reinstall: true,
-        verify_integrity: false,
     };
 
     let install_request = PluginInstallRequest {
@@ -424,7 +456,10 @@ pub async fn plugin_update(plugin_id: String) -> Result<PluginUpdateResult, Stri
 /**
  * 从 npm registry 下载并安装插件
  */
-async fn download_and_install_plugin(package_name: &str) -> Result<PluginInstallResult, String> {
+async fn download_and_install_plugin(
+    package_name: &str,
+    _options: &PluginInstallOptions,
+) -> Result<PluginInstallResult, String> {
     // 1. 获取包信息
     let registry_url = format!("https://registry.npmjs.org/{}", package_name);
     let client = reqwest::Client::new();
@@ -448,9 +483,18 @@ async fn download_and_install_plugin(package_name: &str) -> Result<PluginInstall
         .await
         .map_err(|e| format!("Failed to parse package info: {}", e))?;
 
+    // 获取最新版本的信息
+    let latest_version = &package_info.dist_tags.latest;
+    let version_info = package_info.versions.get(latest_version).ok_or_else(|| {
+        format!(
+            "Latest version {} not found in package info",
+            latest_version
+        )
+    })?;
+
     // 2. 下载 tarball
     let tarball_response = client
-        .get(&package_info.dist.tarball)
+        .get(&version_info.dist.tarball)
         .header("User-Agent", "dataset-viewer")
         .send()
         .await
@@ -461,9 +505,19 @@ async fn download_and_install_plugin(package_name: &str) -> Result<PluginInstall
         .await
         .map_err(|e| format!("Failed to read tarball: {}", e))?;
 
+    // 2.5. 验证完整性（默认启用）
+    if let Some(expected_shasum) = &version_info.dist.shasum {
+        println!("Verifying tarball integrity...");
+        verify_tarball_integrity(&tarball_bytes, expected_shasum)
+            .map_err(|e| format!("Integrity verification failed: {}", e))?;
+        println!("Tarball integrity verified successfully");
+    } else {
+        println!("Warning: No shasum available from npm registry for integrity verification");
+    }
+
     // 3. 解压并安装
     let install_path =
-        extract_and_install_plugin(&package_name, &package_info.version, &tarball_bytes).await?;
+        extract_and_install_plugin(&package_name, latest_version, &tarball_bytes).await?;
 
     let plugin_id = package_name
         .strip_prefix("@dataset-viewer/plugin-")
@@ -472,7 +526,7 @@ async fn download_and_install_plugin(package_name: &str) -> Result<PluginInstall
     Ok(PluginInstallResult {
         success: true,
         plugin_id: plugin_id.to_string(),
-        version: package_info.version,
+        version: latest_version.to_string(),
         install_path,
         source: "npm-registry".to_string(),
     })
@@ -501,37 +555,7 @@ async fn get_latest_plugin_version(package_name: &str) -> Result<String, String>
         .await
         .map_err(|e| format!("Failed to parse package info: {}", e))?;
 
-    Ok(package_info.version)
-}
-
-/**
- * 比较两个版本号，返回是否有更新可用
- * 使用简单的语义版本比较
- */
-fn compare_versions(current: &str, latest: &str) -> Result<bool, String> {
-    if current == latest {
-        return Ok(false);
-    }
-
-    // 简单的版本比较实现
-    // 实际项目中可以使用 semver crate 进行更精确的比较
-    let current_parts: Vec<u32> = current.split('.').map(|s| s.parse().unwrap_or(0)).collect();
-    let latest_parts: Vec<u32> = latest.split('.').map(|s| s.parse().unwrap_or(0)).collect();
-
-    let max_len = std::cmp::max(current_parts.len(), latest_parts.len());
-
-    for i in 0..max_len {
-        let current_part = current_parts.get(i).unwrap_or(&0);
-        let latest_part = latest_parts.get(i).unwrap_or(&0);
-
-        if latest_part > current_part {
-            return Ok(true); // 有更新
-        } else if latest_part < current_part {
-            return Ok(false); // 当前版本更新
-        }
-    }
-
-    Ok(false) // 版本相同
+    Ok(package_info.dist_tags.latest)
 }
 
 /**

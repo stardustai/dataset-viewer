@@ -11,6 +11,7 @@ import {
   MoreVertical,
   Trash2,
 } from 'lucide-react';
+import * as semver from 'semver';
 import { commands } from '../../types/tauri-commands';
 import type {
   LocalPluginInfo,
@@ -55,7 +56,9 @@ const PluginCard: React.FC<PluginCardProps> = ({
 
   // 根据插件来源决定是否显示删除按钮
   const canDelete = plugin.source === 'npm-registry' || plugin.source === 'local-cache';
-  const hasUpdate = plugin.updateInfo?.has_update || false;
+  const hasUpdate = plugin.updateInfo
+    ? semver.gt(plugin.updateInfo.latest, plugin.updateInfo.current)
+    : false;
   const isUpdating = plugin.isUpdating || false;
   const isInstalling = plugin.isInstalling || false;
 
@@ -300,7 +303,7 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           )
         );
 
-        if (result.data.has_update) {
+        if (semver.gt(result.data.latest, result.data.current)) {
           showToast(`${pluginId} 有可用更新: v${result.data.latest}`, 'success');
         } else {
           showToast(`${pluginId} 已是最新版本`, 'info');
@@ -454,7 +457,9 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   // 统计信息
   const installedPlugins = getInstalledPlugins();
   const availablePlugins = getAvailablePlugins();
-  const hasUpdates = installedPlugins.some(plugin => plugin.updateInfo?.has_update);
+  const hasUpdates = installedPlugins.some(plugin =>
+    plugin.updateInfo ? semver.gt(plugin.updateInfo.latest, plugin.updateInfo.current) : false
+  );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">

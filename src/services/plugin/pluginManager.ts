@@ -1,5 +1,9 @@
 import { ReactNode } from 'react';
-import { commands, type LocalPluginInfo } from '../../types/tauri-commands';
+import {
+  commands,
+  type LocalPluginInfo,
+  type PluginInstallRequest,
+} from '../../types/tauri-commands';
 import { PluginFramework } from './pluginFramework';
 import { PluginInstance } from '@dataset-viewer/sdk';
 
@@ -70,7 +74,7 @@ export class PluginManager {
         throw new Error(allPluginsResult.error);
       }
       const allPlugins = allPluginsResult.data;
-      const activePlugins = allPlugins.filter((p: any) => p.enabled);
+      const activePlugins = allPlugins.filter((p: LocalPluginInfo) => p.enabled);
 
       // 获取当前前端已加载的插件
       const loadedPlugins = this.framework.getAllPlugins();
@@ -78,7 +82,9 @@ export class PluginManager {
 
       // 卸载不应该激活的插件
       for (const plugin of loadedPlugins) {
-        const shouldBeActive = activePlugins.some((p: any) => p.id === plugin.metadata.id);
+        const shouldBeActive = activePlugins.some(
+          (p: LocalPluginInfo) => p.id === plugin.metadata.id
+        );
         if (!shouldBeActive) {
           await this.framework.unloadPlugin(plugin.metadata.id);
           console.log(`Plugin unloaded during sync: ${plugin.metadata.name}`);
@@ -109,7 +115,7 @@ export class PluginManager {
    */
   async installPlugin(source: 'local' | 'url', path: string): Promise<void> {
     try {
-      let request: any;
+      let request: PluginInstallRequest;
 
       if (source === 'local') {
         request = {

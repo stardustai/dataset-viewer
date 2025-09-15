@@ -1,3 +1,4 @@
+use crate::commands::plugin_installer::get_plugin_cache_dir;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
@@ -221,9 +222,23 @@ pub async fn plugin_discover() -> Result<Vec<LocalPluginInfo>, String> {
         }
     }
 
-    // 注意：不再扫描本地目录，插件应该通过 npm link 方式发现
+    // 2. 扫描缓存目录中的已安装插件
+    println!("Scanning plugin cache directory...");
+    match get_cached_plugins().await {
+        Ok(mut cached_plugins) => {
+            println!(
+                "Found {} plugins from cache directory",
+                cached_plugins.len()
+            );
+            all_plugins.append(&mut cached_plugins);
+        }
+        Err(e) => {
+            println!("Failed to scan cache directory: {}", e);
+            // 继续执行，不因为缓存扫描失败而停止
+        }
+    }
 
-    // 2. 搜索npm仓库中的官方插件
+    // 3. 搜索npm仓库中的官方插件
     println!("Searching npm registry for official plugins...");
     match search_npm_registry().await {
         Ok(mut npm_plugins) => {
@@ -688,4 +703,103 @@ async fn try_npm_list_global() -> Result<Vec<LocalPluginInfo>, String> {
         }
         Err(_) => Err("Neither pnpm nor npm is available".to_string()),
     }
+}
+
+/**
+ * 扫描缓存目录中的已安装插件
+ */
+async fn get_cached_plugins() -> Result<Vec<LocalPluginInfo>, String> {
+    use std::fs;
+
+    let cache_dir =
+        get_plugin_cache_dir().map_err(|e| format!("Failed to get cache dir: {}", e))?;
+
+    println!("Scanning cache directory: {}", cache_dir.display());
+
+    let mut plugins = Vec::new();
+
+    // 读取缓存目录内容
+    let entries =
+        fs::read_dir(&cache_dir).map_err(|e| format!("Failed to read cache directory: {}", e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            // 每个子目录应该是一个插件包
+            if let Some(plugin_name) = path.file_name().and_then(|n| n.to_str()) {
+                // 查找 package.json
+                let package_json_path = path.join("package.json");
+                if package_json_path.exists() {
+                    match read_package_json(&package_json_path) {
+                        Ok(package_info) => {
+                            // 查找入口文件
+                            let main_file =
+                                package_info.main.unwrap_or_else(|| "index.js".to_string());
+                            let entry_path = path.join(&main_file);
+
+                            if entry_path.exists() {
+                                let plugin = LocalPluginInfo {
+                                    id: package_info.name.clone(),
+                                    name: package_info.name.clone(),
+                                    version: package_info.version.clone(),
+                                    description: "Cached plugin".to_string(),
+                                    author: "Unknown".to_string(),
+                                    supported_extensions: Vec::new(),
+                                    official: false,
+                                    keywords: Vec::new(),
+                                    local: true,
+                                    local_path: path.to_string_lossy().to_string(),
+                                    enabled: true,
+                                    entry_path: Some(entry_path.to_string_lossy().to_string()),
+                                    source: "cache".to_string(),
+                                };
+
+                                println!(
+                                    "Found cached plugin: {} v{}",
+                                    plugin.name, plugin.version
+                                );
+                                plugins.push(plugin);
+                            } else {
+                                println!(
+                                    "Cached plugin {} missing entry file: {}",
+                                    plugin_name, main_file
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            println!(
+                                "Failed to read package.json for cached plugin {}: {}",
+                                plugin_name, e
+                            );
+                        }
+                    }
+                } else {
+                    println!("Cached directory {} has no package.json", plugin_name);
+                }
+            }
+        }
+    }
+
+    Ok(plugins)
+}
+
+#[derive(Debug, Deserialize)]
+struct PackageJsonInfo {
+    name: String,
+    version: String,
+    main: Option<String>,
+}
+
+fn read_package_json(path: &std::path::Path) -> Result<PackageJsonInfo, String> {
+    use std::fs;
+
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read package.json: {}", e))?;
+
+    let package_info: PackageJsonInfo = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse package.json: {}", e))?;
+
+    Ok(package_info)
 }

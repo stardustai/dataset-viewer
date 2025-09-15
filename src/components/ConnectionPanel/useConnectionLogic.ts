@@ -76,7 +76,7 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
 
       // 1. 使用 adapter 构建完整配置（不再做前端验证）
       const config =
-        adapter.buildConnectionConfig?.(formData, selectedStoredConnection) ||
+        adapter.buildConnectionConfig?.(formData, selectedStoredConnection || undefined) ||
         (formData as ConnectionConfig);
 
       // 2. 直接尝试连接，让后端处理所有验证
