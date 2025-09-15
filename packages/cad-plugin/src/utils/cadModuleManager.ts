@@ -67,13 +67,13 @@ class CADModuleManager {
     this.cache.lastAttempt = Date.now();
 
     try {
-      console.log('🔄 开始预加载 LibreDWG 模块...');
+      console.log('🔄 Starting to preload LibreDWG module...');
 
       this.modulePromise = import('@mlightcad/libredwg-web').then(async (instance) => {
         const module = await instance.createModule();
         this.cache.libredwgModule = module;
         this.cache.state = 'ready';
-        console.log('✅ LibreDWG 模块预加载完成');
+        console.log('✅ LibreDWG module preload completed');
         return module;
       });
 
@@ -82,7 +82,7 @@ class CADModuleManager {
       this.cache.error = error as Error;
       this.cache.state = 'error';
       this.modulePromise = null;
-      console.error('❌ LibreDWG 模块预加载失败:', error);
+      console.error('❌ LibreDWG module preload failed:', error);
       throw error;
     }
   }
@@ -107,15 +107,15 @@ class CADModuleManager {
             AcDbFileType.DWG,
             this.cache.converter as any // 类型兼容性处理
           );
-          console.log('✅ DWG 转换器创建并注册成功');
+          console.log('✅ DWG converter created and registered successfully');
         } catch (regError) {
-          console.warn('⚠️ 转换器注册失败，但不影响使用:', regError);
+          console.warn('⚠️ Converter registration failed, but does not affect usage:', regError);
         }
       }
 
       return this.cache.converter;
     } catch (error) {
-      console.error('❌ 创建 DWG 转换器失败:', error);
+      console.error('❌ Failed to create DWG converter:', error);
       throw error;
     }
   }
@@ -180,15 +180,15 @@ class CADModuleManager {
   startPreloading(): Promise<any> {
     // 如果已经在加载或已加载完成，不重复启动
     if (this.cache.state === 'loading' || this.cache.state === 'ready') {
-      console.log('📦 CAD模块预加载已在进行中或已完成');
+      console.log('📦 CAD module preload is already in progress or completed');
       return this.modulePromise || Promise.resolve(this.cache.libredwgModule);
     }
 
-    console.log('🚀 启动CAD模块后台预加载...');
+    console.log('🚀 Starting CAD module background preload...');
 
     // 异步预加载，不阻塞主线程
     const preloadPromise = this.preloadLibreDwgModule().catch((error) => {
-      console.warn('⚠️ 背景预加载 LibreDWG 模块失败:', error);
+      console.warn('⚠️ Background preload of LibreDWG module failed:', error);
       // 不抛出错误，让后续使用时再处理
     });
 

@@ -1,10 +1,17 @@
 {
   "name": "@dataset-viewer/plugin-cad",
   "version": "0.1.0",
-  "description": "CAD文件查看插件，支持DWG、DXF、STEP等格式",
-  "main": "dist/index.esm.js",
+  "description": "CAD文件查看插件，支持DWG、DXF格式",
+  "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js"
+    }
+  },
   "files": [
     "dist",
     "README.md"
@@ -15,7 +22,6 @@
     "cad",
     "dwg",
     "dxf",
-    "step",
     "autocad"
   ],
   "author": "DatasetViewer Team",
@@ -28,7 +34,7 @@
     "lucide-react": "^0.525.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@dataset-viewer/sdk": "workspace:*"
+    "@dataset-viewer/sdk": ">=0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.4.5",

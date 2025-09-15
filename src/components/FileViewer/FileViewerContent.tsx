@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
 import { StorageServiceManager } from '../../services/storage';
+import type { StorageClient } from '../../services/storage/types';
 import { LazyComponentWrapper } from './common';
 import { pluginManager } from '../../services/plugin/pluginManager';
 import { PluginViewer } from './PluginViewer';
@@ -29,7 +30,7 @@ interface FileViewerContentProps {
   file: StorageFile;
   filePath: string;
   fileType: string;
-  storageClient?: any;
+  storageClient?: StorageClient;
   hasAssociatedFiles?: boolean;
   content: string;
   searchTerm: string;
@@ -135,7 +136,12 @@ export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewer
     }
 
     // 检查是否有插件可以处理此文件（但不在强制文本模式下）
-    if (!forceTextMode && !openAsText && pluginManager.findViewerForFile(file.basename)) {
+    if (
+      !forceTextMode &&
+      !openAsText &&
+      storageClient &&
+      pluginManager.findViewerForFile(file.basename)
+    ) {
       return (
         <PluginViewer
           file={file}

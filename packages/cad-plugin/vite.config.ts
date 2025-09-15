@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import { fileURLToPath } from 'node:url';
 import dts from 'vite-plugin-dts';
+
+// @ts-ignore Node ESM 环境下定义
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [
@@ -13,8 +17,8 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.tsx'),
       name: 'CADPlugin',
-      formats: ['es'],
-      fileName: () => 'index.esm.js',
+      formats: ['es', 'cjs'],
+      fileName: (format) => `index.${format === 'es' ? 'esm' : 'cjs'}.js`,
     },
     rollupOptions: {
       external: ['react', 'react-dom', 'lucide-react'],

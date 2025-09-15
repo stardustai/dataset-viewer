@@ -32,6 +32,12 @@ export class PluginFramework {
         throw new Error('Invalid plugin bundle format');
       }
 
+      // 防重复加载
+      if (this.plugins.has(bundle.metadata.id)) {
+        console.warn(`Plugin "${bundle.metadata.id}" 已加载，跳过重复加载。`);
+        return this.plugins.get(bundle.metadata.id)!;
+      }
+
       // 在开发模式下验证插件 ID 与路径的一致性
       if (import.meta.env.DEV) {
         this.validatePluginIdConsistency(bundle.metadata.id, pluginPath);
@@ -45,12 +51,9 @@ export class PluginFramework {
       // 如果插件有翻译资源，合并到主应用的 i18n 系统
       if (bundle.i18nResources) {
         for (const [lang, resources] of Object.entries(bundle.i18nResources)) {
-          if (!i18n.hasResourceBundle(lang, 'translation')) {
-            i18n.addResourceBundle(lang, 'translation', resources.translation, true, true);
-          } else {
-            // 如果已存在，则合并翻译资源
-            i18n.addResources(lang, 'translation', resources.translation);
-          }
+          // 使用插件ID作为命名空间，避免冲突
+          const namespace = `plugin:${bundle.metadata.id}`;
+          i18n.addResourceBundle(lang, namespace, resources.translation, true, true);
         }
       }
 
@@ -109,12 +112,26 @@ export class PluginFramework {
    */
   async unloadPlugin(pluginId: string): Promise<void> {
     const bundle = this.loadedBundles.get(pluginId);
-    if (bundle?.cleanup) {
-      await bundle.cleanup();
-    }
 
-    this.plugins.delete(pluginId);
-    this.loadedBundles.delete(pluginId);
+    try {
+      if (bundle?.cleanup) {
+        await bundle.cleanup();
+      }
+    } catch (e) {
+      console.error(`Failed to cleanup plugin ${pluginId}:`, e);
+    } finally {
+      // 清理 i18n 资源（与加载阶段的命名空间对应）
+      if (bundle?.i18nResources) {
+        const namespace = `plugin:${pluginId}`;
+        for (const lang of Object.keys(bundle.i18nResources)) {
+          if (i18n.hasResourceBundle(lang, namespace)) {
+            i18n.removeResourceBundle(lang, namespace);
+          }
+        }
+      }
+      this.plugins.delete(pluginId);
+      this.loadedBundles.delete(pluginId);
+    }
   }
 
   /**
@@ -146,16 +163,20 @@ export class PluginFramework {
   /**
    * 验证插件包格式
    */
-  private validatePluginBundle(bundle: any): bundle is PluginBundle {
-    return (
-      bundle &&
-      typeof bundle === 'object' &&
-      bundle.metadata &&
-      typeof bundle.metadata === 'object' &&
-      typeof bundle.metadata.id === 'string' &&
-      typeof bundle.metadata.name === 'string' &&
-      Array.isArray(bundle.metadata.supportedExtensions) &&
-      typeof bundle.component === 'function'
+  private validatePluginBundle(bundle: unknown): bundle is PluginBundle {
+    if (!bundle || typeof bundle !== 'object') return false;
+
+    const b = bundle as Record<string, unknown>;
+    const metadata = b.metadata as Record<string, unknown>;
+
+    return !!(
+      b.metadata &&
+      typeof b.metadata === 'object' &&
+      b.metadata !== null &&
+      typeof metadata.id === 'string' &&
+      typeof metadata.name === 'string' &&
+      Array.isArray(metadata.supportedExtensions) &&
+      typeof b.component === 'function'
     );
   }
 
@@ -196,10 +217,16 @@ export class PluginFramework {
    */
   getFileTypeMapping(): Map<string, string> {
     const mapping = new Map<string, string>();
+    const norm = (e: string) => (e.startsWith('.') ? e : `.${e}`).toLowerCase();
 
     for (const plugin of this.plugins.values()) {
       for (const ext of plugin.metadata.supportedExtensions) {
-        mapping.set(ext, plugin.getFileType());
+        const key = norm(ext);
+        if (!mapping.has(key)) {
+          mapping.set(key, plugin.getFileType());
+        } else {
+          console.warn(`Extension mapping conflict on ${key}: keeping first-registered plugin.`);
+        }
       }
     }
 
@@ -211,12 +238,16 @@ export class PluginFramework {
    */
   getIconMapping(): Map<string, ReactNode> {
     const mapping = new Map<string, ReactNode>();
+    const norm = (e: string) => (e.startsWith('.') ? e : `.${e}`).toLowerCase();
 
     for (const plugin of this.plugins.values()) {
       for (const ext of plugin.metadata.supportedExtensions) {
-        // 尝试获取特定扩展名的图标
-        const icon = plugin.getFileIcon?.(ext);
-        if (icon) mapping.set(ext, icon);
+        const key = norm(ext);
+        // 传入一个伪文件名（如 file.dwg）以复用插件的解析逻辑
+        const icon = plugin.getFileIcon?.(`file${key}`);
+        if (icon && !mapping.has(key)) {
+          mapping.set(key, icon);
+        }
       }
     }
 
@@ -231,7 +262,14 @@ export class PluginFramework {
       .filter(bundle => bundle.cleanup)
       .map(bundle => bundle.cleanup!());
 
-    await Promise.all(cleanupPromises);
+    const results = await Promise.allSettled(cleanupPromises);
+
+    // 记录失败的清理操作
+    results.forEach(result => {
+      if (result.status === 'rejected') {
+        console.error(`Failed to cleanup plugin:`, result.reason);
+      }
+    });
 
     this.plugins.clear();
     this.loadedBundles.clear();

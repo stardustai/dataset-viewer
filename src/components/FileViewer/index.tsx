@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { StorageFile } from '../../types';
+import type { StorageClient } from '../../services/storage/types';
 import { FileViewerHeader } from './FileViewerHeader';
 import { FileViewerSearchBar } from './FileViewerSearchBar';
 import { FileViewerContent } from './FileViewerContent';
@@ -15,7 +16,7 @@ interface VirtualizedTextViewerRef {
 interface FileViewerProps {
   file: StorageFile;
   filePath: string;
-  storageClient?: any;
+  storageClient?: StorageClient;
   hasAssociatedFiles?: boolean;
   onBack: () => void;
   hideBackButton?: boolean; // 新增属性，用于隐藏返回按钮

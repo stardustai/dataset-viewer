@@ -1,11 +1,11 @@
-import React, { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 /**
  * 插件包接口
  */
 export interface PluginBundle {
   metadata: PluginMetadata;
-  component: React.ComponentType<PluginViewerProps>;
+  component: ComponentType<PluginViewerProps>;
   initialize?: () => Promise<void>;
   cleanup?: () => Promise<void>;
   // 插件翻译资源
@@ -109,7 +109,7 @@ export interface PluginViewerProps {
  */
 export interface PluginInstance {
   metadata: PluginMetadata;
-  component: React.ComponentType<PluginViewerProps>;
+  component: ComponentType<PluginViewerProps>;
   canHandle: (filename: string) => boolean;
   getFileType: () => string;
   /**
@@ -139,18 +139,14 @@ export interface PluginInstallInfo {
   status: PluginInstallStatus;
   progress?: number;
   error?: string;
-  installedAt?: Date;
-  source: 'npm' | 'local' | 'url';
-  sourcePath: string;
+  installedAt?: string; // ISO 8601
+  source: PluginSource;
 }
 
 /**
  * 插件源类型
  */
-export interface PluginSource {
-  type: 'local' | 'npm' | 'url';
-  path?: string;
-  packageName?: string;
-  version?: string;
-  url?: string;
-}
+export type PluginSource =
+  | { type: 'local'; path: string }
+  | { type: 'npm'; packageName: string; version?: string }
+  | { type: 'url'; url: string; integrity?: string };

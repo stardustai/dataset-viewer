@@ -6,6 +6,7 @@ import { pluginManager } from './pluginManager';
  */
 export class PluginInitializationService {
   private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   /**
    * 初始化插件系统
@@ -16,24 +17,28 @@ export class PluginInitializationService {
       return;
     }
 
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
     try {
       console.log('Initializing plugin system...');
-
-      // 初始化插件管理器
-      await pluginManager.initialize();
-
-      this.initialized = true;
-      console.log('✅ Plugin system initialized successfully');
-
-      // 打印已加载的插件信息
-      const loadedPlugins = pluginManager.getLoadedPlugins();
-      console.log(
-        `📦 Loaded ${loadedPlugins.length} plugins:`,
-        loadedPlugins.map(p => p.metadata.name)
-      );
+      this.initPromise = (async () => {
+        await pluginManager.initialize();
+        this.initialized = true;
+        console.log('✅ Plugin system initialized successfully');
+        const loadedPlugins = pluginManager.getLoadedPlugins();
+        console.log(
+          `📦 Loaded ${loadedPlugins.length} plugins:`,
+          loadedPlugins.map(p => p.metadata.name)
+        );
+      })();
+      await this.initPromise;
     } catch (error) {
       console.error('❌ Failed to initialize plugin system:', error);
       throw error;
+    } finally {
+      this.initPromise = null;
     }
   }
 

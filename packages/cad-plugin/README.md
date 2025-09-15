@@ -6,8 +6,6 @@ CAD文件查看插件，为Dataset Viewer应用提供CAD文件格式支持。
 
 - **DWG** - AutoCAD图形文件
 - **DXF** - 图形交换格式
-- **STEP** - 产品数据交换标准 
-- **IGES** - 初始图形交换规范
 
 ## 功能特性
 

@@ -5,36 +5,36 @@ import { pluginManager } from '../../services/plugin/pluginManager';
 import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
 import type { StorageFile } from '../../types';
 import type { FileAccessor, PluginViewerProps } from '@dataset-viewer/sdk';
+import type { StorageClient } from '../../services/storage/types';
 
 interface LocalPluginViewerProps {
   file: StorageFile;
   filePath: string;
   content?: string | ArrayBuffer;
-  storageClient: any;
+  storageClient: StorageClient;
   isLargeFile: boolean;
 }
 
 /**
  * 创建文件访问器适配器，将 storageClient 包装为 FileAccessor 接口
  */
-const createFileAccessor = (storageClient: any, filePath: string): FileAccessor => ({
+const createFileAccessor = (storageClient: StorageClient, filePath: string): FileAccessor => ({
   getFullContent: async (): Promise<ArrayBuffer> => {
     const blob = await storageClient.downloadFile(filePath);
     return await blob.arrayBuffer();
   },
 
   getRangeContent: async (start: number, end?: number): Promise<ArrayBuffer> => {
-    // 如果 storageClient 支持范围请求，使用它；否则获取全部内容后截取
-    if (storageClient.downloadFileRange) {
-      const blob = await storageClient.downloadFileRange(filePath, start, end);
-      return await blob.arrayBuffer();
-    } else {
-      // 回退到获取全部内容
-      const fullContent = await storageClient.downloadFile(filePath);
-      const arrayBuffer = await fullContent.arrayBuffer();
-      const endPos = end ?? arrayBuffer.byteLength;
-      return arrayBuffer.slice(start, endPos);
-    }
+    if (start < 0) throw new Error('start must be >= 0');
+    if (end !== undefined && end < start) throw new Error('end must be >= start');
+
+    // 计算要读取的长度
+    const length = end !== undefined ? end - start : undefined;
+
+    const fileContent = await storageClient.getFileContent(filePath, { start, length });
+    // 将文本内容转换为 ArrayBuffer
+    const encoder = new TextEncoder();
+    return encoder.encode(fileContent.content).buffer;
   },
 
   getTextContent: async (encoding: string = 'utf-8'): Promise<string> => {

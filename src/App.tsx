@@ -14,6 +14,7 @@ import { pluginInitialization } from './services/plugin/pluginInitialization';
 import { useTheme } from './hooks/useTheme';
 import './i18n';
 import './App.css';
+import { StorageClient } from './services/storage/types';
 
 type AppState = 'initializing' | 'connecting' | 'browsing' | 'viewing';
 
@@ -31,7 +32,9 @@ function App() {
   const [appState, setAppState] = useState<AppState>('initializing');
   const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
-  const [selectedStorageClient, setSelectedStorageClient] = useState<any>(null);
+  const [selectedStorageClient, setSelectedStorageClient] = useState<StorageClient | undefined>(
+    undefined
+  );
   const [currentDirectory, setCurrentDirectory] = useState<string>('');
   const [hasAssociatedFiles, setHasAssociatedFiles] = useState(false);
   const [showDownloadProgress, setShowDownloadProgress] = useState(true);
@@ -54,7 +57,7 @@ function App() {
   const handleFileSelect = (
     file: StorageFile,
     path: string,
-    storageClient?: any,
+    storageClient?: StorageClient,
     files?: StorageFile[],
     isForceTextMode?: boolean
   ) => {
@@ -227,7 +230,7 @@ function App() {
     setAppState('browsing');
     setSelectedFile(null);
     setSelectedFilePath('');
-    setSelectedStorageClient(null);
+    setSelectedStorageClient(undefined);
     setForceTextMode(false); // 重置强制文本模式
 
     // 只有当是文件关联模式时，才需要刷新列表

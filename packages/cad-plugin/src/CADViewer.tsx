@@ -20,8 +20,11 @@ export const CADViewer: FC<PluginViewerProps> = ({
   fileAccessor,
   isLargeFile,
   onError,
+  onLoadingChange,
   t
 }) => {
+  const [retryTimers, setRetryTimers] = useState<NodeJS.Timeout[]>([]);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<CADViewerState>({
@@ -58,8 +61,30 @@ export const CADViewer: FC<PluginViewerProps> = ({
     });
   };
 
+  // 等待容器准备就绪的辅助函数
+  const waitForContainerReady = (ref: React.RefObject<HTMLDivElement>) =>
+    new Promise<void>((resolve) => {
+      const ready = () => ref.current && ref.current.offsetWidth > 0 && ref.current.offsetHeight > 0;
+      if (ready()) return resolve();
+
+      const ro = new ResizeObserver(() => {
+        if (ready()) {
+          ro.disconnect();
+          resolve();
+        }
+      });
+
+      if (ref.current) ro.observe(ref.current);
+
+      // 兜底超时，避免卡死
+      setTimeout(() => {
+        ro.disconnect();
+        resolve();
+      }, 2000);
+    });
+
   // 初始化步骤1: 设置画布
-  const initializeCanvas = () => {
+  const initializeCanvas = async () => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
 
@@ -68,7 +93,8 @@ export const CADViewer: FC<PluginViewerProps> = ({
     }
 
     if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-      throw new Error('Container not ready');
+      console.log('Container not ready, waiting for ResizeObserver...');
+      await waitForContainerReady(containerRef);
     }
 
     setupHighDPICanvas(canvas);
@@ -159,7 +185,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
       }));
 
       // 步骤1: 初始化画布
-      const { canvas } = initializeCanvas();
+      const { canvas } = await initializeCanvas();
 
       setState(prev => ({
         ...prev,
@@ -207,27 +233,23 @@ export const CADViewer: FC<PluginViewerProps> = ({
     const fileName = file.name.toLowerCase();
     if (fileName.endsWith('.dxf')) {
       try {
-        const decoder = new TextDecoder('utf-8');
-        return decoder.decode(fileData);
-      } catch (error) {
-        // 尝试其他常见编码
-        console.warn('UTF-8 decoding failed, trying GBK...', error);
+        // 先用严格 UTF-8，非法序列才抛错
+        return new TextDecoder('utf-8', { fatal: true }).decode(fileData);
+      } catch (utf8Err) {
         try {
-          const decoder = new TextDecoder('gbk');
-          return decoder.decode(fileData);
-        } catch (gbkError) {
-          console.warn('GBK decoding failed, trying GB2312...', gbkError);
+          // 首选标准的中文编码全集
+          return new TextDecoder('gb18030').decode(fileData);
+        } catch {
           try {
-            const decoder = new TextDecoder('gb2312');
-            return decoder.decode(fileData);
-          } catch (gb2312Error) {
-            console.error('All encoding attempts failed, using UTF-8 with replacement', gb2312Error);
-            const decoder = new TextDecoder('utf-8', { fatal: false });
-            return decoder.decode(fileData);
+            return new TextDecoder('gbk').decode(fileData);
+          } catch {
+            console.error('All encoding attempts failed, using UTF-8 (replacement)');
+            return new TextDecoder('utf-8').decode(fileData);
           }
         }
       }
     } else if (fileName.endsWith('.dwg')) {
+      // DWG 文件使用二进制格式
       return fileData;
     }
 
@@ -262,7 +284,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
 
       // 验证文件类型
       const fileName = file.name.toLowerCase();
-      const supportedExtensions = ['.dxf', '.dwg', '.step', '.stp', '.iges', '.igs'];
+      const supportedExtensions = ['.dxf', '.dwg'];
       const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
 
       if (!isSupported) {
@@ -388,6 +410,11 @@ export const CADViewer: FC<PluginViewerProps> = ({
     return () => clearTimeout(timeoutId);
   }, []); // 只依赖组件挂载
 
+  // 向主应用同步加载状态
+  useEffect(() => {
+    onLoadingChange?.(state.isLoading);
+  }, [state.isLoading, onLoadingChange]);
+
   // 文件加载effect - 当初始化完成且文件信息变化时运行
   useEffect(() => {
     const currentFileKey = `${file.path}:${file.size}`;
@@ -436,16 +463,26 @@ export const CADViewer: FC<PluginViewerProps> = ({
       // 立即尝试，失败则延迟重试
       if (!configureControls()) {
         const retryTimeouts = [100, 500, 1000, 2000];
+        const timers: NodeJS.Timeout[] = [];
         retryTimeouts.forEach((delay) => {
-          setTimeout(() => {
+          const timer = setTimeout(() => {
             if (configureControls()) {
               console.log(`Pan mode configured after ${delay}ms delay`);
+              // 清理剩余的计时器
+              timers.forEach(t => t !== timer && clearTimeout(t));
             }
           }, delay);
+          timers.push(timer);
         });
+        setRetryTimers(timers);
       }
     }
-  }, [state.loadedFileKey]);
+
+    return () => {
+      // 组件卸载时清理所有计时器
+      retryTimers.forEach(timer => clearTimeout(timer));
+    };
+  }, [state.loadedFileKey, retryTimers]);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current || !state.isInitialized) return;
