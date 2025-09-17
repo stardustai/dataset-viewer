@@ -114,7 +114,7 @@ pub async fn load_plugin_resource(
 
 /**
  * 读取插件文件内容（支持二进制文件）
- * 用于生产模式下通过Tauri命令加载插件文件
+ * 统一处理开发模式和生产模式的插件文件加载
  */
 #[command]
 #[specta::specta]
@@ -123,21 +123,22 @@ pub async fn load_plugin_file(file_path: String) -> Result<Vec<u8>, String> {
 
     // 获取插件缓存目录
     let cache_dir = get_plugin_cache_dir()?;
+    println!("Cache directory: {}", cache_dir.display());
 
-    // 处理路径：如果 file_path 以 .plugins/ 开头，则移除这个前缀
-    // 因为 cache_dir 已经指向了 .plugins 目录
+    // 清理路径：移除各种可能的前缀，只保留相对于缓存目录的路径
     let relative_path = if file_path.starts_with(".plugins/") {
-        &file_path[9..] // 移除 ".plugins/" 前缀（9个字符）
+        &file_path[9..] // 移除 ".plugins/" 前缀
     } else if file_path.starts_with("./plugins/") {
-        &file_path[10..] // 移除 "./plugins/" 前缀（10个字符）
+        &file_path[10..] // 移除 "./plugins/" 前缀
+    } else if file_path.starts_with("plugins/") {
+        &file_path[8..] // 移除 "plugins/" 前缀
     } else {
         &file_path
     };
 
     // 构造完整的文件路径
     let full_path = cache_dir.join(relative_path);
-
-    println!("Resolved full path: {}", full_path.display());
+    println!("Full path: {}", full_path.display());
 
     // 检查文件是否存在
     if !full_path.exists() {

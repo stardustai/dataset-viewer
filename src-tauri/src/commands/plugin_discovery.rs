@@ -155,22 +155,26 @@ pub fn calculate_entry_path(
 }
 
 /**
- * 将绝对路径转换为相对于项目根目录的路径
+ * 将绝对路径转换为相对于插件缓存目录的路径
+ * 统一处理开发模式和生产模式
  */
 pub fn convert_to_relative_path(absolute_path: &Path) -> Option<String> {
-    // 获取项目根目录（src-tauri的父目录）
-    let current_dir = std::env::current_dir().ok()?;
-    let project_root = if current_dir.ends_with("src-tauri") {
-        current_dir.parent()?
+    // 获取插件缓存目录
+    let cache_dir = get_plugin_cache_dir().ok()?;
+
+    println!("Converting path to relative:");
+    println!("  Absolute path: {:?}", absolute_path);
+    println!("  Cache dir: {:?}", cache_dir);
+
+    // 计算相对于缓存目录的路径
+    if let Ok(relative_path) = absolute_path.strip_prefix(&cache_dir) {
+        let result = relative_path.to_string_lossy().replace('\\', "/");
+        println!("  Relative path: {}", result);
+        Some(result)
     } else {
-        &current_dir
-    };
-
-    // 计算相对路径
-    let relative_path = absolute_path.strip_prefix(project_root).ok()?;
-
-    // 转换为字符串，使用 / 作为分隔符（Web 标准）
-    Some(relative_path.to_string_lossy().replace('\\', "/"))
+        println!("  Failed: path is not under cache directory");
+        None
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Type)]
