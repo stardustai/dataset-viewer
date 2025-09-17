@@ -217,7 +217,21 @@ pub fn run() {
                                     Some("css") => "text/css",
                                     Some("json") => "application/json",
                                     Some("wasm") => "application/wasm",
-                                    _ => "text/plain",
+                                    Some("png") => "image/png",
+                                    Some("jpg") | Some("jpeg") => "image/jpeg",
+                                    Some("gif") => "image/gif",
+                                    Some("svg") => "image/svg+xml",
+                                    Some("ico") => "image/x-icon",
+                                    Some("ttf") => "font/ttf",
+                                    Some("woff") => "font/woff",
+                                    Some("woff2") => "font/woff2",
+                                    Some("eot") => "application/vnd.ms-fontobject",
+                                    Some("otf") => "font/otf",
+                                    Some("zip") => "application/zip",
+                                    Some("pdf") => "application/pdf",
+                                    Some("html") => "text/html",
+                                    Some("xml") => "application/xml",
+                                    _ => "application/octet-stream", // 默认二进制类型
                                 };
 
                                 let response = tauri::http::Response::builder()
@@ -227,7 +241,7 @@ pub fn run() {
                             .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
                             .header("Access-Control-Allow-Headers", "*");
 
-                        match response.body(content.into_bytes()) {
+                        match response.body(content) {
                             Ok(response) => {
                                 responder.respond(response);
                                 println!("✅ Plugin resource loaded: {} for plugin: {}", resource_path, plugin_id);

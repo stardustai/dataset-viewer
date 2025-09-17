@@ -54,6 +54,7 @@ export const pluginManager = {
 
   // 操作结果消息
   'plugin.install.success': '插件 {{pluginId}} 安装成功',
+  'plugin.install.success_manual': '插件 {{pluginId}} 安装成功，请刷新页面或手动启用',
   'plugin.install.failed': '安装插件失败: {{error}}',
   'plugin.uninstall.success': '插件 {{pluginId}} 卸载成功',
   'plugin.uninstall.failed': '卸载插件失败: {{error}}',

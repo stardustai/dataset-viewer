@@ -110,7 +110,7 @@ export class PluginFramework {
     level: 'info' | 'warn' | 'error',
     pluginId: string,
     message: string,
-    data?: any
+    data?: unknown
   ): void {
     const prefix = `🔌 [Plugin ${pluginId}]`;
     const timestamp = new Date().toISOString().split('T')[1].split('.')[0]; // HH:MM:SS format
@@ -221,7 +221,7 @@ export class PluginFramework {
           if (result.status === 'error') {
             throw new Error(result.error);
           }
-          const pluginCode = result.data;
+          const pluginCode = new TextDecoder('utf-8').decode(new Uint8Array(result.data));
           console.log(`🔌 [Plugin ${pluginId}] ✅ 通过Tauri加载插件代码成功`);
 
           // 执行CJS插件
@@ -341,12 +341,18 @@ export class PluginFramework {
    * 处理插件模块（通用逻辑）
    */
   private async processPluginModule(
-    pluginModule: any,
+    pluginModule: unknown,
     pluginId: string,
     entryPath?: string
   ): Promise<PluginInstance> {
     try {
-      const bundle: PluginBundle = pluginModule.default || pluginModule;
+      // 类型保护：确保 pluginModule 是一个有效的对象
+      if (typeof pluginModule !== 'object' || pluginModule === null) {
+        throw new Error('Plugin module must be an object');
+      }
+
+      const moduleAsAny = pluginModule as Record<string, unknown>;
+      const bundle: PluginBundle = (moduleAsAny.default || moduleAsAny) as PluginBundle;
 
       // 使用传入的pluginId或bundle中的id
       const finalPluginId = pluginId || bundle.metadata.id;
@@ -591,7 +597,7 @@ export class PluginFramework {
   /**
    * 执行CJS格式的插件代码（带缓存）
    */
-  private executeCJSPlugin(code: string, pluginPath: string): any {
+  private executeCJSPlugin(code: string, pluginPath: string): unknown {
     // 检查文件内容缓存
     const cacheKey = `${pluginPath}-${code.length}`;
     if (this.pluginFileCache.has(cacheKey)) {
@@ -623,8 +629,8 @@ export class PluginFramework {
   /**
    * 创建自定义require函数
    */
-  private createCustomRequire(pluginPath: string): (moduleName: string) => any {
-    const moduleMap: Record<string, any> = {
+  private createCustomRequire(pluginPath: string): (moduleName: string) => unknown {
+    const moduleMap: Record<string, unknown> = {
       'react/jsx-runtime': (window as any).ReactJSXRuntime,
       react: (window as any).React,
       'react-dom': (window as any).ReactDOM,
@@ -634,7 +640,7 @@ export class PluginFramework {
     // 获取插件目录路径
     const pluginDir = pluginPath.substring(0, pluginPath.lastIndexOf('/') + 1);
 
-    return function require(moduleName: string): any {
+    return function require(moduleName: string): unknown {
       if (moduleMap[moduleName]) {
         console.log(`📦 Resolved module: ${moduleName}`);
         return moduleMap[moduleName];

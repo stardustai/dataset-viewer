@@ -77,6 +77,8 @@ export const pluginManager = {
 
   // Success messages
   'plugin.install.success': 'Plugin {{pluginId}} installed successfully',
+  'plugin.install.success_manual':
+    'Plugin {{pluginId}} installed successfully, please refresh the page or enable manually',
   'plugin.uninstall.success': 'Plugin {{pluginId}} uninstalled successfully',
   'plugin.enable.success': 'Plugin {{pluginId}} enabled successfully',
   'plugin.disable.success': 'Plugin {{pluginId}} disabled successfully',

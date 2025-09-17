@@ -3,12 +3,12 @@ use std::fs;
 use tauri::command;
 
 /**
- * 根据插件ID和资源路径加载插件资源文件
+ * 根据插件ID和资源路径加载插件资源文件（支持二进制文件）
  */
 pub async fn load_plugin_resource(
     plugin_id: String,
     resource_path: String,
-) -> Result<String, String> {
+) -> Result<Vec<u8>, String> {
     println!(
         "🔍 Loading plugin resource: '{}' for plugin: '{}'",
         resource_path, plugin_id
@@ -58,10 +58,18 @@ pub async fn load_plugin_resource(
                         if resource_file_path.exists() {
                             println!("✅ Resource file exists!");
 
-                            // 检查路径安全性
-                            if resource_file_path.starts_with(&cache_dir) {
+                            // 检查路径安全性（使用规范化路径）
+                            let canonical_resource_path =
+                                resource_file_path.canonicalize().map_err(|e| {
+                                    format!("Failed to canonicalize resource path: {}", e)
+                                })?;
+                            let canonical_cache_dir = cache_dir.canonicalize().map_err(|e| {
+                                format!("Failed to canonicalize cache directory: {}", e)
+                            })?;
+
+                            if canonical_resource_path.starts_with(&canonical_cache_dir) {
                                 println!("✅ Path security check passed");
-                                return std::fs::read_to_string(&resource_file_path).map_err(|e| {
+                                return std::fs::read(&resource_file_path).map_err(|e| {
                                     format!(
                                         "Failed to read resource file {}: {}",
                                         resource_file_path.display(),
@@ -105,12 +113,12 @@ pub async fn load_plugin_resource(
 }
 
 /**
- * 读取插件文件内容
+ * 读取插件文件内容（支持二进制文件）
  * 用于生产模式下通过Tauri命令加载插件文件
  */
 #[command]
 #[specta::specta]
-pub async fn load_plugin_file(file_path: String) -> Result<String, String> {
+pub async fn load_plugin_file(file_path: String) -> Result<Vec<u8>, String> {
     println!("Loading plugin file: {}", file_path);
 
     // 获取插件缓存目录
@@ -136,13 +144,20 @@ pub async fn load_plugin_file(file_path: String) -> Result<String, String> {
         return Err(format!("Plugin file not found: {}", full_path.display()));
     }
 
-    // 检查路径安全性（确保在插件目录内）
-    if !full_path.starts_with(&cache_dir) {
+    // 检查路径安全性（使用规范化路径）
+    let canonical_full_path = full_path
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize file path: {}", e))?;
+    let canonical_cache_dir = cache_dir
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize cache directory: {}", e))?;
+
+    if !canonical_full_path.starts_with(&canonical_cache_dir) {
         return Err("Invalid file path: outside plugin directory".to_string());
     }
 
-    // 读取文件内容
-    fs::read_to_string(&full_path)
+    // 读取文件内容（二进制）
+    fs::read(&full_path)
         .map_err(|e| format!("Failed to read plugin file {}: {}", full_path.display(), e))
 }
 
@@ -165,8 +180,15 @@ pub async fn plugin_check_file_exists(file_path: String) -> Result<bool, String>
 
     let full_path = cache_dir.join(relative_path);
 
-    // 检查路径安全性
-    if !full_path.starts_with(&cache_dir) {
+    // 检查路径安全性（使用规范化路径）
+    let canonical_full_path = full_path
+        .canonicalize()
+        .map_err(|_| "Failed to resolve file path".to_string())?;
+    let canonical_cache_dir = cache_dir
+        .canonicalize()
+        .map_err(|_| "Failed to resolve cache directory".to_string())?;
+
+    if !canonical_full_path.starts_with(&canonical_cache_dir) {
         return Err("Invalid file path: outside plugin directory".to_string());
     }
 

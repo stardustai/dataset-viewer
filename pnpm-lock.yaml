@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@babel/standalone':
-        specifier: ^7.28.4
-        version: 7.28.4
       '@dataset-viewer/sdk':
         specifier: workspace:*
         version: link:packages/sdk
@@ -313,10 +310,6 @@ packages:
 
   '@babel/runtime@7.27.6':
     resolution: {integrity: sha512-vbavdySgbTTrmFE+EsiqUTzlOr5bzlnJtUv9PynGCAKvfQqjIXbvFdumPM/GxMDfyuGMJaJAU6TO4zc1Jf1i8Q==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/standalone@7.28.4':
-    resolution: {integrity: sha512-Qc1BNCfuJZBKs2SC5lqRmSYOw7Ka0X7urZQ7oVsGIax4eGDUIHX+CDg752N4jDxC2rbBh3li098ReGOtjT0x4g==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.27.2':
@@ -2412,8 +2405,6 @@ snapshots:
       '@babel/helper-plugin-utils': 7.27.1
 
   '@babel/runtime@7.27.6': {}
-
-  '@babel/standalone@7.28.4': {}
 
   '@babel/template@7.27.2':
     dependencies:

@@ -13,7 +13,7 @@ export interface PluginInitializeContext {
 export interface PluginBundle {
   metadata: PluginMetadata;
   component: ComponentType<PluginViewerProps>;
-  initialize?: (context?: PluginInitializeContext) => Promise<void>;
+  initialize?: (context: PluginInitializeContext) => Promise<void>;
   cleanup?: () => Promise<void>;
   // 插件翻译资源
   i18nResources?: {

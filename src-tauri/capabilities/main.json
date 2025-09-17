@@ -24,10 +24,16 @@
       "identifier": "fs:allow-read-dir",
       "allow": [
         {
-          "path": "$APPDATA/plugins"
+          "path": "$APPDATA/ai.stardust.dataset-viewer"
         },
         {
-          "path": "$APPDATA/plugins/**"
+          "path": "$APPDATA/ai.stardust.dataset-viewer/**"
+        },
+        {
+          "path": ".plugins"
+        },
+        {
+          "path": ".plugins/**"
         }
       ]
     },
@@ -35,7 +41,10 @@
       "identifier": "fs:allow-read-file",
       "allow": [
         {
-          "path": "$APPDATA/plugins/**"
+          "path": "$APPDATA/ai.stardust.dataset-viewer/**"
+        },
+        {
+          "path": ".plugins/**"
         }
       ]
     }

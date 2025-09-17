@@ -498,13 +498,16 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           const pluginsResult = await commands.pluginDiscover(false);
           if (pluginsResult.status === 'ok') {
             const installedPlugin = pluginsResult.data.find(
-              (p: any) => p.id === pluginId && p.enabled
+              (p: LocalPluginInfo) => p.id === pluginId && p.enabled
             );
             if (installedPlugin?.entry_path) {
               // 直接加载插件，无需重复调用后端启用接口
               await pluginManager.loadPluginDirect(installedPlugin.id, installedPlugin.entry_path);
               console.log('Plugin hot-loaded successfully after installation');
-              showToast(`插件 ${result.data.plugin_id} 已安装并激活`, 'success');
+              showToast(
+                t('plugin.install.success', { pluginId: result.data.plugin_id }),
+                'success'
+              );
             } else {
               throw new Error('Plugin not found or missing entry path');
             }
@@ -514,7 +517,10 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         } catch (loadError) {
           console.warn('Failed to hot-load plugin after installation:', loadError);
           // 热加载失败，建议用户重新启动或手动启用
-          showToast(`插件 ${result.data.plugin_id} 安装成功，请刷新页面或手动启用`, 'info');
+          showToast(
+            t('plugin.install.success_manual', { pluginId: result.data.plugin_id }),
+            'info'
+          );
         }
       } else {
         const errorMsg = result.status === 'error' ? result.error : 'Unknown error';
@@ -522,7 +528,7 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
       }
     } catch (error) {
       console.error('Failed to install plugin:', error);
-      showErrorToast(`安装插件失败: ${error}`);
+      showErrorToast(t('plugin.install.failed', { error: String(error) }));
       throw error;
     } finally {
       // 确保清除安装状态

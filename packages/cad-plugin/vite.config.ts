@@ -41,18 +41,8 @@ export default defineConfig({
         'react/jsx-runtime'
       ],
       output: {
-        format: 'cjs',
-        entryFileNames: 'index.cjs.js',
-        // 定义全局变量映射，用于运行时获取React实例
-        globals: {
-          'react': 'React',
-          'react-dom': 'ReactDOM',
-          'react/jsx-runtime': 'ReactJSXRuntime'
-        },
         // 强制内联所有依赖，打包成单文件
         inlineDynamicImports: true,
-        // 禁用代码分割
-        manualChunks: undefined,
       },
     },
     // 禁用代码分割，确保单文件输出
