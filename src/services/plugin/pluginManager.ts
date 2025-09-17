@@ -44,7 +44,7 @@ export class PluginManager {
       for (const pluginInfo of activePlugins) {
         if (pluginInfo.entry_path) {
           try {
-            await this.framework.loadPlugin(pluginInfo.entry_path);
+            await this.framework.loadPlugin(pluginInfo.metadata.id, pluginInfo.entry_path);
             console.log(`Plugin loaded: ${pluginInfo.metadata.name}`);
           } catch (error) {
             console.error(`Failed to load plugin ${pluginInfo.metadata.name}:`, error);
@@ -95,7 +95,7 @@ export class PluginManager {
       for (const pluginInfo of activePlugins) {
         if (!loadedPluginIds.has(pluginInfo.id) && pluginInfo.entry_path) {
           try {
-            await this.framework.loadPlugin(pluginInfo.entry_path);
+            await this.framework.loadPlugin(pluginInfo.id, pluginInfo.entry_path);
             console.log(`Plugin loaded during sync: ${pluginInfo.name}`);
           } catch (error) {
             console.error(`Failed to load plugin ${pluginInfo.name} during sync:`, error);
@@ -142,6 +142,20 @@ export class PluginManager {
   }
 
   /**
+   * 直接加载插件（不调用后端激活接口）
+   * 用于插件已在后端启用的情况下的前端热加载
+   */
+  async loadPluginDirect(pluginId: string, entryPath: string): Promise<void> {
+    try {
+      await this.framework.loadPlugin(pluginId, entryPath);
+      console.log(`Plugin loaded directly: ${pluginId}`);
+    } catch (error) {
+      console.error(`Failed to load plugin directly: ${pluginId}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * 激活插件
    */
   async activatePlugin(pluginId: string): Promise<void> {
@@ -162,7 +176,7 @@ export class PluginManager {
 
       if (pluginInfo?.entry_path) {
         // 使用后端提供的准确入口文件路径
-        await this.framework.loadPlugin(pluginInfo.entry_path);
+        await this.framework.loadPlugin(pluginInfo.id, pluginInfo.entry_path);
         console.log(`Plugin activated and loaded: ${pluginInfo.name}`);
       } else {
         throw new Error(

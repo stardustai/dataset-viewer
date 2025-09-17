@@ -9,7 +9,7 @@ export interface CreatePluginOptions {
   /** 插件组件 */
   component: React.ComponentType<any>;
   /** 初始化函数 */
-  initialize?: (context?: PluginInitializeContext) => Promise<void>;
+  initialize?: (context: PluginInitializeContext) => Promise<void>;
   /** 清理函数 */
   cleanup?: () => Promise<void>;
   /** 国际化资源 */

@@ -96,4 +96,19 @@ export const pluginManager = {
   // Description
   'plugin.description':
     'Install and manage file viewer plugins to extend support for more file formats',
+
+  // Error handling
+  'plugin.error.file_not_found':
+    'Plugin file not found{{pluginName}}, please check if the plugin is properly installed',
+  'plugin.error.invalid_format':
+    'Invalid plugin format{{pluginName}}, plugin version may be incompatible',
+  'plugin.error.execution_error':
+    'Plugin execution error{{pluginName}}, please contact the plugin developer',
+  'plugin.error.dependency_error':
+    'Plugin dependencies missing{{pluginName}}, please check plugin integrity',
+  'plugin.error.network_error':
+    'Network error{{pluginName}}, please check your internet connection and try again',
+  'plugin.error.unknown_error': 'Plugin loading failed{{pluginName}}: {{message}}',
+  'plugin.error.load_failed': 'Plugin loading failed, using default viewer',
+  'plugin.error.retry_available': 'Loading failed, click to retry',
 };

@@ -32,6 +32,7 @@ const plugin = createPlugin({
     // 如果提供了插件基础路径，设置到模块管理器
     if (context?.pluginBasePath) {
       CADModuleManager.setPluginBasePath(context.pluginBasePath);
+      console.log('✅ Plugin base path set:', context.pluginBasePath);
     }
 
     // 启动CAD模块后台预加载

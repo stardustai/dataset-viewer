@@ -19,6 +19,25 @@
     {
       "identifier": "dialog:allow-save",
       "allow": []
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [
+        {
+          "path": "$APPDATA/plugins"
+        },
+        {
+          "path": "$APPDATA/plugins/**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        {
+          "path": "$APPDATA/plugins/**"
+        }
+      ]
     }
   ]
 }

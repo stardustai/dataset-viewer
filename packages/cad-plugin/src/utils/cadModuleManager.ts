@@ -100,10 +100,13 @@ class CADModuleManager {
       await this.preloadLibreDwgModule();
 
       if (!this.cache.converter) {
-        // 配置 worker 路径，根据当前环境动态设置
+        // 获取 worker URL（异步）
+        const workerUrl = await this.getWorkerUrl();
+
+        // 配置 worker 路径
         const workerConfig = {
-          useWorker: true,
-          parserWorkerUrl: this.getWorkerUrl()
+          useWorker: false,
+          parserWorkerUrl: workerUrl
         };
 
         this.cache.converter = new AcDbLibreDwgConverter(workerConfig);
@@ -115,6 +118,7 @@ class CADModuleManager {
             this.cache.converter as any // 类型兼容性处理
           );
           console.log('✅ DWG converter created and registered successfully');
+          console.log('🔧 Worker URL resolved to:', workerUrl);
         } catch (regError) {
           console.warn('⚠️ Converter registration failed, but does not affect usage:', regError);
         }
@@ -139,18 +143,40 @@ class CADModuleManager {
 
   /**
    * 获取 worker 文件的 URL
-   * 根据当前运行环境动态设置正确的路径
+   * 通过 fetch 获取 worker 脚本并转换为 blob URL
    */
-  private getWorkerUrl(): string {
+  private async getWorkerUrl(): Promise<string> {
     // 优先使用注入的插件基础路径
     if (CADModuleManager.pluginBasePath) {
-      const baseUrl = CADModuleManager.pluginBasePath.endsWith('/')
-        ? CADModuleManager.pluginBasePath
-        : `${CADModuleManager.pluginBasePath}/`;
-      return `${baseUrl}libredwg-parser-worker.js`;
+      const baseUrl = CADModuleManager.pluginBasePath;
+      const finalBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      const workerScriptUrl = `${finalBaseUrl}libredwg-parser-worker.js`;
+
+      try {
+        console.log('🔄 Fetching worker script from:', workerScriptUrl);
+        const response = await fetch(workerScriptUrl);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch worker script: ${response.status} ${response.statusText}`);
+        }
+
+        const scriptContent = await response.text();
+        console.log('✅ Worker script fetched successfully, size:', scriptContent.length);
+
+        // 创建 blob URL
+        const blob = new Blob([scriptContent], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        console.log('✅ Worker blob URL created:', blobUrl);
+        return blobUrl;
+      } catch (error) {
+        console.error('❌ Failed to fetch worker script:', error);
+        // 回退到相对路径
+        return './libredwg-parser-worker.js';
+      }
     }
 
-    // 最后备用：相对路径
+    // 备用：相对路径
     return './libredwg-parser-worker.js';
   }
 

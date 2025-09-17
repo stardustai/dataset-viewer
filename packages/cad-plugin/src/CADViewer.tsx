@@ -472,11 +472,15 @@ export const CADViewer: FC<PluginViewerProps> = ({
       }
     }
 
+    // 清理函数不依赖 state，而是清理当前的 retryTimers
     return () => {
-      // 组件卸载时清理所有计时器
-      retryTimers.forEach(timer => clearTimeout(timer));
+      // 清理当前创建的计时器
+      if (retryTimers.length > 0) {
+        retryTimers.forEach(timer => clearTimeout(timer));
+        setRetryTimers([]);
+      }
     };
-  }, [state.loadedFileKey, retryTimers]);
+  }, [state.loadedFileKey]); // 移除 retryTimers 依赖，避免无限循环
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current || !state.isInitialized) return;
