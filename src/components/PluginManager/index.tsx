@@ -330,11 +330,11 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     }
   };
 
-  // 统一的刷新函数：数据 + 状态同步
+  // 统一的刷新函数：数据 + 状态同步（仅在必要时使用）
   const refreshPluginData = async () => {
     setLoading(true);
     try {
-      console.log('刷新插件数据并同步状态...');
+      console.log('执行全量刷新插件数据...');
 
       // 同步插件状态
       await pluginManager.syncPluginState();
@@ -353,7 +353,7 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     try {
       const result = await commands.pluginCheckUpdates(pluginId);
       if (result.status === 'ok') {
-        // 更新已安装插件列表中的更新信息
+        // 优化：只更新特定插件的更新信息，而不是全量刷新
         setInstalledPlugins(prev =>
           prev.map(plugin =>
             plugin.id === pluginId ? { ...plugin, updateInfo: result.data } : plugin
@@ -378,10 +378,11 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
   // 更新插件
   const handleUpdatePlugin = async (pluginId: string) => {
     try {
-      // 设置更新状态
-      setInstalledPlugins(prev =>
-        prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isUpdating: true } : plugin))
-      );
+      // 设置更新状态（优化：只更新特定插件状态）
+      const updatePluginUpdateState = (plugins: ExtendedPluginInfo[], isUpdating: boolean) =>
+        plugins.map(plugin => (plugin.id === pluginId ? { ...plugin, isUpdating } : plugin));
+
+      setInstalledPlugins(prev => updatePluginUpdateState(prev, true));
 
       const result = await commands.pluginUpdate(pluginId);
 
@@ -394,14 +395,27 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
           }),
           'success'
         );
-        await refreshPluginData();
+
+        // 优化：只更新必要的插件信息，而不是全量刷新
+        setInstalledPlugins(prev =>
+          prev.map(plugin =>
+            plugin.id === pluginId
+              ? {
+                  ...plugin,
+                  version: result.data.new_version,
+                  isUpdating: false,
+                  updateInfo: undefined, // 清除更新信息
+                }
+              : plugin
+          )
+        );
       } else {
         throw new Error(result.status === 'error' ? result.error : 'Update failed');
       }
     } catch (error) {
       console.error('Failed to update plugin:', error);
       showErrorToast(t('plugin.update.failed_detail', { error: String(error) }));
-    } finally {
+
       // 清除更新状态
       setInstalledPlugins(prev =>
         prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isUpdating: false } : plugin))
@@ -409,8 +423,9 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     }
   };
 
-  // 刷新插件数据（包含状态同步）
+  // 刷新插件数据（包含状态同步） - 优化：减少使用频率
   const handleRefresh = async () => {
+    console.log('用户手动刷新插件列表');
     await refreshPluginData();
   };
 
@@ -419,10 +434,11 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
     const pluginId = packageName.replace('@dataset-viewer/plugin-', '');
 
     try {
-      // 设置安装状态 - 更新可用插件列表
-      setAvailablePlugins(prev =>
-        prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isInstalling: true } : plugin))
-      );
+      // 设置安装状态 - 优化：只更新特定插件的状态
+      const updatePluginInstallState = (plugins: ExtendedPluginInfo[], isInstalling: boolean) =>
+        plugins.map(plugin => (plugin.id === pluginId ? { ...plugin, isInstalling } : plugin));
+
+      setAvailablePlugins(prev => updatePluginInstallState(prev, true));
 
       console.log('Installing plugin:', packageName, options);
 
@@ -441,20 +457,81 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         console.log(
           `Plugin ${result.data.plugin_id} installed successfully from ${result.data.source}`
         );
-        showToast(`插件 ${result.data.plugin_id} 安装成功`, 'success');
 
-        // 重新加载插件列表（包含自动激活）
-        await refreshPluginData();
+        // 优化：直接更新状态而不是全量刷新
+        const newPluginInfo: ExtendedPluginInfo = {
+          id: result.data.plugin_id,
+          name:
+            result.data.plugin_id
+              .split('-')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ') + ' Viewer',
+          version: result.data.version,
+          description: 'Installed plugin',
+          author: 'Unknown',
+          supported_extensions: [],
+          official: true,
+          keywords: [],
+          local: true,
+          local_path: result.data.install_path,
+          enabled: true, // 新安装的插件通常会自动启用
+          entry_path: null,
+          source: result.data.source,
+          isInstalling: false,
+        };
+
+        // 添加到已安装插件列表
+        setInstalledPlugins(prev => [...prev, newPluginInfo]);
+
+        // 更新可用插件列表中的状态
+        setAvailablePlugins(prev =>
+          prev.map(plugin =>
+            plugin.id === pluginId
+              ? { ...plugin, local: true, enabled: true, isInstalling: false }
+              : plugin
+          )
+        );
+
+        // 关键修复：安装成功后立即加载插件到前端，实现热加载
+        try {
+          // 获取刚安装的插件信息，包含入口路径
+          const pluginsResult = await commands.pluginDiscover(false);
+          if (pluginsResult.status === 'ok') {
+            const installedPlugin = pluginsResult.data.find(
+              (p: LocalPluginInfo) => p.id === pluginId && p.enabled
+            );
+            if (installedPlugin?.entry_path) {
+              // 直接加载插件，无需重复调用后端启用接口
+              await pluginManager.loadPluginDirect(installedPlugin.id, installedPlugin.entry_path);
+              console.log('Plugin hot-loaded successfully after installation');
+              showToast(
+                t('plugin.install.success', { pluginId: result.data.plugin_id }),
+                'success'
+              );
+            } else {
+              throw new Error('Plugin not found or missing entry path');
+            }
+          } else {
+            throw new Error('Failed to get plugin info');
+          }
+        } catch (loadError) {
+          console.warn('Failed to hot-load plugin after installation:', loadError);
+          // 热加载失败，建议用户重新启动或手动启用
+          showToast(
+            t('plugin.install.success_manual', { pluginId: result.data.plugin_id }),
+            'info'
+          );
+        }
       } else {
         const errorMsg = result.status === 'error' ? result.error : 'Unknown error';
         throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('Failed to install plugin:', error);
-      showErrorToast(`安装插件失败: ${error}`);
+      showErrorToast(t('plugin.install.failed', { error: String(error) }));
       throw error;
     } finally {
-      // 清除安装状态
+      // 确保清除安装状态
       setAvailablePlugins(prev =>
         prev.map(plugin => (plugin.id === pluginId ? { ...plugin, isInstalling: false } : plugin))
       );
@@ -476,16 +553,15 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         showToast(t('plugin.disable.success', { pluginId }), 'success');
       }
 
-      // 直接更新前端状态，无需重新获取数据
-      setInstalledPlugins(prev =>
-        prev.map(plugin => (plugin.id === pluginId ? { ...plugin, enabled } : plugin))
-      );
+      // 优化：直接更新前端状态，避免重新获取数据
+      const updatePluginState = (plugins: ExtendedPluginInfo[]) =>
+        plugins.map(plugin => (plugin.id === pluginId ? { ...plugin, enabled } : plugin));
+
+      setInstalledPlugins(prev => updatePluginState(prev));
 
       // 如果当前在插件市场标签页，也需要更新可用插件列表
       if (activeTab === 'available') {
-        setAvailablePlugins(prev =>
-          prev.map(plugin => (plugin.id === pluginId ? { ...plugin, enabled } : plugin))
-        );
+        setAvailablePlugins(prev => updatePluginState(prev));
       }
     } catch (error) {
       console.error('Failed to toggle plugin:', error);
@@ -509,8 +585,17 @@ export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
         console.log(`Plugin ${result.data.plugin_id} uninstalled: ${result.data.message}`);
         showToast(t('plugin.uninstall.success', { pluginId: result.data.plugin_id }), 'success');
 
-        // 重新加载插件列表
-        await refreshPluginData();
+        // 优化：直接从状态中移除卸载的插件，避免全量刷新
+        setInstalledPlugins(prev => prev.filter(plugin => plugin.id !== pluginId));
+
+        // 如果在可用插件列表中，更新其状态为未安装
+        if (activeTab === 'available') {
+          setAvailablePlugins(prev =>
+            prev.map(plugin =>
+              plugin.id === pluginId ? { ...plugin, local: false, enabled: false } : plugin
+            )
+          );
+        }
       } else {
         const errorMsg = result.status === 'error' ? result.error : 'Unknown error';
         throw new Error(errorMsg);

@@ -30,48 +30,30 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.tsx'),
       name: 'CADPlugin',
-      formats: ['es', 'cjs'],
-      fileName: (format: string) => `index.${format === 'es' ? 'esm' : 'cjs'}.js`,
+      formats: ['cjs'], // 只输出CJS格式
+      fileName: () => 'index.cjs.js', // 固定文件名
     },
     rollupOptions: {
-      // 将React相关依赖设为外部依赖，避免重复打包
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
-      output: [
-        // ESM 格式
-        {
-          format: 'es',
-          entryFileNames: 'index.esm.js',
-          // 定义全局变量映射，用于运行时获取React实例
-          globals: {
-            'react': 'React',
-            'react-dom': 'ReactDOM',
-            'react/jsx-runtime': 'React'
-          },
-          manualChunks: (id: string) => {
-            if (id.includes('@mlightcad/libredwg-web')) {
-              return 'libredwg-web';
-            }
-            if (id.includes('@mlightcad')) {
-              return 'mlightcad';
-            }
-            if (id.includes('three')) {
-              return 'three';
-            }
-          }
-        },
-        // CJS 格式
-        {
-          format: 'cjs',
-          entryFileNames: 'index.cjs.js',
-          globals: {
-            'react': 'React',
-            'react-dom': 'ReactDOM',
-            'react/jsx-runtime': 'React'
-          }
-        }
+      // 将React相关依赖设为外部依赖，运行时由主应用提供
+      external: [
+        'react',
+        'react-dom',
+        'react/jsx-runtime'
       ],
+      output: {
+        // 强制内联所有依赖，打包成单文件
+        inlineDynamicImports: true,
+      },
     },
-    chunkSizeWarningLimit: 10000,
+    // 禁用代码分割，确保单文件输出
+    chunkSizeWarningLimit: 15000, // 15MB
+    // 强制内联所有依赖
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: false, // 保留console.log用于调试
+      },
+    },
   },
   optimizeDeps: {
     exclude: ['@mlightcad/libredwg-web']

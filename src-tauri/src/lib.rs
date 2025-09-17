@@ -124,6 +124,9 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         // 插件发现命令
         plugin_discover,
         plugin_read_file,
+        // 插件文件加载命令
+        load_plugin_file,
+        plugin_check_file_exists,
         // 插件管理命令
         plugin_install,
         plugin_uninstall,
@@ -183,6 +186,96 @@ pub fn run() {
                 }
             }
             Ok(())
+        })
+        // 注册自定义协议处理器
+        .register_asynchronous_uri_scheme_protocol("plugin-resource", move |_app, request, responder| {
+            let uri = request.uri().to_string();
+            println!("🌐 Received plugin-resource request: {}", uri);
+
+            tauri::async_runtime::spawn(async move {
+                // 解析 plugin-resource://pluginId/resourcePath
+                match uri.parse::<url::Url>() {
+                    Ok(parsed_uri) => {
+                        let plugin_id = parsed_uri.host_str().unwrap_or("");
+                        let path = parsed_uri.path();
+                        let resource_path = if path.starts_with('/') {
+                            &path[1..] // 移除开头的 '/'
+                        } else {
+                            path
+                        };
+
+                        println!("🔌 Plugin ID: '{}', Resource path: '{}'", plugin_id, resource_path);
+
+                        // 调用新的插件资源加载命令
+                        match crate::commands::plugin_file_loader::load_plugin_resource(plugin_id.to_string(), resource_path.to_string()).await {
+                            Ok(content) => {
+                                println!("✅ Successfully loaded plugin resource: {} bytes", content.len());
+
+                                // 根据文件扩展名设置Content-Type
+                                let content_type = match resource_path.split('.').last() {
+                                    Some("js") => "application/javascript",
+                                    Some("css") => "text/css",
+                                    Some("json") => "application/json",
+                                    Some("wasm") => "application/wasm",
+                                    Some("png") => "image/png",
+                                    Some("jpg") | Some("jpeg") => "image/jpeg",
+                                    Some("gif") => "image/gif",
+                                    Some("svg") => "image/svg+xml",
+                                    Some("ico") => "image/x-icon",
+                                    Some("ttf") => "font/ttf",
+                                    Some("woff") => "font/woff",
+                                    Some("woff2") => "font/woff2",
+                                    Some("eot") => "application/vnd.ms-fontobject",
+                                    Some("otf") => "font/otf",
+                                    Some("zip") => "application/zip",
+                                    Some("pdf") => "application/pdf",
+                                    Some("html") => "text/html",
+                                    Some("xml") => "application/xml",
+                                    _ => "application/octet-stream", // 默认二进制类型
+                                };
+
+                                let response = tauri::http::Response::builder()
+                                    .status(200)
+                                    .header("Content-Type", content_type)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+                            .header("Access-Control-Allow-Headers", "*");
+
+                        match response.body(content) {
+                            Ok(response) => {
+                                responder.respond(response);
+                                println!("✅ Plugin resource loaded: {} for plugin: {}", resource_path, plugin_id);
+                            }
+                            Err(e) => {
+                                println!("❌ Failed to build response for {} (plugin {}): {}", resource_path, plugin_id, e);
+                                let error_response = tauri::http::Response::builder()
+                                    .status(500)
+                                    .body("Internal server error".as_bytes().to_vec())
+                                    .unwrap();
+                                responder.respond(error_response);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to load plugin resource {} for plugin {}: {}", resource_path, plugin_id, e);
+                        let response = tauri::http::Response::builder()
+                            .status(404)
+                            .body("Resource not found".as_bytes().to_vec())
+                            .unwrap();
+                        responder.respond(response);
+                    }
+                }
+                    }
+                    Err(parse_error) => {
+                        println!("❌ Failed to parse plugin-resource URI '{}': {}", uri, parse_error);
+                        let error_response = tauri::http::Response::builder()
+                            .status(400)
+                            .body("Invalid URI format".as_bytes().to_vec())
+                            .unwrap();
+                        responder.respond(error_response);
+                    }
+                }
+            });
         });
 
     tauri_builder

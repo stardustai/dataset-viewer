@@ -1,6 +1,6 @@
 import { Layers, FileImage, Shapes } from 'lucide-react';
 import { CADViewer } from './CADViewer';
-import { createPlugin } from '@dataset-viewer/sdk';
+import { createPlugin, PluginInitializeContext } from '@dataset-viewer/sdk';
 import { resources } from './i18n';
 import { cadModuleManager, CADModuleManager } from './utils/cadModuleManager';
 
@@ -26,12 +26,13 @@ const plugin = createPlugin({
   },
   component: CADViewer,
   i18nResources: resources,
-  initialize: async (context?: { pluginBasePath?: string }) => {
+  initialize: async (context: PluginInitializeContext) => {
     console.log('🔧 CAD Plugin initializing...');
 
-    // 如果提供了插件基础路径，设置到模块管理器
-    if (context?.pluginBasePath) {
+    // 设置插件基础路径到模块管理器
+    if (context.pluginBasePath) {
       CADModuleManager.setPluginBasePath(context.pluginBasePath);
+      console.log('✅ Plugin base path set:', context.pluginBasePath);
     }
 
     // 启动CAD模块后台预加载

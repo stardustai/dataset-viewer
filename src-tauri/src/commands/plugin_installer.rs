@@ -710,43 +710,72 @@ async fn extract_and_install_plugin(
     }
 
     // 3. 验证插件文件
-    let dist_dir = install_dir.join("dist");
-    if !dist_dir.exists() {
-        return Err("Plugin does not contain dist directory".to_string());
+    // 读取 package.json 获取主入口文件
+    let package_json_path = install_dir.join("package.json");
+    if !package_json_path.exists() {
+        return Err("Plugin does not contain package.json".to_string());
     }
 
-    // 检查主要文件是否存在
-    let main_files = ["index.esm.js", "index.js", "index.umd.js"];
-    let mut found_main = false;
-    for main_file in main_files {
-        if dist_dir.join(main_file).exists() {
-            found_main = true;
-            break;
-        }
+    let package_json_content = fs::read_to_string(&package_json_path)
+        .map_err(|e| format!("Failed to read package.json: {}", e))?;
+
+    let package_info: serde_json::Value = serde_json::from_str(&package_json_content)
+        .map_err(|e| format!("Invalid package.json format: {}", e))?;
+
+    // 获取 main 字段指定的入口文件
+    let main_file = package_info["main"].as_str().unwrap_or("dist/index.js"); // 默认值
+
+    // 检查主入口文件是否存在
+    let main_file_path = install_dir.join(main_file);
+    if !main_file_path.exists() {
+        return Err(format!(
+            "Plugin main file '{}' specified in package.json does not exist",
+            main_file
+        ));
     }
 
-    if !found_main {
-        return Err("Plugin does not contain valid main file".to_string());
-    }
+    println!("✅ Found plugin main file: {}", main_file);
 
     // 4. 创建符号链接到当前版本
     let current_link = cache_dir.join(package_name);
+
+    // 如果符号链接已存在，先删除它
     if current_link.exists() {
-        fs::remove_file(&current_link).ok(); // 忽略错误
+        println!("Removing existing symlink: {:?}", current_link);
+        if current_link.is_symlink() {
+            fs::remove_file(&current_link).ok(); // 忽略删除错误
+        } else {
+            // 如果存在的是目录，先删除目录
+            fs::remove_dir_all(&current_link).ok(); // 忽略删除错误
+        }
     }
 
     #[cfg(unix)]
     {
         use std::os::unix::fs as unix_fs;
-        unix_fs::symlink(&install_dir, &current_link)
-            .map_err(|e| format!("Failed to create symlink: {}", e))?;
+        if let Err(e) = unix_fs::symlink(&install_dir, &current_link) {
+            println!(
+                "Warning: Failed to create symlink: {} - {}",
+                current_link.display(),
+                e
+            );
+            // 符号链接失败不应该阻止安装继续，因为插件已经成功解压
+            // 只是用户可能需要通过完整版本路径访问插件
+        }
     }
 
     #[cfg(windows)]
     {
         use std::os::windows::fs as windows_fs;
-        windows_fs::symlink_dir(&install_dir, &current_link)
-            .map_err(|e| format!("Failed to create symlink: {}", e))?;
+        if let Err(e) = windows_fs::symlink_dir(&install_dir, &current_link) {
+            println!(
+                "Warning: Failed to create symlink: {} - {}",
+                current_link.display(),
+                e
+            );
+            // 符号链接失败不应该阻止安装继续，因为插件已经成功解压
+            // 只是用户可能需要通过完整版本路径访问插件
+        }
     }
 
     // 5. 自动启用新安装的插件
@@ -771,7 +800,7 @@ async fn extract_and_install_plugin(
  *
  * 目录策略:
  * - 开发模式: 项目根目录/.plugins (便于前端HTTP访问)
- * - 生产模式: ~/.dataset-viewer/plugins (用户数据目录)
+ * - 生产模式: 应用数据目录/plugins (Tauri应用数据目录)
  */
 pub fn get_plugin_cache_dir() -> Result<PathBuf, String> {
     if is_development_mode() {
@@ -794,14 +823,17 @@ pub fn get_plugin_cache_dir() -> Result<PathBuf, String> {
 
         Ok(plugins_dir)
     } else {
-        // 生产模式：使用用户目录
-        let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
-        let cache_dir = home_dir.join(".dataset-viewer").join("plugins");
+        // 生产模式：使用Tauri应用数据目录
+        // 这样确保前端可以通过asset协议访问插件文件
+        let app_data_dir = dirs::data_dir()
+            .ok_or("Failed to get app data directory")?
+            .join("ai.stardust.dataset-viewer")
+            .join("plugins");
 
-        fs::create_dir_all(&cache_dir)
-            .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+        fs::create_dir_all(&app_data_dir)
+            .map_err(|e| format!("Failed to create app data directory: {}", e))?;
 
-        Ok(cache_dir)
+        Ok(app_data_dir)
     }
 }
 

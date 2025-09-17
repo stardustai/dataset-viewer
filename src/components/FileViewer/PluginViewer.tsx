@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { pluginManager } from '../../services/plugin/pluginManager';
@@ -60,6 +60,40 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 使用 useCallback 缓存回调函数，避免无限循环
+  const handleError = useCallback((error: string) => {
+    setError(error);
+  }, []);
+
+  const handleLoadingChange = useCallback((loading: boolean) => {
+    setLoading(loading);
+  }, []);
+
+  // 使用 useMemo 缓存 fileAccessor，避免每次渲染都创建新实例
+  const fileAccessor = useMemo(
+    () => createFileAccessor(storageClient, filePath),
+    [storageClient, filePath]
+  );
+
+  // 缓存文件对象，避免每次渲染都创建新实例
+  const fileObj = useMemo(
+    () => ({
+      name: file.basename,
+      size: parseInt(file.size) || 0,
+      path: filePath,
+    }),
+    [file.basename, file.size, filePath]
+  );
+
+  // 缓存插件翻译函数，避免每次渲染都创建新实例
+  const pluginT = useMemo(() => {
+    if (!pluginNamespace) return () => '';
+    return (key: string, options?: any): string => {
+      const result = i18n.t(key, { ...options, ns: pluginNamespace });
+      return typeof result === 'string' ? result : String(result);
+    };
+  }, [pluginNamespace]);
+
   useEffect(() => {
     const loadPluginViewer = async () => {
       try {
@@ -105,25 +139,15 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
 
   const PluginComponent = pluginComponent;
 
-  // 创建绑定到插件命名空间的翻译函数
-  const pluginT = (key: string, options?: any): string => {
-    const result = i18n.t(key, { ...options, ns: pluginNamespace });
-    return typeof result === 'string' ? result : String(result);
-  };
-
   return (
     <div className="flex-1 overflow-hidden">
       <PluginComponent
-        file={{
-          name: file.basename,
-          size: parseInt(file.size) || 0,
-          path: filePath,
-        }}
+        file={fileObj}
         content={content}
-        fileAccessor={createFileAccessor(storageClient, filePath)}
+        fileAccessor={fileAccessor}
         isLargeFile={isLargeFile}
-        onError={(error: string) => setError(error)}
-        onLoadingChange={(loading: boolean) => setLoading(loading)}
+        onError={handleError}
+        onLoadingChange={handleLoadingChange}
         language={i18n.language}
         t={pluginT}
       />

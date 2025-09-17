@@ -19,6 +19,34 @@
     {
       "identifier": "dialog:allow-save",
       "allow": []
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [
+        {
+          "path": "$APPDATA/ai.stardust.dataset-viewer"
+        },
+        {
+          "path": "$APPDATA/ai.stardust.dataset-viewer/**"
+        },
+        {
+          "path": ".plugins"
+        },
+        {
+          "path": ".plugins/**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        {
+          "path": "$APPDATA/ai.stardust.dataset-viewer/**"
+        },
+        {
+          "path": ".plugins/**"
+        }
+      ]
     }
   ]
 }

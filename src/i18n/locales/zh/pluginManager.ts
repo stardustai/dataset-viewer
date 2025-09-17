@@ -54,6 +54,7 @@ export const pluginManager = {
 
   // 操作结果消息
   'plugin.install.success': '插件 {{pluginId}} 安装成功',
+  'plugin.install.success_manual': '插件 {{pluginId}} 安装成功，请刷新页面或手动启用',
   'plugin.install.failed': '安装插件失败: {{error}}',
   'plugin.uninstall.success': '插件 {{pluginId}} 卸载成功',
   'plugin.uninstall.failed': '卸载插件失败: {{error}}',
@@ -92,4 +93,14 @@ export const pluginManager = {
 
   // 描述
   'plugin.description': '安装和管理文件查看器插件，扩展更多文件格式支持',
+
+  // 错误处理
+  'plugin.error.file_not_found': '插件文件未找到{{pluginName}}，请检查插件是否正确安装',
+  'plugin.error.invalid_format': '插件格式无效{{pluginName}}，可能是插件版本不兼容',
+  'plugin.error.execution_error': '插件执行出错{{pluginName}}，请联系插件开发者',
+  'plugin.error.dependency_error': '插件依赖缺失{{pluginName}}，请检查插件完整性',
+  'plugin.error.network_error': '网络错误{{pluginName}}，请检查网络连接后重试',
+  'plugin.error.unknown_error': '插件加载失败{{pluginName}}：{{message}}',
+  'plugin.error.load_failed': '插件加载失败，使用默认查看器',
+  'plugin.error.retry_available': '加载失败，点击重试',
 };

@@ -22,8 +22,6 @@ export const CADViewer: FC<PluginViewerProps> = ({
   onError,
   t
 }) => {
-  const [retryTimers, setRetryTimers] = useState<NodeJS.Timeout[]>([]);
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<CADViewerState>({
@@ -468,15 +466,14 @@ export const CADViewer: FC<PluginViewerProps> = ({
           }, delay);
           timers.push(timer);
         });
-        setRetryTimers(timers);
+
+        // 返回清理函数，直接清理本次创建的timers
+        return () => {
+          timers.forEach(timer => clearTimeout(timer));
+        };
       }
     }
-
-    return () => {
-      // 组件卸载时清理所有计时器
-      retryTimers.forEach(timer => clearTimeout(timer));
-    };
-  }, [state.loadedFileKey, retryTimers]);
+  }, [state.loadedFileKey]); // 移除 retryTimers 依赖，避免无限循环
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current || !state.isInitialized) return;

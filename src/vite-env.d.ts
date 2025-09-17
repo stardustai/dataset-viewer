@@ -1,5 +1,20 @@
 /// <reference types="vite/client" />
 
+// 全局Window对象扩展
+declare global {
+  interface Window {
+    React?: any;
+    ReactDOM?: any;
+    ReactJSXRuntime?: {
+      jsx: any;
+      jsxs: any;
+      Fragment: any;
+    };
+    TauriCore?: any;
+    __PLUGIN_MODULE_LOADER__?: (specifier: string, referrer?: string) => Promise<any>;
+  }
+}
+
 // 声明 dav1d.js 模块类型
 declare module 'dav1d.js' {
   interface Dav1dDecoder {
