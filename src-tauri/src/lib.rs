@@ -8,6 +8,158 @@ use commands::*; // 导入所有命令
 use tauri::{Emitter, Listener};
 use tauri_specta::{collect_commands, Builder};
 
+/**
+ * 使用插件发现系统加载插件资源
+ */
+async fn load_plugin_resource_by_discovery(
+    plugin_id: String,
+    resource_path: String,
+) -> Result<Vec<u8>, String> {
+    println!(
+        "🔍 Loading plugin resource: '{}' for plugin: '{}'",
+        resource_path, plugin_id
+    );
+
+    // 统一错误处理函数
+    let plugin_error = |context: &str, error: String| -> String {
+        format!("Plugin resource {}: {}", context, error)
+    };
+
+    // 获取插件缓存目录
+    let cache_dir = crate::commands::plugin_installer::get_plugin_cache_dir()
+        .map_err(|e| plugin_error("cache directory access failed", e.to_string()))?;
+    println!("🔍 Plugin cache directory: {}", cache_dir.display());
+
+    // 使用插件发现系统查找插件
+    use crate::commands::plugin_discovery::plugin_discover;
+
+    match plugin_discover(Some(false)).await {
+        Ok(plugins) => {
+            println!("🔍 Found {} plugins", plugins.len());
+
+            // 查找匹配的插件
+            for plugin in plugins {
+                println!(
+                    "🔍 Checking plugin: id='{}', enabled={}, entry_path={:?}",
+                    plugin.id, plugin.enabled, plugin.entry_path
+                );
+
+                if plugin.id == plugin_id && plugin.entry_path.is_some() {
+                    let entry_path = plugin.entry_path.unwrap();
+                    println!("✅ Found matching plugin with entry_path: '{}'", entry_path);
+
+                    // 提取插件目录（去掉文件名部分）
+                    if let Some(plugin_dir_relative) = std::path::Path::new(&entry_path).parent() {
+                        // 根据entry_path的格式判断插件类型
+                        let plugin_dir = if entry_path.starts_with(".plugins/") {
+                            // 缓存目录中的插件
+                            cache_dir.join(
+                                plugin_dir_relative
+                                    .strip_prefix(".plugins/")
+                                    .unwrap_or(plugin_dir_relative),
+                            )
+                        } else {
+                            // npm link的插件，使用项目根目录
+                            let current_dir = std::env::current_dir().unwrap_or_default();
+                            let project_root = if current_dir.ends_with("src-tauri") {
+                                current_dir.parent().unwrap_or(&current_dir)
+                            } else {
+                                &current_dir
+                            };
+                            project_root.join(plugin_dir_relative)
+                        };
+
+                        println!("🔍 Plugin directory: {}", plugin_dir.display());
+
+                        // 构建资源文件的完整路径
+                        let resource_file_path = plugin_dir.join(&resource_path);
+                        println!(
+                            "🔍 Trying to load resource from: {}",
+                            resource_file_path.display()
+                        );
+
+                        // 检查文件是否存在
+                        if resource_file_path.exists() {
+                            println!("✅ Resource file exists!");
+
+                            // 检查路径安全性（使用规范化路径）
+                            let canonical_resource_path =
+                                resource_file_path.canonicalize().map_err(|e| {
+                                    plugin_error("path canonicalization failed", e.to_string())
+                                })?;
+
+                            // 对于npm link插件，允许项目根目录下的路径
+                            let current_dir = std::env::current_dir().unwrap_or_default();
+                            let project_root = if current_dir.ends_with("src-tauri") {
+                                current_dir.parent().unwrap_or(&current_dir)
+                            } else {
+                                &current_dir
+                            };
+                            let canonical_project_root =
+                                project_root.canonicalize().map_err(|e| {
+                                    plugin_error(
+                                        "project root canonicalization failed",
+                                        e.to_string(),
+                                    )
+                                })?;
+                            let canonical_cache_dir = cache_dir.canonicalize().map_err(|e| {
+                                plugin_error(
+                                    "cache directory canonicalization failed",
+                                    e.to_string(),
+                                )
+                            })?;
+
+                            // 允许缓存目录或项目根目录下的文件
+                            if canonical_resource_path.starts_with(&canonical_cache_dir)
+                                || canonical_resource_path.starts_with(&canonical_project_root)
+                            {
+                                println!("✅ Path security check passed");
+                                return std::fs::read(&resource_file_path).map_err(|e| {
+                                    plugin_error(
+                                        &format!(
+                                            "file read failed ({})",
+                                            resource_file_path.display()
+                                        ),
+                                        e.to_string(),
+                                    )
+                                });
+                            } else {
+                                println!(
+                                    "❌ Path security check failed - outside allowed directories"
+                                );
+                                return Err(plugin_error(
+                                    "access denied",
+                                    "resource path outside allowed directories".to_string(),
+                                ));
+                            }
+                        } else {
+                            println!(
+                                "❌ Resource file does not exist at: {}",
+                                resource_file_path.display()
+                            );
+                        }
+                    } else {
+                        println!(
+                            "❌ Failed to get parent directory from entry_path: {}",
+                            entry_path
+                        );
+                    }
+                }
+            }
+
+            println!("❌ No matching plugin found for id: '{}'", plugin_id);
+            Err(plugin_error(
+                "not found",
+                format!("{} for plugin {}", resource_path, plugin_id),
+            ))
+        }
+        Err(e) => {
+            println!("❌ Failed to discover plugins: {}", e);
+            Err(plugin_error("discovery failed", e.to_string()))
+        }
+    }
+}
+
 // 前端状态管理 - 用于文件关联处理
 static FRONTEND_STATE: std::sync::Mutex<FrontendState> = std::sync::Mutex::new(FrontendState {
     is_ready: false,
@@ -123,7 +275,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         archive_get_file_content,
         // 插件发现命令
         plugin_discover,
-        plugin_read_file,
         // 插件文件加载命令
         load_plugin_file,
         plugin_check_file_exists,
@@ -206,8 +357,8 @@ pub fn run() {
 
                         println!("🔌 Plugin ID: '{}', Resource path: '{}'", plugin_id, resource_path);
 
-                        // 调用新的插件资源加载命令
-                        match crate::commands::plugin_file_loader::load_plugin_resource(plugin_id.to_string(), resource_path.to_string()).await {
+                        // 使用插件发现系统来查找和加载资源
+                        match load_plugin_resource_by_discovery(plugin_id.to_string(), resource_path.to_string()).await {
                             Ok(content) => {
                                 println!("✅ Successfully loaded plugin resource: {} bytes", content.len());
 

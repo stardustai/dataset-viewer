@@ -42,6 +42,7 @@ export interface PluginLoadResult {
  * 加载策略:
  * - 仅支持CJS格式：通过自定义require函数加载，提供外部依赖映射
  * - 统一使用Tauri命令：所有插件文件通过Tauri后端加载，支持开发和生产环境
+ * - npm link插件：开发模式下直接使用ES Module动态导入
  *
  * 插件存储:
  * - 开发模式: .plugins/ (项目根目录)
@@ -210,23 +211,20 @@ export class PluginFramework {
         const plugin = await this.processPluginModule(pluginModule, pluginId, entryPath);
         return { success: true, plugin };
       } else {
-        // 通过Tauri命令加载插件代码
-        console.log(`🔌 [Plugin ${pluginId}] 使用Tauri命令加载`);
-
-        // 转换为CJS路径（如果需要）
-        const cjsPath = entryPath.replace(/\.esm\.js$/, '.cjs.js');
+        // 通过Tauri命令加载插件代码（CJS格式）
+        console.log(`🔌 [Plugin ${pluginId}] 使用Tauri命令加载CJS插件`);
 
         try {
-          const result = await commands.loadPluginFile(cjsPath);
+          const result = await commands.loadPluginFile(entryPath);
           if (result.status === 'error') {
             throw new Error(result.error);
           }
           const pluginCode = new TextDecoder('utf-8').decode(new Uint8Array(result.data));
-          console.log(`🔌 [Plugin ${pluginId}] ✅ 通过Tauri加载插件代码成功`);
+          console.log(`🔌 [Plugin ${pluginId}] ✅ 通过Tauri加载CJS插件代码成功`);
 
           // 执行CJS插件
-          const pluginModule = this.executeCJSPlugin(pluginCode, cjsPath);
-          const plugin = await this.processPluginModule(pluginModule, pluginId, cjsPath);
+          const pluginModule = this.executeCJSPlugin(pluginCode, entryPath);
+          const plugin = await this.processPluginModule(pluginModule, pluginId, entryPath);
           return { success: true, plugin };
         } catch (commandError: any) {
           // 根据错误类型创建具体的错误信息
@@ -245,7 +243,7 @@ export class PluginFramework {
 
           const error = this.createPluginError(
             errorType,
-            commandError.message || 'Failed to load plugin file',
+            `Failed to load CJS plugin file: ${commandError.message}`,
             commandError,
             pluginId
           );

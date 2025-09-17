@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::command;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -97,36 +97,19 @@ fn is_plugin_enabled(plugin_id: &str) -> bool {
 /**
  * 计算插件的入口文件路径
  */
+/**
+ * 计算插件入口路径，优先使用 CJS 格式
+ */
 pub fn calculate_entry_path(
     package_json_path: &Path,
     package_info: &PluginPackageInfo,
 ) -> Option<String> {
     let plugin_dir = package_json_path.parent()?;
-    let dist_dir = plugin_dir.join("dist");
 
     println!("Calculating entry path for package: {}", package_info.name);
     println!("Plugin dir: {:?}", plugin_dir);
 
-    // 读取完整的 package.json 来检查 module 字段
-    if let Ok(package_content) = std::fs::read_to_string(&package_json_path) {
-        if let Ok(package_json) = serde_json::from_str::<serde_json::Value>(&package_content) {
-            // 优先检查 module 字段（ESM格式，更适合浏览器环境）
-            if let Some(module) = package_json.get("module").and_then(|v| v.as_str()) {
-                let entry_path = plugin_dir.join(module);
-                println!("Module field: {:?}", module);
-                println!("Checking module field path: {:?}", entry_path);
-                if entry_path.exists() {
-                    let result = convert_to_relative_path(&entry_path);
-                    println!("Using module field, relative path: {:?}", result);
-                    return result;
-                }
-            }
-        }
-    }
-
-    println!("Main field: {:?}", package_info.main);
-
-    // 回退到 main 字段
+    // 优先使用 main 字段（通常指向 CJS 格式）
     if let Some(main) = &package_info.main {
         let entry_path = plugin_dir.join(main);
         println!("Checking main field path: {:?}", entry_path);
@@ -137,8 +120,10 @@ pub fn calculate_entry_path(
         }
     }
 
-    // 否则按优先级查找常见的入口文件（优先ESM格式，配合依赖替换使用）
-    let possible_entries = ["index.esm.js", "index.mjs", "index.js", "index.cjs.js"];
+    // 回退到 dist 目录中的常见入口文件（优先 CJS 格式）
+    let dist_dir = plugin_dir.join("dist");
+    let possible_entries = ["index.cjs.js", "index.js", "index.esm.js", "index.mjs"];
+
     for entry in possible_entries.iter() {
         let entry_path = dist_dir.join(entry);
         println!("Checking fallback path: {:?}", entry_path);
@@ -150,13 +135,11 @@ pub fn calculate_entry_path(
     }
 
     println!("No entry path found!");
-    // 如果都没找到，返回 None
     None
 }
 
 /**
- * 将绝对路径转换为相对于插件缓存目录的路径
- * 统一处理开发模式和生产模式
+ * 将绝对路径转换为相对路径，统一处理开发模式和生产模式
  */
 pub fn convert_to_relative_path(absolute_path: &Path) -> Option<String> {
     // 获取插件缓存目录
@@ -166,15 +149,34 @@ pub fn convert_to_relative_path(absolute_path: &Path) -> Option<String> {
     println!("  Absolute path: {:?}", absolute_path);
     println!("  Cache dir: {:?}", cache_dir);
 
-    // 计算相对于缓存目录的路径
+    // 首先尝试相对于缓存目录的路径（普通安装的插件）
     if let Ok(relative_path) = absolute_path.strip_prefix(&cache_dir) {
-        let result = relative_path.to_string_lossy().replace('\\', "/");
-        println!("  Relative path: {}", result);
-        Some(result)
-    } else {
-        println!("  Failed: path is not under cache directory");
-        None
+        let result = format!(
+            ".plugins/{}",
+            relative_path.to_string_lossy().replace('\\', "/")
+        );
+        println!("  Cache relative path: {}", result);
+        return Some(result);
     }
+
+    // 对于npm link的插件，尝试相对于项目根目录
+    let current_dir = std::env::current_dir().ok()?;
+    let project_root = if current_dir.ends_with("src-tauri") {
+        current_dir.parent().unwrap_or(&current_dir)
+    } else {
+        &current_dir
+    };
+
+    println!("  Project root: {:?}", project_root);
+
+    if let Ok(relative_path) = absolute_path.strip_prefix(project_root) {
+        let result = relative_path.to_string_lossy().replace('\\', "/");
+        println!("  Project relative path: {}", result);
+        return Some(result);
+    }
+
+    println!("  Failed: path is not under cache directory or project root");
+    None
 }
 
 #[derive(Debug, Serialize, Deserialize, Type)]
@@ -961,49 +963,4 @@ fn read_package_json(path: &std::path::Path) -> Result<PackageJsonInfo, String> 
         .map_err(|e| format!("Failed to parse package.json: {}", e))?;
 
     Ok(package_info)
-}
-
-/**
- * 读取插件文件内容
- */
-#[command]
-#[specta::specta]
-pub async fn plugin_read_file(plugin_path: String) -> Result<String, String> {
-    println!("Reading plugin file: {}", plugin_path);
-
-    // 处理相对路径：如果是相对路径，转换为绝对路径
-    let absolute_path = if Path::new(&plugin_path).is_absolute() {
-        PathBuf::from(&plugin_path)
-    } else {
-        // 获取项目根目录
-        let current_dir = std::env::current_dir()
-            .map_err(|e| format!("Failed to get current directory: {}", e))?;
-        let project_root = if current_dir.ends_with("src-tauri") {
-            current_dir
-                .parent()
-                .ok_or("Failed to get project root directory")?
-                .to_path_buf()
-        } else {
-            current_dir
-        };
-
-        // 拼接相对路径
-        project_root.join(&plugin_path)
-    };
-
-    println!("Resolved absolute path: {:?}", absolute_path);
-
-    // 安全检查：确保路径在允许的插件目录内
-    let cache_dir = crate::commands::plugin_installer::get_plugin_cache_dir()
-        .map_err(|e| format!("Failed to get plugin cache dir: {}", e))?;
-
-    if !absolute_path.starts_with(&cache_dir) && !plugin_path.contains("@dataset-viewer/plugin-") {
-        return Err(format!(
-            "Access denied: plugin path not in allowed directories. Path: {:?}, Cache dir: {:?}",
-            absolute_path, cache_dir
-        ));
-    }
-
-    // 读取文件内容
-    fs::read_to_string(&absolute_path).map_err(|e| format!("Failed to read plugin file: {}", e))
 }
