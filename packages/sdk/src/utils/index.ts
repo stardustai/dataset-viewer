@@ -35,9 +35,6 @@ export function createPlugin(options: CreatePluginOptions): PluginBundle {
   if (!metadata.name) {
     throw new Error('Plugin metadata.name is required');
   }
-  if (!metadata.version) {
-    throw new Error('Plugin metadata.version is required');
-  }
   if (!metadata.supportedExtensions || metadata.supportedExtensions.length === 0) {
     throw new Error('Plugin metadata.supportedExtensions is required and must not be empty');
   }
@@ -73,7 +70,6 @@ export function validatePluginMetadata(metadata: PluginMetadata): {
   // 必需字段检查
   if (!metadata.id) errors.push('id is required');
   if (!metadata.name) errors.push('name is required');
-  if (!metadata.version) errors.push('version is required');
   if (!metadata.description) errors.push('description is required');
   if (!metadata.author) errors.push('author is required');
   if (!metadata.category) errors.push('category is required');
@@ -96,11 +92,6 @@ export function validatePluginMetadata(metadata: PluginMetadata): {
   // ID格式检查
   if (metadata.id && !metadata.id.match(/^[a-z][a-z0-9\-]*$/)) {
     errors.push('id must be lowercase and can only contain letters, numbers, and hyphens');
-  }
-
-  // 版本格式检查（简单的语义版本检查）
-  if (metadata.version && !metadata.version.match(/^\d+\.\d+\.\d+/)) {
-    errors.push('version must follow semantic versioning (e.g., "1.0.0")');
   }
 
   // 分类检查

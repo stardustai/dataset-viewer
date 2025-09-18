@@ -1,7 +1,7 @@
 {
   "name": "@dataset-viewer/plugin-cad",
   "version": "0.1.4",
-  "description": "CAD文件查看插件，支持DWG、DXF格式",
+  "description": "CAD file viewer plugin for Dataset Viewer",
   "main": "dist/index.cjs.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -17,9 +17,9 @@
   "keywords": [
     "dataset-viewer",
     "plugin",
-    "cad",
-    "dwg",
-    "dxf",
+    ".cad",
+    ".dwg",
+    ".dxf",
     "autocad"
   ],
   "author": "DatasetViewer Team",
@@ -51,7 +51,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@dataset-viewer/sdk": "^0.1.1",
+    "@dataset-viewer/sdk": "workspace:*",
     "@mlightcad/cad-simple-viewer": "1.0.18",
     "@mlightcad/data-model": "1.2.7",
     "@mlightcad/libredwg-converter": "^3.0.8",

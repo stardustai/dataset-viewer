@@ -1,0 +1,44 @@
+{
+  "name": "@dataset-viewer/plugin-sketch",
+  "version": "0.1.0",
+  "description": "Sketch file viewer plugin for Dataset Viewer",
+  "main": "dist/index.cjs.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "tsc && vite build",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "sketch-editor": "^0.23.0",
+    "@dataset-viewer/sdk": "workspace:*",
+    "lucide-react": "^0.460.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stardustai/dataset-viewer.git",
+    "directory": "packages/sketch-plugin"
+  },
+  "keywords": [
+    ".sketch",
+    ".psd",
+    "viewer",
+    "plugin",
+    "dataset-viewer"
+  ],
+  "author": "DatasetViewer Team",
+  "license": "MIT"
+}

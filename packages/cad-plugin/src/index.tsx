@@ -8,7 +8,6 @@ const plugin = createPlugin({
   metadata: {
     id: 'cad',
     name: 'CAD Viewer',
-    version: '1.0.0',
     description: 'Viewer for CAD files including DWG and DXF formats',
     author: 'StardustAI',
     supportedExtensions: ['.dwg', '.dxf'],
@@ -22,7 +21,7 @@ const plugin = createPlugin({
       '.dxf': <Shapes className="text-green-600" />,
     },
     category: 'viewer' as const,
-    minAppVersion: '1.0.0',
+    minAppVersion: '1.5.0',
   },
   component: CADViewer,
   i18nResources: resources,

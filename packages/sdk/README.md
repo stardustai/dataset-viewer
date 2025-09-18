@@ -98,7 +98,6 @@ export default plugin;
 - `fileAccessor`: 文件访问器
 - `isLargeFile`: 是否为大文件
 - `onError`: 错误处理回调
-- `onLoadingChange`: 加载状态变化回调
 
 ### 工具函数
 

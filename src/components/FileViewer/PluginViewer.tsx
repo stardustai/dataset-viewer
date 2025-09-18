@@ -64,10 +64,6 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
     setError(error);
   }, []);
 
-  const handleLoadingChange = useCallback((loading: boolean) => {
-    setLoading(loading);
-  }, []);
-
   // 使用 useMemo 缓存 fileAccessor，避免每次渲染都创建新实例
   const fileAccessor = useMemo(
     () => createFileAccessor(storageClient, filePath),
@@ -142,7 +138,6 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
         fileAccessor={fileAccessor}
         isLargeFile={isLargeFile}
         onError={handleError}
-        onLoadingChange={handleLoadingChange}
         language={i18n.language}
         t={pluginT}
       />
