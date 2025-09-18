@@ -1,41 +1,5 @@
 // Type declarations for sketch-editor library
 
-export interface Root {
-  destroy(): void
-  getCurPage(): any
-}
-
-export interface Listener {
-  destroy(): void
-  selected: any[]
-  state: any
-  emit(event: string, ...args: any[]): void
-  on(event: string, callback: (...args: any[]) => void): void
-  options: ListenerOptions
-}
-
-export interface ListenerOptions {
-  enabled?: {
-    selectWithMeta?: boolean
-    resizeWithAlt?: boolean
-  }
-  disabled?: {
-    select?: boolean
-    hover?: boolean
-    remove?: boolean
-    move?: boolean
-    resize?: boolean
-    drag?: boolean
-    scale?: boolean
-    editText?: boolean
-    inputText?: boolean
-    contextMenu?: boolean
-    guides?: boolean
-    editGeom?: boolean
-    metaFrame?: boolean
-  }
-}
-
 declare module 'sketch-editor' {
   export interface SketchEditorConfig {
     debug?: boolean
@@ -56,6 +20,28 @@ declare module 'sketch-editor' {
 
   export interface PanelOptions {
     maxFontSize?: number
+  }
+
+  export interface ListenerOptions {
+    enabled?: {
+      selectWithMeta?: boolean
+      resizeWithAlt?: boolean
+    }
+    disabled?: {
+      select?: boolean
+      hover?: boolean
+      remove?: boolean
+      move?: boolean
+      resize?: boolean
+      drag?: boolean
+      scale?: boolean
+      editText?: boolean
+      inputText?: boolean
+      contextMenu?: boolean
+      guides?: boolean
+      editGeom?: boolean
+      metaFrame?: boolean
+    }
   }
 
   export interface Root {
