@@ -520,7 +520,7 @@ fn parse_npm_linked_plugin(
     // 简化的扩展名提取
     let supported_extensions = keywords
         .iter()
-        .filter(|k| k.len() >= 2 && k.len() <= 5 && k.chars().all(|c| c.is_ascii_alphanumeric()))
+        .filter(|k| k.starts_with('.'))
         .cloned()
         .collect();
 
@@ -629,9 +629,7 @@ async fn search_npm_registry() -> Result<Vec<LocalPluginInfo>, String> {
         // 提取支持的文件扩展名
         let supported_extensions = keywords
             .iter()
-            .filter(|k| {
-                k.len() >= 2 && k.len() <= 5 && k.chars().all(|c| c.is_ascii_alphanumeric())
-            })
+            .filter(|k| k.starts_with('.'))
             .cloned()
             .collect();
 
@@ -869,11 +867,7 @@ async fn get_cached_plugins() -> Result<Vec<LocalPluginInfo>, String> {
                                         package_info.keywords.clone().unwrap_or_default();
                                     let supported_extensions = keywords
                                         .iter()
-                                        .filter(|k| {
-                                            k.len() >= 2
-                                                && k.len() <= 5
-                                                && k.chars().all(|c| c.is_ascii_alphanumeric())
-                                        })
+                                        .filter(|k| k.starts_with('.'))
                                         .cloned()
                                         .collect();
 

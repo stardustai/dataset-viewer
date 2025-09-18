@@ -1,11 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { fileURLToPath } from 'node:url';
 import dts from 'vite-plugin-dts';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-
-// @ts-ignore Node ESM 环境下定义
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [

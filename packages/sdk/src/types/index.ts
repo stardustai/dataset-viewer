@@ -34,7 +34,6 @@ export interface PluginMetadata {
    */
   id: string;
   name: string;
-  version: string;
   description: string;
   author: string;
   supportedExtensions: string[];
@@ -105,7 +104,6 @@ export interface PluginViewerProps {
   fileAccessor: FileAccessor;
   isLargeFile: boolean;
   onError: (error: string) => void;
-  onLoadingChange: (loading: boolean) => void;
   // 语言设置
   language: string;
   t: (key: string, options?: any) => string;

@@ -1,6 +1,6 @@
 {
   "name": "@dataset-viewer/sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Dataset Viewer Plugin SDK - Types, utilities, and tools for plugin development",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
