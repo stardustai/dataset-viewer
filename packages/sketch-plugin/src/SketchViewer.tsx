@@ -160,7 +160,7 @@ export const SketchViewer: FC<PluginViewerProps> = ({
   }
 
   return (
-    <div className="sketch-viewer w-full h-full relative overflow-hidden bg-gray-50">
+    <div className="sketch-viewer w-full h-full relative overflow-hidden bg-gray-50 dark:bg-gray-900">
       <canvas
         ref={canvasRef}
         className="w-full h-full block"
