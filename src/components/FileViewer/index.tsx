@@ -35,11 +35,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({
   const fileLoader = useFileLoader(file, filePath, forceTextMode);
 
   // 创建需要的refs
-  const textViewerRef = useRef<VirtualizedTextViewerRef>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mainContainerRef = useRef<HTMLDivElement>(null);
-  const loadMoreSectionRef = useRef<HTMLDivElement>(null);
-  const mainDivRef = useRef<HTMLDivElement>(null);
+  const textViewerRef = useRef<VirtualizedTextViewerRef | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mainContainerRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreSectionRef = useRef<HTMLDivElement | null>(null);
+  const mainDivRef = useRef<HTMLDivElement | null>(null);
 
   // Markdown 预览状态
   const [isMarkdownPreviewOpen, setIsMarkdownPreviewOpen] = useState(false);

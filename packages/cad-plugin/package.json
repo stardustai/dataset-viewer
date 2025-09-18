@@ -29,18 +29,16 @@
     "url": "https://github.com/datasetviewer/cad-plugin.git"
   },
   "peerDependencies": {
-    "@dataset-viewer/sdk": ">=0.1.0",
-    "lucide-react": "^0.525.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
   },
   "devDependencies": {
-    "@types/node": "^20.4.5",
-    "@types/react": "^18.2.15",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
     "terser": "^5.43.1",
-    "typescript": "^5.1.6",
+    "typescript": "^5.9.2",
     "vite": "^7.1.5",
-    "vite-plugin-dts": "^3.3.1",
+    "vite-plugin-dts": "^4.5.4",
     "vite-plugin-static-copy": "^3.1.2"
   },
   "scripts": {
@@ -53,10 +51,10 @@
     "access": "public"
   },
   "dependencies": {
-    "@mlightcad/cad-simple-viewer": "1.0.16",
-    "@mlightcad/data-model": "1.2.5",
-    "@mlightcad/libredwg-converter": "^3.0.2",
-    "@mlightcad/libredwg-web": "^0.2.1",
-    "three": "^0.179.1"
+    "@dataset-viewer/sdk": "^0.1.1",
+    "@mlightcad/cad-simple-viewer": "1.0.18",
+    "@mlightcad/data-model": "1.2.7",
+    "@mlightcad/libredwg-converter": "^3.0.8",
+    "@mlightcad/libredwg-web": "^0.2.1"
   }
 }

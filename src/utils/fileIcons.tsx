@@ -91,7 +91,8 @@ export const FileIcon: FC<FileIconProps> = ({
 
       // 克隆组件并应用尺寸样式（保留原有颜色等样式）
       const clonedIcon = React.cloneElement(pluginIcon as React.ReactElement<any>, {
-        className: `${sizeClasses[size]} ${pluginIcon.props.className || ''} flex-shrink-0`.trim(),
+        className:
+          `${sizeClasses[size]} ${(pluginIcon as any).props?.className || ''} flex-shrink-0`.trim(),
       });
 
       return <div className={`flex-shrink-0 ${className}`}>{clonedIcon}</div>;

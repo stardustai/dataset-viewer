@@ -482,7 +482,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const pointsRef = useRef<THREE.Points | null>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const guiRef = useRef<dat.GUI | null>(null);
 
   const [loading, setLoading] = useState(true);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { pluginManager } from '../../services/plugin/pluginManager';
@@ -54,8 +54,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
   isLargeFile,
 }) => {
   const { t } = useTranslation();
-  const [pluginComponent, setPluginComponent] =
-    useState<React.ComponentType<PluginViewerProps> | null>(null);
+  const pluginComponent = useRef<React.ComponentType<PluginViewerProps> | null>(null);
   const [pluginNamespace, setPluginNamespace] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,35 +94,31 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
   }, [pluginNamespace]);
 
   useEffect(() => {
-    const loadPluginViewer = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        // 通过插件管理器查找合适的插件
-        const plugin = pluginManager.findViewerForFile(file.basename);
+      // 通过插件管理器查找合适的插件
+      const plugin = pluginManager.findViewerForFile(file.basename);
 
-        if (!plugin) {
-          setError(t('plugin.notFound', { filename: file.basename }));
-          setLoading(false);
-          return;
-        }
-
-        // 设置插件组件和命名空间
-        setPluginComponent(() => plugin.component);
-        setPluginNamespace(`plugin:${plugin.metadata.id}`);
-        // 插件组件加载完成，初始设置为不加载，让插件自己决定是否需要 loading
+      if (!plugin) {
+        setError(t('plugin.notFound', { filename: file.basename }));
         setLoading(false);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error('Failed to load plugin viewer:', errorMessage);
-        setError(errorMessage);
-        setLoading(false);
+        return;
       }
-    };
 
-    loadPluginViewer();
-  }, [file.basename, t]);
+      // 设置插件组件和命名空间
+      pluginComponent.current = plugin.component as React.ComponentType<PluginViewerProps>;
+      setPluginNamespace(`plugin:${plugin.metadata.id}`);
+      // 插件组件加载完成，初始设置为不加载，让插件自己决定是否需要 loading
+      setLoading(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Failed to load plugin viewer:', errorMessage);
+      setError(errorMessage);
+      setLoading(false);
+    }
+  }, [file.basename]);
 
   if (loading && !error) {
     return <LoadingDisplay message={t('plugin.loading')} className="h-full" />;
@@ -137,7 +132,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
     return <ErrorDisplay message={t('plugin.noSuitablePlugin')} className="h-full" />;
   }
 
-  const PluginComponent = pluginComponent;
+  const PluginComponent = pluginComponent.current!;
 
   return (
     <div className="flex-1 overflow-hidden">

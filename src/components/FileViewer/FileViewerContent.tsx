@@ -60,9 +60,9 @@ interface FileViewerContentProps {
   canLoadBefore?: boolean; // 新增：是否可以向前加载
   loadedChunks: number;
   loadedContentSize: number;
-  containerRef: React.RefObject<HTMLDivElement>;
-  mainContainerRef: React.RefObject<HTMLDivElement>;
-  loadMoreSectionRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  mainContainerRef: React.RefObject<HTMLDivElement | null>;
+  loadMoreSectionRef: React.RefObject<HTMLDivElement | null>;
   isMarkdownPreviewOpen: boolean;
   setIsMarkdownPreviewOpen: (open: boolean) => void;
   handleSearchResults: (results: SearchResult[], isLimited?: boolean) => void;
@@ -74,7 +74,10 @@ interface FileViewerContentProps {
   forceTextMode?: boolean; // 新增属性，用于强制以文本格式打开
 }
 
-export const FileViewerContent = forwardRef<VirtualizedTextViewerRef, FileViewerContentProps>(
+export const FileViewerContent = forwardRef<
+  VirtualizedTextViewerRef | null,
+  FileViewerContentProps
+>(
   (
     {
       loading,

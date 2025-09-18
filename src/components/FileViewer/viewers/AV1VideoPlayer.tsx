@@ -120,7 +120,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
         // 检查是否为BMP格式数据
         if (frame.data[0] === 0x42 && frame.data[1] === 0x4d) {
           // BMP格式：创建blob并使用Image对象
-          const blob = new Blob([frame.data], { type: 'image/bmp' });
+          const blob = new Blob([frame.data.buffer as ArrayBuffer], { type: 'image/bmp' });
           const img = new Image();
           img.onload = () => {
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);

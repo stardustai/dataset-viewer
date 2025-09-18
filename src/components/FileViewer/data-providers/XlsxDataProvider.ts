@@ -19,7 +19,7 @@ export class XlsxDataProvider implements DataProvider {
 
   private async getWorkbook(): Promise<XLSX.WorkBook> {
     if (!this.workbook) {
-      let arrayBuffer: ArrayBuffer;
+      let arrayBuffer: ArrayBuffer | SharedArrayBuffer;
       if (this.previewContent) {
         // 使用预览内容
         arrayBuffer = this.previewContent.buffer.slice(

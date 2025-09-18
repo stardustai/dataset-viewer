@@ -344,7 +344,7 @@ export class Dav1dDecoderService {
 
       const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
       (arrayBuffer as any).fileStart = 0;
-      mp4boxfile.appendBuffer(arrayBuffer);
+      mp4boxfile.appendBuffer(arrayBuffer as ArrayBuffer);
       mp4boxfile.flush();
 
       setTimeout(finalize, 3000); // 3秒超时

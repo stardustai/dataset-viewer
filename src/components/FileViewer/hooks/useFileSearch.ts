@@ -18,7 +18,7 @@ interface UseFileSearchProps {
   totalSize: number;
   currentFilePosition: number;
   loadedContentSize: number;
-  textViewerRef: React.RefObject<VirtualizedTextViewerRef>;
+  textViewerRef: React.RefObject<VirtualizedTextViewerRef | null>;
   performFullFileSearch: (term: string) => Promise<FullFileSearchResult[]>;
   setSearchLoading: (loading: boolean) => void;
   setFullFileSearchLoading: (loading: boolean) => void;
