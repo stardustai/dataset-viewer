@@ -1173,7 +1173,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "dataset-viewer"
-version = "1.5.0-beta.1"
+version = "1.5.0-beta.2"
 dependencies = [
  "async-stream",
  "async-trait",
