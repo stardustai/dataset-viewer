@@ -35,17 +35,6 @@ interface UniversalDataTableViewerProps {
   previewContent?: Uint8Array;
 }
 
-// 支持的CSV编码类型
-const CSV_ENCODINGS = [
-  { value: 'utf-8', label: 'UTF-8', zhLabel: 'UTF-8' },
-  { value: 'gbk', label: 'GBK (Chinese)', zhLabel: 'GBK (中文)' },
-  { value: 'gb2312', label: 'GB2312 (Chinese)', zhLabel: 'GB2312 (中文)' },
-  { value: 'big5', label: 'Big5 (Traditional Chinese)', zhLabel: 'Big5 (繁体中文)' },
-  { value: 'shift_jis', label: 'Shift_JIS (Japanese)', zhLabel: 'Shift_JIS (日文)' },
-  { value: 'euc-kr', label: 'EUC-KR (Korean)', zhLabel: 'EUC-KR (韩文)' },
-  { value: 'iso-8859-1', label: 'ISO-8859-1 (Latin-1)', zhLabel: 'ISO-8859-1 (拉丁-1)' },
-] as const;
-
 const MAX_INITIAL_ROWS = 1000;
 const CHUNK_SIZE = 500;
 
@@ -54,8 +43,7 @@ function createProvider(
   filePath: string,
   fileSize: number,
   fileType: 'parquet' | 'xlsx' | 'csv' | 'ods',
-  previewContent?: Uint8Array,
-  encoding?: string
+  previewContent?: Uint8Array
 ): DataProvider {
   switch (fileType) {
     case 'parquet':
@@ -64,7 +52,7 @@ function createProvider(
     case 'ods':
       return new XlsxDataProvider(filePath, fileSize, previewContent);
     case 'csv':
-      return new CsvDataProvider(filePath, fileSize, encoding || 'utf-8');
+      return new CsvDataProvider(filePath, fileSize);
     default:
       throw new Error(`Unsupported file type: ${fileType}`);
   }
@@ -92,10 +80,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   // Sheet state (for XLSX/ODS)
   const [activeSheet, setActiveSheet] = useState(0);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
-
-  // CSV encoding state
-  const [csvEncoding, setCsvEncoding] = useState('utf-8');
-  const [showEncodingSelector, setShowEncodingSelector] = useState(false);
 
   // Table state
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -134,7 +118,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
     try {
       // 创建数据提供器
-      const provider = createProvider(filePath, fileSize, fileType, previewContent, csvEncoding);
+      const provider = createProvider(filePath, fileSize, fileType, previewContent);
       dataProviderRef.current = provider;
 
       // 初始化并获取元数据
@@ -251,54 +235,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
     }
   };
 
-  // 切换CSV编码
-  const handleEncodingChange = async (newEncoding: string) => {
-    if (!dataProviderRef.current || newEncoding === csvEncoding || fileType !== 'csv') return;
-
-    setCsvEncoding(newEncoding);
-    setLoading(true);
-
-    try {
-      // 重置表格状态
-      setSorting([]);
-      setColumnFilters([]);
-      setGlobalFilter('');
-
-      // 如果是CSV提供器，设置新编码
-      if (dataProviderRef.current instanceof CsvDataProvider) {
-        await dataProviderRef.current.setEncoding(newEncoding);
-      }
-
-      // 重新获取元数据
-      const meta = await dataProviderRef.current.loadMetadata();
-      setTotalRows(meta.numRows);
-
-      // 更新列信息
-      const columnInfo: DataColumn[] = meta.columns.map(col => ({
-        id: col.name,
-        header: col.name,
-        type: col.type,
-        accessorKey: col.name,
-      }));
-      setColumns(columnInfo);
-
-      // 重新加载数据
-      const result = await dataProviderRef.current.loadData(
-        0,
-        Math.min(MAX_INITIAL_ROWS, meta.numRows)
-      );
-      setData(result);
-      setLoadedRows(result.length);
-    } catch (err) {
-      console.error('Failed to change encoding:', err);
-      setError(
-        `${t('csv.encoding.change.failed')}: ${err instanceof Error ? err.message : t('error.unknown')}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 根据列名和类型智能设置宽度
   const getColumnWidth = (col: DataColumn): number => {
     const colName = col.header.toLowerCase();
@@ -392,39 +328,8 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   // 初始化
   useEffect(() => {
-    // 对于CSV文件，尝试自动检测编码
-    if (fileType === 'csv') {
-      detectAndLoadCSV();
-    } else {
-      loadDataFile();
-    }
-  }, [filePath, fileType]);
-
-  // CSV自动编码检测和加载
-  const detectAndLoadCSV = async () => {
-    try {
-      // 创建临时provider来检测编码
-      const tempProvider = new CsvDataProvider(filePath, fileSize);
-      const detectedEncoding = await tempProvider.detectEncoding();
-      
-      // 如果检测到的编码不是默认的UTF-8，更新编码状态
-      if (detectedEncoding !== 'utf-8') {
-        setCsvEncoding(detectedEncoding);
-      }
-    } catch (error) {
-      console.warn('Failed to detect CSV encoding:', error);
-    }
-    
-    // 继续正常加载流程
     loadDataFile();
-  };
-
-  // 当CSV编码变更时，重新加载数据
-  useEffect(() => {
-    if (fileType === 'csv' && dataProviderRef.current) {
-      // 编码变更后重新加载（handleEncodingChange会处理，这里只是为了确保一致性）
-    }
-  }, [csvEncoding]);
+  }, [filePath, fileType]);
 
   if (loading) {
     return <LoadingDisplay message={t('data.table.loading', { fileName })} icon={Database} />;
@@ -447,10 +352,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
         sheetNames={sheetNames}
         activeSheet={activeSheet}
         onSheetChange={handleSheetChange}
-        fileType={fileType}
-        csvEncoding={csvEncoding}
-        onEncodingChange={handleEncodingChange}
-        encodingOptions={CSV_ENCODINGS}
       />
 
       {/* Column Visibility Panel */}

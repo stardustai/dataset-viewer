@@ -12,11 +12,6 @@ interface DataTableControlsProps {
   sheetNames?: string[];
   activeSheet?: number;
   onSheetChange?: (sheetIndex: number) => void;
-  // CSV encoding support
-  fileType?: string;
-  csvEncoding?: string;
-  onEncodingChange?: (encoding: string) => void;
-  encodingOptions?: Array<{ value: string; label: string; zhLabel: string }>;
 }
 
 export const DataTableControls: React.FC<DataTableControlsProps> = ({
@@ -29,12 +24,8 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
   sheetNames = [],
   activeSheet = 0,
   onSheetChange,
-  fileType,
-  csvEncoding = 'utf-8',
-  onEncodingChange,
-  encodingOptions = [],
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   return (
     <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
@@ -102,32 +93,6 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
-            {/* CSV Encoding Selector */}
-            {fileType === 'csv' && onEncodingChange && encodingOptions.length > 0 && (
-              <div className="flex items-center space-x-2">
-                <div className="text-xs text-gray-500 dark:text-gray-400 hidden lg:block">
-                  {t('csv.encoding.current')}:
-                </div>
-                <select
-                  value={csvEncoding}
-                  onChange={e => onEncodingChange(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-24"
-                  title={t('csv.encoding.selector.title')}
-                >
-                  {encodingOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {i18n.language === 'zh' ? option.zhLabel : option.label}
-                    </option>
-                  ))}
-                </select>
-                {csvEncoding !== 'utf-8' && (
-                  <div className="text-xs text-amber-600 dark:text-amber-400 hidden sm:block">
-                    {t('csv.encoding.non_utf8_hint')}
-                  </div>
-                )}
-              </div>
-            )}
-            
             <button
               onClick={onToggleColumnPanel}
               className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${

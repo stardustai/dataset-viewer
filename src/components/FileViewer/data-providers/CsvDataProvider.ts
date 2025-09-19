@@ -1,19 +1,16 @@
 import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
-import { getFileText, getFileHeader } from '../../../utils/fileDataUtils';
-import { suggestEncoding } from '../../../utils/csvEncodingDetection';
+import { getFileText } from '../../../utils/fileDataUtils';
 
 export class CsvDataProvider implements DataProvider {
   private filePath: string;
   private fileSize: number;
   private csvData: string[][] | null = null;
   private metadata: DataMetadata | null = null;
-  private encoding: string;
 
-  constructor(filePath: string, fileSize: number, encoding: string = 'utf-8') {
+  constructor(filePath: string, fileSize: number) {
     this.filePath = filePath;
     this.fileSize = fileSize;
-    this.encoding = encoding;
   }
 
   private async getCsvData(): Promise<string[][]> {
@@ -22,8 +19,8 @@ export class CsvDataProvider implements DataProvider {
     }
 
     try {
-      // 获取文件文本内容，使用指定的编码
-      const text = await getFileText(this.filePath, this.encoding);
+      // 获取文件文本内容，自动检测编码
+      const text = await getFileText(this.filePath);
 
       // 使用 papaparse 解析 CSV
       const parseResult = Papa.parse<string[]>(text, {
@@ -156,29 +153,5 @@ export class CsvDataProvider implements DataProvider {
     }
 
     return trimmedValue;
-  }
-
-  // 设置新的编码并重新加载数据
-  async setEncoding(encoding: string): Promise<void> {
-    this.encoding = encoding;
-    this.csvData = null; // 清除缓存，强制重新加载
-    this.metadata = null; // 清除元数据缓存
-  }
-
-  // 获取当前编码
-  getEncoding(): string {
-    return this.encoding;
-  }
-
-  // 自动检测编码并返回建议
-  async detectEncoding(): Promise<string> {
-    try {
-      const filename = this.filePath.split('/').pop() || '';
-      const header = await getFileHeader(this.filePath, 2048);
-      return suggestEncoding(filename, header);
-    } catch (error) {
-      console.warn('Failed to detect encoding:', error);
-      return 'utf-8';
-    }
   }
 }
