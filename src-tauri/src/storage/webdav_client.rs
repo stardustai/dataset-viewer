@@ -270,6 +270,11 @@ impl StorageClient for WebDAVClient {
             ));
         }
 
+        // Debug: Log the XML response for debugging purposes (remove in production)
+        if log::log_enabled!(log::Level::Debug) {
+            println!("WebDAV XML Response for {}: {}", actual_url, response.body);
+        }
+
         let files = self.parse_webdav_xml(&response.body, &actual_url)?;
 
         // 应用列表选项
@@ -659,8 +664,8 @@ impl WebDAVClient {
             decoded_href.split('/').last()?.to_string()
         };
 
-        // 跳过当前目录本身
-        if filename.is_empty() || filename == "." {
+        // 跳过明显的无效条目
+        if filename.is_empty() || filename == "." || filename == ".." {
             return None;
         }
 
@@ -672,18 +677,38 @@ impl WebDAVClient {
                 .map_or(false, |ct| ct == "httpd/unix-directory")
             || decoded_href.ends_with('/');
 
-        // 检查是否是当前目录本身（通过比较URL和路径）
+        // 更宽松的自引用检查：避免过度过滤
         let current_url_normalized = current_url.trim_end_matches('/');
         let href_normalized = decoded_href.trim_end_matches('/');
 
-        // 如果完全匹配，说明是当前目录本身
+        // 只有在URL完全匹配时才跳过（这是明确的自引用）
         if href_normalized == current_url_normalized {
             return None;
         }
 
-        // 额外检查：如果文件名与当前路径的最后一部分相同，可能也是自引用
-        if let Some(current_dir_name) = current_url_normalized.split('/').last() {
-            if !current_dir_name.is_empty() && filename == current_dir_name && is_directory {
+        // 对于FileRun等特殊服务器，不进行过于严格的路径匹配
+        // 只过滤明显的自引用：相同路径的情况
+        if is_directory {
+            // 提取路径部分进行比较（忽略协议和主机）
+            let current_path = current_url_normalized
+                .split("://")
+                .last()
+                .unwrap_or(current_url_normalized)
+                .split('/')
+                .skip(1)
+                .collect::<Vec<_>>()
+                .join("/");
+            let href_path = href_normalized
+                .split("://")
+                .last()
+                .unwrap_or(&href_normalized)
+                .split('/')
+                .skip(1)
+                .collect::<Vec<_>>()
+                .join("/");
+
+            // 只有路径完全相同时才认为是自引用
+            if current_path == href_path {
                 return None;
             }
         }
