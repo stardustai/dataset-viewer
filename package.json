@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "prebuild": "pnpm --filter @dataset-viewer/sdk build && cargo run --bin export-bindings --manifest-path src-tauri/Cargo.toml",
+    "prebuild": "pnpm --filter @dataset-viewer/sdk build && cd src-tauri && cargo run --bin export-bindings",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
