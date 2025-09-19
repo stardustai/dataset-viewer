@@ -270,11 +270,6 @@ impl StorageClient for WebDAVClient {
             ));
         }
 
-        // Debug: Log the XML response for debugging purposes (remove in production)
-        if log::log_enabled!(log::Level::Debug) {
-            println!("WebDAV XML Response for {}: {}", actual_url, response.body);
-        }
-
         let files = self.parse_webdav_xml(&response.body, &actual_url)?;
 
         // 应用列表选项
@@ -468,29 +463,51 @@ impl StorageClient for WebDAVClient {
     }
 
     fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 如果传入的已经是完整 HTTP URL，直接返回
-        if path.starts_with("http://") || path.starts_with("https://") {
+        // 如果传入的已经是协议URL，直接返回
+        if path.starts_with("webdav://") || path.starts_with("webdavs://") {
             return Ok(path.to_string());
         }
 
-        // 如果是 webdav:// 协议URL，使用协议解析方法
-        if path.starts_with("webdav://") || path.starts_with("webdavs://") {
-            return self.parse_webdav_url(path);
+        // 如果传入的是 HTTP URL，转换为协议URL
+        if path.starts_with("http://") || path.starts_with("https://") {
+            let protocol_url = if path.starts_with("https://") {
+                path.replace("https://", "webdavs://")
+            } else {
+                path.replace("http://", "webdav://")
+            };
+            return Ok(protocol_url);
         }
 
-        // 使用统一的URL构建方法（处理普通路径）
+        // 对于普通路径，构建协议URL
         let base_url =
             self.config.url.as_ref().ok_or_else(|| {
                 StorageError::InvalidConfig("WebDAV URL not configured".to_string())
             })?;
 
-        let clean_base = base_url.trim_end_matches('/');
+        // 确定协议类型
+        let scheme = if base_url.starts_with("https://") {
+            "webdavs"
+        } else {
+            "webdav"
+        };
+
+        // 提取主机部分（去掉协议前缀）
+        let host_part = base_url
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .trim_end_matches('/');
 
         // 统一的路径处理：移除开头的斜杠
         let clean_path = path.trim_start_matches('/');
-        let download_url = format!("{}/{}", clean_base, clean_path);
 
-        Ok(download_url)
+        // 构建协议URL
+        let protocol_url = if clean_path.is_empty() {
+            format!("{}://{}/", scheme, host_part)
+        } else {
+            format!("{}://{}/{}", scheme, host_part, clean_path)
+        };
+
+        Ok(protocol_url)
     }
 
     async fn download_file(
@@ -563,13 +580,15 @@ impl WebDAVClient {
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
-                    b"D:response" | b"response" => {
+                    b"D:response" | b"d:response" | b"response" => {
                         in_response = true;
                         current_response = WebDAVResponse::default();
                     }
-                    b"D:href" | b"href" if in_response => in_href = true,
-                    b"D:prop" | b"prop" if in_response => in_prop = true,
-                    b"D:resourcetype" | b"resourcetype" if in_prop => in_resourcetype = true,
+                    b"D:href" | b"d:href" | b"href" if in_response => in_href = true,
+                    b"D:prop" | b"d:prop" | b"prop" if in_response => in_prop = true,
+                    b"D:resourcetype" | b"d:resourcetype" | b"resourcetype" if in_prop => {
+                        in_resourcetype = true
+                    }
                     tag if in_prop
                         && (tag.ends_with(b":getcontentlength") || tag == b"getcontentlength") =>
                     {
@@ -585,13 +604,13 @@ impl WebDAVClient {
                     {
                         in_getcontenttype = true
                     }
-                    b"D:collection" | b"collection" if in_resourcetype => {
+                    b"D:collection" | b"d:collection" | b"collection" if in_resourcetype => {
                         current_response.is_directory = true;
                     }
                     _ => {}
                 },
                 Ok(Event::End(ref e)) => match e.name().as_ref() {
-                    b"D:response" | b"response" => {
+                    b"D:response" | b"d:response" | b"response" => {
                         if in_response {
                             if let Some(file) = self.webdav_response_to_storage_file(
                                 current_response.clone(),
@@ -602,9 +621,11 @@ impl WebDAVClient {
                             in_response = false;
                         }
                     }
-                    b"D:href" | b"href" => in_href = false,
-                    b"D:prop" | b"prop" => in_prop = false,
-                    b"D:resourcetype" | b"resourcetype" => in_resourcetype = false,
+                    b"D:href" | b"d:href" | b"href" => in_href = false,
+                    b"D:prop" | b"d:prop" | b"prop" => in_prop = false,
+                    b"D:resourcetype" | b"d:resourcetype" | b"resourcetype" => {
+                        in_resourcetype = false
+                    }
                     tag if tag.ends_with(b":getcontentlength") || tag == b"getcontentlength" => {
                         in_getcontentlength = false
                     }
@@ -664,8 +685,8 @@ impl WebDAVClient {
             decoded_href.split('/').last()?.to_string()
         };
 
-        // 跳过明显的无效条目
-        if filename.is_empty() || filename == "." || filename == ".." {
+        // 跳过当前目录本身
+        if filename.is_empty() || filename == "." {
             return None;
         }
 
@@ -677,38 +698,18 @@ impl WebDAVClient {
                 .map_or(false, |ct| ct == "httpd/unix-directory")
             || decoded_href.ends_with('/');
 
-        // 更宽松的自引用检查：避免过度过滤
+        // 检查是否是当前目录本身（通过比较URL和路径）
         let current_url_normalized = current_url.trim_end_matches('/');
         let href_normalized = decoded_href.trim_end_matches('/');
 
-        // 只有在URL完全匹配时才跳过（这是明确的自引用）
+        // 如果完全匹配，说明是当前目录本身
         if href_normalized == current_url_normalized {
             return None;
         }
 
-        // 对于FileRun等特殊服务器，不进行过于严格的路径匹配
-        // 只过滤明显的自引用：相同路径的情况
-        if is_directory {
-            // 提取路径部分进行比较（忽略协议和主机）
-            let current_path = current_url_normalized
-                .split("://")
-                .last()
-                .unwrap_or(current_url_normalized)
-                .split('/')
-                .skip(1)
-                .collect::<Vec<_>>()
-                .join("/");
-            let href_path = href_normalized
-                .split("://")
-                .last()
-                .unwrap_or(&href_normalized)
-                .split('/')
-                .skip(1)
-                .collect::<Vec<_>>()
-                .join("/");
-
-            // 只有路径完全相同时才认为是自引用
-            if current_path == href_path {
+        // 额外检查：如果文件名与当前路径的最后一部分相同，可能也是自引用
+        if let Some(current_dir_name) = current_url_normalized.split('/').last() {
+            if !current_dir_name.is_empty() && filename == current_dir_name && is_directory {
                 return None;
             }
         }
