@@ -104,11 +104,14 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
           <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
             {/* CSV Encoding Selector */}
             {fileType === 'csv' && onEncodingChange && encodingOptions.length > 0 && (
-              <div className="relative">
+              <div className="flex items-center space-x-2">
+                <div className="text-xs text-gray-500 dark:text-gray-400 hidden lg:block">
+                  {t('csv.encoding.current')}:
+                </div>
                 <select
                   value={csvEncoding}
                   onChange={e => onEncodingChange(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-24"
                   title={t('csv.encoding.selector.title')}
                 >
                   {encodingOptions.map(option => (
@@ -117,6 +120,11 @@ export const DataTableControls: React.FC<DataTableControlsProps> = ({
                     </option>
                   ))}
                 </select>
+                {csvEncoding !== 'utf-8' && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400 hidden sm:block">
+                    {t('csv.encoding.non_utf8_hint')}
+                  </div>
+                )}
               </div>
             )}
             

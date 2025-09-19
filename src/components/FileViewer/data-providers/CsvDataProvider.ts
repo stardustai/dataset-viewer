@@ -1,6 +1,7 @@
 import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
-import { getFileText } from '../../../utils/fileDataUtils';
+import { getFileText, getFileHeader } from '../../../utils/fileDataUtils';
+import { suggestEncoding } from '../../../utils/csvEncodingDetection';
 
 export class CsvDataProvider implements DataProvider {
   private filePath: string;
@@ -167,5 +168,17 @@ export class CsvDataProvider implements DataProvider {
   // 获取当前编码
   getEncoding(): string {
     return this.encoding;
+  }
+
+  // 自动检测编码并返回建议
+  async detectEncoding(): Promise<string> {
+    try {
+      const filename = this.filePath.split('/').pop() || '';
+      const header = await getFileHeader(this.filePath, 2048);
+      return suggestEncoding(filename, header);
+    } catch (error) {
+      console.warn('Failed to detect encoding:', error);
+      return 'utf-8';
+    }
   }
 }

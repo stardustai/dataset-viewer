@@ -143,7 +143,9 @@ export const fileViewer = {
 
   // CSV 编码相关
   'csv.encoding.selector.title': '选择CSV文件编码',
+  'csv.encoding.current': '编码',
   'csv.encoding.change.failed': '切换编码失败',
+  'csv.encoding.non_utf8_hint': '非UTF-8编码',
   'csv.encoding.utf8': 'UTF-8',
   'csv.encoding.gbk': 'GBK (中文)',
   'csv.encoding.gb2312': 'GB2312 (中文)',

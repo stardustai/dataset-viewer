@@ -151,7 +151,9 @@ export const fileViewer = {
 
   // CSV encoding support
   'csv.encoding.selector.title': 'Select CSV file encoding',
+  'csv.encoding.current': 'Encoding',
   'csv.encoding.change.failed': 'Failed to change encoding',
+  'csv.encoding.non_utf8_hint': 'Non-UTF-8 encoding',
   'csv.encoding.utf8': 'UTF-8',
   'csv.encoding.gbk': 'GBK (Chinese)',
   'csv.encoding.gb2312': 'GB2312 (Chinese)',

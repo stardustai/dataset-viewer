@@ -392,8 +392,32 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   // 初始化
   useEffect(() => {
-    loadDataFile();
+    // 对于CSV文件，尝试自动检测编码
+    if (fileType === 'csv') {
+      detectAndLoadCSV();
+    } else {
+      loadDataFile();
+    }
   }, [filePath, fileType]);
+
+  // CSV自动编码检测和加载
+  const detectAndLoadCSV = async () => {
+    try {
+      // 创建临时provider来检测编码
+      const tempProvider = new CsvDataProvider(filePath, fileSize);
+      const detectedEncoding = await tempProvider.detectEncoding();
+      
+      // 如果检测到的编码不是默认的UTF-8，更新编码状态
+      if (detectedEncoding !== 'utf-8') {
+        setCsvEncoding(detectedEncoding);
+      }
+    } catch (error) {
+      console.warn('Failed to detect CSV encoding:', error);
+    }
+    
+    // 继续正常加载流程
+    loadDataFile();
+  };
 
   // 当CSV编码变更时，重新加载数据
   useEffect(() => {
