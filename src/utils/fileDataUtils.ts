@@ -58,20 +58,22 @@ export async function getFileArrayBuffer(filePath: string): Promise<ArrayBuffer>
  */
 export async function getFileText(filePath: string, encoding?: string): Promise<string> {
   const arrayBuffer = await getFileArrayBuffer(filePath);
-  
+
   // 如果指定了编码，直接使用
   if (encoding) {
     return new TextDecoder(encoding).decode(arrayBuffer);
   }
-  
+
   // 自动检测编码 (性能优化：仅使用文件样本)
   const startTime = performance.now();
   const buffer = new Uint8Array(arrayBuffer);
   const detected = detectEncodingWithFallback(buffer);
   const detectionTime = performance.now() - startTime;
-  
-  console.log(`Auto-detected encoding for ${filePath}: ${detected.encoding} (confidence: ${detected.confidence}, time: ${detectionTime.toFixed(2)}ms, sample: ${Math.min(buffer.length, 8192)} bytes)`);
-  
+
+  console.log(
+    `Auto-detected encoding for ${filePath}: ${detected.encoding} (confidence: ${detected.confidence}, time: ${detectionTime.toFixed(2)}ms, sample: ${Math.min(buffer.length, 8192)} bytes)`
+  );
+
   return new TextDecoder(detected.encoding).decode(arrayBuffer);
 }
 
@@ -80,11 +82,13 @@ export async function getFileText(filePath: string, encoding?: string): Promise<
  * @param filePath 文件路径
  * @returns Promise<{encoding: string, confidence: number}> 检测到的编码信息
  */
-export async function getFileEncoding(filePath: string): Promise<{encoding: string, confidence: number}> {
+export async function getFileEncoding(
+  filePath: string
+): Promise<{ encoding: string; confidence: number }> {
   const arrayBuffer = await getFileArrayBuffer(filePath);
   const buffer = new Uint8Array(arrayBuffer);
   const detected = detectEncodingWithFallback(buffer);
-  
+
   return {
     encoding: detected.encoding,
     confidence: detected.confidence,
@@ -111,7 +115,7 @@ export async function getFileHeader(
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
 
   if (
-    fileUrl.startsWith('file://') ||
+    fileUrl.startsWith('local://') ||
     fileUrl.startsWith('webdav://') ||
     fileUrl.startsWith('webdavs://')
   ) {
@@ -143,7 +147,7 @@ export async function getFileUrl(filePath: string): Promise<string> {
   const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
 
   if (
-    fileUrl.startsWith('file://') ||
+    fileUrl.startsWith('local://') ||
     fileUrl.startsWith('webdav://') ||
     fileUrl.startsWith('webdavs://')
   ) {

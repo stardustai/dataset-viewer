@@ -26,11 +26,11 @@ impl LocalFileSystemClient {
     }
 
     /// 构建完整路径并进行安全检查
-    /// 支持绝对路径和相对路径两种模式，以及 file:// 协议
+    /// 支持绝对路径和相对路径两种模式，以及 local:// 协议
     fn build_safe_path(&self, path: &str) -> Result<PathBuf, StorageError> {
-        // 处理 file:/// 协议 URL（统一使用三个斜杠）
-        let actual_path = if path.starts_with("file:///") {
-            let stripped = path.strip_prefix("file:///").unwrap_or(path);
+        // 处理 local:// 协议 URL（统一使用两个斜杠）
+        let actual_path = if path.starts_with("local://") {
+            let stripped = path.strip_prefix("local://").unwrap_or(path);
             stripped
         } else {
             path
@@ -393,33 +393,6 @@ impl StorageClient for LocalFileSystemClient {
         }
 
         Ok(())
-    }
-
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 如果传入的已经是 file:/// URL，直接返回
-        if path.starts_with("file:///") {
-            return Ok(path.to_string());
-        }
-
-        // 否则，构建完整路径并转换为 file:/// URL
-        let full_path = match self.build_safe_path(path) {
-            Ok(path) => path,
-            Err(e) => {
-                return Err(e);
-            }
-        };
-
-        // 规范化路径分隔符（Windows 使用反斜杠，需要转换为正斜杠）
-        let normalized_path = if cfg!(windows) {
-            full_path.to_string_lossy().replace('\\', "/")
-        } else {
-            full_path.to_string_lossy().to_string()
-        };
-
-        // 将路径转换为标准的 file:/// URL（三个斜杠）
-        let file_url = format!("file:///{}", normalized_path.trim_start_matches('/'));
-
-        Ok(file_url)
     }
 
     /// 高效的本地文件下载实现，使用流式复制

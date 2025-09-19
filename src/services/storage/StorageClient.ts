@@ -533,17 +533,62 @@ export class StorageClient implements IStorageClient {
     start?: number,
     length?: number
   ): Promise<Uint8Array> {
-    const result = await commands.storageGetFileContent(
-      this.toProtocolUrl(path),
-      start !== undefined ? start.toString() : null,
-      length !== undefined ? length.toString() : null
-    );
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
+    // 所有存储类型现在都使用协议方式实现高效的文件请求
+    return this.readProtocolFileBytes(path, start, length);
+  } /**
+   * 通过协议 URL 读取文件字节数据
+   * @param path 文件路径
+   * @param start 起始位置（可选）
+   * @param length 读取长度（可选）
+   * @returns 二进制数据
+   */
+  private async readProtocolFileBytes(
+    path: string,
+    start?: number,
+    length?: number
+  ): Promise<Uint8Array> {
+    if (!this.connected) {
+      throw new Error(`Not connected to ${this.protocol} server`);
     }
 
-    return new Uint8Array(result.data);
+    // 使用现有的 toProtocolUrl 方法构建完整的协议 URL
+    const protocolUrl = this.toProtocolUrl(path);
+
+    try {
+      let response: Response;
+
+      if (start !== undefined) {
+        // 处理范围请求
+        const endPos = length !== undefined ? start + length - 1 : '';
+        const rangeHeader = `bytes=${start}-${endPos}`;
+
+        response = await fetch(protocolUrl, {
+          method: 'GET',
+          headers: {
+            Range: rangeHeader,
+          },
+        });
+      } else {
+        // 处理完整文件请求
+        response = await fetch(protocolUrl, {
+          method: 'GET',
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `${this.protocol.toUpperCase()} request failed: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return new Uint8Array(arrayBuffer);
+    } catch (error) {
+      console.error(`${this.protocol.toUpperCase()} fetch error:`, error);
+      throw new Error(
+        `Failed to fetch file via ${this.protocol.toUpperCase()} protocol: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   /**
@@ -552,13 +597,54 @@ export class StorageClient implements IStorageClient {
    * @returns 文件大小
    */
   protected async getFileSizeInternal(path: string): Promise<number> {
-    const result = await commands.storageGetFileInfo(this.toProtocolUrl(path));
+    // 所有存储类型现在都使用协议方式获取文件大小
+    return this.getProtocolFileSize(path);
+  }
 
-    if (result.status === 'error') {
-      throw new Error(result.error);
+  /**
+   * 通过协议 URL 获取文件大小
+   * @param path 文件路径
+   * @returns 文件大小
+   */
+  private async getProtocolFileSize(path: string): Promise<number> {
+    if (!this.connected) {
+      throw new Error(`Not connected to ${this.protocol} server`);
     }
 
-    return parseInt(result.data.size, 10);
+    // 使用现有的 toProtocolUrl 方法构建完整的协议 URL
+    const protocolUrl = this.toProtocolUrl(path);
+
+    try {
+      const response = await fetch(protocolUrl, {
+        method: 'HEAD', // 使用 HEAD 请求获取文件信息
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `${this.protocol.toUpperCase()} HEAD request failed: ${response.status} ${response.statusText}`
+        );
+      }
+
+      // 从响应头中获取 Content-Length
+      const contentLength = response.headers.get('Content-Length');
+      if (!contentLength) {
+        throw new Error(
+          `Content-Length header not found in ${this.protocol.toUpperCase()} response`
+        );
+      }
+
+      const size = parseInt(contentLength, 10);
+      if (isNaN(size)) {
+        throw new Error(`Invalid Content-Length value in ${this.protocol.toUpperCase()} response`);
+      }
+
+      return size;
+    } catch (error) {
+      console.error(`${this.protocol.toUpperCase()} HEAD request error:`, error);
+      throw new Error(
+        `Failed to get file size via ${this.protocol.toUpperCase()} protocol: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   /**

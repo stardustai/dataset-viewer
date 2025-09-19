@@ -462,54 +462,6 @@ impl StorageClient for WebDAVClient {
         Ok(())
     }
 
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 如果传入的已经是协议URL，直接返回
-        if path.starts_with("webdav://") || path.starts_with("webdavs://") {
-            return Ok(path.to_string());
-        }
-
-        // 如果传入的是 HTTP URL，转换为协议URL
-        if path.starts_with("http://") || path.starts_with("https://") {
-            let protocol_url = if path.starts_with("https://") {
-                path.replace("https://", "webdavs://")
-            } else {
-                path.replace("http://", "webdav://")
-            };
-            return Ok(protocol_url);
-        }
-
-        // 对于普通路径，构建协议URL
-        let base_url =
-            self.config.url.as_ref().ok_or_else(|| {
-                StorageError::InvalidConfig("WebDAV URL not configured".to_string())
-            })?;
-
-        // 确定协议类型
-        let scheme = if base_url.starts_with("https://") {
-            "webdavs"
-        } else {
-            "webdav"
-        };
-
-        // 提取主机部分（去掉协议前缀）
-        let host_part = base_url
-            .trim_start_matches("https://")
-            .trim_start_matches("http://")
-            .trim_end_matches('/');
-
-        // 统一的路径处理：移除开头的斜杠
-        let clean_path = path.trim_start_matches('/');
-
-        // 构建协议URL
-        let protocol_url = if clean_path.is_empty() {
-            format!("{}://{}/", scheme, host_part)
-        } else {
-            format!("{}://{}/{}", scheme, host_part, clean_path)
-        };
-
-        Ok(protocol_url)
-    }
-
     async fn download_file(
         &self,
         path: &str,

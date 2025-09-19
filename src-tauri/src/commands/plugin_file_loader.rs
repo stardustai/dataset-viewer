@@ -175,3 +175,208 @@ pub async fn plugin_check_file_exists(file_path: String) -> Result<bool, String>
     let resolved_path = resolve_plugin_file_path(&file_path)?;
     Ok(resolved_path.exists())
 }
+
+/**
+ * 处理 plugin-resource:// 协议请求
+ */
+pub async fn handle_plugin_resource_request(
+    uri: String,
+) -> Result<tauri::http::Response<Vec<u8>>, String> {
+    // 解析 plugin-resource://pluginId/resourcePath
+    let parsed_uri = uri
+        .parse::<url::Url>()
+        .map_err(|e| format!("Invalid URI format: {}", e))?;
+
+    let plugin_id = parsed_uri.host_str().unwrap_or("");
+    let path = parsed_uri.path();
+    let resource_path = path.strip_prefix('/').unwrap_or(path);
+
+    println!(
+        "🔌 Plugin ID: '{}', Resource path: '{}'",
+        plugin_id, resource_path
+    );
+
+    // 加载插件资源
+    let content =
+        load_plugin_resource_by_discovery(plugin_id.to_string(), resource_path.to_string()).await?;
+
+    println!(
+        "✅ Successfully loaded plugin resource: {} bytes",
+        content.len()
+    );
+
+    // 使用公共工具获取 Content-Type
+    let content_type =
+        crate::utils::protocol_handler::ProtocolHandler::get_content_type(resource_path);
+
+    // 构建响应
+    let response = tauri::http::Response::builder()
+        .status(200)
+        .header("Content-Type", content_type)
+        .header("Access-Control-Allow-Origin", "*")
+        .header(
+            "Access-Control-Allow-Methods",
+            "GET, POST, PUT, DELETE, OPTIONS",
+        )
+        .header("Access-Control-Allow-Headers", "*")
+        .body(content)
+        .map_err(|e| format!("Failed to build response: {}", e))?;
+
+    println!(
+        "✅ Plugin resource loaded: {} for plugin: {}",
+        resource_path, plugin_id
+    );
+    Ok(response)
+}
+
+/**
+ * 使用插件发现系统加载插件资源
+ */
+pub async fn load_plugin_resource_by_discovery(
+    plugin_id: String,
+    resource_path: String,
+) -> Result<Vec<u8>, String> {
+    println!(
+        "🔍 Loading plugin resource: '{}' for plugin: '{}'",
+        resource_path, plugin_id
+    );
+
+    // 统一错误处理函数
+    let plugin_error = |context: &str, error: String| -> String {
+        format!("Plugin resource {}: {}", context, error)
+    };
+
+    // 获取插件缓存目录
+    let cache_dir = get_plugin_cache_dir()
+        .map_err(|e| plugin_error("cache directory access failed", e.to_string()))?;
+    println!("🔍 Plugin cache directory: {}", cache_dir.display());
+
+    // 使用插件发现系统查找插件
+    use crate::commands::plugin_discovery::plugin_discover;
+
+    match plugin_discover(Some(false)).await {
+        Ok(plugins) => {
+            println!("🔍 Found {} plugins", plugins.len());
+
+            // 查找匹配的插件
+            for plugin in plugins {
+                println!(
+                    "🔍 Checking plugin: id='{}', enabled={}, entry_path={:?}",
+                    plugin.id, plugin.enabled, plugin.entry_path
+                );
+
+                if plugin.id == plugin_id && plugin.entry_path.is_some() {
+                    let entry_path = plugin.entry_path.unwrap();
+                    println!("✅ Found matching plugin with entry_path: '{}'", entry_path);
+
+                    // 提取插件目录（去掉文件名部分）
+                    if let Some(plugin_dir_relative) = std::path::Path::new(&entry_path).parent() {
+                        // 根据entry_path的格式判断插件类型
+                        let plugin_dir = if entry_path.starts_with(".plugins/") {
+                            // 缓存目录中的插件
+                            cache_dir.join(
+                                plugin_dir_relative
+                                    .strip_prefix(".plugins/")
+                                    .unwrap_or(plugin_dir_relative),
+                            )
+                        } else {
+                            // npm link的插件，使用项目根目录
+                            let current_dir = std::env::current_dir().unwrap_or_default();
+                            let project_root = if current_dir.ends_with("src-tauri") {
+                                current_dir.parent().unwrap_or(&current_dir)
+                            } else {
+                                &current_dir
+                            };
+                            project_root.join(plugin_dir_relative)
+                        };
+
+                        println!("🔍 Plugin directory: {}", plugin_dir.display());
+
+                        // 构建资源文件的完整路径
+                        let resource_file_path = plugin_dir.join(&resource_path);
+                        println!(
+                            "🔍 Trying to load resource from: {}",
+                            resource_file_path.display()
+                        );
+
+                        // 检查文件是否存在
+                        if resource_file_path.exists() {
+                            println!("✅ Resource file exists!");
+
+                            // 检查路径安全性（使用规范化路径）
+                            let canonical_resource_path =
+                                resource_file_path.canonicalize().map_err(|e| {
+                                    plugin_error("path canonicalization failed", e.to_string())
+                                })?;
+
+                            // 对于npm link插件，允许项目根目录下的路径
+                            let current_dir = std::env::current_dir().unwrap_or_default();
+                            let project_root = if current_dir.ends_with("src-tauri") {
+                                current_dir.parent().unwrap_or(&current_dir)
+                            } else {
+                                &current_dir
+                            };
+                            let canonical_project_root =
+                                project_root.canonicalize().map_err(|e| {
+                                    plugin_error(
+                                        "project root canonicalization failed",
+                                        e.to_string(),
+                                    )
+                                })?;
+                            let canonical_cache_dir = cache_dir.canonicalize().map_err(|e| {
+                                plugin_error(
+                                    "cache directory canonicalization failed",
+                                    e.to_string(),
+                                )
+                            })?;
+
+                            // 允许缓存目录或项目根目录下的文件
+                            if canonical_resource_path.starts_with(&canonical_cache_dir)
+                                || canonical_resource_path.starts_with(&canonical_project_root)
+                            {
+                                println!("✅ Path security check passed");
+                                return std::fs::read(&resource_file_path).map_err(|e| {
+                                    plugin_error(
+                                        &format!(
+                                            "file read failed ({})",
+                                            resource_file_path.display()
+                                        ),
+                                        e.to_string(),
+                                    )
+                                });
+                            } else {
+                                println!(
+                                    "❌ Path security check failed - outside allowed directories"
+                                );
+                                return Err(plugin_error(
+                                    "access denied",
+                                    "resource path outside allowed directories".to_string(),
+                                ));
+                            }
+                        } else {
+                            println!(
+                                "❌ Resource file does not exist at: {}",
+                                resource_file_path.display()
+                            );
+                        }
+                    } else {
+                        println!(
+                            "❌ Failed to get parent directory from entry_path: {}",
+                            entry_path
+                        );
+                    }
+                }
+            }
+
+            println!("❌ No matching plugin found for id: '{}'", plugin_id);
+            Err(plugin_error(
+                "not found",
+                format!("{} for plugin {}", resource_path, plugin_id),
+            ))
+        }
+        Err(e) => {
+            println!("❌ Failed to discover plugins: {}", e);
+            Err(plugin_error("discovery failed", e.to_string()))
+        }
+    }
+}

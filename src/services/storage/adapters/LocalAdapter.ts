@@ -43,9 +43,9 @@ export const localStorageAdapter: StorageAdapter = {
       fullPath = rootPath;
     }
 
-    // 清理多余的斜杠并构建 file URL
+    // 清理多余的斜杠并构建 local URL
     const normalizedPath = fullPath.replace(/\/+/g, '/');
-    return `file:///${normalizedPath}`;
+    return `local://${normalizedPath}`;
   },
 
   generateConnectionName: (config: ConnectionConfig) => {

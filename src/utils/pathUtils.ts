@@ -10,15 +10,15 @@
 export function parseProtocolUrl(input: string): string {
   const trimmed = input.trim();
 
-  // 检查是否是协议URL（如 file:///path, oss://bucket/path, webdav://host/path 等）
+  // 检查是否是协议URL（如 local://path, oss://bucket/path, webdav://host/path 等）
   const protocolMatch = trimmed.match(/^([a-z]+):\/\/(.*)$/);
   if (protocolMatch) {
     const protocol = protocolMatch[1];
     const remaining = protocolMatch[2];
 
     if (protocol === 'file') {
-      // 对于 file:/// 协议，直接使用后面的路径
-      // file:///202508/occ-gaofanpai -> 202508/occ-gaofanpai
+      // 对于 local:// 协议，直接使用后面的路径
+      // local://202508/occ-gaofanpai -> 202508/occ-gaofanpai
       return remaining.startsWith('/') ? remaining.slice(1) : remaining;
     } else {
       // 对于其他协议（oss://bucket/path, webdav://host/path），提取路径部分

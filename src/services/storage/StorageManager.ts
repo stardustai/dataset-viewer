@@ -1,7 +1,6 @@
 import { StorageClient } from './StorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
 import { connectionStorage, StoredConnection } from '../connectionStorage';
-import { commands } from '../../types/tauri-commands';
 
 /**
  * 存储客户端工厂 - 简化版
@@ -409,14 +408,12 @@ export class StorageServiceManager {
   }
 
   /**
-   * 获取文件下载URL
+   * 获取文件下载URL（协议URL）
+   * 直接在前端生成协议URL，无需后端调用
    */
   static async getDownloadUrl(path: string): Promise<string> {
-    const result = await commands.storageGetUrl(path);
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-    return result.data;
+    const client = this.getCurrentClient();
+    return client.toProtocolUrl(path);
   }
 
   /**
