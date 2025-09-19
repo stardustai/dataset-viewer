@@ -8,7 +8,6 @@ import jschardet from 'jschardet';
 export interface EncodingDetectionResult {
   encoding: string;
   confidence: number;
-  language?: string;
 }
 
 /**
@@ -43,7 +42,6 @@ export function detectTextEncoding(
     return {
       encoding: normalizedEncoding,
       confidence: result.confidence || 0,
-      language: result.language,
     };
   } catch (error) {
     console.warn('Encoding detection failed:', error);
@@ -143,7 +141,6 @@ export function detectEncodingWithFallback(
     return {
       encoding: 'utf-8',
       confidence: 0.8,
-      language: 'universal',
     };
   }
 

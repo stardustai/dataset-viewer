@@ -124,20 +124,3 @@ pub struct FilePreview {
     pub total_size: String, // 使用字符串表示大数字
     pub preview_size: u32,
 }
-
-/// 下载选项
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DownloadOptions {
-    pub save_path: String,
-    pub overwrite: bool,
-    pub resume: bool,
-    pub chunk_size: usize,
-}
-
-/// 批量操作选项
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BatchOptions {
-    pub max_concurrent: usize,
-    pub continue_on_error: bool,
-    pub progress_callback: bool,
-}
