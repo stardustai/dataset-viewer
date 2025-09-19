@@ -141,6 +141,17 @@ export const fileViewer = {
   'cell.position': '位置: {{column}} 列, 第 {{row}} 行',
   'data.table.cell.copy': '复制内容',
 
+  // CSV 编码相关
+  'csv.encoding.selector.title': '选择CSV文件编码',
+  'csv.encoding.change.failed': '切换编码失败',
+  'csv.encoding.utf8': 'UTF-8',
+  'csv.encoding.gbk': 'GBK (中文)',
+  'csv.encoding.gb2312': 'GB2312 (中文)',
+  'csv.encoding.big5': 'Big5 (繁体中文)',
+  'csv.encoding.shift_jis': 'Shift_JIS (日文)',
+  'csv.encoding.euc_kr': 'EUC-KR (韩文)',
+  'csv.encoding.iso_8859_1': 'ISO-8859-1 (拉丁-1)',
+
   // 分块加载相关
   'file.loaded.chunks': '已加载 {{chunks}} 个分块 ({{size}})',
   'scroll.to.load.more': '滚动加载更多',

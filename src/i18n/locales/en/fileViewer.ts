@@ -148,6 +148,17 @@ export const fileViewer = {
   'cell.position': 'Location: {{column}} column, row {{row}}',
   'data.table.cell.copy': 'Copy cell content',
   'data.table.null.value': 'null',
+
+  // CSV encoding support
+  'csv.encoding.selector.title': 'Select CSV file encoding',
+  'csv.encoding.change.failed': 'Failed to change encoding',
+  'csv.encoding.utf8': 'UTF-8',
+  'csv.encoding.gbk': 'GBK (Chinese)',
+  'csv.encoding.gb2312': 'GB2312 (Chinese)',
+  'csv.encoding.big5': 'Big5 (Traditional Chinese)',
+  'csv.encoding.shift_jis': 'Shift_JIS (Japanese)',
+  'csv.encoding.euc_kr': 'EUC-KR (Korean)',
+  'csv.encoding.iso_8859_1': 'ISO-8859-1 (Latin-1)',
   'data.table.items.count': '{{count}} items',
   'data.table.sheet.switch': 'Switch sheet',
   'data.table.sheet': 'Sheet',
