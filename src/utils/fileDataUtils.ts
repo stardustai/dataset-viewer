@@ -64,11 +64,13 @@ export async function getFileText(filePath: string, encoding?: string): Promise<
     return new TextDecoder(encoding).decode(arrayBuffer);
   }
   
-  // 自动检测编码
+  // 自动检测编码 (性能优化：仅使用文件样本)
+  const startTime = performance.now();
   const buffer = new Uint8Array(arrayBuffer);
   const detected = detectEncodingWithFallback(buffer);
+  const detectionTime = performance.now() - startTime;
   
-  console.log(`Auto-detected encoding for ${filePath}: ${detected.encoding} (confidence: ${detected.confidence})`);
+  console.log(`Auto-detected encoding for ${filePath}: ${detected.encoding} (confidence: ${detected.confidence}, time: ${detectionTime.toFixed(2)}ms, sample: ${Math.min(buffer.length, 8192)} bytes)`);
   
   return new TextDecoder(detected.encoding).decode(arrayBuffer);
 }

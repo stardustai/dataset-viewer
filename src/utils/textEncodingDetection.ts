@@ -12,13 +12,20 @@ export interface EncodingDetectionResult {
 }
 
 /**
- * Detect text encoding using jschardet
+ * Detect text encoding using jschardet with performance optimization
+ * Only uses a sample of the file for detection to avoid performance issues
  * @param buffer Raw file content as Uint8Array
+ * @param maxSampleSize Maximum bytes to sample for detection (default: 8KB)
  * @returns Detected encoding information
  */
-export function detectTextEncoding(buffer: Uint8Array): EncodingDetectionResult {
+export function detectTextEncoding(buffer: Uint8Array, maxSampleSize: number = 8192): EncodingDetectionResult {
   try {
-    const result = jschardet.detect(buffer);
+    // For performance, only use a sample from the beginning of the file
+    // jschardet doesn't need the entire file to detect encoding accurately
+    const sampleSize = Math.min(buffer.length, maxSampleSize);
+    const sample = buffer.slice(0, sampleSize);
+    
+    const result = jschardet.detect(sample);
     
     if (!result || !result.encoding) {
       return {
@@ -107,12 +114,26 @@ export function getFallbackEncoding(primaryEncoding: string): string {
 
 /**
  * Detect encoding with confidence threshold and fallback
+ * Optimized for performance with large files
  */
 export function detectEncodingWithFallback(
   buffer: Uint8Array,
   confidenceThreshold: number = 0.7
 ): EncodingDetectionResult {
-  const detected = detectTextEncoding(buffer);
+  // Use different sample sizes based on file size for optimal performance
+  let sampleSize: number;
+  if (buffer.length < 1024) {
+    // Small files: use entire content
+    sampleSize = buffer.length;
+  } else if (buffer.length < 100 * 1024) {
+    // Medium files (< 100KB): use first 4KB
+    sampleSize = 4096;
+  } else {
+    // Large files (>= 100KB): use first 8KB for better accuracy
+    sampleSize = 8192;
+  }
+  
+  const detected = detectTextEncoding(buffer, sampleSize);
   
   // If confidence is too low, use UTF-8 as fallback
   if (detected.confidence < confidenceThreshold) {
@@ -130,4 +151,15 @@ export function detectEncodingWithFallback(
     ...detected,
     encoding: finalEncoding,
   };
+}
+
+/**
+ * Quick encoding detection for small samples
+ * Useful for preview or header detection scenarios
+ */
+export function detectEncodingFromSample(
+  buffer: Uint8Array, 
+  sampleSize: number = 2048
+): EncodingDetectionResult {
+  return detectTextEncoding(buffer, sampleSize);
 }
