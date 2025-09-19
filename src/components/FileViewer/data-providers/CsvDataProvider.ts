@@ -19,7 +19,7 @@ export class CsvDataProvider implements DataProvider {
     }
 
     try {
-      // 获取文件文本内容
+      // 获取文件文本内容，自动检测编码
       const text = await getFileText(this.filePath);
 
       // 使用 papaparse 解析 CSV

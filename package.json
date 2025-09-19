@@ -45,6 +45,7 @@
     "dompurify": "^3.2.6",
     "hyparquet": "^1.17.1",
     "i18next": "^25.3.2",
+    "jschardet": "^3.1.4",
     "lucide-react": "^0.525.0",
     "mammoth": "^1.10.0",
     "micromark": "^4.0.2",

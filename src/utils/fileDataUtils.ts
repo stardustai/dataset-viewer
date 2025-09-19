@@ -1,4 +1,5 @@
 import { StorageServiceManager } from '../services/storage';
+import { detectEncodingWithFallback } from './textEncodingDetection';
 
 // MIME 类型映射
 const MIME_TYPES: { [key: string]: string } = {
@@ -50,13 +51,44 @@ export async function getFileArrayBuffer(filePath: string): Promise<ArrayBuffer>
 
 /**
  * 统一处理文件数据获取并转换为文本的工具函数
+ * 支持自动编码检测，如果未指定编码则自动检测
  * @param filePath 文件路径
- * @param encoding 文本编码，默认为 'utf-8'
+ * @param encoding 文本编码，如果未指定则自动检测
  * @returns Promise<string> 文件文本内容
  */
-export async function getFileText(filePath: string, encoding: string = 'utf-8'): Promise<string> {
+export async function getFileText(filePath: string, encoding?: string): Promise<string> {
   const arrayBuffer = await getFileArrayBuffer(filePath);
-  return new TextDecoder(encoding).decode(arrayBuffer);
+  
+  // 如果指定了编码，直接使用
+  if (encoding) {
+    return new TextDecoder(encoding).decode(arrayBuffer);
+  }
+  
+  // 自动检测编码 (性能优化：仅使用文件样本)
+  const startTime = performance.now();
+  const buffer = new Uint8Array(arrayBuffer);
+  const detected = detectEncodingWithFallback(buffer);
+  const detectionTime = performance.now() - startTime;
+  
+  console.log(`Auto-detected encoding for ${filePath}: ${detected.encoding} (confidence: ${detected.confidence}, time: ${detectionTime.toFixed(2)}ms, sample: ${Math.min(buffer.length, 8192)} bytes)`);
+  
+  return new TextDecoder(detected.encoding).decode(arrayBuffer);
+}
+
+/**
+ * 获取文件的自动检测编码信息
+ * @param filePath 文件路径
+ * @returns Promise<{encoding: string, confidence: number}> 检测到的编码信息
+ */
+export async function getFileEncoding(filePath: string): Promise<{encoding: string, confidence: number}> {
+  const arrayBuffer = await getFileArrayBuffer(filePath);
+  const buffer = new Uint8Array(arrayBuffer);
+  const detected = detectEncodingWithFallback(buffer);
+  
+  return {
+    encoding: detected.encoding,
+    confidence: detected.confidence,
+  };
 }
 
 /**
