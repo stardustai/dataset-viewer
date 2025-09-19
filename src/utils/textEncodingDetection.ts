@@ -18,15 +18,18 @@ export interface EncodingDetectionResult {
  * @param maxSampleSize Maximum bytes to sample for detection (default: 8KB)
  * @returns Detected encoding information
  */
-export function detectTextEncoding(buffer: Uint8Array, maxSampleSize: number = 8192): EncodingDetectionResult {
+export function detectTextEncoding(
+  buffer: Uint8Array,
+  maxSampleSize: number = 8192
+): EncodingDetectionResult {
   try {
     // For performance, only use a sample from the beginning of the file
     // jschardet doesn't need the entire file to detect encoding accurately
     const sampleSize = Math.min(buffer.length, maxSampleSize);
     const sample = buffer.slice(0, sampleSize);
-    
-    const result = jschardet.detect(sample);
-    
+
+    const result = jschardet.detect(String.fromCharCode(...new Uint8Array(sample)));
+
     if (!result || !result.encoding) {
       return {
         encoding: 'utf-8',
@@ -36,7 +39,7 @@ export function detectTextEncoding(buffer: Uint8Array, maxSampleSize: number = 8
 
     // Normalize encoding names to standard TextDecoder values
     const normalizedEncoding = normalizeEncoding(result.encoding);
-    
+
     return {
       encoding: normalizedEncoding,
       confidence: result.confidence || 0,
@@ -56,20 +59,20 @@ export function detectTextEncoding(buffer: Uint8Array, maxSampleSize: number = 8
  */
 function normalizeEncoding(encoding: string): string {
   const normalizedMap: Record<string, string> = {
-    'GB2312': 'gb2312',
-    'GBK': 'gbk',
-    'GB18030': 'gb18030',
-    'BIG5': 'big5',
+    GB2312: 'gb2312',
+    GBK: 'gbk',
+    GB18030: 'gb18030',
+    BIG5: 'big5',
     'UTF-8': 'utf-8',
     'UTF-16LE': 'utf-16le',
     'UTF-16BE': 'utf-16be',
-    'SHIFT_JIS': 'shift_jis',
+    SHIFT_JIS: 'shift_jis',
     'EUC-JP': 'euc-jp',
     'EUC-KR': 'euc-kr',
     'ISO-8859-1': 'iso-8859-1',
     'ISO-8859-2': 'iso-8859-2',
     'WINDOWS-1252': 'windows-1252',
-    'ascii': 'ascii',
+    ascii: 'ascii',
   };
 
   return normalizedMap[encoding.toUpperCase()] || encoding.toLowerCase();
@@ -97,11 +100,11 @@ export function getFallbackEncoding(primaryEncoding: string): string {
 
   // Common fallbacks based on detected encoding
   const fallbackMap: Record<string, string> = {
-    'gb18030': 'gbk',
-    'gbk': 'gb2312',
-    'gb2312': 'utf-8',
-    'big5': 'utf-8',
-    'shift_jis': 'utf-8',
+    gb18030: 'gbk',
+    gbk: 'gb2312',
+    gb2312: 'utf-8',
+    big5: 'utf-8',
+    shift_jis: 'utf-8',
     'euc-jp': 'utf-8',
     'euc-kr': 'utf-8',
     'iso-8859-2': 'iso-8859-1',
@@ -132,9 +135,9 @@ export function detectEncodingWithFallback(
     // Large files (>= 100KB): use first 8KB for better accuracy
     sampleSize = 8192;
   }
-  
+
   const detected = detectTextEncoding(buffer, sampleSize);
-  
+
   // If confidence is too low, use UTF-8 as fallback
   if (detected.confidence < confidenceThreshold) {
     return {
@@ -146,7 +149,7 @@ export function detectEncodingWithFallback(
 
   // Ensure the encoding is supported
   const finalEncoding = getFallbackEncoding(detected.encoding);
-  
+
   return {
     ...detected,
     encoding: finalEncoding,
@@ -158,7 +161,7 @@ export function detectEncodingWithFallback(
  * Useful for preview or header detection scenarios
  */
 export function detectEncodingFromSample(
-  buffer: Uint8Array, 
+  buffer: Uint8Array,
   sampleSize: number = 2048
 ): EncodingDetectionResult {
   return detectTextEncoding(buffer, sampleSize);

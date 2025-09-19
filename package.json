@@ -67,7 +67,6 @@
     "@tauri-apps/cli": "^2",
     "@types/node": "^24.0.15",
     "@types/papaparse": "^5.3.16",
-    "@types/jschardet": "^3.0.3",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/semver": "^7.7.0",
