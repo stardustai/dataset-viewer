@@ -78,10 +78,9 @@ export interface FileAccessor {
   getRangeContent: (start: number, end?: number) => Promise<ArrayBuffer>;
 
   /**
-   * 获取文件的文本内容（自动处理编码）
-   * @param encoding 指定编码，默认为 'utf-8'
+   * 获取文件的文本内容（自动智能编码检测）
    */
-  getTextContent: (encoding?: string) => Promise<string>;
+  getTextContent: () => Promise<string>;
 }
 
 /**

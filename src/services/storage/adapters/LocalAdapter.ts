@@ -24,6 +24,30 @@ export const localStorageAdapter: StorageAdapter = {
     return config;
   },
 
+  preprocessPath: (path: string, connection: any) => {
+    if (!connection?.rootPath) {
+      throw new Error('Local storage not connected');
+    }
+
+    let rootPath = connection.rootPath;
+    // 标准化根路径：移除末尾斜杠
+    rootPath = rootPath.replace(/\/+$/, '');
+
+    // 如果是空路径，返回根路径
+    if (!path || path === '' || path === '/') {
+      return rootPath;
+    }
+
+    // 如果已经是绝对路径，直接返回
+    if (path.startsWith('/') || path.startsWith('~')) {
+      return path;
+    }
+
+    // 对于相对路径，与根路径拼接
+    const cleanPath = path.replace(/^\/+/, '');
+    return `${rootPath}/${cleanPath}`;
+  },
+
   buildProtocolUrl: (path: string, connection: any) => {
     if (!connection?.rootPath) {
       throw new Error('Local storage not connected');

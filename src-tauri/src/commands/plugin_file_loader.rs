@@ -153,16 +153,7 @@ fn resolve_plugin_file_path(file_path: &str) -> Result<PluginFilePath, String> {
 #[command]
 #[specta::specta]
 pub async fn load_plugin_file(file_path: String) -> Result<Vec<u8>, String> {
-    println!("Loading plugin file: {}", file_path);
-
     let resolved_path = resolve_plugin_file_path(&file_path)?;
-    println!("Cache directory: {}", resolved_path.cache_dir.display());
-    println!("Trying cache path: {}", resolved_path.cache_path.display());
-    println!(
-        "Trying project path: {}",
-        resolved_path.project_path.display()
-    );
-
     resolved_path.read()
 }
 

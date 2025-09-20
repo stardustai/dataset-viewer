@@ -44,9 +44,8 @@ export const getMimeType = (filename: string): string => {
  * @returns Promise<ArrayBuffer> 文件数据
  */
 export async function getFileArrayBuffer(filePath: string): Promise<ArrayBuffer> {
-  // 统一走 Rust 后端命令，无论本地还是远程
-  const fileBlob = await StorageServiceManager.downloadFile(filePath);
-  return await fileBlob.arrayBuffer();
+  // 使用 StorageServiceManager 的统一方法
+  return await StorageServiceManager.getFileArrayBuffer(filePath);
 }
 
 /**
@@ -112,7 +111,7 @@ export async function getFileHeader(
   maxBytes: number = 2048
 ): Promise<Uint8Array> {
   // 获取文件的下载 URL
-  const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
+  const fileUrl = StorageServiceManager.getFileUrl(filePath);
 
   if (
     fileUrl.startsWith('local://') ||
@@ -121,7 +120,7 @@ export async function getFileHeader(
   ) {
     // 对于本地文件和需要认证的 WebDAV 文件，使用 StorageServiceManager.downloadFile
     // 浏览器的 fetch 无法处理 WebDAV 认证头，所以需要通过后端下载
-    const fileBlob = await StorageServiceManager.downloadFile(filePath);
+    const fileBlob = await StorageServiceManager.getFileAsBlob(filePath);
     const arrayBuffer = await fileBlob.arrayBuffer();
     const actualBytes = Math.min(maxBytes, arrayBuffer.byteLength);
     return new Uint8Array(arrayBuffer.slice(0, actualBytes));
@@ -144,7 +143,7 @@ export async function getFileHeader(
 
 export async function getFileUrl(filePath: string): Promise<string> {
   // 获取文件的下载 URL
-  const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
+  const fileUrl = StorageServiceManager.getFileUrl(filePath);
 
   if (
     fileUrl.startsWith('local://') ||
@@ -153,7 +152,7 @@ export async function getFileUrl(filePath: string): Promise<string> {
   ) {
     // 对于本地文件和需要认证的 WebDAV 文件，获取数据并创建 Blob URL
     // 浏览器的 iframe 无法处理 WebDAV 认证头，所以需要通过后端下载
-    const fileBlob = await StorageServiceManager.downloadFile(filePath);
+    const fileBlob = await StorageServiceManager.getFileAsBlob(filePath);
     // 获取文件名以确定 MIME 类型
     const fileName = filePath.split('/').pop() || '';
     const mimeType = getMimeType(fileName);

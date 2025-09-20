@@ -42,31 +42,9 @@ impl LocalFileSystemClient {
             return Ok(PathBuf::from(expanded_path_str));
         }
 
-        // 检查是否为绝对路径
+        // 所有其他情况，直接使用路径（前端应该传递完整路径）
         let path_buf = PathBuf::from(actual_path);
-        if path_buf.is_absolute() {
-            return Ok(path_buf);
-        }
-
-        // 获取根路径
-        let root = match self.root_path.as_ref() {
-            Some(root) => root,
-            None => {
-                return Err(StorageError::NotConnected);
-            }
-        };
-
-        // 对于相对路径，与根目录拼接
-        let clean_path = actual_path.trim_start_matches('/');
-
-        // 构建完整路径
-        let full_path = if clean_path.is_empty() {
-            root.clone()
-        } else {
-            root.join(clean_path)
-        };
-
-        Ok(full_path)
+        Ok(path_buf)
     }
 
     /// 获取文件的 MIME 类型

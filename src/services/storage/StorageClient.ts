@@ -11,7 +11,8 @@ import {
   FileContent,
   ReadOptions,
 } from './types';
-import { ArchiveInfo, FilePreview } from '../../types';
+import { ArchiveInfo } from '../../types';
+import { detectEncodingWithFallback } from '../../utils/textEncodingDetection';
 
 // 通用连接对象接口 - 不同存储类型有不同的连接对象结构
 interface BaseConnection {
@@ -255,12 +256,15 @@ export class StorageClient implements IStorageClient {
 
     try {
       const data = await this.readFileBytes(path, options?.start, options?.length);
+
+      // 先检测编码
+      const { encoding: detectedEncoding } = detectEncodingWithFallback(data);
       const content = this.decodeTextContent(data);
 
       return {
         content,
         size: data.length,
-        encoding: 'utf-8',
+        encoding: detectedEncoding,
       };
     } catch (error) {
       console.error(`Failed to get file content for ${path}:`, error);
@@ -280,7 +284,7 @@ export class StorageClient implements IStorageClient {
     }
   }
 
-  async downloadFile(path: string): Promise<Blob> {
+  async getFileAsBlob(path: string): Promise<Blob> {
     if (!this.connected) {
       throw new Error(`${this.storageType} storage not connected`);
     }
@@ -290,7 +294,7 @@ export class StorageClient implements IStorageClient {
       const compatibleArray = new Uint8Array(data);
       return new Blob([compatibleArray]);
     } catch (error) {
-      console.error(`Failed to download file for ${path}:`, error);
+      console.error(`Failed to get file as blob for ${path}:`, error);
       throw error;
     }
   }
@@ -324,33 +328,6 @@ export class StorageClient implements IStorageClient {
       return await this.analyzeArchiveWithClient(path, filename, maxSize);
     } catch (error) {
       console.error('Failed to analyze archive:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 获取压缩文件中的文件预览（统一使用StorageClient流式接口）
-   */
-  async getArchiveFilePreview(
-    path: string,
-    filename: string,
-    entryPath: string,
-    maxPreviewSize?: number,
-    offset?: number // 支持偏移量参数
-  ): Promise<FilePreview> {
-    try {
-      // 所有存储类型都使用统一的StorageClient流式接口
-      console.log(`${this.protocol}存储使用统一流式预览:`, { path, filename, entryPath, offset });
-
-      return await this.getArchiveFilePreviewWithClient(
-        path,
-        filename,
-        entryPath,
-        maxPreviewSize,
-        offset
-      );
-    } catch (error) {
-      console.error('Failed to get archive file preview:', error);
       throw error;
     }
   }
@@ -410,38 +387,6 @@ export class StorageClient implements IStorageClient {
     }
 
     return result.data;
-  }
-
-  /**
-   * 通过存储客户端获取压缩文件预览（用于本地文件）
-   */
-  protected async getArchiveFilePreviewWithClient(
-    path: string,
-    filename: string,
-    entryPath: string,
-    maxPreviewSize?: number,
-    offset?: number
-  ): Promise<FilePreview> {
-    // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveGetFileContent(
-      path,
-      filename,
-      entryPath,
-      maxPreviewSize || null,
-      offset?.toString() || null
-    );
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-
-    // 转换为主项目的 FilePreview 格式，确保 content 是 Uint8Array
-    return {
-      content: new Uint8Array(result.data.content),
-      is_truncated: result.data.is_truncated,
-      total_size: result.data.total_size,
-      preview_size: result.data.preview_size,
-    };
   }
 
   /**
@@ -528,11 +473,7 @@ export class StorageClient implements IStorageClient {
    * @param length 读取长度（可选）
    * @returns 二进制数据
    */
-  protected async readFileBytes(
-    path: string,
-    start?: number,
-    length?: number
-  ): Promise<Uint8Array> {
+  async readFileBytes(path: string, start?: number, length?: number): Promise<Uint8Array> {
     // 所有存储类型现在都使用协议方式实现高效的文件请求
     return this.readProtocolFileBytes(path, start, length);
   } /**
@@ -648,14 +589,21 @@ export class StorageClient implements IStorageClient {
   }
 
   /**
-   * 将二进制数据解码为文本
+   * 将二进制数据解码为文本，自动检测最佳编码
    * @param data 二进制数据
-   * @param encoding 编码格式，默认 utf-8
    * @returns 文本内容
    */
-  protected decodeTextContent(data: Uint8Array, encoding: string = 'utf-8'): string {
-    const decoder = new TextDecoder(encoding);
-    return decoder.decode(data);
+  protected decodeTextContent(data: Uint8Array): string {
+    // 使用智能编码检测
+    const { encoding: detectedEncoding } = detectEncodingWithFallback(data);
+
+    try {
+      return new TextDecoder(detectedEncoding).decode(data);
+    } catch (error) {
+      console.warn(`Failed to decode with detected encoding ${detectedEncoding}:`, error);
+      // 最终回退到 UTF-8，使用非严格模式
+      return new TextDecoder('utf-8', { fatal: false }).decode(data);
+    }
   }
 
   // ========== 辅助方法 ==========

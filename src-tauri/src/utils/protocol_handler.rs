@@ -1,25 +1,30 @@
+use crate::archive::handlers::ArchiveHandler;
 use crate::storage::manager::StorageManager;
 use crate::storage::traits::StorageClient;
+use std::sync::Arc;
 
 /// 协议处理的公共工具
 pub struct ProtocolHandler;
 
 impl ProtocolHandler {
-    /// 智能提取相对路径，避免路径重复
-    /// 这个方法可以被所有存储客户端共用
+    /// 简单提取相对路径
+    /// 从协议URL中提取路径部分，供各存储客户端使用
     pub fn extract_relative_path(protocol_url: &str, _client: &dyn StorageClient) -> String {
-        // 解析协议 URL
-        let Ok(url) = url::Url::parse(protocol_url) else {
-            return protocol_url.to_string();
-        };
+        // 特殊处理 local:// 协议中的 ~ 路径
+        if protocol_url.starts_with("local://~/") {
+            // 直接提取 ~/ 开头的路径，然后进行URL解码
+            let encoded_path = protocol_url.strip_prefix("local://").unwrap_or("");
 
-        let full_path = url.path();
+            // 使用 urlencoding crate 进行URL解码
+            return urlencoding::decode(encoded_path)
+                .map(|decoded| decoded.into_owned())
+                .unwrap_or_else(|_| encoded_path.to_string());
+        }
 
-        // 直接返回路径，让各个存储客户端自己处理路径解析
-        // 移除前导斜杠，因为大多数存储客户端不需要它
-        full_path.trim_start_matches('/').to_string()
+        // 对于所有其他协议（包括 WebDAV），传递完整的协议 URL
+        // 让各存储客户端自己处理协议转换
+        protocol_url.to_string()
     }
-
     /// 根据文件扩展名确定 Content-Type
     /// 这个方法可以被所有存储客户端共用
     pub fn get_content_type(url: &str) -> &'static str {
@@ -261,16 +266,236 @@ impl ProtocolHandler {
                 .await;
             } else {
                 let response = tauri::http::Response::builder()
-                    .status(400)
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                     .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                    .status(400)
                     .body("Invalid Range Header".as_bytes().to_vec())
                     .unwrap();
                 responder.respond(response);
             }
         } else {
             Self::handle_full_file_request(client, relative_path, protocol_url, responder).await;
+        }
+    }
+
+    /// 处理压缩包内文件请求
+    /// 支持标准HTTP Range头进行分块读取
+    pub async fn handle_archive_file_request(
+        archive_url: String,
+        entry_path: String,
+        method: String,
+        headers: tauri::http::HeaderMap,
+        responder: tauri::UriSchemeResponder,
+        storage_manager: std::sync::Arc<tauri::async_runtime::RwLock<StorageManager>>,
+    ) {
+        let manager = storage_manager.read().await;
+
+        if let Some(client) = manager.get_current_client() {
+            let client_arc = client.clone();
+            drop(manager);
+
+            // 从URL中提取压缩包路径（移除查询参数）
+            let archive_path = if let Ok(parsed_url) = url::Url::parse(&archive_url) {
+                // 构建不含查询参数的URL
+                let mut clean_url = parsed_url.clone();
+                clean_url.set_query(None);
+                Self::extract_relative_path(&clean_url.to_string(), &*client_arc)
+            } else {
+                Self::extract_relative_path(&archive_url, &*client_arc)
+            };
+
+            let archive_handler = ArchiveHandler::new();
+
+            match method.as_str() {
+                "HEAD" => {
+                    Self::handle_archive_head_request(
+                        client_arc,
+                        &archive_handler,
+                        &archive_path,
+                        &entry_path,
+                        responder,
+                    )
+                    .await;
+                }
+                "GET" => {
+                    Self::handle_archive_get_request(
+                        client_arc,
+                        &archive_handler,
+                        &archive_path,
+                        &entry_path,
+                        headers,
+                        responder,
+                    )
+                    .await;
+                }
+                "OPTIONS" => Self::handle_options_request(responder).await,
+                _ => Self::handle_unsupported_method(responder).await,
+            }
+        } else {
+            Self::handle_no_client_error(responder).await;
+        }
+    }
+
+    /// 处理压缩包内文件的HEAD请求
+    pub async fn handle_archive_head_request(
+        client: Arc<dyn StorageClient>,
+        archive_handler: &ArchiveHandler,
+        archive_path: &str,
+        entry_path: &str,
+        responder: tauri::UriSchemeResponder,
+    ) {
+        // 尝试获取压缩包内文件信息
+        match archive_handler
+            .get_file_preview_with_client(
+                client,
+                archive_path.to_string(),
+                std::path::Path::new(archive_path)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string(),
+                entry_path.to_string(),
+                Some(1), // 只获取1字节来检查文件是否存在
+                None,
+                None::<fn(u64, u64)>,
+                None,
+            )
+            .await
+        {
+            Ok(preview) => {
+                let response = tauri::http::Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+                    .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                    .status(200)
+                    .header("Content-Length", preview.total_size.clone())
+                    .header("Content-Type", Self::get_content_type(entry_path))
+                    .header("Accept-Ranges", "bytes")
+                    .body(Vec::new())
+                    .unwrap();
+                responder.respond(response);
+            }
+            Err(_) => {
+                Self::handle_file_not_found(responder).await;
+            }
+        }
+    }
+
+    /// 处理压缩包内文件的GET请求
+    pub async fn handle_archive_get_request(
+        client: Arc<dyn StorageClient>,
+        archive_handler: &ArchiveHandler,
+        archive_path: &str,
+        entry_path: &str,
+        headers: tauri::http::HeaderMap,
+        responder: tauri::UriSchemeResponder,
+    ) {
+        let filename = std::path::Path::new(archive_path)
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+
+        // 检查是否是Range请求
+        if let Some(range_header) = headers.get("Range") {
+            if let Ok(range_str) = range_header.to_str() {
+                if let Some((start, end_opt)) = Self::parse_range_header(range_str) {
+                    let length = match end_opt {
+                        Some(end) => end - start + 1,
+                        None => 50 * 1024 * 1024, // 50MB for open range
+                    };
+
+                    match archive_handler
+                        .get_file_preview_with_client(
+                            client,
+                            archive_path.to_string(),
+                            filename,
+                            entry_path.to_string(),
+                            Some(length as u32),
+                            Some(start),
+                            None::<fn(u64, u64)>,
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(preview) => {
+                            let actual_end = start + preview.content.len() as u64 - 1;
+                            let response = tauri::http::Response::builder()
+                                .header("Access-Control-Allow-Origin", "*")
+                                .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+                                .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                                .status(206)
+                                .header("Content-Type", Self::get_content_type(entry_path))
+                                .header("Content-Length", preview.content.len().to_string())
+                                .header(
+                                    "Content-Range",
+                                    format!(
+                                        "bytes {}-{}/{}",
+                                        start, actual_end, preview.total_size
+                                    ),
+                                )
+                                .header("Accept-Ranges", "bytes")
+                                .body(preview.content.to_vec())
+                                .unwrap();
+                            responder.respond(response);
+                        }
+                        Err(_) => {
+                            Self::handle_file_not_found(responder).await;
+                        }
+                    }
+                } else {
+                    let response = tauri::http::Response::builder()
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+                        .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                        .status(400)
+                        .body("Invalid Range Header".as_bytes().to_vec())
+                        .unwrap();
+                    responder.respond(response);
+                }
+            } else {
+                let response = tauri::http::Response::builder()
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+                    .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                    .status(400)
+                    .body("Invalid Range Header".as_bytes().to_vec())
+                    .unwrap();
+                responder.respond(response);
+            }
+        } else {
+            // 完整文件请求
+            match archive_handler
+                .get_file_preview_with_client(
+                    client,
+                    archive_path.to_string(),
+                    filename,
+                    entry_path.to_string(),
+                    None, // 不限制大小，获取完整文件
+                    None,
+                    None::<fn(u64, u64)>,
+                    None,
+                )
+                .await
+            {
+                Ok(preview) => {
+                    let response = tauri::http::Response::builder()
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+                        .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                        .status(200)
+                        .header("Content-Type", Self::get_content_type(entry_path))
+                        .header("Content-Length", preview.content.len().to_string())
+                        .header("Accept-Ranges", "bytes")
+                        .body(preview.content.to_vec())
+                        .unwrap();
+                    responder.respond(response);
+                }
+                Err(_) => {
+                    Self::handle_file_not_found(responder).await;
+                }
+            }
         }
     }
 
@@ -287,6 +512,28 @@ impl ProtocolHandler {
         // 解析协议 URL
         if let Some(protocol_url_part) = uri.strip_prefix(protocol_prefix) {
             let protocol_url = format!("{}{}", protocol_prefix, protocol_url_part);
+
+            // 解析URL以检查查询参数
+            if let Ok(parsed_url) = url::Url::parse(&protocol_url) {
+                let query_pairs: std::collections::HashMap<String, String> = parsed_url
+                    .query_pairs()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect();
+
+                // 检查是否包含entry参数，表示这是压缩包内文件请求
+                if let Some(entry_path) = query_pairs.get("entry") {
+                    Self::handle_archive_file_request(
+                        protocol_url,
+                        entry_path.clone(),
+                        method,
+                        headers,
+                        responder,
+                        storage_manager,
+                    )
+                    .await;
+                    return;
+                }
+            }
 
             // 使用传入的存储管理器
             let manager = storage_manager.read().await;

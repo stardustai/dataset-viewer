@@ -296,9 +296,9 @@ export class StorageServiceManager {
   /**
    * 下载文件
    */
-  static async downloadFile(path: string): Promise<Blob> {
+  static async getFileAsBlob(path: string): Promise<Blob> {
     const client = this.getCurrentClient();
-    return await client.downloadFile(path);
+    return await client.getFileAsBlob(path);
   }
 
   /**
@@ -408,20 +408,11 @@ export class StorageServiceManager {
   }
 
   /**
-   * 获取文件下载URL（协议URL）
-   * 直接在前端生成协议URL，无需后端调用
-   */
-  static async getDownloadUrl(path: string): Promise<string> {
-    const client = this.getCurrentClient();
-    return client.toProtocolUrl(path);
-  }
-
-  /**
    * 获取文件的ArrayBuffer内容
    */
   static async getFileArrayBuffer(path: string): Promise<ArrayBuffer> {
     const client = this.getCurrentClient();
-    const blob = await client.downloadFile(path);
+    const blob = await client.getFileAsBlob(path);
     return await blob.arrayBuffer();
   }
 }

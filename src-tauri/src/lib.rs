@@ -119,7 +119,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         system_select_file,
         // 压缩包处理命令（统一接口）
         archive_get_file_info,
-        archive_get_file_content,
         // 插件发现命令
         plugin_discover,
         // 插件文件加载命令
