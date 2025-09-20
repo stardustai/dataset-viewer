@@ -797,19 +797,6 @@ impl StorageClient for OSSClient {
         Ok(())
     }
 
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 从传入的路径/URL 中提取对象键
-        let object_key = extract_object_key(
-            path,
-            &self.endpoint,
-            &self.config.bucket.as_ref().unwrap_or(&String::new()),
-            &self.prefix,
-        )?;
-
-        // 生成 1 小时有效期的预签名下载 URL
-        self.generate_download_url(&object_key, 3600)
-    }
-
     /// 高效的 OSS 文件下载实现，使用 HTTP 流式下载
     async fn download_file(
         &self,

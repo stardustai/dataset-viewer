@@ -37,7 +37,7 @@ Cross-platform Tauri application for unified dataset browsing with massive file 
   - OSS: `oss://bucket/path`
   - WebDAV: `webdav://host/path`
   - HuggingFace: `huggingface://owner:dataset/path`
-  - Local: `file:///absolute/path`
+  - Local: `local://host/path`
 - **Unified Backend Parsing**: All storage clients parse protocol URLs in file operations
 
 ## Development Guidelines

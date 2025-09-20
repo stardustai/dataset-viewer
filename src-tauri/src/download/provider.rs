@@ -27,7 +27,7 @@ pub struct DownloadProviderFactory;
 
 impl DownloadProviderFactory {
     /// 根据URL选择合适的下载提供者
-    /// 所有协议（HTTP、file://、ssh://、webdav://、oss://、huggingface://）
+    /// 所有协议（HTTP、local://、ssh://、webdav://、oss://、huggingface://）
     /// 都通过当前连接的存储客户端处理
     pub async fn get_provider(_url: &str) -> Result<Box<dyn DownloadProvider>, String> {
         Ok(Box::new(StorageDownloadProvider::new().await?))

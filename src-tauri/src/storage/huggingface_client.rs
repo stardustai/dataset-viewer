@@ -876,11 +876,6 @@ impl StorageClient for HuggingFaceClient {
         }
     }
 
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        let (dataset_id, file_path) = self.parse_path(path)?;
-        Ok(self.build_download_url(&dataset_id, &file_path))
-    }
-
     fn protocol(&self) -> &str {
         "huggingface"
     }

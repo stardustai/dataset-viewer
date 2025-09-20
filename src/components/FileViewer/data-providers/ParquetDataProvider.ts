@@ -1,5 +1,5 @@
 import { parquetMetadataAsync, parquetReadObjects, type AsyncBuffer } from 'hyparquet';
-import { commands } from '../../../types/tauri-commands';
+// import { commands } from '../../../types/tauri-commands';
 
 export interface DataColumn {
   name: string;
@@ -27,12 +27,12 @@ export interface DataProvider {
  * 实现 hyparquet 的 AsyncBuffer 接口
  */
 class StreamingAsyncBuffer implements AsyncBuffer {
-  private filePath: string;
+  private protocolUrl: string;
   private _byteLength: number;
   private chunks: Map<string, ArrayBuffer> = new Map();
 
-  constructor(filePath: string, byteLength: number) {
-    this.filePath = filePath;
+  constructor(protocolUrl: string, byteLength: number) {
+    this.protocolUrl = protocolUrl;
     this._byteLength = byteLength;
   }
 
@@ -63,22 +63,30 @@ class StreamingAsyncBuffer implements AsyncBuffer {
     }
 
     try {
-      // 使用后端的分块读取 API
-      const result = await commands.storageGetFileContent(
-        this.filePath,
-        from.toString(),
-        length.toString()
-      );
+      // 直接使用 fetch 和协议 URL 获取文件数据
+      let response: Response;
 
-      if (result.status === 'error') {
-        throw new Error(`Failed to read file range ${from}-${to}: ${result.error}`);
+      if (length < this._byteLength) {
+        // 范围请求
+        const rangeHeader = `bytes=${from}-${to - 1}`;
+        response = await fetch(this.protocolUrl, {
+          method: 'GET',
+          headers: {
+            Range: rangeHeader,
+          },
+        });
+      } else {
+        // 完整文件请求
+        response = await fetch(this.protocolUrl, {
+          method: 'GET',
+        });
       }
 
-      const uint8Array = new Uint8Array(result.data);
-      const arrayBuffer = uint8Array.buffer.slice(
-        uint8Array.byteOffset,
-        uint8Array.byteOffset + uint8Array.byteLength
-      );
+      if (!response.ok) {
+        throw new Error(`HTTP request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
 
       // 缓存读取的数据块（限制缓存大小以避免内存溢出）
       if (this.chunks.size < 50) {
@@ -106,20 +114,20 @@ class StreamingAsyncBuffer implements AsyncBuffer {
  * 使用分块加载技术处理所有 Parquet 文件，避免内存溢出
  */
 export class ParquetDataProvider implements DataProvider {
-  private filePath: string;
+  private protocolUrl: string;
   private fileSize: number;
+  private metadata: any = null;
   private streamingBuffer: StreamingAsyncBuffer | null = null;
-  private metadata: DataMetadata | null = null;
-  private parquetMetadata: Awaited<ReturnType<typeof parquetMetadataAsync>> | null = null;
+  private parquetMetadata: any = null;
 
-  constructor(filePath: string, fileSize: number) {
-    this.filePath = filePath;
+  constructor(protocolUrl: string, fileSize: number) {
+    this.protocolUrl = protocolUrl;
     this.fileSize = fileSize;
   }
 
   private async getStreamingBuffer(): Promise<StreamingAsyncBuffer> {
     if (!this.streamingBuffer) {
-      this.streamingBuffer = new StreamingAsyncBuffer(this.filePath, this.fileSize);
+      this.streamingBuffer = new StreamingAsyncBuffer(this.protocolUrl, this.fileSize);
     }
     return this.streamingBuffer;
   }

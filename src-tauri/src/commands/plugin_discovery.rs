@@ -106,16 +106,11 @@ pub fn calculate_entry_path(
 ) -> Option<String> {
     let plugin_dir = package_json_path.parent()?;
 
-    println!("Calculating entry path for package: {}", package_info.name);
-    println!("Plugin dir: {:?}", plugin_dir);
-
     // 优先使用 main 字段（通常指向 CJS 格式）
     if let Some(main) = &package_info.main {
         let entry_path = plugin_dir.join(main);
-        println!("Checking main field path: {:?}", entry_path);
         if entry_path.exists() {
             let result = convert_to_relative_path(&entry_path);
-            println!("Using main field, relative path: {:?}", result);
             return result;
         }
     }
@@ -126,15 +121,12 @@ pub fn calculate_entry_path(
 
     for entry in possible_entries.iter() {
         let entry_path = dist_dir.join(entry);
-        println!("Checking fallback path: {:?}", entry_path);
         if entry_path.exists() {
             let result = convert_to_relative_path(&entry_path);
-            println!("Using fallback, relative path: {:?}", result);
             return result;
         }
     }
 
-    println!("No entry path found!");
     None
 }
 
@@ -145,17 +137,12 @@ pub fn convert_to_relative_path(absolute_path: &Path) -> Option<String> {
     // 获取插件缓存目录
     let cache_dir = get_plugin_cache_dir().ok()?;
 
-    println!("Converting path to relative:");
-    println!("  Absolute path: {:?}", absolute_path);
-    println!("  Cache dir: {:?}", cache_dir);
-
     // 首先尝试相对于缓存目录的路径（普通安装的插件）
     if let Ok(relative_path) = absolute_path.strip_prefix(&cache_dir) {
         let result = format!(
             ".plugins/{}",
             relative_path.to_string_lossy().replace('\\', "/")
         );
-        println!("  Cache relative path: {}", result);
         return Some(result);
     }
 
@@ -167,15 +154,11 @@ pub fn convert_to_relative_path(absolute_path: &Path) -> Option<String> {
         &current_dir
     };
 
-    println!("  Project root: {:?}", project_root);
-
     if let Ok(relative_path) = absolute_path.strip_prefix(project_root) {
         let result = relative_path.to_string_lossy().replace('\\', "/");
-        println!("  Project relative path: {}", result);
         return Some(result);
     }
 
-    println!("  Failed: path is not under cache directory or project root");
     None
 }
 
@@ -259,11 +242,9 @@ pub async fn plugin_discover(
     let include_registry = include_registry.unwrap_or(true);
 
     if include_registry {
-        println!("Loading plugin market (npm registry only)...");
         // 插件市场：只返回 npm 仓库中的插件，不包含已安装的
         search_npm_registry().await
     } else {
-        println!("Loading installed plugins (local only)...");
         // 已安装插件：只返回本地已安装的插件
         get_installed_plugins().await
     }
@@ -274,26 +255,16 @@ pub async fn plugin_discover(
  * 只扫描本地缓存和npm link，不访问网络
  */
 async fn get_installed_plugins() -> Result<Vec<LocalPluginInfo>, String> {
-    println!("Getting installed plugins (local only)...");
     let mut all_plugins = Vec::new();
 
     // 1. 获取npm link的插件
-    println!("Discovering npm linked plugins...");
     match get_npm_linked_plugins_internal().await {
         Ok(mut linked_plugins) => {
-            println!("Found {} npm linked plugins", linked_plugins.len());
-
             // 所有 npm link 的插件都标记为已安装（local = true）
             // 通过 enabled 字段来区分是否启用
             for plugin in &mut linked_plugins {
                 plugin.local = true; // npm link 的插件都算已安装
                 plugin.enabled = is_plugin_enabled(&plugin.id); // 根据启用列表设置启用状态
-
-                if plugin.enabled {
-                    println!("Plugin {} is installed and enabled", plugin.id);
-                } else {
-                    println!("Plugin {} is installed but disabled", plugin.id);
-                }
             }
 
             all_plugins.append(&mut linked_plugins);
@@ -305,13 +276,8 @@ async fn get_installed_plugins() -> Result<Vec<LocalPluginInfo>, String> {
     }
 
     // 2. 扫描缓存目录中的已安装插件
-    println!("Scanning plugin cache directory...");
     match get_cached_plugins().await {
         Ok(mut cached_plugins) => {
-            println!(
-                "Found {} plugins from cache directory",
-                cached_plugins.len()
-            );
             all_plugins.append(&mut cached_plugins);
         }
         Err(e) => {
@@ -319,11 +285,6 @@ async fn get_installed_plugins() -> Result<Vec<LocalPluginInfo>, String> {
             // 继续执行，不因为缓存扫描失败而停止
         }
     }
-
-    println!(
-        "Installed plugins discovery complete. Total found: {}",
-        all_plugins.len()
-    );
 
     Ok(all_plugins)
 }
@@ -334,32 +295,12 @@ async fn get_installed_plugins() -> Result<Vec<LocalPluginInfo>, String> {
 pub async fn get_npm_linked_plugins_internal() -> Result<Vec<LocalPluginInfo>, String> {
     // 检查是否为开发模式
     if !is_development_mode() {
-        println!("Production mode: skipping npm link scanning");
         return Ok(vec![]);
     }
 
-    println!("Development mode: scanning npm linked plugins...");
     let mut plugins = Vec::new();
 
-    // 首先测试简单的 pnpm 命令
-    println!("Testing pnpm availability...");
-    let test_output = std::process::Command::new("pnpm")
-        .args(&["--version"])
-        .output();
-
-    match test_output {
-        Ok(output) => {
-            let version = String::from_utf8_lossy(&output.stdout);
-            println!("pnpm version: {}", version.trim());
-        }
-        Err(e) => {
-            println!("pnpm not available: {}", e);
-            return Err("pnpm command not found".to_string());
-        }
-    }
-
     // 使用 pnpm list -g --depth=0 获取全局包列表
-    println!("Executing: pnpm list -g --depth=0");
     let output = std::process::Command::new("pnpm")
         .args(&["list", "-g", "--depth=0"])
         .current_dir(std::env::current_dir().unwrap_or_default())
@@ -367,57 +308,32 @@ pub async fn get_npm_linked_plugins_internal() -> Result<Vec<LocalPluginInfo>, S
 
     match output {
         Ok(output) => {
-            println!(
-                "pnpm command exit code: {}",
-                output.status.code().unwrap_or(-1)
-            );
-
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                println!("=== pnpm list output START ===");
-                println!("{}", stdout);
-                println!("=== pnpm list output END ===");
-
                 let mut found_any_plugin_line = false;
                 // 解析输出，查找插件包（支持两种命名方式）
-                for (line_num, line) in stdout.lines().enumerate() {
-                    println!("Line {}: '{}'", line_num, line);
-
+                for (_line_num, line) in stdout.lines().enumerate() {
                     // 支持官方插件和第三方插件两种命名方式
                     if line.contains("@dataset-viewer/plugin-")
                         || line.contains("dataset-viewer-plugin")
                     {
                         found_any_plugin_line = true;
-                        println!("*** Found plugin line at {}: '{}'", line_num, line);
 
                         if line.contains("link:") {
-                            println!("*** Line contains 'link:', processing...");
                             // 提取包名和路径
                             if let Some((package_name, link_path)) = extract_pnpm_link_info(line) {
-                                println!("*** Extracted: {} -> {}", package_name, link_path);
-
                                 // 解析 package.json
                                 let package_json_path =
                                     std::path::Path::new(&link_path).join("package.json");
-                                println!(
-                                    "*** Looking for package.json at: {}",
-                                    package_json_path.display()
-                                );
 
                                 // 首先检查链接的目录是否存在
                                 if !std::path::Path::new(&link_path).exists() {
-                                    println!("*** Link path does not exist: {}", link_path);
                                     continue;
                                 }
 
                                 if package_json_path.exists() {
-                                    println!("*** Found package.json, parsing...");
                                     match parse_npm_linked_plugin(&package_json_path, &link_path) {
                                         Ok(plugin_info) => {
-                                            println!(
-                                                "*** Successfully parsed plugin: {}",
-                                                plugin_info.name
-                                            );
                                             plugins.push(plugin_info);
                                         }
                                         Err(e) => {
@@ -714,7 +630,6 @@ fn extract_pnpm_link_info(line: &str) -> Option<(String, String)> {
         {
             // 将相对路径转换为绝对路径
             let link_path = resolve_relative_path(after_link);
-            println!("Resolved path: '{}' -> '{}'", after_link, link_path);
             return Some((package_name, link_path));
         } else {
             println!("Package name does not match pattern: '{}'", package_name);
@@ -728,11 +643,8 @@ fn extract_pnpm_link_info(line: &str) -> Option<(String, String)> {
  * 解析相对路径为绝对路径
  */
 fn resolve_relative_path(relative_path: &str) -> String {
-    println!("Resolving relative path: '{}'", relative_path);
-
     // 获取当前工作目录
     if let Ok(current_dir) = std::env::current_dir() {
-        println!("Current directory: {}", current_dir.display());
         let mut path = current_dir;
 
         // 处理相对路径
@@ -741,19 +653,15 @@ fn resolve_relative_path(relative_path: &str) -> String {
                 "." => continue,
                 ".." => {
                     path.pop();
-                    println!("After '..': {}", path.display());
                 }
                 "" => continue,
                 _ => {
                     path.push(component);
-                    println!("After '{}': {}", component, path.display());
                 }
             }
         }
 
-        let resolved = path.to_string_lossy().to_string();
-        println!("Final resolved path: {}", resolved);
-        return resolved;
+        return path.to_string_lossy().to_string();
     }
 
     // 如果无法获取当前目录，返回原始路径
@@ -796,8 +704,6 @@ async fn get_cached_plugins() -> Result<Vec<LocalPluginInfo>, String> {
 
     let cache_dir =
         get_plugin_cache_dir().map_err(|e| format!("Failed to get cache dir: {}", e))?;
-
-    println!("Scanning cache directory: {}", cache_dir.display());
 
     let mut plugins = Vec::new();
 

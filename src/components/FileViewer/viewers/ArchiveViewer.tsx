@@ -15,7 +15,6 @@ import {
 } from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
 import { safeParseInt } from '../../../utils/typeUtils';
-import { configManager } from '../../../config';
 
 import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
 import { VirtualizedTextViewer } from './VirtualizedTextViewer';
@@ -252,18 +251,11 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
         // 小媒体文件和数据文件自动加载完整内容
         const loadSize = fileSize;
-        let preview: FilePreview;
-
-        if (storageClient?.getArchiveFilePreview) {
-          preview = await storageClient.getArchiveFilePreview(url, filename, entry.path, loadSize);
-        } else {
-          preview = await CompressionService.extractFilePreview(
-            url,
-            filename,
-            entry.path,
-            loadSize
-          );
-        }
+        const preview = await CompressionService.extractFilePreviewViaProtocol(
+          url,
+          entry.path,
+          loadSize
+        );
 
         setFilePreview(preview);
         setFileLoadState(prev => ({ ...prev, manualLoadRequested: true })); // 标记为已加载
@@ -278,21 +270,11 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       let preview: FilePreview;
 
-      if (storageClient?.getArchiveFilePreview) {
-        preview = await storageClient.getArchiveFilePreview(
-          url,
-          filename,
-          entry.path,
-          initialLoadSize
-        );
-      } else {
-        preview = await CompressionService.extractFilePreview(
-          url,
-          filename,
-          entry.path,
-          initialLoadSize
-        );
-      }
+      preview = await CompressionService.extractFilePreviewViaProtocol(
+        url,
+        entry.path,
+        initialLoadSize
+      );
 
       setFilePreview(preview);
 
@@ -346,114 +328,36 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       setFileLoadState(prev => ({ ...prev, loadingMore: true }));
       try {
-        const config = configManager.getConfig();
         const nextPosition = fileLoadState.currentFilePosition + fileLoadState.loadedContentSize;
         if (nextPosition >= fileLoadState.totalSize) {
           setFileLoadState(prev => ({ ...prev, loadingMore: false }));
           return;
         }
 
-        const remainingSize = fileLoadState.totalSize - nextPosition;
-        const chunkSize = Math.min(config.streaming.chunkSize, remainingSize);
-
-        let additionalPreview: FilePreview;
-        if (
-          storageClient?.getArchiveFilePreview &&
-          typeof storageClient.getArchiveFilePreview === 'function'
-        ) {
-          // 检查storageClient是否支持偏移量参数
-          try {
-            additionalPreview = await storageClient.getArchiveFilePreview(
-              url,
-              filename,
-              entry.path,
-              chunkSize,
-              nextPosition
-            );
-          } catch (offsetError) {
-            // 如果不支持偏移量，回退到加载完整文件
-            console.warn('StorageClient does not support offset, loading full file:', offsetError);
-            const fullPreview = await storageClient.getArchiveFilePreview(
-              url,
-              filename,
-              entry.path,
-              fileLoadState.totalSize
-            );
-            if (
-              fullPreview.content &&
-              fullPreview.content.length > fileLoadState.loadedContentSize
-            ) {
-              const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
-              const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(
-                remainingContent
-              );
-              setFileContent(prev => prev + additionalText);
-              setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
-              setFileLoadState(prev => ({
-                ...prev,
-                loadedContentSize: fullPreview.content!.length,
-                loadedChunks: prev.loadedChunks + 1,
-                loadingMore: false,
-              }));
-            } else {
-              setFileLoadState(prev => ({ ...prev, loadingMore: false }));
-            }
-            return;
-          }
-        } else {
-          // CompressionService 目前不支持偏移量，需要加载完整文件
-          console.warn('CompressionService does not support offset loading, loading full file');
-          const fullPreview = await CompressionService.extractFilePreview(
-            url,
-            filename,
-            entry.path,
-            fileLoadState.totalSize
-          );
-          if (fullPreview.content && fullPreview.content.length > fileLoadState.loadedContentSize) {
-            const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
-            const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(
-              remainingContent
-            );
-            setFileContent(prev => prev + additionalText);
-            setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
-            setFileLoadState(prev => ({
-              ...prev,
-              loadedContentSize: fullPreview.content!.length,
-              loadedChunks: prev.loadedChunks + 1,
-              loadingMore: false,
-            }));
-          } else {
-            setFileLoadState(prev => ({ ...prev, loadingMore: false }));
-          }
-          return;
-        }
-
-        if (additionalPreview.content) {
+        // 使用新的协议URL方法进行加载
+        console.warn('New protocol method does not support offset loading yet, loading full file');
+        const fullPreview = await CompressionService.extractFilePreviewViaProtocol(
+          url,
+          entry.path,
+          fileLoadState.totalSize
+        );
+        if (fullPreview.content && fullPreview.content.length > fileLoadState.loadedContentSize) {
+          const remainingContent = fullPreview.content.slice(fileLoadState.loadedContentSize);
           const additionalText = new TextDecoder('utf-8', { fatal: false }).decode(
-            additionalPreview.content
+            remainingContent
           );
           setFileContent(prev => prev + additionalText);
-
-          // 更新filePreview状态，特别是is_truncated状态
-          setFilePreview(prev =>
-            prev
-              ? {
-                  ...prev,
-                  content: prev.content
-                    ? new Uint8Array([...prev.content, ...additionalPreview.content!])
-                    : additionalPreview.content!,
-                  is_truncated: additionalPreview.is_truncated,
-                  preview_size: (prev.preview_size || 0) + additionalPreview.content!.length,
-                }
-              : additionalPreview
-          );
-
+          setFilePreview(fullPreview); // 更新filePreview状态，包括is_truncated
           setFileLoadState(prev => ({
             ...prev,
-            loadedContentSize: prev.loadedContentSize + additionalPreview.content!.length,
+            loadedContentSize: fullPreview.content!.length,
             loadedChunks: prev.loadedChunks + 1,
+            loadingMore: false,
           }));
+        } else {
+          setFileLoadState(prev => ({ ...prev, loadingMore: false }));
         }
+        return;
       } catch (err) {
         console.error('Failed to load more content:', err);
         setPreviewError(t('error.load.more'));
@@ -512,22 +416,11 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       setFileLoadState(prev => ({ ...prev, manualLoading: true }));
       try {
-        let fullPreview: FilePreview;
-        if (storageClient?.getArchiveFilePreview) {
-          fullPreview = await storageClient.getArchiveFilePreview(
-            url,
-            filename,
-            entry.path,
-            safeParseInt(entry.size) || undefined // 加载完整文件
-          );
-        } else {
-          fullPreview = await CompressionService.extractFilePreview(
-            url,
-            filename,
-            entry.path,
-            safeParseInt(entry.size) || undefined // 加载完整文件
-          );
-        }
+        const fullPreview = await CompressionService.extractFilePreviewViaProtocol(
+          url,
+          entry.path,
+          safeParseInt(entry.size) || undefined // 加载完整文件
+        );
 
         setFilePreview(fullPreview);
         setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));
@@ -561,22 +454,11 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
 
       setFileLoadState(prev => ({ ...prev, manualLoading: true }));
       try {
-        let fullPreview: FilePreview;
-        if (storageClient?.getArchiveFilePreview) {
-          fullPreview = await storageClient.getArchiveFilePreview(
-            url,
-            filename,
-            entry.path,
-            safeParseInt(entry.size) || undefined // 加载完整文件
-          );
-        } else {
-          fullPreview = await CompressionService.extractFilePreview(
-            url,
-            filename,
-            entry.path,
-            safeParseInt(entry.size) || undefined // 加载完整文件
-          );
-        }
+        const fullPreview = await CompressionService.extractFilePreviewViaProtocol(
+          url,
+          entry.path,
+          safeParseInt(entry.size) || undefined // 加载完整文件
+        );
 
         setFilePreview(fullPreview);
         setFileLoadState(prev => ({ ...prev, manualLoadRequested: true }));

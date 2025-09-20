@@ -115,15 +115,6 @@ impl StorageManager {
     pub fn get_current_client(&self) -> Option<Arc<dyn StorageClient + Send + Sync>> {
         self.cached_client.clone()
     }
-
-    pub async fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        let client = self
-            .cached_client
-            .as_ref()
-            .ok_or(StorageError::NotConnected)?;
-
-        client.get_download_url(path)
-    }
 }
 
 // 全局存储管理器

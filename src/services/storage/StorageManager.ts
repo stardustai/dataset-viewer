@@ -1,7 +1,6 @@
 import { StorageClient } from './StorageClient';
 import { ConnectionConfig, StorageClientType } from './types';
 import { connectionStorage, StoredConnection } from '../connectionStorage';
-import { commands } from '../../types/tauri-commands';
 
 /**
  * 存储客户端工厂 - 简化版
@@ -297,9 +296,9 @@ export class StorageServiceManager {
   /**
    * 下载文件
    */
-  static async downloadFile(path: string): Promise<Blob> {
+  static async getFileAsBlob(path: string): Promise<Blob> {
     const client = this.getCurrentClient();
-    return await client.downloadFile(path);
+    return await client.getFileAsBlob(path);
   }
 
   /**
@@ -409,22 +408,11 @@ export class StorageServiceManager {
   }
 
   /**
-   * 获取文件下载URL
-   */
-  static async getDownloadUrl(path: string): Promise<string> {
-    const result = await commands.storageGetUrl(path);
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
-
-  /**
    * 获取文件的ArrayBuffer内容
    */
   static async getFileArrayBuffer(path: string): Promise<ArrayBuffer> {
     const client = this.getCurrentClient();
-    const blob = await client.downloadFile(path);
+    const blob = await client.getFileAsBlob(path);
     return await blob.arrayBuffer();
   }
 }

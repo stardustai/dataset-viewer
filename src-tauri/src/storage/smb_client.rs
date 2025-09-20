@@ -240,32 +240,6 @@ impl StorageClient for SMBClient {
         self.read_file_range(path, 0, file_size).await
     }
 
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // SMB doesn't provide direct download URLs, return the SMB path
-        let server = self.config.url.as_ref().ok_or_else(|| {
-            StorageError::InvalidConfig("SMB server URL not configured".to_string())
-        })?;
-        let share =
-            self.config.share.as_ref().ok_or_else(|| {
-                StorageError::InvalidConfig("SMB share not configured".to_string())
-            })?;
-
-        let clean_path = path.trim_start_matches('/');
-        let smb_path = if clean_path.is_empty() {
-            "".to_string()
-        } else {
-            clean_path.replace('/', "\\")
-        };
-
-        let full_path = if smb_path.is_empty() {
-            format!("smb://{}/{}", server, share)
-        } else {
-            format!("smb://{}/{}/{}", server, share, smb_path)
-        };
-
-        Ok(full_path)
-    }
-
     /// SMB 文件下载实现，使用分块读取（待实现完整 SMB 流式支持）
     async fn download_file(
         &self,

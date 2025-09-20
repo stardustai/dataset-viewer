@@ -44,9 +44,8 @@ export const getMimeType = (filename: string): string => {
  * @returns Promise<ArrayBuffer> 文件数据
  */
 export async function getFileArrayBuffer(filePath: string): Promise<ArrayBuffer> {
-  // 统一走 Rust 后端命令，无论本地还是远程
-  const fileBlob = await StorageServiceManager.downloadFile(filePath);
-  return await fileBlob.arrayBuffer();
+  // 使用 StorageServiceManager 的统一方法
+  return await StorageServiceManager.getFileArrayBuffer(filePath);
 }
 
 /**
@@ -58,20 +57,22 @@ export async function getFileArrayBuffer(filePath: string): Promise<ArrayBuffer>
  */
 export async function getFileText(filePath: string, encoding?: string): Promise<string> {
   const arrayBuffer = await getFileArrayBuffer(filePath);
-  
+
   // 如果指定了编码，直接使用
   if (encoding) {
     return new TextDecoder(encoding).decode(arrayBuffer);
   }
-  
+
   // 自动检测编码 (性能优化：仅使用文件样本)
   const startTime = performance.now();
   const buffer = new Uint8Array(arrayBuffer);
   const detected = detectEncodingWithFallback(buffer);
   const detectionTime = performance.now() - startTime;
-  
-  console.log(`Auto-detected encoding for ${filePath}: ${detected.encoding} (confidence: ${detected.confidence}, time: ${detectionTime.toFixed(2)}ms, sample: ${Math.min(buffer.length, 8192)} bytes)`);
-  
+
+  console.log(
+    `Auto-detected encoding for ${filePath}: ${detected.encoding} (confidence: ${detected.confidence}, time: ${detectionTime.toFixed(2)}ms, sample: ${Math.min(buffer.length, 8192)} bytes)`
+  );
+
   return new TextDecoder(detected.encoding).decode(arrayBuffer);
 }
 
@@ -80,11 +81,13 @@ export async function getFileText(filePath: string, encoding?: string): Promise<
  * @param filePath 文件路径
  * @returns Promise<{encoding: string, confidence: number}> 检测到的编码信息
  */
-export async function getFileEncoding(filePath: string): Promise<{encoding: string, confidence: number}> {
+export async function getFileEncoding(
+  filePath: string
+): Promise<{ encoding: string; confidence: number }> {
   const arrayBuffer = await getFileArrayBuffer(filePath);
   const buffer = new Uint8Array(arrayBuffer);
   const detected = detectEncodingWithFallback(buffer);
-  
+
   return {
     encoding: detected.encoding,
     confidence: detected.confidence,
@@ -108,16 +111,16 @@ export async function getFileHeader(
   maxBytes: number = 2048
 ): Promise<Uint8Array> {
   // 获取文件的下载 URL
-  const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
+  const fileUrl = StorageServiceManager.getFileUrl(filePath);
 
   if (
-    fileUrl.startsWith('file://') ||
+    fileUrl.startsWith('local://') ||
     fileUrl.startsWith('webdav://') ||
     fileUrl.startsWith('webdavs://')
   ) {
     // 对于本地文件和需要认证的 WebDAV 文件，使用 StorageServiceManager.downloadFile
     // 浏览器的 fetch 无法处理 WebDAV 认证头，所以需要通过后端下载
-    const fileBlob = await StorageServiceManager.downloadFile(filePath);
+    const fileBlob = await StorageServiceManager.getFileAsBlob(filePath);
     const arrayBuffer = await fileBlob.arrayBuffer();
     const actualBytes = Math.min(maxBytes, arrayBuffer.byteLength);
     return new Uint8Array(arrayBuffer.slice(0, actualBytes));
@@ -140,16 +143,16 @@ export async function getFileHeader(
 
 export async function getFileUrl(filePath: string): Promise<string> {
   // 获取文件的下载 URL
-  const fileUrl = await StorageServiceManager.getDownloadUrl(filePath);
+  const fileUrl = StorageServiceManager.getFileUrl(filePath);
 
   if (
-    fileUrl.startsWith('file://') ||
+    fileUrl.startsWith('local://') ||
     fileUrl.startsWith('webdav://') ||
     fileUrl.startsWith('webdavs://')
   ) {
     // 对于本地文件和需要认证的 WebDAV 文件，获取数据并创建 Blob URL
     // 浏览器的 iframe 无法处理 WebDAV 认证头，所以需要通过后端下载
-    const fileBlob = await StorageServiceManager.downloadFile(filePath);
+    const fileBlob = await StorageServiceManager.getFileAsBlob(filePath);
     // 获取文件名以确定 MIME 类型
     const fileName = filePath.split('/').pop() || '';
     const mimeType = getMimeType(fileName);
