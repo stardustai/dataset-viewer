@@ -34,11 +34,10 @@ export const sshStorageAdapter: StorageAdapter = {
     const cleanPath = path.replace(/^\/+/, '');
     const server = connection.url;
     const port = connection.port || 22;
-    const username = connection.username || '';
     const remotePath = connection.rootPath || '/';
 
-    // 构建 SSH URL: ssh://user@host:port/path
-    let sshUrl = `ssh://${username ? `${username}@` : ''}${server}`;
+    // 构建 SSH URL: ssh://host:port/path (不包含用户凭据，避免 fetch API 报错)
+    let sshUrl = `ssh://${server}`;
 
     if (port !== 22) {
       sshUrl += `:${port}`;

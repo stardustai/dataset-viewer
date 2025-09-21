@@ -20,7 +20,8 @@ export const webdavStorageAdapter: StorageAdapter = {
     }
 
     const connectionUrl = new URL(connection.url);
-    const scheme = connectionUrl.protocol === 'https:' ? 'webdavs' : 'webdav';
+    // 统一使用 webdav:// 协议，不区分 HTTP/HTTPS
+    const scheme = 'webdav';
     const cleanPath = path.replace(/^\/+/, '');
     const basePath = connectionUrl.pathname.replace(/\/+$/, '');
 

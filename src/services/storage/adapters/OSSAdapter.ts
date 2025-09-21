@@ -139,11 +139,11 @@ export const ossStorageAdapter: StorageAdapter = {
       url: formData.endpoint?.trim() || formData.url?.trim(), // 优先使用 endpoint，兼容 url
       region: formData.region?.trim() || 'cn-hangzhou', // 默认使用阿里云杭州区域
       bucket: formData.bucket?.trim(),
-      username: formData.accessKey?.trim() || formData.username?.trim(), // 优先使用 accessKey，兼容 username
+      username: formData.accessKey?.trim(),
       password:
         formData.isPasswordFromStorage && existingConnection?.config.password
           ? existingConnection.config.password
-          : formData.secretKey || formData.password, // 优先使用 secretKey，兼容 password
+          : formData.secretKey,
       name: existingConnection
         ? existingConnection.name
         : `OSS (${formData.bucket?.trim()?.split('/')[0] || 'unknown'})`,

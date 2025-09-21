@@ -8,7 +8,4 @@ pub use auth::{
 };
 
 // 重新导出解析相关功能
-pub use parser::{
-    build_full_path, build_object_url, extract_object_key, normalize_uri_for_signing,
-    parse_list_objects_response,
-};
+pub use parser::{build_full_path, extract_object_key, parse_list_objects_response};

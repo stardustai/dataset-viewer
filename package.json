@@ -44,6 +44,7 @@
     "dav1d.js": "^0.1.1",
     "dompurify": "^3.2.6",
     "hyparquet": "^1.17.1",
+    "hyparquet-compressors": "^1.1.1",
     "i18next": "^25.3.2",
     "jschardet": "^3.1.4",
     "lucide-react": "^0.525.0",

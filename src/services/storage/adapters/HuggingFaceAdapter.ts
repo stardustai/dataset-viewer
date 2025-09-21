@@ -21,10 +21,10 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
     return path;
   },
 
-  buildProtocolUrl: (path: string, _connection: any, config?: ConnectionConfig) => {
+  buildProtocolUrl: (path: string, connection: any) => {
+    const config = connection as ConnectionConfig;
     const org = config?.organization;
 
-    // 处理空路径或根路径
     if (!path || path === '/' || path === '') {
       if (org) {
         return `huggingface://${org}`;
@@ -32,23 +32,26 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
       return 'huggingface://';
     }
 
+    // 将用户界面的 : 格式转换为内部 ~ 格式
+    const normalizedPath = path.replace(/([^\/]+):([^\/]+)/, '$1~$2');
+
     // 解析 HuggingFace 路径格式
-    const pathInfo = parseHuggingFacePath(path);
+    const pathInfo = parseHuggingFacePath(normalizedPath);
     if (!pathInfo) {
-      if (org && !path.includes('/') && !path.includes(':')) {
+      if (org && !normalizedPath.includes('/') && !normalizedPath.includes('~')) {
         // 如果指定了组织且路径不包含分隔符，自动添加组织前缀
-        return `huggingface://${org}:${path}`;
+        return `huggingface://${org}~${normalizedPath}`;
       }
-      return `huggingface://${path}`;
+      return `huggingface://${normalizedPath}`;
     }
 
     if (!pathInfo.filePath) {
       // 数据集根目录
-      return `huggingface://${pathInfo.fullDatasetId}`;
+      return `huggingface://${pathInfo.owner}~${pathInfo.dataset}`;
     }
 
     // 完整的数据集文件路径
-    return `huggingface://${pathInfo.fullDatasetId}/${pathInfo.filePath}`;
+    return `huggingface://${pathInfo.owner}~${pathInfo.dataset}/${pathInfo.filePath}`;
   },
 
   generateConnectionName: (config: ConnectionConfig) => {
@@ -115,12 +118,13 @@ interface HuggingFacePathInfo {
   owner: string;
   dataset: string;
   filePath?: string;
-  fullDatasetId: string; // owner:dataset
+  fullDatasetId: string; // owner~dataset
 }
 
 /**
  * 解析 HuggingFace 路径
- * 格式：{owner}:{dataset}/{file_path}
+ * 格式：{owner}~{dataset}/{file_path} (内部格式)
+ * 注意：此函数期望输入已经是 ~ 格式，UI 的 : 格式应在调用前转换
  */
 function parseHuggingFacePath(path: string): HuggingFacePathInfo | null {
   if (!path || path === '/' || path === '') {
@@ -137,12 +141,12 @@ function parseHuggingFacePath(path: string): HuggingFacePathInfo | null {
 
   const datasetIdPart = segments[0];
 
-  // 必须使用 : 分隔符
-  if (!datasetIdPart.includes(':')) {
+  // 必须使用 ~ 分隔符
+  if (!datasetIdPart.includes('~')) {
     return null;
   }
 
-  const datasetParts = datasetIdPart.split(':');
+  const datasetParts = datasetIdPart.split('~');
   if (datasetParts.length !== 2) {
     return null;
   }
@@ -160,6 +164,6 @@ function parseHuggingFacePath(path: string): HuggingFacePathInfo | null {
     owner,
     dataset,
     filePath,
-    fullDatasetId: `${owner}:${dataset}`,
+    fullDatasetId: `${owner}~${dataset}`,
   };
 }

@@ -11,7 +11,8 @@ import {
   FileContent,
   ReadOptions,
 } from './types';
-import { ArchiveInfo, FilePreview } from '../../types';
+import { ArchiveInfo } from '../../types';
+import { detectEncodingWithFallback } from '../../utils/textEncodingDetection';
 
 // 通用连接对象接口 - 不同存储类型有不同的连接对象结构
 interface BaseConnection {
@@ -151,6 +152,23 @@ export class StorageClient implements IStorageClient {
     if (!this.connection) {
       throw new Error('Not connected');
     }
+
+    // 统一的协议检查 - 涵盖所有支持的协议
+    const ALL_PROTOCOLS = [
+      'local://',
+      'webdav://',
+      'webdavs://',
+      'oss://',
+      'ssh://',
+      'smb://',
+      'huggingface://',
+    ];
+
+    if (ALL_PROTOCOLS.some(protocol => path.startsWith(protocol))) {
+      return path; // 已经是协议URL，直接返回
+    }
+
+    // 不是协议URL，调用适配器构建
     return this.adapter.buildProtocolUrl(path, this.connection, this.connectionConfig || undefined);
   }
 
@@ -255,12 +273,15 @@ export class StorageClient implements IStorageClient {
 
     try {
       const data = await this.readFileBytes(path, options?.start, options?.length);
+
+      // 先检测编码
+      const { encoding: detectedEncoding } = detectEncodingWithFallback(data);
       const content = this.decodeTextContent(data);
 
       return {
         content,
         size: data.length,
-        encoding: 'utf-8',
+        encoding: detectedEncoding,
       };
     } catch (error) {
       console.error(`Failed to get file content for ${path}:`, error);
@@ -280,7 +301,7 @@ export class StorageClient implements IStorageClient {
     }
   }
 
-  async downloadFile(path: string): Promise<Blob> {
+  async getFileAsBlob(path: string): Promise<Blob> {
     if (!this.connected) {
       throw new Error(`${this.storageType} storage not connected`);
     }
@@ -290,7 +311,7 @@ export class StorageClient implements IStorageClient {
       const compatibleArray = new Uint8Array(data);
       return new Blob([compatibleArray]);
     } catch (error) {
-      console.error(`Failed to download file for ${path}:`, error);
+      console.error(`Failed to get file as blob for ${path}:`, error);
       throw error;
     }
   }
@@ -328,33 +349,6 @@ export class StorageClient implements IStorageClient {
     }
   }
 
-  /**
-   * 获取压缩文件中的文件预览（统一使用StorageClient流式接口）
-   */
-  async getArchiveFilePreview(
-    path: string,
-    filename: string,
-    entryPath: string,
-    maxPreviewSize?: number,
-    offset?: number // 支持偏移量参数
-  ): Promise<FilePreview> {
-    try {
-      // 所有存储类型都使用统一的StorageClient流式接口
-      console.log(`${this.protocol}存储使用统一流式预览:`, { path, filename, entryPath, offset });
-
-      return await this.getArchiveFilePreviewWithClient(
-        path,
-        filename,
-        entryPath,
-        maxPreviewSize,
-        offset
-      );
-    } catch (error) {
-      console.error('Failed to get archive file preview:', error);
-      throw error;
-    }
-  }
-
   // ========== 内部工具方法 ==========
 
   /**
@@ -364,7 +358,10 @@ export class StorageClient implements IStorageClient {
     path: string,
     options?: ListOptions
   ): Promise<DirectoryResult> {
-    const result = await commands.storageList(path, options || null);
+    // 使用标准的 toProtocolUrl 方法转换路径
+    const protocolUrl = this.toProtocolUrl(path);
+
+    const result = await commands.storageList(protocolUrl, options || null);
 
     if (result.status === 'error') {
       throw new Error(result.error);
@@ -402,46 +399,17 @@ export class StorageClient implements IStorageClient {
     filename: string,
     maxSize?: number
   ): Promise<ArchiveInfo> {
+    // 使用标准的 toProtocolUrl 方法转换路径
+    const protocolUrl = this.toProtocolUrl(path);
+
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveGetFileInfo(path, filename, maxSize || null);
+    const result = await commands.archiveGetFileInfo(protocolUrl, filename, maxSize || null);
 
     if (result.status === 'error') {
       throw new Error(result.error);
     }
 
     return result.data;
-  }
-
-  /**
-   * 通过存储客户端获取压缩文件预览（用于本地文件）
-   */
-  protected async getArchiveFilePreviewWithClient(
-    path: string,
-    filename: string,
-    entryPath: string,
-    maxPreviewSize?: number,
-    offset?: number
-  ): Promise<FilePreview> {
-    // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveGetFileContent(
-      path,
-      filename,
-      entryPath,
-      maxPreviewSize || null,
-      offset?.toString() || null
-    );
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-
-    // 转换为主项目的 FilePreview 格式，确保 content 是 Uint8Array
-    return {
-      content: new Uint8Array(result.data.content),
-      is_truncated: result.data.is_truncated,
-      total_size: result.data.total_size,
-      preview_size: result.data.preview_size,
-    };
   }
 
   /**
@@ -528,22 +496,63 @@ export class StorageClient implements IStorageClient {
    * @param length 读取长度（可选）
    * @returns 二进制数据
    */
-  protected async readFileBytes(
+  async readFileBytes(path: string, start?: number, length?: number): Promise<Uint8Array> {
+    // 所有存储类型现在都使用协议方式实现高效的文件请求
+    return this.readProtocolFileBytes(path, start, length);
+  } /**
+   * 通过协议 URL 读取文件字节数据
+   * @param path 文件路径
+   * @param start 起始位置（可选）
+   * @param length 读取长度（可选）
+   * @returns 二进制数据
+   */
+  private async readProtocolFileBytes(
     path: string,
     start?: number,
     length?: number
   ): Promise<Uint8Array> {
-    const result = await commands.storageGetFileContent(
-      this.toProtocolUrl(path),
-      start !== undefined ? start.toString() : null,
-      length !== undefined ? length.toString() : null
-    );
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
+    if (!this.connected) {
+      throw new Error(`Not connected to ${this.protocol} server`);
     }
 
-    return new Uint8Array(result.data);
+    // 使用现有的 toProtocolUrl 方法构建完整的协议 URL
+    const protocolUrl = this.toProtocolUrl(path);
+
+    try {
+      let response: Response;
+
+      if (start !== undefined) {
+        // 处理范围请求
+        const endPos = length !== undefined ? start + length - 1 : '';
+        const rangeHeader = `bytes=${start}-${endPos}`;
+
+        response = await fetch(protocolUrl, {
+          method: 'GET',
+          headers: {
+            Range: rangeHeader,
+          },
+        });
+      } else {
+        // 处理完整文件请求
+        response = await fetch(protocolUrl, {
+          method: 'GET',
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `${this.protocol.toUpperCase()} request failed: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return new Uint8Array(arrayBuffer);
+    } catch (error) {
+      console.error(`${this.protocol.toUpperCase()} fetch error:`, error);
+      throw new Error(
+        `Failed to fetch file via ${this.protocol.toUpperCase()} protocol: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   /**
@@ -552,24 +561,72 @@ export class StorageClient implements IStorageClient {
    * @returns 文件大小
    */
   protected async getFileSizeInternal(path: string): Promise<number> {
-    const result = await commands.storageGetFileInfo(this.toProtocolUrl(path));
-
-    if (result.status === 'error') {
-      throw new Error(result.error);
-    }
-
-    return parseInt(result.data.size, 10);
+    // 所有存储类型现在都使用协议方式获取文件大小
+    return this.getProtocolFileSize(path);
   }
 
   /**
-   * 将二进制数据解码为文本
+   * 通过协议 URL 获取文件大小
+   * @param path 文件路径
+   * @returns 文件大小
+   */
+  private async getProtocolFileSize(path: string): Promise<number> {
+    if (!this.connected) {
+      throw new Error(`Not connected to ${this.protocol} server`);
+    }
+
+    // 使用现有的 toProtocolUrl 方法构建完整的协议 URL
+    const protocolUrl = this.toProtocolUrl(path);
+
+    try {
+      const response = await fetch(protocolUrl, {
+        method: 'HEAD', // 使用 HEAD 请求获取文件信息
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `${this.protocol.toUpperCase()} HEAD request failed: ${response.status} ${response.statusText}`
+        );
+      }
+
+      // 从响应头中获取 Content-Length
+      const contentLength = response.headers.get('Content-Length');
+      if (!contentLength) {
+        throw new Error(
+          `Content-Length header not found in ${this.protocol.toUpperCase()} response`
+        );
+      }
+
+      const size = parseInt(contentLength, 10);
+      if (isNaN(size)) {
+        throw new Error(`Invalid Content-Length value in ${this.protocol.toUpperCase()} response`);
+      }
+
+      return size;
+    } catch (error) {
+      console.error(`${this.protocol.toUpperCase()} HEAD request error:`, error);
+      throw new Error(
+        `Failed to get file size via ${this.protocol.toUpperCase()} protocol: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * 将二进制数据解码为文本，自动检测最佳编码
    * @param data 二进制数据
-   * @param encoding 编码格式，默认 utf-8
    * @returns 文本内容
    */
-  protected decodeTextContent(data: Uint8Array, encoding: string = 'utf-8'): string {
-    const decoder = new TextDecoder(encoding);
-    return decoder.decode(data);
+  protected decodeTextContent(data: Uint8Array): string {
+    // 使用智能编码检测
+    const { encoding: detectedEncoding } = detectEncodingWithFallback(data);
+
+    try {
+      return new TextDecoder(detectedEncoding).decode(data);
+    } catch (error) {
+      console.warn(`Failed to decode with detected encoding ${detectedEncoding}:`, error);
+      // 最终回退到 UTF-8，使用非严格模式
+      return new TextDecoder('utf-8', { fatal: false }).decode(data);
+    }
   }
 
   // ========== 辅助方法 ==========

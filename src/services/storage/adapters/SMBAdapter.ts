@@ -94,6 +94,7 @@ export const smbStorageAdapter: StorageAdapter = {
     url: config.url || '',
     username: config.username || '',
     password: config.password ? '******' : '', // 使用占位符回显已保存的密码
+    share: config.share || '',
     domain: config.domain || '',
     isPasswordFromStorage: !!config.password, // 如果有密码，标记为来自存储
   }),

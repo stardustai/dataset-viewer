@@ -213,7 +213,7 @@ impl StorageClient for WebDAVClient {
             return Err(StorageError::NotConnected);
         }
 
-        let actual_url = self.parse_path_to_url(path)?;
+        let actual_url = self.parse_path_to_url_with_type(path, true)?; // 目录列表按目录处理
 
         let propfind_body = r#"<?xml version="1.0" encoding="utf-8" ?>
 <D:propfind xmlns:D="DAV:">
@@ -288,10 +288,6 @@ impl StorageClient for WebDAVClient {
         })
     }
 
-    fn protocol(&self) -> &str {
-        "webdav"
-    }
-
     async fn read_file_range(
         &self,
         path: &str,
@@ -318,6 +314,8 @@ impl StorageClient for WebDAVClient {
 
         // 处理协议URL格式 - 文件操作，不添加尾部斜杠
         let actual_url = self.parse_path_to_url_with_type(path, false)?;
+
+        // 添加调试日志
 
         // 使用下载专用客户端进行文件范围读取
         let mut request = self.download_client.get(&actual_url);
@@ -379,6 +377,8 @@ impl StorageClient for WebDAVClient {
 
         // 处理协议URL格式 - 文件操作，不添加尾部斜杠
         let actual_url = self.parse_path_to_url_with_type(path, false)?;
+
+        // 添加调试日志
 
         let mut request = self.download_client.get(&actual_url);
         if let Some(auth) = &self.auth_header {
@@ -460,54 +460,6 @@ impl StorageClient for WebDAVClient {
         }
 
         Ok(())
-    }
-
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 如果传入的已经是协议URL，直接返回
-        if path.starts_with("webdav://") || path.starts_with("webdavs://") {
-            return Ok(path.to_string());
-        }
-
-        // 如果传入的是 HTTP URL，转换为协议URL
-        if path.starts_with("http://") || path.starts_with("https://") {
-            let protocol_url = if path.starts_with("https://") {
-                path.replace("https://", "webdavs://")
-            } else {
-                path.replace("http://", "webdav://")
-            };
-            return Ok(protocol_url);
-        }
-
-        // 对于普通路径，构建协议URL
-        let base_url =
-            self.config.url.as_ref().ok_or_else(|| {
-                StorageError::InvalidConfig("WebDAV URL not configured".to_string())
-            })?;
-
-        // 确定协议类型
-        let scheme = if base_url.starts_with("https://") {
-            "webdavs"
-        } else {
-            "webdav"
-        };
-
-        // 提取主机部分（去掉协议前缀）
-        let host_part = base_url
-            .trim_start_matches("https://")
-            .trim_start_matches("http://")
-            .trim_end_matches('/');
-
-        // 统一的路径处理：移除开头的斜杠
-        let clean_path = path.trim_start_matches('/');
-
-        // 构建协议URL
-        let protocol_url = if clean_path.is_empty() {
-            format!("{}://{}/", scheme, host_part)
-        } else {
-            format!("{}://{}/{}", scheme, host_part, clean_path)
-        };
-
-        Ok(protocol_url)
     }
 
     async fn download_file(
@@ -774,14 +726,23 @@ impl WebDAVClient {
             return Ok(webdav_url.to_string());
         }
 
-        // 如果是 webdav:// 协议，转换为 http://
-        if webdav_url.starts_with("webdav://") {
-            return Ok(webdav_url.replace("webdav://", "http://"));
-        }
+        // 简单的协议替换：根据配置的基础URL决定使用 http 还是 https
+        if webdav_url.starts_with("webdav://") || webdav_url.starts_with("webdavs://") {
+            let base_url = self.config.url.as_ref().ok_or_else(|| {
+                StorageError::InvalidConfig("WebDAV URL not configured".to_string())
+            })?;
 
-        // 如果是 webdavs:// 协议，转换为 https://
-        if webdav_url.starts_with("webdavs://") {
-            return Ok(webdav_url.replace("webdavs://", "https://"));
+            let scheme = if base_url.starts_with("https://") {
+                "https://"
+            } else {
+                "http://"
+            };
+
+            if webdav_url.starts_with("webdav://") {
+                return Ok(webdav_url.replace("webdav://", scheme));
+            } else {
+                return Ok(webdav_url.replace("webdavs://", "https://"));
+            }
         }
 
         // 其他情况，假设是相对路径，使用配置的基础URL
@@ -790,14 +751,19 @@ impl WebDAVClient {
                 StorageError::InvalidConfig("WebDAV URL not configured".to_string())
             })?;
 
+        // 简单拼接路径（兼容性保留）
         let clean_base = base_url.trim_end_matches('/');
         let clean_path = webdav_url.trim_start_matches('/');
 
-        Ok(format!("{}/{}", clean_base, clean_path))
+        if clean_path.is_empty() {
+            Ok(format!("{}/", clean_base))
+        } else {
+            Ok(format!("{}/{}", clean_base, clean_path))
+        }
     }
 
     fn parse_path_to_url(&self, path: &str) -> Result<String, StorageError> {
-        self.parse_path_to_url_with_type(path, true) // 默认按目录处理，用于向后兼容
+        self.parse_path_to_url_with_type(path, false) // 默认按文件处理
     }
 
     fn parse_path_to_url_with_type(
@@ -805,33 +771,21 @@ impl WebDAVClient {
         path: &str,
         is_directory: bool,
     ) -> Result<String, StorageError> {
-        // 如果是协议URL，直接解析转换
+        // 所有路径都应该是协议URL（统一规范）
         if path.starts_with("webdav://") || path.starts_with("webdavs://") {
-            let url = self.parse_webdav_url(path)?;
+            let mut url = self.parse_webdav_url(path)?;
+            // PROPFIND 目录列举需要尾随斜杠
+            if is_directory && !url.ends_with('/') {
+                url.push('/');
+            }
             return Ok(url);
         }
 
-        // 对于相对路径，使用配置的基础URL构建
-        let base_url =
-            self.config.url.as_ref().ok_or_else(|| {
-                StorageError::InvalidConfig("WebDAV URL not configured".to_string())
-            })?;
-
-        let clean_base = base_url.trim_end_matches('/');
-        let clean_path = path.trim_start_matches('/').trim_end_matches('/');
-
-        let url = if clean_path.is_empty() {
-            // 根目录总是以斜杠结尾
-            format!("{}/", clean_base)
-        } else if is_directory {
-            // 目录以斜杠结尾
-            format!("{}/{}/", clean_base, clean_path)
-        } else {
-            // 文件不以斜杠结尾
-            format!("{}/{}", clean_base, clean_path)
-        };
-
-        Ok(url)
+        // 如果不是协议URL，说明前端实现有问题
+        Err(StorageError::InvalidConfig(format!(
+            "Expected webdav:// protocol URL, got: {}",
+            path
+        )))
     }
 }
 

@@ -24,6 +24,7 @@ impl PathUtils {
                     // 处理 ~username 这种形式，目前不支持，返回原路径
                     PathBuf::from(path)
                 };
+
                 return Ok(expanded_path.to_string_lossy().to_string());
             } else {
                 return Err(StorageError::ConnectionFailed(

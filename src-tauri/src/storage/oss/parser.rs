@@ -1,7 +1,6 @@
 use chrono::Utc;
 use quick_xml::events::Event;
 use quick_xml::Reader;
-use urlencoding;
 
 use crate::storage::traits::{DirectoryResult, StorageError, StorageFile};
 
@@ -14,20 +13,24 @@ use crate::storage::traits::{DirectoryResult, StorageError, StorageFile};
 ///
 /// # Returns
 /// * `Result<(String, String), StorageError>` - (对象键, 实际 HTTP URL)
-pub fn parse_oss_url(
-    url: &str,
-    endpoint: &str,
-    configured_bucket: &str,
-) -> Result<(String, String), StorageError> {
+pub fn parse_oss_url(url: &str, configured_bucket: &str) -> Result<String, StorageError> {
     if !url.starts_with("oss://") {
         return Err(StorageError::RequestFailed(
             "Only oss:// protocol URLs are supported".to_string(),
         ));
     }
 
-    // 解析 oss://bucket/path/to/file 格式
+    // 解析 oss://bucket/path/to/file 格式，并分离查询参数
     let oss_url = url.strip_prefix("oss://").unwrap_or(url);
-    let parts: Vec<&str> = oss_url.splitn(2, '/').collect();
+
+    // 分离路径和查询参数
+    let (path_part, _query_part) = if let Some(query_pos) = oss_url.find('?') {
+        oss_url.split_at(query_pos)
+    } else {
+        (oss_url, "")
+    };
+
+    let parts: Vec<&str> = path_part.splitn(2, '/').collect();
 
     if !parts.is_empty() {
         let url_bucket = parts[0];
@@ -45,9 +48,7 @@ pub fn parse_oss_url(
             )));
         }
 
-        // 构建实际的 OSS HTTP URL
-        let actual_url = build_object_url(endpoint, object_key);
-        Ok((object_key.to_string(), actual_url))
+        Ok(object_key.to_string())
     } else {
         Err(StorageError::RequestFailed(
             "Invalid OSS URL format".to_string(),
@@ -68,14 +69,13 @@ pub fn parse_oss_url(
 /// * `Result<String, StorageError>` - 对象键
 pub fn extract_object_key(
     path: &str,
-    endpoint: &str,
     configured_bucket: &str,
     prefix: &str,
 ) -> Result<String, StorageError> {
     if path.starts_with("oss://") {
         // 如果是 OSS 协议 URL，直接解析出对象键，不添加前缀
         // 因为协议 URL 已经包含了完整的路径
-        let (object_key, _) = parse_oss_url(path, endpoint, configured_bucket)?;
+        let object_key = parse_oss_url(path, configured_bucket)?;
         Ok(object_key)
     } else {
         // 如果是相对路径，则添加前缀
@@ -90,28 +90,6 @@ pub fn build_full_path(path: &str, prefix: &str) -> String {
         path.to_string()
     } else {
         format!("{}{}", prefix, path.trim_start_matches('/'))
-    }
-}
-
-/// 构建对象的完整 URL
-pub fn build_object_url(endpoint: &str, object_key: &str) -> String {
-    // 对对象键进行URL编码，以正确处理中文和特殊字符
-    let encoded_key = urlencoding::encode(object_key);
-    format!("{}/{}", endpoint.trim_end_matches('/'), encoded_key)
-}
-
-/// 标准化 URI 路径，处理编码/解码（用于签名）
-pub fn normalize_uri_for_signing(uri: &str) -> String {
-    match urlencoding::decode(uri) {
-        Ok(decoded) => decoded.to_string(),
-        Err(_) => {
-            // 如果解码失败，可能路径本身就没有编码
-            if uri.starts_with('/') {
-                uri.to_string()
-            } else {
-                format!("/{}", uri)
-            }
-        }
     }
 }
 

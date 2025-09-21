@@ -20,7 +20,7 @@ interface LocalPluginViewerProps {
  */
 const createFileAccessor = (storageClient: StorageClient, filePath: string): FileAccessor => ({
   getFullContent: async (): Promise<ArrayBuffer> => {
-    const blob = await storageClient.downloadFile(filePath);
+    const blob = await storageClient.getFileAsBlob(filePath);
     return await blob.arrayBuffer();
   },
 
@@ -31,18 +31,18 @@ const createFileAccessor = (storageClient: StorageClient, filePath: string): Fil
     // 计算要读取的长度
     const length = end !== undefined ? end - start : undefined;
 
-    const fileContent = await storageClient.getFileContent(filePath, { start, length });
-    // 将文本内容转换为 ArrayBuffer
-    const encoder = new TextEncoder();
-    return encoder.encode(fileContent.content).buffer;
+    // 直接获取二进制数据，避免不必要的文本转换
+    const uint8Array = await storageClient.readFileBytes(filePath, start, length);
+    // 创建新的 ArrayBuffer 来确保类型兼容性
+    const arrayBuffer = new ArrayBuffer(uint8Array.length);
+    new Uint8Array(arrayBuffer).set(uint8Array);
+    return arrayBuffer;
   },
 
-  getTextContent: async (encoding: string = 'utf-8'): Promise<string> => {
-    const arrayBuffer = await storageClient
-      .downloadFile(filePath)
-      .then((blob: Blob) => blob.arrayBuffer());
-    const decoder = new TextDecoder(encoding);
-    return decoder.decode(arrayBuffer);
+  getTextContent: async (): Promise<string> => {
+    // 直接使用 getFileContent，它已经包含了智能编码检测
+    const fileContent = await storageClient.getFileContent(filePath);
+    return fileContent.content;
   },
 });
 

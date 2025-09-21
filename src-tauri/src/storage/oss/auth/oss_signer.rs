@@ -54,20 +54,14 @@ pub fn generate_oss_signature(
 
     // 打印调试信息（仅在开发环境）
     #[cfg(debug_assertions)]
-    {
-        println!("DEBUG: StringToSign:");
-        println!("{}", string_to_sign);
-    }
+    {}
 
     // 计算 HMAC-SHA1 签名
     let signature = hmac_sha1_base64(secret_key, &string_to_sign);
 
     // 打印调试信息（仅在开发环境）
     #[cfg(debug_assertions)]
-    {
-        println!("DEBUG: Generated signature: {}", signature);
-        println!("DEBUG: Secret key length: {}", secret_key.len());
-    }
+    {}
 
     signature
 }

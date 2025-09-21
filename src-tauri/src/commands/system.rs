@@ -44,7 +44,6 @@ pub async fn system_select_folder(
                 };
                 let path_str = abs_path.to_string_lossy().to_string();
 
-                println!("Selected folder path: {}", path_str);
                 Ok(Some(path_str))
             }
             Ok(None) => Ok(None),
@@ -96,7 +95,6 @@ pub async fn system_select_file(
                 };
                 let path_str = abs_path.to_string_lossy().to_string();
 
-                println!("Selected file path: {}", path_str);
                 Ok(Some(path_str))
             }
             Ok(None) => Ok(None),

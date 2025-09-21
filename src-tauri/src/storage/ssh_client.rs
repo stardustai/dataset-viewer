@@ -469,10 +469,6 @@ impl StorageClient for SSHClient {
         Ok(metadata.len())
     }
 
-    fn protocol(&self) -> &str {
-        "ssh"
-    }
-
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.protocol != "ssh" {
             return Err(StorageError::InvalidConfig(format!(
@@ -501,28 +497,6 @@ impl StorageClient for SSHClient {
         }
 
         Ok(())
-    }
-
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        let server = self.config.url.as_ref().ok_or_else(|| {
-            StorageError::InvalidConfig("SSH server URL not configured".to_string())
-        })?;
-        let port = self.config.port.unwrap_or(22);
-        let username = self.config.username.as_ref().ok_or_else(|| {
-            StorageError::InvalidConfig("SSH username not configured".to_string())
-        })?;
-
-        let full_path = self.get_full_path(path);
-        let port_suffix = if port != 22 {
-            format!(":{}", port)
-        } else {
-            String::new()
-        };
-
-        Ok(format!(
-            "ssh://{}@{}{}{}",
-            username, server, port_suffix, full_path
-        ))
     }
 
     async fn download_file(

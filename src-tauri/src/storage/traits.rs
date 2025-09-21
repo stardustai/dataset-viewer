@@ -183,12 +183,6 @@ pub trait StorageClient: Send + Sync {
     /// 获取文件大小
     async fn get_file_size(&self, path: &str) -> Result<u64, StorageError>;
 
-    /// 获取下载 URL（对于需要签名的存储如 OSS）
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        // 默认实现：直接返回路径，适用于不需要签名的存储
-        Ok(path.to_string())
-    }
-
     /// 下载文件到指定路径，支持进度回调和取消
     /// 各个存储客户端应该实现高效的流式下载策略
     /// 默认实现使用分块读取，但建议各客户端根据协议特性优化
@@ -199,9 +193,6 @@ pub trait StorageClient: Send + Sync {
         progress_callback: Option<ProgressCallback>,
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<(), StorageError>;
-
-    /// 获取协议名称
-    fn protocol(&self) -> &str;
 
     /// 验证配置是否有效
     #[allow(dead_code)] // API 保留方法

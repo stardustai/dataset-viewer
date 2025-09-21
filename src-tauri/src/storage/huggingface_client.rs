@@ -531,11 +531,15 @@ impl HuggingFaceClient {
             ));
         }
 
-        // 处理协议URL格式：huggingface://owner:dataset/file_path
+        // 处理协议URL格式：huggingface://owner~dataset/file_path
         let path_to_parse = if path.starts_with("huggingface://") {
-            path.strip_prefix("huggingface://").unwrap()
+            let raw_path = path.strip_prefix("huggingface://").unwrap();
+            // URL 解码路径以处理编码的字符
+            urlencoding::decode(raw_path)
+                .map(|decoded| decoded.into_owned())
+                .unwrap_or_else(|_| raw_path.to_string())
         } else {
-            path.trim_start_matches('/')
+            path.trim_start_matches('/').to_string()
         };
 
         // 处理搜索路径
@@ -545,7 +549,7 @@ impl HuggingFaceClient {
             ));
         }
 
-        // 路径格式：{owner}:{dataset}/{file_path}
+        // 路径格式：{owner}~{dataset}/{file_path}
         let parts: Vec<&str> = path_to_parse.split('/').collect();
 
         if parts.is_empty() {
@@ -554,18 +558,18 @@ impl HuggingFaceClient {
 
         let dataset_id_part = parts[0];
 
-        // 必须包含 : 分隔符
-        if !dataset_id_part.contains(':') {
+        // 必须包含 ~ 分隔符
+        if !dataset_id_part.contains('~') {
             return Err(StorageError::InvalidConfig(format!(
-                "Dataset identifier must use : separator, got: {}",
+                "Dataset identifier must use ~ separator (owner~dataset), got: {}. Please update your connection configuration.",
                 dataset_id_part
             )));
         }
 
-        let dataset_parts: Vec<&str> = dataset_id_part.split(':').collect();
+        let dataset_parts: Vec<&str> = dataset_id_part.split('~').collect();
         if dataset_parts.len() != 2 {
             return Err(StorageError::InvalidConfig(format!(
-                "Invalid dataset identifier format: {}",
+                "Invalid dataset identifier format: {}. Expected format: owner~dataset",
                 dataset_id_part
             )));
         }
@@ -635,21 +639,31 @@ impl StorageClient for HuggingFaceClient {
             return Err(StorageError::NotConnected);
         }
 
+        // 处理协议URL格式并提取实际路径
+        let actual_path = if path.starts_with("huggingface://") {
+            let raw_path = path.strip_prefix("huggingface://").unwrap();
+            urlencoding::decode(raw_path)
+                .map(|decoded| decoded.into_owned())
+                .unwrap_or_else(|_| raw_path.to_string())
+        } else {
+            path.to_string()
+        };
+
         // 根路径：显示热门数据集列表
-        if path == "/" || path.is_empty() {
+        if actual_path == "/" || actual_path.is_empty() {
             return self.list_popular_datasets(options).await;
         }
 
         // 搜索路径: /search/{query}
-        if let Some(query) = path.strip_prefix("/search/") {
+        if let Some(query) = actual_path.strip_prefix("/search/") {
             let decoded_query = urlencoding::decode(query)
                 .map_err(|e| StorageError::InvalidConfig(e.to_string()))?;
             return self.search_datasets(&decoded_query, options).await;
         }
 
-        // 检查是否是组织名称（不包含 '/' 和 ':'）
-        let path_trimmed = path.trim_start_matches('/');
-        if !path_trimmed.contains('/') && !path_trimmed.contains(':') && !path_trimmed.is_empty() {
+        // 检查是否是组织名称（不包含 '/' 和 '~'）
+        let path_trimmed = actual_path.trim_start_matches('/');
+        if !path_trimmed.contains('/') && !path_trimmed.contains('~') && !path_trimmed.is_empty() {
             // 这是一个组织名称，返回该组织下的数据集
             return self.list_organization_datasets(path_trimmed, options).await;
         }
@@ -698,13 +712,6 @@ impl StorageClient for HuggingFaceClient {
 
         let (dataset_id, file_path) = self.parse_path(path)?;
         let download_url = self.build_download_url(&dataset_id, &file_path);
-
-        println!("[DEBUG] HuggingFace read_file_range:");
-        println!("[DEBUG] - path: {}", path);
-        println!("[DEBUG] - dataset_id: {}", dataset_id);
-        println!("[DEBUG] - file_path: {}", file_path);
-        println!("[DEBUG] - download_url: {}", download_url);
-        println!("[DEBUG] - range: bytes={}-{}", start, start + length - 1);
 
         // 直接使用 HTTP 客户端，不通过 request_binary
         let mut req_builder = self.client.get(&download_url);
@@ -790,13 +797,7 @@ impl StorageClient for HuggingFaceClient {
     }
 
     async fn get_file_size(&self, path: &str) -> Result<u64, StorageError> {
-        println!("[DEBUG] HuggingFace get_file_size called with:");
-        println!("[DEBUG] - path: {}", path);
-
         let (dataset_id, file_path) = self.parse_path(path)?;
-
-        println!("[DEBUG] - dataset_id: {}", dataset_id);
-        println!("[DEBUG] - file_path: {}", file_path);
 
         // 使用 tree API 获取文件信息
         let tree_url = format!("{}/datasets/{}/tree/main", self.api_url, dataset_id);
@@ -812,8 +813,6 @@ impl StorageClient for HuggingFaceClient {
         } else {
             tree_url
         };
-
-        println!("[DEBUG] - tree API URL: {}", url);
 
         let response = self
             .client
@@ -845,8 +844,6 @@ impl StorageClient for HuggingFaceClient {
             // 降级到 HEAD 请求
             let download_url = self.build_download_url(&dataset_id, &file_path);
 
-            println!("[DEBUG] - fallback to HEAD request: {}", download_url);
-
             let response = self
                 .client
                 .head(&download_url)
@@ -874,15 +871,6 @@ impl StorageClient for HuggingFaceClient {
                 ))
             }
         }
-    }
-
-    fn get_download_url(&self, path: &str) -> Result<String, StorageError> {
-        let (dataset_id, file_path) = self.parse_path(path)?;
-        Ok(self.build_download_url(&dataset_id, &file_path))
-    }
-
-    fn protocol(&self) -> &str {
-        "huggingface"
     }
 
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
