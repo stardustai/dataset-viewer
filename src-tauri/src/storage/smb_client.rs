@@ -95,10 +95,6 @@ impl SMBClient {
 
 #[async_trait]
 impl StorageClient for SMBClient {
-    fn protocol(&self) -> &str {
-        "smb"
-    }
-
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.url.is_none() || config.url.as_ref().unwrap().is_empty() {
             return Err(StorageError::InvalidConfig(

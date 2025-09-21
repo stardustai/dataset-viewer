@@ -352,10 +352,6 @@ impl StorageClient for LocalFileSystemClient {
         Ok(metadata.len())
     }
 
-    fn protocol(&self) -> &str {
-        "local"
-    }
-
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.protocol != "local" {
             return Err(StorageError::InvalidConfig(format!(

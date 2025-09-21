@@ -259,6 +259,7 @@ export const FileViewerContent = forwardRef<
                   ? 'ods'
                   : 'csv',
             onMetadataLoaded: setDataMetadata,
+            storageClient,
           }}
         />
       );
@@ -278,6 +279,7 @@ export const FileViewerContent = forwardRef<
                 ? 'parquet'
                 : 'csv',
             onMetadataLoaded: setDataMetadata,
+            storageClient,
           }}
         />
       );

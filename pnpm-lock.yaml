@@ -50,6 +50,9 @@ importers:
       hyparquet:
         specifier: ^1.17.1
         version: 1.17.1
+      hyparquet-compressors:
+        specifier: ^1.1.1
+        version: 1.1.1
       i18next:
         specifier: ^25.3.2
         version: 25.3.2(typescript@5.9.2)
@@ -1519,6 +1522,9 @@ packages:
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
 
+  fzstd@0.1.1:
+    resolution: {integrity: sha512-dkuVSOKKwh3eas5VkJy1AW1vFpet8TA/fGmVA5krThl8YcOVE/8ZIoEA1+U1vEn5ckxxhLirSdY837azmbaNHA==}
+
   gauge@3.0.2:
     resolution: {integrity: sha512-+5J6MS/5XksCuXq++uFRsnUd7Ovu1XenbeuIuNRJxYWjgQbPuFhT14lAvsWfqfAmnwluf1OwMjz39HjfLPci0Q==}
     engines: {node: '>=10'}
@@ -1587,8 +1593,14 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  hyparquet-compressors@1.1.1:
+    resolution: {integrity: sha512-yx7aA3Rhj0YycbdV71+XznQSLAefa4cT0urpgNXy4aM6eSeCknaVDNne8y45Uz74Fb15yyXUzOStlceOJBan7A==}
+
   hyparquet@1.17.1:
     resolution: {integrity: sha512-79NqDEkWF3VHbjiUuefexuZLtiwD/j43eSc7kKbrcI8f4V8owLBw6P8Eg6k0VaCeB0KpmJVDW3ZewlsW18h8fQ==}
+
+  hysnappy@1.0.0:
+    resolution: {integrity: sha512-MNrC4NfwDGPb889O6gIfEtbvEZCSWUsSEhsz4Oq2FRcpGtXHfeVz3KciSPp5Pnnz1NjFMgDQNfxdJozymJEDDA==}
 
   i18next@25.3.2:
     resolution: {integrity: sha512-JSnbZDxRVbphc5jiptxr3o2zocy5dEqpVm9qCGdJwRNO+9saUJS0/u4LnM/13C23fUEWxAylPqKU/NpMV/IjqA==}
@@ -3934,6 +3946,8 @@ snapshots:
 
   function-bind@1.1.2: {}
 
+  fzstd@0.1.1: {}
+
   gauge@3.0.2:
     dependencies:
       aproba: 2.1.0
@@ -4025,7 +4039,14 @@ snapshots:
 
   husky@9.1.7: {}
 
+  hyparquet-compressors@1.1.1:
+    dependencies:
+      fzstd: 0.1.1
+      hysnappy: 1.0.0
+
   hyparquet@1.17.1: {}
+
+  hysnappy@1.0.0: {}
 
   i18next@25.3.2(typescript@5.9.2):
     dependencies:

@@ -1,4 +1,5 @@
 import { parquetMetadataAsync, parquetReadObjects, type AsyncBuffer } from 'hyparquet';
+import { compressors } from 'hyparquet-compressors';
 // import { commands } from '../../../types/tauri-commands';
 
 export interface DataColumn {
@@ -132,6 +133,66 @@ export class ParquetDataProvider implements DataProvider {
     return this.streamingBuffer;
   }
 
+  /**
+   * 处理BigInt和其他特殊数据类型
+   */
+  private processDataValues(data: Record<string, unknown>[]): Record<string, unknown>[] {
+    return data.map(row => {
+      const processedRow: Record<string, unknown> = {};
+
+      for (const [key, value] of Object.entries(row)) {
+        if (typeof value === 'bigint') {
+          // 保持BigInt类型，让DataTableCell处理显示
+          processedRow[key] = value;
+        } else if (value instanceof Date) {
+          // 保持Date类型
+          processedRow[key] = value;
+        } else if (value === null || value === undefined) {
+          // 保持null/undefined
+          processedRow[key] = value;
+        } else if (typeof value === 'object' && value !== null) {
+          try {
+            // 对于复杂对象，检查是否包含BigInt
+            const hasSpecialTypes = this.containsSpecialTypes(value);
+            if (hasSpecialTypes) {
+              // 如果包含特殊类型，保持原对象结构让DataTableCell处理
+              processedRow[key] = value;
+            } else {
+              processedRow[key] = value;
+            }
+          } catch (error) {
+            // 如果处理失败，保持原值
+            processedRow[key] = value;
+          }
+        } else {
+          // 其他类型保持不变
+          processedRow[key] = value;
+        }
+      }
+
+      return processedRow;
+    });
+  }
+
+  /**
+   * 检查对象是否包含特殊类型（BigInt, Symbol, Function等）
+   */
+  private containsSpecialTypes(obj: any): boolean {
+    if (typeof obj === 'bigint' || typeof obj === 'symbol' || typeof obj === 'function') {
+      return true;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.some(item => this.containsSpecialTypes(item));
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      return Object.values(obj).some(value => this.containsSpecialTypes(value));
+    }
+
+    return false;
+  }
+
   async loadMetadata(): Promise<DataMetadata> {
     if (this.metadata) {
       return this.metadata;
@@ -191,13 +252,17 @@ export class ParquetDataProvider implements DataProvider {
         file: buffer,
         rowStart: validOffset,
         rowEnd: validOffset + validLimit,
+        compressors, // 添加压缩器支持
       });
 
       console.debug(
         `Streaming Parquet: Loaded ${result.length} rows (${validOffset}-${validOffset + validLimit}) using chunked buffer`
       );
 
-      return result as Record<string, unknown>[];
+      // 处理特殊数据类型
+      const processedResult = this.processDataValues(result as Record<string, unknown>[]);
+
+      return processedResult;
     } catch (error) {
       console.error('Error loading data with streaming approach:', error);
       throw error;

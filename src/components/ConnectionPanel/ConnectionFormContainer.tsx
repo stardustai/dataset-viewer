@@ -190,8 +190,8 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
             <OSSConnectionForm
               config={{
                 endpoint: formData.endpoint || '',
-                accessKey: formData.username || '',
-                secretKey: formData.password || '',
+                accessKey: formData.accessKey || '',
+                secretKey: formData.secretKey || '',
                 bucket: formData.bucket || '',
                 region: formData.region || '',
                 platform: formData.platform || 'aliyun',
@@ -199,9 +199,9 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
               onChange={(config: any) => {
                 const updates: Record<string, any> = {};
                 if (config.endpoint !== undefined) updates.endpoint = config.endpoint;
-                if (config.accessKey !== undefined) updates.username = config.accessKey;
+                if (config.accessKey !== undefined) updates.accessKey = config.accessKey;
                 if (config.secretKey !== undefined) {
-                  updates.password = config.secretKey;
+                  updates.secretKey = config.secretKey;
                   // 当密钥被清空时，标记为不再来自存储
                   if (config.secretKey === '') {
                     updates.isPasswordFromStorage = false;
@@ -210,6 +210,10 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
                 if (config.bucket !== undefined) updates.bucket = config.bucket;
                 if (config.region !== undefined) updates.region = config.region;
                 if (config.platform !== undefined) updates.platform = config.platform;
+                // 如果 config 中包含 isPasswordFromStorage，则传递它
+                if (config.isPasswordFromStorage !== undefined) {
+                  updates.isPasswordFromStorage = config.isPasswordFromStorage;
+                }
                 onFormDataChange(updates);
               }}
               connecting={connecting}

@@ -124,6 +124,18 @@ impl ProtocolHandler {
         responder.respond(response);
     }
 
+    /// 处理错误请求
+    pub async fn handle_bad_request(responder: tauri::UriSchemeResponder) {
+        let response = tauri::http::Response::builder()
+            .status(400)
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+            .header("Access-Control-Allow-Headers", "Range, Content-Type")
+            .body("Bad Request".as_bytes().to_vec())
+            .unwrap();
+        responder.respond(response);
+    }
+
     /// 处理 HEAD 请求
     /// 所有存储客户端的HEAD请求处理逻辑都是相同的
     pub async fn handle_head_request(
@@ -176,18 +188,30 @@ impl ProtocolHandler {
         client: &dyn StorageClient,
         relative_path: &str,
         protocol_url: &str,
-        range_str: &str,
+        range_header: &str,
         responder: tauri::UriSchemeResponder,
     ) {
-        if let Some((start, end_opt)) = Self::parse_range_header(range_str) {
-            let length = match end_opt {
-                Some(end) => end - start + 1,
-                None => 50 * 1024 * 1024, // 50MB for open range
+        if let Some((start, end_opt)) = Self::parse_range_header(range_header) {
+            // 如果没有指定结束位置，我们需要获取文件大小来确定结束位置
+            let end = match end_opt {
+                Some(end) => end,
+                None => {
+                    // 对于开放式范围（如 "bytes=1024-"），我们读取到文件末尾
+                    // 这里使用一个大数值，让存储客户端处理实际的文件大小限制
+                    u64::MAX
+                }
+            };
+
+            let length = if end == u64::MAX {
+                // 对于开放式范围，设置一个合理的块大小
+                1024 * 1024 // 1MB
+            } else {
+                end - start + 1
             };
 
             match client.read_file_range(relative_path, start, length).await {
                 Ok(data) => {
-                    let end = start + data.len() as u64 - 1;
+                    let actual_end = start + data.len() as u64 - 1;
                     let response = tauri::http::Response::builder()
                         .status(206)
                         .header("Access-Control-Allow-Origin", "*")
@@ -195,10 +219,14 @@ impl ProtocolHandler {
                         .header("Access-Control-Allow-Headers", "Range, Content-Type")
                         .header("Content-Type", Self::get_content_type(protocol_url))
                         .header("Content-Length", data.len().to_string())
-                        .header("Content-Range", format!("bytes {}-{}/", start, end))
+                        .header(
+                            "Content-Range",
+                            format!("bytes {}-{}/{}", start, actual_end, "*"),
+                        )
                         .header("Accept-Ranges", "bytes")
                         .body(data)
                         .unwrap();
+
                     responder.respond(response);
                 }
                 Err(_) => {
@@ -206,14 +234,7 @@ impl ProtocolHandler {
                 }
             }
         } else {
-            let response = tauri::http::Response::builder()
-                .status(400)
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-                .header("Access-Control-Allow-Headers", "Range, Content-Type")
-                .body("Invalid Range Header".as_bytes().to_vec())
-                .unwrap();
-            responder.respond(response);
+            Self::handle_bad_request(responder).await;
         }
     }
 
@@ -580,7 +601,9 @@ impl ProtocolHandler {
         builder: tauri::Builder<tauri::Wry>,
         protocol: &str,
     ) -> tauri::Builder<tauri::Wry> {
+        println!("📋 Registering protocol: {}", protocol);
         let protocol_scheme = format!("{}://", protocol);
+        let protocol_name = protocol.to_string(); // 创建拥有的字符串
         builder.register_asynchronous_uri_scheme_protocol(
             protocol,
             move |_app, request, responder| {
@@ -588,7 +611,7 @@ impl ProtocolHandler {
                 let method = request.method().as_str().to_string();
                 let headers = request.headers().clone();
                 let protocol_prefix = protocol_scheme.clone();
-
+                let _protocol_for_log = protocol_name.clone(); // 使用拥有的字符串
                 tauri::async_runtime::spawn(async move {
                     let storage_manager = crate::storage::get_storage_manager().await;
                     Self::handle_protocol_request(

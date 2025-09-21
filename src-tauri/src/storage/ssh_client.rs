@@ -469,10 +469,6 @@ impl StorageClient for SSHClient {
         Ok(metadata.len())
     }
 
-    fn protocol(&self) -> &str {
-        "ssh"
-    }
-
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {
         if config.protocol != "ssh" {
             return Err(StorageError::InvalidConfig(format!(

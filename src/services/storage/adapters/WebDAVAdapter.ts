@@ -14,24 +14,6 @@ export const webdavStorageAdapter: StorageAdapter = {
   supportsSearch: false,
   supportsCustomRootDisplay: false,
 
-  preprocessPath: (path: string, connection: any) => {
-    if (!connection?.url) {
-      throw new Error('WebDAV storage not connected');
-    }
-
-    const connectionUrl = new URL(connection.url);
-    // 统一使用 webdav:// 协议，不区分 HTTP/HTTPS
-    const scheme = 'webdav';
-    const cleanPath = path.replace(/^\/+/, '');
-    const basePath = connectionUrl.pathname.replace(/\/+$/, '');
-
-    if (cleanPath) {
-      return `${scheme}://${connectionUrl.host}${basePath}/${cleanPath}`;
-    } else {
-      return `${scheme}://${connectionUrl.host}${basePath}`;
-    }
-  },
-
   buildProtocolUrl: (path: string, connection: any) => {
     if (!connection?.url) {
       throw new Error('Not connected to WebDAV server');

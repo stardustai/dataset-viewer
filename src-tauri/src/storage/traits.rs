@@ -194,9 +194,6 @@ pub trait StorageClient: Send + Sync {
         cancel_rx: Option<&mut tokio::sync::broadcast::Receiver<()>>,
     ) -> Result<(), StorageError>;
 
-    /// 获取协议名称
-    fn protocol(&self) -> &str;
-
     /// 验证配置是否有效
     #[allow(dead_code)] // API 保留方法
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError>;

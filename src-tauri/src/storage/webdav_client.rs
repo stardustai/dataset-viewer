@@ -288,10 +288,6 @@ impl StorageClient for WebDAVClient {
         })
     }
 
-    fn protocol(&self) -> &str {
-        "webdav"
-    }
-
     async fn read_file_range(
         &self,
         path: &str,
@@ -320,8 +316,6 @@ impl StorageClient for WebDAVClient {
         let actual_url = self.parse_path_to_url_with_type(path, false)?;
 
         // 添加调试日志
-        println!("WebDAV read_file_range - Input path: {}", path);
-        println!("WebDAV read_file_range - Actual URL: {}", actual_url);
 
         // 使用下载专用客户端进行文件范围读取
         let mut request = self.download_client.get(&actual_url);
@@ -385,8 +379,6 @@ impl StorageClient for WebDAVClient {
         let actual_url = self.parse_path_to_url_with_type(path, false)?;
 
         // 添加调试日志
-        println!("WebDAV read_full_file - Input path: {}", path);
-        println!("WebDAV read_full_file - Actual URL: {}", actual_url);
 
         let mut request = self.download_client.get(&actual_url);
         if let Some(auth) = &self.auth_header {
@@ -777,11 +769,16 @@ impl WebDAVClient {
     fn parse_path_to_url_with_type(
         &self,
         path: &str,
-        _is_directory: bool,
+        is_directory: bool,
     ) -> Result<String, StorageError> {
         // 所有路径都应该是协议URL（统一规范）
         if path.starts_with("webdav://") || path.starts_with("webdavs://") {
-            return self.parse_webdav_url(path);
+            let mut url = self.parse_webdav_url(path)?;
+            // PROPFIND 目录列举需要尾随斜杠
+            if is_directory && !url.ends_with('/') {
+                url.push('/');
+            }
+            return Ok(url);
         }
 
         // 如果不是协议URL，说明前端实现有问题

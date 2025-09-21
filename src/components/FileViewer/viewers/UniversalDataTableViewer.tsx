@@ -18,6 +18,7 @@ import type { DataProvider, DataMetadata } from '../data-providers';
 import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
 import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table-components';
 import { UnifiedContentModal } from '../common';
+import { StorageClient } from '../../../services/storage';
 
 interface DataColumn {
   id: string;
@@ -33,26 +34,31 @@ interface UniversalDataTableViewerProps {
   fileType: 'parquet' | 'xlsx' | 'csv' | 'ods';
   onMetadataLoaded?: (metadata: DataMetadata) => void;
   previewContent?: Uint8Array;
+  storageClient?: StorageClient;
 }
 
-const MAX_INITIAL_ROWS = 1000;
-const CHUNK_SIZE = 500;
+const MAX_INITIAL_ROWS = 100; // 减少初始加载数量，提升响应速度
+const CHUNK_SIZE = 200; // 减少每次加载的块大小
 
 // Provider 工厂函数
 function createProvider(
   filePath: string,
   fileSize: number,
   fileType: 'parquet' | 'xlsx' | 'csv' | 'ods',
-  previewContent?: Uint8Array
+  previewContent?: Uint8Array,
+  storageClient?: StorageClient
 ): DataProvider {
+  // 构建协议 URL
+  const protocolUrl = storageClient ? storageClient.toProtocolUrl(filePath) : filePath;
+
   switch (fileType) {
     case 'parquet':
-      return new ParquetDataProvider(filePath, fileSize);
+      return new ParquetDataProvider(protocolUrl, fileSize);
     case 'xlsx':
     case 'ods':
-      return new XlsxDataProvider(filePath, fileSize, previewContent);
+      return new XlsxDataProvider(protocolUrl, fileSize, previewContent);
     case 'csv':
-      return new CsvDataProvider(filePath, fileSize);
+      return new CsvDataProvider(protocolUrl, fileSize);
     default:
       throw new Error(`Unsupported file type: ${fileType}`);
   }
@@ -65,6 +71,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   fileType,
   onMetadataLoaded,
   previewContent,
+  storageClient,
 }) => {
   const { t } = useTranslation();
 
@@ -76,6 +83,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadedRows, setLoadedRows] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
+  const [initialLoading, setInitialLoading] = useState(false); // 新增：初始数据加载状态
 
   // Sheet state (for XLSX/ODS)
   const [activeSheet, setActiveSheet] = useState(0);
@@ -118,7 +126,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
     try {
       // 创建数据提供器
-      const provider = createProvider(filePath, fileSize, fileType, previewContent);
+      const provider = createProvider(filePath, fileSize, fileType, previewContent, storageClient);
       dataProviderRef.current = provider;
 
       // 初始化并获取元数据
@@ -144,31 +152,56 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
         onMetadataLoaded(meta);
       }
 
-      // 加载初始数据
-      await loadInitialData(provider, Math.min(MAX_INITIAL_ROWS, meta.numRows));
+      // 先清空loading状态，让用户看到表格结构
+      setLoading(false);
+
+      // 然后开始渐进式加载数据
+      const initialRowCount = Math.min(MAX_INITIAL_ROWS, meta.numRows);
+      await loadInitialDataProgressive(provider, initialRowCount);
     } catch (err) {
       console.error('Failed to load data file:', err);
       setError(
         `${t('error.failedToLoadDataFile')}: ${err instanceof Error ? err.message : t('error.unknown')}`
       );
-    } finally {
       setLoading(false);
     }
   };
 
-  // 加载初始数据
-  const loadInitialData = async (provider: DataProvider, rowCount: number) => {
+  // 渐进式加载初始数据
+  const loadInitialDataProgressive = async (provider: DataProvider, totalRowsToLoad: number) => {
     try {
-      const result = await provider.loadData(0, rowCount, activeSheet);
-      setData(result);
-      setLoadedRows(rowCount);
+      setInitialLoading(true);
+      const chunkSize = Math.min(50, totalRowsToLoad); // 每次加载50行
+      let loadedCount = 0;
+      let accumulatedData: Record<string, unknown>[] = [];
+
+      while (loadedCount < totalRowsToLoad) {
+        const remainingRows = totalRowsToLoad - loadedCount;
+        const currentChunkSize = Math.min(chunkSize, remainingRows);
+
+        // 加载当前块
+        const chunk = await provider.loadData(loadedCount, currentChunkSize, activeSheet);
+        accumulatedData = [...accumulatedData, ...chunk];
+        loadedCount += currentChunkSize;
+
+        // 立即更新UI显示当前已加载的数据
+        setData([...accumulatedData]);
+        setLoadedRows(loadedCount);
+
+        // 如果不是最后一块，添加小的延迟让UI有时间更新
+        if (loadedCount < totalRowsToLoad) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
     } catch (err) {
-      console.error('Failed to load initial data:', err);
+      console.error('Failed to load initial data progressively:', err);
       throw err;
+    } finally {
+      setInitialLoading(false);
     }
   };
 
-  // 加载更多数据
+  // 加载更多数据（优化版本）
   const loadMoreData = async () => {
     if (!dataProviderRef.current || loadingMore || loadedRows >= totalRows) return;
 
@@ -451,18 +484,25 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
             })}
           </div>
 
-          {/* Loading More Indicator */}
-          {loadingMore && (
+          {/* Loading More or Initial Loading Indicator */}
+          {(loadingMore || initialLoading) && (
             <div className="flex justify-center py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('data.table.loading.more')}</span>
+                <span>
+                  {initialLoading
+                    ? t('data.table.loading.initial', {
+                        loaded: loadedRows,
+                        total: Math.min(MAX_INITIAL_ROWS, totalRows),
+                      })
+                    : t('data.table.loading.more')}
+                </span>
               </div>
             </div>
           )}
 
           {/* Load More Button */}
-          {!loadingMore && loadedRows < totalRows && (
+          {!loadingMore && !initialLoading && loadedRows < totalRows && (
             <div className="flex justify-center py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={loadMoreData}

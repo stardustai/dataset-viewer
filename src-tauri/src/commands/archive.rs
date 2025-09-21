@@ -23,8 +23,6 @@ pub async fn archive_get_file_info(
     let manager = manager_arc.read().await;
 
     if let Some(client) = manager.get_current_client() {
-        let protocol = client.protocol();
-        println!("使用{}存储客户端进行流式分析: {}", protocol, url);
         drop(manager);
 
         ARCHIVE_HANDLER

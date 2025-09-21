@@ -25,9 +25,17 @@ pub fn parse_oss_url(
         ));
     }
 
-    // 解析 oss://bucket/path/to/file 格式
+    // 解析 oss://bucket/path/to/file 格式，并分离查询参数
     let oss_url = url.strip_prefix("oss://").unwrap_or(url);
-    let parts: Vec<&str> = oss_url.splitn(2, '/').collect();
+
+    // 分离路径和查询参数
+    let (path_part, _query_part) = if let Some(query_pos) = oss_url.find('?') {
+        oss_url.split_at(query_pos)
+    } else {
+        (oss_url, "")
+    };
+
+    let parts: Vec<&str> = path_part.splitn(2, '/').collect();
 
     if !parts.is_empty() {
         let url_bucket = parts[0];
@@ -95,23 +103,26 @@ pub fn build_full_path(path: &str, prefix: &str) -> String {
 
 /// 构建对象的完整 URL
 pub fn build_object_url(endpoint: &str, object_key: &str) -> String {
-    // 对对象键进行URL编码，以正确处理中文和特殊字符
-    let encoded_key = urlencoding::encode(object_key);
-    format!("{}/{}", endpoint.trim_end_matches('/'), encoded_key)
-}
+    // 检查 object_key 是否已经包含编码字符
+    let needs_encoding = object_key.contains('%');
 
-/// 标准化 URI 路径，处理编码/解码（用于签名）
-pub fn normalize_uri_for_signing(uri: &str) -> String {
-    match urlencoding::decode(uri) {
-        Ok(decoded) => decoded.to_string(),
-        Err(_) => {
-            // 如果解码失败，可能路径本身就没有编码
-            if uri.starts_with('/') {
-                uri.to_string()
-            } else {
-                format!("/{}", uri)
-            }
-        }
+    if needs_encoding {
+        // 如果已经编码，直接使用
+        format!("{}/{}", endpoint.trim_end_matches('/'), object_key)
+    } else {
+        // 如果未编码，对路径进行编码，只编码非 ASCII 字符和特殊字符，保留斜杠
+        let encoded_path = object_key
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '/' || c == '-' || c == '_' || c == '.' {
+                    c.to_string()
+                } else {
+                    urlencoding::encode(&c.to_string()).to_string()
+                }
+            })
+            .collect::<String>();
+
+        format!("{}/{}", endpoint.trim_end_matches('/'), encoded_path)
     }
 }
 

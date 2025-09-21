@@ -40,8 +40,20 @@ export class CompressionService {
     // 使用 StorageServiceManager 构建协议URL
     const archiveProtocolUrl = StorageServiceManager.getFileUrl(archivePath);
 
+    // 检查 entryPath 是否已经是编码格式，如果是则先解码再重新编码
+    let normalizedEntryPath = entryPath;
+    try {
+      // 尝试解码，如果成功且与原始不同，说明已经编码过
+      const decoded = decodeURIComponent(entryPath);
+      if (decoded !== entryPath) {
+        normalizedEntryPath = decoded;
+      }
+    } catch {
+      // 解码失败，使用原始路径
+    }
+
     // 构建协议URL：protocol://host/path/to/archive.zip?entry=internal/file.txt
-    const protocolUrl = `${archiveProtocolUrl}?entry=${encodeURIComponent(entryPath)}`;
+    const protocolUrl = `${archiveProtocolUrl}?entry=${encodeURIComponent(normalizedEntryPath)}`;
 
     try {
       const response = await fetch(protocolUrl, {
@@ -54,23 +66,30 @@ export class CompressionService {
 
       const content = new Uint8Array(await response.arrayBuffer());
       const totalSizeHeader = response.headers.get('Content-Range');
+      // 默认使用已读长度
       let totalSize = content.length.toString();
+      let total = content.length;
 
-      // 解析Content-Range头获取文件总大小
+      // 解析总大小
       if (totalSizeHeader) {
         const match = totalSizeHeader.match(/bytes \d+-\d+\/(\d+)/);
         if (match) {
           totalSize = match[1];
+          total = parseInt(match[1], 10);
         }
       } else {
-        // 如果没有Range请求，Content-Length就是文件大小
         const contentLength = response.headers.get('Content-Length');
         if (contentLength) {
           totalSize = contentLength;
+          total = parseInt(contentLength, 10);
         }
       }
 
-      const isTruncated = maxPreviewSize ? content.length >= maxPreviewSize : false;
+      // 优先用"总大小 vs 已读大小"判断截断；无法确定总大小时再回退到 maxPreviewSize
+      const isTruncated =
+        Number.isFinite(total) && total > 0
+          ? content.length < total
+          : !!maxPreviewSize && content.length >= (maxPreviewSize || 0);
 
       return {
         content,

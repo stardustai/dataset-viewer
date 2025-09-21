@@ -167,7 +167,12 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
       processedValue = processedValue.replace(/^\/+/, '');
     }
 
-    onChange({ ...currentConfig, [field]: processedValue });
+    // 如果是 secretKey 字段，且用户手动输入了内容，则清除 isPasswordFromStorage 标志
+    if (field === 'secretKey' && processedValue !== '******') {
+      onChange({ ...currentConfig, [field]: processedValue, isPasswordFromStorage: false });
+    } else {
+      onChange({ ...currentConfig, [field]: processedValue });
+    }
 
     // 清除对应字段的错误
     if (errors[field]) {

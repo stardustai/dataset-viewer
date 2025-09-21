@@ -8,7 +8,7 @@ use urlencoding;
 use crate::storage::oss::{
     build_aws_auth_headers, build_full_path, build_object_url, build_oss_auth_headers,
     extract_object_key, generate_aws_presigned_url, generate_oss_presigned_url,
-    normalize_uri_for_signing, parse_list_objects_response,
+    parse_list_objects_response,
 };
 use crate::storage::traits::{
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
@@ -369,7 +369,6 @@ impl StorageClient for OSSClient {
         self.region = config.region.clone();
 
         // 简化配置：统一使用HTTP方式，避免AWS SDK的复杂性和兼容性问题
-        println!("使用统一的HTTP客户端，支持所有S3兼容服务");
 
         // 测试连接 - 使用HEAD请求测试一个不存在的对象，避免需要ListBucket权限
         // 这种方法只需要基本的认证权限，不需要特定的bucket权限
@@ -380,9 +379,6 @@ impl StorageClient for OSSClient {
             "__connection_test__".to_string()
         };
 
-        println!("开始连接测试:");
-        println!("  test_object: {}", test_object);
-
         // 获取实际的 bucket 名称（不包含路径前缀）
         let actual_bucket = if let Some(slash_pos) = self.config.bucket.as_ref().unwrap().find('/')
         {
@@ -390,8 +386,6 @@ impl StorageClient for OSSClient {
         } else {
             &self.bucket
         };
-
-        println!("  actual_bucket: {}", actual_bucket);
 
         // 检查是否为虚拟主机风格：端点的主机名应该以 bucket 名称开头
         let is_virtual_hosted = if let Ok(parsed_url) = Url::parse(&self.endpoint) {
@@ -410,8 +404,6 @@ impl StorageClient for OSSClient {
             false
         };
 
-        println!("  is_virtual_hosted: {}", is_virtual_hosted);
-
         let (uri, url) = if is_virtual_hosted {
             // 虚拟主机风格
             let test_uri = format!("/{}", test_object);
@@ -429,9 +421,6 @@ impl StorageClient for OSSClient {
             (test_uri, test_url)
         };
 
-        println!("  test_uri: {}", uri);
-        println!("  test_url: {}", url);
-
         let headers = self.build_auth_headers("HEAD", &uri, &HashMap::new(), None);
         let mut req_builder = self.client.head(&url);
 
@@ -439,24 +428,19 @@ impl StorageClient for OSSClient {
             req_builder = req_builder.header(&key, &value);
         }
 
-        println!("发送连接测试请求...");
         let response = req_builder.send().await.map_err(|e| {
-            println!("连接测试失败: {}", e);
             StorageError::NetworkError(format!("OSS connection test failed: {}", e))
         })?;
 
         let status = response.status();
-        println!("连接测试响应状态: {}", status);
 
         // 对于连接测试，200/404都表示认证成功
         // 404表示对象不存在但认证有效，这正是我们想要的
         if status.is_success() || status == reqwest::StatusCode::NOT_FOUND {
             self.connected.store(true, Ordering::Relaxed);
-            println!("连接测试成功");
             Ok(())
         } else {
             let body = response.text().await.unwrap_or_default();
-            println!("连接测试失败，响应体: {}", body);
             Err(StorageError::RequestFailed(format!(
                 "OSS connection test failed with status {}: {}",
                 status, body
@@ -492,11 +476,6 @@ impl StorageClient for OSSClient {
             return Err(StorageError::NotConnected);
         }
 
-        println!(
-            "OSS读取文件范围: path={}, start={}, length={}",
-            path, start, length
-        );
-
         // 处理 oss:// 协议 URL
         let object_key = extract_object_key(
             path,
@@ -507,25 +486,21 @@ impl StorageClient for OSSClient {
 
         let url = build_object_url(&self.endpoint, &object_key);
 
-        println!("构建的URL: {}", url);
-
-        let uri = if let Ok(parsed_url) = Url::parse(&url) {
-            parsed_url.path().to_string()
+        // 构建用于签名的 URI - 确保使用解码后的路径进行签名
+        let signing_uri = if object_key.contains('%') {
+            format!(
+                "/{}",
+                urlencoding::decode(&object_key).unwrap_or_else(|_| object_key.clone().into())
+            )
         } else {
-            // 如果无法解析URL，则直接使用编码后的路径
-            format!("/{}", urlencoding::encode(&object_key))
+            format!("/{}", &object_key)
         };
-
-        // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
-        let signing_uri = normalize_uri_for_signing(&uri);
 
         let mut headers = HashMap::new();
         // 添加范围请求头
         let end = start + length - 1;
         let range_header = format!("bytes={}-{}", start, end);
         headers.insert("Range".to_string(), range_header.clone());
-
-        println!("Range请求头: {}", range_header);
 
         let auth_headers = self.build_auth_headers("GET", &signing_uri, &headers, None);
 
@@ -540,28 +515,14 @@ impl StorageClient for OSSClient {
             .map_err(|e| StorageError::NetworkError(format!("Range request failed: {}", e)))?;
 
         let status = response.status();
-        println!("OSS Range请求响应状态: {}", status);
 
         if !status.is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            println!("OSS Range请求失败，响应体: {}", error_body);
             return Err(StorageError::RequestFailed(format!(
                 "Range request failed with status {}: {}",
                 status, error_body
             )));
         }
-
-        let content_length = response
-            .headers()
-            .get("content-length")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-
-        println!(
-            "预期接收 {} 字节，实际Content-Length: {}",
-            length, content_length
-        );
 
         // 使用流式读取以支持进度回调
         let mut result = Vec::with_capacity(length as usize);
@@ -589,8 +550,6 @@ impl StorageClient for OSSClient {
                 callback(downloaded, length);
             }
         }
-
-        println!("实际接收到 {} 字节", result.len());
 
         Ok(result)
     }
@@ -664,17 +623,15 @@ impl StorageClient for OSSClient {
 
         let url = build_object_url(&self.endpoint, &object_key);
 
-        println!("构建的URL: {}", url);
-
-        let uri = if let Ok(parsed_url) = Url::parse(&url) {
-            parsed_url.path().to_string()
+        // 构建用于签名的 URI - 确保使用解码后的路径进行签名
+        let signing_uri = if object_key.contains('%') {
+            format!(
+                "/{}",
+                urlencoding::decode(&object_key).unwrap_or_else(|_| object_key.clone().into())
+            )
         } else {
-            // 如果无法解析URL，则直接使用编码后的路径
-            format!("/{}", urlencoding::encode(&object_key))
+            format!("/{}", &object_key)
         };
-
-        // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
-        let signing_uri = normalize_uri_for_signing(&uri);
 
         let auth_headers = self.build_auth_headers("GET", &signing_uri, &HashMap::new(), None);
 
@@ -689,31 +646,18 @@ impl StorageClient for OSSClient {
             .map_err(|e| StorageError::NetworkError(format!("Get file request failed: {}", e)))?;
 
         let status = response.status();
-        println!("OSS文件请求响应状态: {}", status);
 
         if !status.is_success() {
             let error_body = response.text().await.unwrap_or_default();
-            println!("OSS文件请求失败，响应体: {}", error_body);
             return Err(StorageError::RequestFailed(format!(
                 "Get file failed with status {}: {}",
                 status, error_body
             )));
         }
 
-        let content_length = response
-            .headers()
-            .get("content-length")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-
-        println!("Content-Length: {}", content_length);
-
         let bytes = response.bytes().await.map_err(|e| {
             StorageError::RequestFailed(format!("Failed to read file content: {}", e))
         })?;
-
-        println!("实际接收到 {} 字节", bytes.len());
 
         Ok(bytes.to_vec())
     }
@@ -732,15 +676,16 @@ impl StorageClient for OSSClient {
         )?;
 
         let url = build_object_url(&self.endpoint, &object_key);
-        let uri = if let Ok(parsed_url) = Url::parse(&url) {
-            parsed_url.path().to_string()
-        } else {
-            // 如果无法解析URL，则直接使用编码后的路径
-            format!("/{}", urlencoding::encode(&object_key))
-        };
 
-        // 对于签名，使用解码后的URI（OSS签名需要原始的未编码路径）
-        let signing_uri = normalize_uri_for_signing(&uri);
+        // 构建用于签名的 URI - 确保使用解码后的路径进行签名
+        let signing_uri = if object_key.contains('%') {
+            format!(
+                "/{}",
+                urlencoding::decode(&object_key).unwrap_or_else(|_| object_key.clone().into())
+            )
+        } else {
+            format!("/{}", &object_key)
+        };
 
         let auth_headers = self.build_auth_headers("HEAD", &signing_uri, &HashMap::new(), None);
 
@@ -767,10 +712,6 @@ impl StorageClient for OSSClient {
             .and_then(|v| v.to_str().ok())
             .and_then(|s| s.parse().ok())
             .ok_or_else(|| StorageError::RequestFailed("No content-length header".to_string()))
-    }
-
-    fn protocol(&self) -> &str {
-        "oss"
     }
 
     fn validate_config(&self, config: &ConnectionConfig) -> Result<(), StorageError> {

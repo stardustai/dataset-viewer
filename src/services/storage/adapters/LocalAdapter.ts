@@ -24,48 +24,30 @@ export const localStorageAdapter: StorageAdapter = {
     return config;
   },
 
-  preprocessPath: (path: string, connection: any) => {
-    if (!connection?.rootPath) {
-      throw new Error('Local storage not connected');
-    }
-
-    let rootPath = connection.rootPath;
-    // 标准化根路径：移除末尾斜杠
-    rootPath = rootPath.replace(/\/+$/, '');
-
-    // 如果是空路径，返回根路径
-    if (!path || path === '' || path === '/') {
-      return rootPath;
-    }
-
-    // 如果已经是绝对路径，直接返回
-    if (path.startsWith('/') || path.startsWith('~')) {
-      return path;
-    }
-
-    // 对于相对路径，与根路径拼接
-    const cleanPath = path.replace(/^\/+/, '');
-    return `${rootPath}/${cleanPath}`;
-  },
-
   buildProtocolUrl: (path: string, connection: any) => {
     if (!connection?.rootPath) {
       throw new Error('Local storage not connected');
     }
 
-    const cleanPath = path.replace(/^\/+/, '');
     let rootPath = connection.rootPath;
 
     // 标准化根路径：移除末尾斜杠
     rootPath = rootPath.replace(/\/+$/, '');
 
-    // 构建完整路径
-    let fullPath;
-    if (cleanPath) {
-      fullPath = `${rootPath}/${cleanPath}`;
-    } else {
-      fullPath = rootPath;
+    // 如果是空路径，返回根路径
+    if (!path || path === '' || path === '/') {
+      return `local://${rootPath}`;
     }
+
+    // 如果已经是绝对路径（Linux/macOS、Windows 盘符、UNC）、或 ~ 开头，直接返回
+    const isWindowsAbs = /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith('\\\\');
+    if (path.startsWith('/') || path.startsWith('~') || isWindowsAbs) {
+      return `local://${path.replace(/\\/g, '/')}`;
+    }
+
+    // 对于相对路径，与根路径拼接
+    const cleanPath = path.replace(/^\/+/, '');
+    const fullPath = `${rootPath}/${cleanPath}`;
 
     // 清理多余的斜杠并构建 local URL
     const normalizedPath = fullPath.replace(/\/+/g, '/');

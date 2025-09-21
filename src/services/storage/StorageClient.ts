@@ -152,6 +152,23 @@ export class StorageClient implements IStorageClient {
     if (!this.connection) {
       throw new Error('Not connected');
     }
+
+    // 统一的协议检查 - 涵盖所有支持的协议
+    const ALL_PROTOCOLS = [
+      'local://',
+      'webdav://',
+      'webdavs://',
+      'oss://',
+      'ssh://',
+      'smb://',
+      'huggingface://',
+    ];
+
+    if (ALL_PROTOCOLS.some(protocol => path.startsWith(protocol))) {
+      return path; // 已经是协议URL，直接返回
+    }
+
+    // 不是协议URL，调用适配器构建
     return this.adapter.buildProtocolUrl(path, this.connection, this.connectionConfig || undefined);
   }
 
@@ -341,7 +358,10 @@ export class StorageClient implements IStorageClient {
     path: string,
     options?: ListOptions
   ): Promise<DirectoryResult> {
-    const result = await commands.storageList(path, options || null);
+    // 使用标准的 toProtocolUrl 方法转换路径
+    const protocolUrl = this.toProtocolUrl(path);
+
+    const result = await commands.storageList(protocolUrl, options || null);
 
     if (result.status === 'error') {
       throw new Error(result.error);
@@ -379,8 +399,11 @@ export class StorageClient implements IStorageClient {
     filename: string,
     maxSize?: number
   ): Promise<ArchiveInfo> {
+    // 使用标准的 toProtocolUrl 方法转换路径
+    const protocolUrl = this.toProtocolUrl(path);
+
     // 通过Tauri命令调用后端的存储客户端接口
-    const result = await commands.archiveGetFileInfo(path, filename, maxSize || null);
+    const result = await commands.archiveGetFileInfo(protocolUrl, filename, maxSize || null);
 
     if (result.status === 'error') {
       throw new Error(result.error);
