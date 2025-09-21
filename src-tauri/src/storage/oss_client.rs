@@ -6,9 +6,8 @@ use url::Url;
 use urlencoding;
 
 use crate::storage::oss::{
-    build_aws_auth_headers, build_full_path, build_object_url, build_oss_auth_headers,
-    extract_object_key, generate_aws_presigned_url, generate_oss_presigned_url,
-    parse_list_objects_response,
+    build_aws_auth_headers, build_full_path, build_oss_auth_headers, extract_object_key,
+    generate_aws_presigned_url, generate_oss_presigned_url, parse_list_objects_response,
 };
 use crate::storage::traits::{
     ConnectionConfig, DirectoryResult, ListOptions, ProgressCallback, StorageClient, StorageError,
@@ -178,6 +177,66 @@ impl OSSClient {
         } else {
             "".to_string()
         }
+    }
+
+    /// 构建对象请求的 URL 和签名 URI，确保两者完全一致
+    /// 返回 (request_url, signing_uri)
+    fn build_request_urls(&self, object_key: &str) -> Result<(String, String), StorageError> {
+        // 1. 去除 endpoint 末尾的斜杠
+        let trimmed_endpoint = self.endpoint.trim_end_matches('/');
+
+        // 2. 确定实际的 bucket 名称
+        let actual_bucket = &self.bucket;
+
+        // 3. 解析 endpoint 来检测是否为 virtual-hosted 格式
+        let parsed_endpoint = Url::parse(trimmed_endpoint)
+            .map_err(|e| StorageError::InvalidConfig(format!("Invalid endpoint URL: {}", e)))?;
+
+        let host = parsed_endpoint.host_str().unwrap_or("");
+
+        // 4. 检测是否为 virtual-hosted 格式
+        // virtual-hosted: bucket.oss-region.aliyuncs.com 或 bucket.s3.amazonaws.com
+        let is_virtual_hosted = host.starts_with(&format!("{}.", actual_bucket));
+
+        // 5. 对 object_key 进行正确的百分号编码
+        // 保留现有的百分号编码，只对其他不安全字符进行编码
+        let encoded_key = if object_key.contains('%') {
+            // 如果已经包含百分号，假设已经正确编码，直接使用
+            object_key.to_string()
+        } else {
+            // 对未编码的特殊字符进行编码，保留路径分隔符
+            object_key
+                .chars()
+                .map(|c| {
+                    if c.is_ascii_alphanumeric()
+                        || c == '/'
+                        || c == '-'
+                        || c == '_'
+                        || c == '.'
+                        || c == '~'
+                    {
+                        c.to_string()
+                    } else {
+                        urlencoding::encode(&c.to_string()).to_string()
+                    }
+                })
+                .collect::<String>()
+        };
+
+        // 6. 构建请求 URL 和签名 URI
+        let (request_url, signing_uri) = if is_virtual_hosted {
+            // Virtual-hosted 格式: https://bucket.oss-region.aliyuncs.com/object/key
+            let url = format!("{}/{}", trimmed_endpoint, encoded_key);
+            let uri = format!("/{}", encoded_key);
+            (url, uri)
+        } else {
+            // Path-style 格式: https://oss-region.aliyuncs.com/bucket/object/key
+            let url = format!("{}/{}/{}", trimmed_endpoint, actual_bucket, encoded_key);
+            let uri = format!("/{}/{}", actual_bucket, encoded_key);
+            (url, uri)
+        };
+
+        Ok((request_url, signing_uri))
     }
 
     /// 生成预签名下载 URL
@@ -479,22 +538,12 @@ impl StorageClient for OSSClient {
         // 处理 oss:// 协议 URL
         let object_key = extract_object_key(
             path,
-            &self.endpoint,
             &self.config.bucket.as_ref().unwrap_or(&String::new()),
             &self.prefix,
         )?;
 
-        let url = build_object_url(&self.endpoint, &object_key);
-
-        // 构建用于签名的 URI - 确保使用解码后的路径进行签名
-        let signing_uri = if object_key.contains('%') {
-            format!(
-                "/{}",
-                urlencoding::decode(&object_key).unwrap_or_else(|_| object_key.clone().into())
-            )
-        } else {
-            format!("/{}", &object_key)
-        };
+        // 使用统一的方法构建请求URL和签名URI，确保一致性
+        let (url, signing_uri) = self.build_request_urls(&object_key)?;
 
         let mut headers = HashMap::new();
         // 添加范围请求头
@@ -577,7 +626,6 @@ impl StorageClient for OSSClient {
             // 协议URL包含完整路径，直接解析对象键
             let object_key = extract_object_key(
                 path,
-                &self.endpoint,
                 &self.config.bucket.as_ref().unwrap_or(&String::new()),
                 &self.prefix,
             )?;
@@ -616,22 +664,12 @@ impl StorageClient for OSSClient {
         // 处理 oss:// 协议 URL
         let object_key = extract_object_key(
             path,
-            &self.endpoint,
             &self.config.bucket.as_ref().unwrap_or(&String::new()),
             &self.prefix,
         )?;
 
-        let url = build_object_url(&self.endpoint, &object_key);
-
-        // 构建用于签名的 URI - 确保使用解码后的路径进行签名
-        let signing_uri = if object_key.contains('%') {
-            format!(
-                "/{}",
-                urlencoding::decode(&object_key).unwrap_or_else(|_| object_key.clone().into())
-            )
-        } else {
-            format!("/{}", &object_key)
-        };
+        // 使用统一的方法构建请求URL和签名URI，确保一致性
+        let (url, signing_uri) = self.build_request_urls(&object_key)?;
 
         let auth_headers = self.build_auth_headers("GET", &signing_uri, &HashMap::new(), None);
 
@@ -670,22 +708,12 @@ impl StorageClient for OSSClient {
         // 处理 oss:// 协议 URL
         let object_key = extract_object_key(
             path,
-            &self.endpoint,
             &self.config.bucket.as_ref().unwrap_or(&String::new()),
             &self.prefix,
         )?;
 
-        let url = build_object_url(&self.endpoint, &object_key);
-
-        // 构建用于签名的 URI - 确保使用解码后的路径进行签名
-        let signing_uri = if object_key.contains('%') {
-            format!(
-                "/{}",
-                urlencoding::decode(&object_key).unwrap_or_else(|_| object_key.clone().into())
-            )
-        } else {
-            format!("/{}", &object_key)
-        };
+        // 使用统一的方法构建请求URL和签名URI，确保一致性
+        let (url, signing_uri) = self.build_request_urls(&object_key)?;
 
         let auth_headers = self.build_auth_headers("HEAD", &signing_uri, &HashMap::new(), None);
 
@@ -749,7 +777,6 @@ impl StorageClient for OSSClient {
         // 从路径中提取对象键
         let object_key = extract_object_key(
             path,
-            &self.endpoint,
             &self.config.bucket.as_ref().unwrap_or(&String::new()),
             &self.prefix,
         )?;

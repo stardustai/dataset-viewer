@@ -151,6 +151,10 @@ impl ProtocolHandler {
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                     .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                    .header(
+                        "Access-Control-Expose-Headers",
+                        "Content-Length, Accept-Ranges",
+                    )
                     .header("Content-Length", size.to_string())
                     .header("Content-Type", Self::get_content_type(protocol_url))
                     .header("Accept-Ranges", "bytes")
@@ -217,6 +221,10 @@ impl ProtocolHandler {
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                         .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                        .header(
+                            "Access-Control-Expose-Headers",
+                            "Content-Length, Content-Range, Accept-Ranges",
+                        )
                         .header("Content-Type", Self::get_content_type(protocol_url))
                         .header("Content-Length", data.len().to_string())
                         .header(
@@ -252,6 +260,10 @@ impl ProtocolHandler {
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                     .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                    .header(
+                        "Access-Control-Expose-Headers",
+                        "Content-Length, Accept-Ranges",
+                    )
                     .header("Content-Type", Self::get_content_type(protocol_url))
                     .header("Content-Length", data.len().to_string())
                     .header("Accept-Ranges", "bytes")
@@ -389,6 +401,10 @@ impl ProtocolHandler {
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                     .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                    .header(
+                        "Access-Control-Expose-Headers",
+                        "Content-Length, Accept-Ranges",
+                    )
                     .status(200)
                     .header("Content-Length", preview.total_size.clone())
                     .header("Content-Type", Self::get_content_type(entry_path))
@@ -446,6 +462,10 @@ impl ProtocolHandler {
                                 .header("Access-Control-Allow-Origin", "*")
                                 .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                                 .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                                .header(
+                                    "Access-Control-Expose-Headers",
+                                    "Content-Length, Content-Range, Accept-Ranges",
+                                )
                                 .status(206)
                                 .header("Content-Type", Self::get_content_type(entry_path))
                                 .header("Content-Length", preview.content.len().to_string())
@@ -505,6 +525,10 @@ impl ProtocolHandler {
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                         .header("Access-Control-Allow-Headers", "Range, Content-Type")
+                        .header(
+                            "Access-Control-Expose-Headers",
+                            "Content-Length, Accept-Ranges",
+                        )
                         .status(200)
                         .header("Content-Type", Self::get_content_type(entry_path))
                         .header("Content-Length", preview.content.len().to_string())

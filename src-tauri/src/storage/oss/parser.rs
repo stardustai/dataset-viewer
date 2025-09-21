@@ -1,7 +1,6 @@
 use chrono::Utc;
 use quick_xml::events::Event;
 use quick_xml::Reader;
-use urlencoding;
 
 use crate::storage::traits::{DirectoryResult, StorageError, StorageFile};
 
@@ -14,11 +13,7 @@ use crate::storage::traits::{DirectoryResult, StorageError, StorageFile};
 ///
 /// # Returns
 /// * `Result<(String, String), StorageError>` - (对象键, 实际 HTTP URL)
-pub fn parse_oss_url(
-    url: &str,
-    endpoint: &str,
-    configured_bucket: &str,
-) -> Result<(String, String), StorageError> {
+pub fn parse_oss_url(url: &str, configured_bucket: &str) -> Result<String, StorageError> {
     if !url.starts_with("oss://") {
         return Err(StorageError::RequestFailed(
             "Only oss:// protocol URLs are supported".to_string(),
@@ -53,9 +48,7 @@ pub fn parse_oss_url(
             )));
         }
 
-        // 构建实际的 OSS HTTP URL
-        let actual_url = build_object_url(endpoint, object_key);
-        Ok((object_key.to_string(), actual_url))
+        Ok(object_key.to_string())
     } else {
         Err(StorageError::RequestFailed(
             "Invalid OSS URL format".to_string(),
@@ -76,14 +69,13 @@ pub fn parse_oss_url(
 /// * `Result<String, StorageError>` - 对象键
 pub fn extract_object_key(
     path: &str,
-    endpoint: &str,
     configured_bucket: &str,
     prefix: &str,
 ) -> Result<String, StorageError> {
     if path.starts_with("oss://") {
         // 如果是 OSS 协议 URL，直接解析出对象键，不添加前缀
         // 因为协议 URL 已经包含了完整的路径
-        let (object_key, _) = parse_oss_url(path, endpoint, configured_bucket)?;
+        let object_key = parse_oss_url(path, configured_bucket)?;
         Ok(object_key)
     } else {
         // 如果是相对路径，则添加前缀
@@ -98,31 +90,6 @@ pub fn build_full_path(path: &str, prefix: &str) -> String {
         path.to_string()
     } else {
         format!("{}{}", prefix, path.trim_start_matches('/'))
-    }
-}
-
-/// 构建对象的完整 URL
-pub fn build_object_url(endpoint: &str, object_key: &str) -> String {
-    // 检查 object_key 是否已经包含编码字符
-    let needs_encoding = object_key.contains('%');
-
-    if needs_encoding {
-        // 如果已经编码，直接使用
-        format!("{}/{}", endpoint.trim_end_matches('/'), object_key)
-    } else {
-        // 如果未编码，对路径进行编码，只编码非 ASCII 字符和特殊字符，保留斜杠
-        let encoded_path = object_key
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() || c == '/' || c == '-' || c == '_' || c == '.' {
-                    c.to_string()
-                } else {
-                    urlencoding::encode(&c.to_string()).to_string()
-                }
-            })
-            .collect::<String>();
-
-        format!("{}/{}", endpoint.trim_end_matches('/'), encoded_path)
     }
 }
 
