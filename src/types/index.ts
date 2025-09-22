@@ -16,24 +16,6 @@ export const isDirectoryType = (
   return file.type === 'directory';
 };
 
-export interface StorageConnection {
-  url: string;
-  username: string;
-  password: string;
-  connected: boolean;
-  // 扩展元数据字段，用于存储不同存储类型的特定信息
-  metadata?: {
-    // HuggingFace 特定字段
-    organization?: string;
-    apiToken?: string;
-    // OSS 特定字段
-    bucket?: string;
-    region?: string;
-    endpoint?: string;
-    // 其他存储类型可以在此添加字段
-    [key: string]: any;
-  };
-}
 export interface SearchResult {
   line: number;
   column: number;

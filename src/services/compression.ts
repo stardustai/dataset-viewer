@@ -1,6 +1,6 @@
 import { ArchiveInfo, FilePreview } from '../types';
 import { commands } from '../types/tauri-commands';
-import { StorageServiceManager } from './storage/StorageManager';
+import { useStorageStore } from '../stores/storageStore';
 
 export class CompressionService {
   /**
@@ -37,8 +37,8 @@ export class CompressionService {
     entryPath: string,
     maxPreviewSize?: number
   ): Promise<FilePreview> {
-    // 使用 StorageServiceManager 构建协议URL
-    const archiveProtocolUrl = StorageServiceManager.getFileUrl(archivePath);
+    // 使用 useStorageStore 构建协议URL
+    const archiveProtocolUrl = useStorageStore.getState().getFileUrl(archivePath);
 
     // 检查 entryPath 是否已经是编码格式，如果是则先解码再重新编码
     let normalizedEntryPath = entryPath;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Archive, Copy, Folder, Download, Loader2 } from 'lucide-react';
 import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { CompressionService } from '../../../services/compression';
-import { StorageServiceManager } from '../../../services/storage/StorageManager';
+import { useStorageStore } from '../../../stores/storageStore';
 import type { StorageClient } from '../../../services/storage/types';
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
 import {
@@ -68,6 +68,7 @@ interface ArchiveViewerProps {
 
 export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, storageClient }) => {
   const { t } = useTranslation();
+  const { isConnected, getCurrentClient } = useStorageStore();
   const [archiveInfo, setArchiveInfo] = useState<ArchiveInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -509,13 +510,23 @@ export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, sto
       const entryFilename = entry.path.split('/').pop() || entry.path;
       console.log('Downloading archive entry:', entryFilename);
 
-      // 不传 savePath，让后端自动使用默认下载路径
-      await StorageServiceManager.downloadArchiveFileWithProgress(
-        url,
-        filename,
-        entry.path,
-        entryFilename
-      );
+      // 检查连接状态
+      if (!isConnected()) {
+        throw new Error('No storage client connected');
+      }
+
+      // 获取当前客户端
+      const client = getCurrentClient();
+
+      // 构造压缩文件内文件的路径
+      const fullPath = `${url}#${entry.path}`;
+
+      // 检查客户端是否支持下载文件进度功能
+      if (client.downloadFileWithProgress) {
+        await client.downloadFileWithProgress(fullPath, entryFilename);
+      } else {
+        throw new Error('Archive file progress download not supported for this storage type');
+      }
     } catch (err) {
       console.error('Failed to download file:', err);
       // 如果是用户取消操作，不显示错误弹窗

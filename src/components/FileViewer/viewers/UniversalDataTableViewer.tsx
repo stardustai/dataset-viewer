@@ -18,7 +18,7 @@ import type { DataProvider, DataMetadata } from '../data-providers';
 import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
 import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table-components';
 import { UnifiedContentModal } from '../common';
-import { StorageClient } from '../../../services/storage';
+import { StorageClient } from '../../../services/storage/StorageClient';
 
 interface DataColumn {
   id: string;

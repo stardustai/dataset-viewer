@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Check, Star, Loader2 } from 'lucide-react';
-import { StoredConnection } from '../../services/connectionStorage';
-import { StorageServiceManager } from '../../services/storage';
-import { showErrorToast } from '../../utils/clipboard';
+import { Trash2 } from 'lucide-react';
+import { useStorageStore } from '../../stores/storageStore';
 import { formatConnectionDisplayName } from '../../utils/urlUtils';
+import { getConnectionIcon } from '../../utils/connectionIcons';
+import { StoredConnection } from '../../services/connectionStorage';
 
 interface ConnectionSwitcherProps {
   onConnectionChange?: () => void;
@@ -12,28 +12,25 @@ interface ConnectionSwitcherProps {
 
 export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnectionChange }) => {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  const [connections, setConnections] = useState<StoredConnection[]>([]);
-  const [currentConnection, setCurrentConnection] = useState<string>('');
-  const [switchingConnection, setSwitchingConnection] = useState<string | null>(null);
+  const {
+    currentConnection,
+    connections,
+    loadConnections,
+    connectWithConfig,
+    removeConnection,
+    connectionStatus,
+  } = useStorageStore();
 
+  const [isOpen, setIsOpen] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const loadConnections = () => {
-    const storedConnections = StorageServiceManager.getStoredConnections();
-    setConnections(storedConnections);
-  };
-
-  const updateCurrentConnection = () => {
-    const displayName = StorageServiceManager.getConnectionDisplayName();
-    setCurrentConnection(displayName);
-  };
-
+  // 加载连接列表
   useEffect(() => {
     loadConnections();
-    updateCurrentConnection();
-  }, []);
+  }, [loadConnections]);
 
+  // 点击外部关闭下拉菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -42,197 +39,127 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 获取连接图标 - 使用公共工具函数
+  const getStorageIcon = (type: string) => {
+    return getConnectionIcon(type, 16, 'text-gray-500 dark:text-gray-400');
+  };
+
+  // 切换连接
   const handleConnectionSwitch = async (connection: StoredConnection) => {
-    if (switchingConnection) return; // 防止重复点击
+    if (isConnecting) return;
 
-    setSwitchingConnection(connection.id);
-
-    // 保存当前连接状态，以便失败时恢复
-    let previousConnection: any = null;
-    try {
-      previousConnection = StorageServiceManager.getCurrentConnection();
-    } catch {
-      // 如果没有当前连接，previousConnection保持为null
-    }
-
-    // 根据StoredConnection推断连接类型（在try块外定义，以便在catch块中使用）
-    const isLocal = connection.config.type === 'local';
-    const isOSS = connection.config.type === 'oss';
-    const isHuggingFace = connection.config.type === 'huggingface';
+    setIsConnecting(true);
+    setIsOpen(false);
 
     try {
-      // 根据StoredConnection构建ConnectionConfig
-      // 现在 connection 已经包含了完整的 config，可以直接使用
-      const config = connection.config;
-
-      const success = await StorageServiceManager.connectWithConfig(config);
+      const success = await connectWithConfig(connection.config);
       if (success) {
-        updateCurrentConnection();
-        setIsOpen(false);
         onConnectionChange?.();
-      } else {
-        // 连接失败，尝试恢复之前的连接
-        if (previousConnection) {
-          try {
-            await StorageServiceManager.connectWithConfig(previousConnection);
-          } catch (restoreError) {
-            console.error('恢复之前连接失败:', restoreError);
-          }
-        }
-        showErrorToast(t('connection.switch.failed'));
       }
     } catch (error) {
-      console.error('切换连接失败:', error);
-      // 连接异常，尝试恢复之前的连接
-      if (previousConnection) {
-        try {
-          await StorageServiceManager.connectWithConfig(previousConnection);
-        } catch (restoreError) {
-          console.error('恢复之前连接失败:', restoreError);
-        }
-      }
-      let errorMessage = error instanceof Error ? error.message : String(error);
-
-      // 提供更友好的错误信息
-      if (errorMessage.includes('WebDAV client cannot handle')) {
-        // 使用与上面相同的连接类型推断逻辑
-        let connectionType = 'unknown';
-        if (isLocal) {
-          connectionType = 'LOCAL';
-        } else if (isOSS) {
-          connectionType = 'OSS';
-        } else if (isHuggingFace) {
-          connectionType = 'HUGGINGFACE';
-        } else {
-          connectionType = 'WEBDAV';
-        }
-
-        errorMessage = t('connection.switch.type_mismatch', {
-          connectionType: connectionType,
-          connectionName: connection.name,
-        });
-      } else if (errorMessage.includes('requires URL, username, and password')) {
-        errorMessage = t('connection.switch.missing_credentials', {
-          connectionName: connection.name,
-        });
-      }
-
-      showErrorToast(errorMessage);
+      console.error('Failed to switch connection:', error);
     } finally {
-      setSwitchingConnection(null);
+      setIsConnecting(false);
     }
   };
 
-  const getCurrentConnectionId = () => {
-    try {
-      const current = StorageServiceManager.getCurrentConnection();
-      if (!current) return null;
-
-      return (
-        connections.find(
-          conn =>
-            conn && conn.config.url === current.url && conn.config.username === current.username
-        )?.id || null
-      );
-    } catch (error) {
-      // 没有活动连接时返回null，避免抛出错误
-      return null;
+  // 删除连接
+  const handleDeleteConnection = (e: React.MouseEvent, connectionId: string) => {
+    e.stopPropagation();
+    if (confirm(t('confirm.delete.connection'))) {
+      removeConnection(connectionId);
     }
   };
 
-  const formatLastConnected = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return t('time.today');
-    } else if (diffDays === 1) {
-      return t('time.yesterday');
-    } else if (diffDays < 7) {
-      return t('time.days.ago', { count: diffDays });
-    } else {
-      return date.toLocaleDateString();
-    }
+  // 获取当前连接显示名称
+  const getCurrentDisplayName = () => {
+    if (!currentConnection) return t('no.connection');
+    return formatConnectionDisplayName(currentConnection);
   };
-
-  const currentConnectionId = getCurrentConnectionId();
-
-  if (connections.length === 0) {
-    return (
-      <span className="text-sm text-gray-500 dark:text-gray-400 max-w-32 lg:max-w-48 truncate">
-        {t('connected.to')} {currentConnection}
-      </span>
-    );
-  }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative min-w-64" ref={dropdownRef}>
+      {/* 主按钮 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors max-w-32 lg:max-w-48"
-        title={`${t('connected.to')} ${currentConnection}`}
+        disabled={isConnecting}
+        className="flex items-center justify-between w-full p-2 bg-white dark:bg-gray-800 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
       >
-        <span className="truncate">{currentConnection}</span>
-        <ChevronDown
-          className={`w-3 h-3 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
+        <div className="flex items-center space-x-3 min-w-0">
+          {currentConnection && getStorageIcon(currentConnection.type)}
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              {getCurrentDisplayName()}
+            </span>
+          </div>
+        </div>
       </button>
 
+      {/* 下拉菜单 */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-80 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto z-50">
-          {connections.map(connection => {
-            const isActive = connection.id === currentConnectionId;
-            const isSwitching = switchingConnection === connection.id;
-            return (
-              <div
-                key={connection.id}
-                className={`px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0 ${
-                  isActive ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                } ${isSwitching ? 'opacity-75' : ''}`}
-                onClick={() => !isSwitching && handleConnectionSwitch(connection)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className={`font-medium text-sm truncate ${
-                          isActive
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-900 dark:text-gray-100'
-                        }`}
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg dark:shadow-gray-900/20 z-50 max-h-64 overflow-y-auto">
+          {connections.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+              {t('no.saved.connections')}
+            </div>
+          ) : (
+            <>
+              {/* 连接列表 */}
+              {connections.map(connection => {
+                const isCurrentConnection =
+                  currentConnection &&
+                  JSON.stringify(currentConnection) === JSON.stringify(connection.config);
+
+                return (
+                  <div
+                    key={connection.id}
+                    className={`group flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${
+                      isCurrentConnection ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                    }`}
+                    onClick={() => handleConnectionSwitch(connection)}
+                  >
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      {getStorageIcon(connection.config.type)}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {connection.name}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {formatConnectionDisplayName(connection.config)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={e => handleDeleteConnection(e, connection.id)}
+                        className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors"
+                        title={t('delete.connection')}
                       >
-                        {connection.name}
-                      </div>
-                      {connection.isDefault && (
-                        <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />
-                      )}
-                      {isSwitching && (
-                        <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0 animate-spin" />
-                      )}
-                      {isActive && !isSwitching && (
-                        <Check className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                      )}
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {formatConnectionDisplayName(connection.config)}
-                    </div>
-                    {connection.lastConnected && (
-                      <div className="text-xs text-gray-400 dark:text-gray-500">
-                        {t('last.connected')}: {formatLastConnected(connection.lastConnected)}
-                      </div>
-                    )}
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 连接中遮罩 */}
+      {isConnecting && (
+        <div className="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded-md">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+            <span className="text-sm text-blue-600 dark:text-blue-400">{t('connecting')}</span>
+          </div>
         </div>
       )}
     </div>

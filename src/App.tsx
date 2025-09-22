@@ -7,7 +7,7 @@ import DownloadProgress from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { StorageFile } from './types';
-import { StorageServiceManager } from './services/storage';
+import { useStorageStore } from './stores/storageStore';
 import { navigationHistoryService } from './services/navigationHistory';
 import { fileAssociationService } from './services/fileAssociationService';
 import { pluginInitialization } from './services/plugin/pluginInitialization';
@@ -25,6 +25,9 @@ function App() {
 
   // 初始化主题系统
   useTheme();
+
+  // Storage store hooks
+  const { getCurrentClient, autoConnect, disconnect } = useStorageStore();
 
   // 更新通知功能
   const { showNotification, hideUpdateDialog } = useUpdateNotification();
@@ -104,7 +107,7 @@ function App() {
             const result = await fileAssociationService.openFile(decodedFilePath);
 
             if (result.success && result.file) {
-              const currentStorageClient = StorageServiceManager.getCurrentClient();
+              const currentStorageClient = getCurrentClient();
               // 标记当前是文件关联模式
               setIsFileAssociationMode(true);
               handleFileSelect(result.file, result.fileName, currentStorageClient);
@@ -131,7 +134,7 @@ function App() {
             fileAssociationHandledRef.current = true;
             console.log('File association handled, taking over app state');
 
-            const currentStorageClient = StorageServiceManager.getCurrentClient();
+            const currentStorageClient = getCurrentClient();
             setCurrentDirectory('');
             setIsFileAssociationMode(true);
             setAppState('browsing');
@@ -170,7 +173,7 @@ function App() {
           return;
         }
 
-        const success = await StorageServiceManager.autoConnect();
+        const success = await autoConnect();
         if (success) {
           setAppState('browsing');
         } else {
@@ -208,7 +211,7 @@ function App() {
 
   const handleDisconnect = () => {
     // 断开存储连接
-    StorageServiceManager.disconnect();
+    disconnect();
 
     // 清理导航历史和缓存
     navigationHistoryService.clearHistory();

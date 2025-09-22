@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageServiceManager } from '../../services/storage/StorageManager';
-import { StoredConnection } from '../../services/connectionStorage';
+import { useConnectionManager } from '../../hooks/useStorage';
+import { StoredConnection, connectionStorage } from '../../services/connectionStorage';
 import { ConnectionConfig, StorageClientType } from '../../services/storage/types';
 import { getStorageAdapter } from '../../services/storage/StorageClient';
 
 export default function useConnectionLogic(onConnectSuccess?: () => void) {
   const { t } = useTranslation();
 
+  // 使用新的 Zustand hook
+  const {
+    connections,
+    currentConnection,
+    connectionStatus,
+    connectionError,
+    connectWithConfig,
+    isConnected,
+  } = useConnectionManager();
+
   // 通用状态
   const [storageType, setStorageType] = useState<StorageClientType>('webdav');
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState('');
   const [selectedStoredConnection, setSelectedStoredConnection] = useState<StoredConnection | null>(
     null
   );
@@ -23,10 +31,13 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
   // 保留必要的兼容性状态
   const isPasswordFromStorage = formData.isPasswordFromStorage || false;
 
+  // 从 Zustand store 获取状态
+  const connecting = connectionStatus === 'connecting';
+  const error = connectionError || '';
+
   // 更新表单数据的辅助函数
   const updateFormData = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
-    setError(''); // 清除错误
     setValidationErrors([]); // 清除验证错误
   };
 
@@ -36,12 +47,10 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     const defaultConfig = adapter.getDefaultConfig?.() || {};
     setFormData(defaultConfig);
     setValidationErrors([]);
-    setError('');
   };
 
   const handleSelectStoredConnection = (connection: StoredConnection) => {
     setSelectedStoredConnection(connection);
-    setError('');
     setValidationErrors([]);
 
     const config = connection.config;
@@ -56,7 +65,7 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
 
   useEffect(() => {
     // 使用最近的连接信息预填表单，但不自动连接
-    const defaultConnection = StorageServiceManager.getDefaultConnection();
+    const defaultConnection = connectionStorage.getDefaultConnection();
     if (defaultConnection) {
       handleSelectStoredConnection(defaultConnection);
     }
@@ -67,8 +76,6 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
     storageType: StorageClientType,
     formData: Record<string, any>
   ) => {
-    setConnecting(true);
-    setError('');
     setValidationErrors([]);
 
     try {
@@ -80,7 +87,7 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
         (formData as ConnectionConfig);
 
       // 2. 直接尝试连接，让后端处理所有验证
-      const success = await StorageServiceManager.connectWithConfig(config);
+      const success = await connectWithConfig(config);
       if (success) {
         onConnectSuccess?.();
         return;
@@ -89,9 +96,8 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('error.connection.failed');
-      setError(errorMessage);
-    } finally {
-      setConnecting(false);
+      // 错误会自动设置到 Zustand store 中
+      console.error('Connection error:', errorMessage);
     }
   };
 
@@ -102,7 +108,6 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
 
   const handleStorageTypeChange = (type: StorageClientType) => {
     setStorageType(type);
-    setError('');
     setValidationErrors([]);
 
     // 如果当前选择的连接类型匹配新类型，保持选择状态
@@ -136,7 +141,11 @@ export default function useConnectionLogic(onConnectSuccess?: () => void) {
 
     // 保留的状态设置函数（用于外部调用）
     setStorageType,
-    setError,
     setSelectedStoredConnection,
+
+    // 新增：来自 Zustand store 的状态
+    connections,
+    currentConnection,
+    isConnected,
   };
 }

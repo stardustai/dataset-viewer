@@ -1,4 +1,4 @@
-import { StorageServiceManager } from './storage/StorageManager';
+import { useStorageStore } from '../stores/storageStore';
 import { StorageFile } from '../types';
 import { safeParseInt, calculateTotalSize } from '../utils/typeUtils';
 import { commands } from '../types/tauri-commands';
@@ -348,7 +348,9 @@ export class FolderDownloadService {
 
       // 下载单个文件
       const fullFilePath = this.joinLocalPath(baseSavePath, file.basename);
-      await StorageServiceManager.downloadFileWithProgress(filePath, file.basename, fullFilePath);
+      await useStorageStore
+        .getState()
+        .downloadFileWithProgress(filePath, file.basename, fullFilePath);
 
       // 更新进度
       state.completedFiles++;
@@ -407,9 +409,13 @@ export class FolderDownloadService {
         events.onProgress(state);
 
         while (hasMore) {
-          const subDirectoryResult = await StorageServiceManager.listDirectory(dirPath, {
-            marker: nextMarker,
+          const subDirectoryResult = await useStorageStore.getState().listDirectory(dirPath, {
+            marker: nextMarker || null,
             pageSize: 1000, // 使用大页面大小提高效率
+            prefix: null,
+            recursive: null,
+            sortBy: null,
+            sortOrder: null,
           });
 
           // 类型转换：将 tauri-commands StorageFile[] 转换为前端 StorageFile[]

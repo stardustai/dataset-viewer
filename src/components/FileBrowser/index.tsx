@@ -17,7 +17,7 @@ import {
 import { StorageFile } from '../../types';
 import { commands } from '../../types/tauri-commands';
 import { compareFileSize } from '../../utils/typeUtils';
-import { StorageServiceManager } from '../../services/storage';
+import { useStorageStore } from '../../stores/storageStore';
 import { ListOptions } from '../../services/storage/types';
 import { cleanPath } from '../../utils/pathUtils';
 import type { StorageClient as IStorageClient } from '../../services/storage/types';
@@ -69,11 +69,18 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   isVisible = true,
 }) => {
   const { t } = useTranslation();
+
+  // 使用 Zustand store
+  const { isConnected, getCurrentClient, currentConnection, listDirectory, getFileUrl } =
+    useStorageStore();
+
+  // 本地状态 - 逐步迁移到 store
   const [currentPath, setCurrentPath] = useState(initialPath);
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  // 从localStorage获取隐藏文件显示偏好
+
+  // UI 状态（这些保持本地）
   const [showHidden, setShowHidden] = useState(() => {
     try {
       const saved = localStorage.getItem('file-viewer-show-hidden');
@@ -91,6 +98,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 忽略localStorage错误
     }
   }, [showHidden]);
+
   const [sortField, setSortField] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [loadingRequest, setLoadingRequest] = useState<string | null>(null); // 跟踪当前正在加载的路径
@@ -112,7 +120,6 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   const loadMoreThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
   // 计算过滤后的文件数量
-
   const getFilteredFiles = () => {
     let filteredFiles = showHidden
       ? files
@@ -142,8 +149,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
 
     // 检查当前客户端是否使用服务端排序
-    const currentClient = StorageServiceManager.getCurrentClient();
-    const defaultSortOptions = currentClient.getDefaultSortOptions();
+    const currentClient = getCurrentClient();
+    const defaultSortOptions = currentClient?.getDefaultSortOptions?.();
 
     // 如果客户端指定了默认排序选项，则不应用前端排序，直接返回服务端排序的结果
     if (defaultSortOptions) {
@@ -179,7 +186,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     if (!query.trim()) return;
 
     try {
-      const client = StorageServiceManager.getCurrentClient();
+      const client = getCurrentClient();
       if (client.supportsSearch?.()) {
         // 检查是否应该允许远程搜索（HuggingFace在子目录时禁用）
         if (!shouldAllowRemoteSearch()) {
@@ -192,7 +199,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setRemoteSearchQuery(query);
 
         const searchPath = `/search/${encodeURIComponent(query)}`;
-        const result = await StorageServiceManager.listDirectory(searchPath);
+        const result = await listDirectory(searchPath);
 
         setFiles(result.files);
         setHasMore(false); // Remote search typically doesn't have pagination
@@ -221,7 +228,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   // 检查当前存储是否支持全局搜索
   const supportsGlobalSearch = () => {
     try {
-      const client = StorageServiceManager.getCurrentClient();
+      const client = getCurrentClient();
       return client.supportsSearch?.() || false;
     } catch {
       return false;
@@ -232,7 +239,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   // 对于 HuggingFace，只有在首页或组织根页面才允许远程搜索
   const shouldAllowRemoteSearch = () => {
     try {
-      const connection = StorageServiceManager.getCurrentConnection();
+      const connection = currentConnection;
+
+      if (!connection) {
+        return false;
+      }
 
       // 只有 HuggingFace 需要特殊处理
       if (connection.type !== 'huggingface') {
@@ -271,7 +282,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
 
     // 检查存储是否已连接，如果未连接则返回错误但不设置loading状态
-    if (!StorageServiceManager.isConnected()) {
+    if (!isConnected()) {
       console.warn('Storage not connected, cannot load directory:', path);
       setError('Storage connection not ready');
       // 不在这里设置setLoading(false)，让重试机制处理
@@ -373,16 +384,20 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       console.log('Loading directory from server:', path);
 
       // 获取当前客户端的默认分页大小
-      const currentClient = StorageServiceManager.getCurrentClient();
+      const currentClient = getCurrentClient();
       const defaultPageSize = currentClient.getDefaultPageSize();
 
       // 构建请求选项
-      const listOptions: Partial<ListOptions> = {};
-      if (defaultPageSize) {
-        listOptions.pageSize = defaultPageSize;
-      }
+      const listOptions: ListOptions = {
+        pageSize: defaultPageSize || null,
+        marker: null,
+        prefix: null,
+        recursive: null,
+        sortBy: null,
+        sortOrder: null,
+      };
 
-      const fileList = await StorageServiceManager.listDirectory(path, listOptions);
+      const fileList = await listDirectory(path, listOptions);
       setFiles(fileList.files);
       setCurrentPath(path);
 
@@ -537,12 +552,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         setLoadingMore(true);
         console.log('Loading more files with marker:', nextMarker);
 
-        const currentClient = StorageServiceManager.getCurrentClient();
+        const currentClient = getCurrentClient();
         const defaultPageSize = currentClient.getDefaultPageSize();
 
-        const result = await StorageServiceManager.listDirectory(currentPath, {
-          marker: nextMarker, // nextMarker can be null/undefined, which is fine
+        const result = await listDirectory(currentPath, {
+          marker: nextMarker || null, // 将 undefined 转换为 null
           pageSize: defaultPageSize || 1000, // 使用客户端默认页面大小，fallback 到 1000
+          prefix: null,
+          recursive: null,
+          sortBy: null,
+          sortOrder: null,
         });
 
         // 将新文件追加到现有文件列表
@@ -637,13 +656,17 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       console.log('Fetching complete file list for folder download...');
 
-      const currentClient = StorageServiceManager.getCurrentClient();
+      const currentClient = getCurrentClient();
       const defaultPageSize = currentClient.getDefaultPageSize();
 
       while (hasMorePages) {
-        const result = await StorageServiceManager.listDirectory(currentPath, {
-          marker,
+        const result = await listDirectory(currentPath, {
+          marker: marker || null,
           pageSize: defaultPageSize || 1000, // 使用客户端默认页面大小，fallback 到 1000
+          prefix: null,
+          recursive: null,
+          sortBy: null,
+          sortOrder: null,
         });
 
         allFiles.push(...result.files);
@@ -702,7 +725,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     let retryTimer: NodeJS.Timeout;
 
     // 如果存储已连接，直接加载
-    if (StorageServiceManager.isConnected()) {
+    if (isConnected()) {
       // 如果是首次加载或路径不同时才加载
       if (!currentPath || initialPath !== currentPath) {
         loadDirectory(initialPath);
@@ -711,7 +734,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 只有当错误是由于存储未连接引起时才重试
       console.log('Storage not connected, setting up retry...');
       retryTimer = setTimeout(() => {
-        if (StorageServiceManager.isConnected()) {
+        if (isConnected()) {
           console.log('Storage connection ready, retrying directory load');
           setError(''); // 清除错误状态
           loadDirectory(initialPath || currentPath, false, true);
@@ -728,7 +751,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   // 响应从文件查看器返回的刷新请求（文件关联模式）
   useEffect(() => {
-    if (shouldRefresh && StorageServiceManager.isConnected()) {
+    if (shouldRefresh && isConnected()) {
       console.log('File association mode: refreshing FileBrowser after returning from viewer');
       setError(''); // 清除可能存在的错误状态
 
@@ -824,7 +847,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       loadDirectory(newPath);
     } else {
       // 处理所有类型的文件，不仅仅是文本文件
-      const currentStorageClient = StorageServiceManager.getCurrentClient();
+      const currentStorageClient = getCurrentClient();
       const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
       onFileSelect(file, fullPath, currentStorageClient, files);
     }
@@ -832,13 +855,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
   const handleOpenAsText = (file: StorageFile) => {
     // 强制以文本格式打开文件
-    const currentStorageClient = StorageServiceManager.getCurrentClient();
+    const currentStorageClient = getCurrentClient();
     const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
     // 通过forceTextMode参数告诉FileViewer强制以文本格式打开
     onFileSelect(file, fullPath, currentStorageClient, files, true);
   };
 
-  const connection = StorageServiceManager.getConnection();
+  const connection = currentConnection;
 
   const navigateToSegment = (index: number) => {
     // 如果当前有错误，先清除错误状态
@@ -880,12 +903,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   // 复制完整路径到剪贴板
   const copyFullPath = async () => {
     try {
-      const connection = StorageServiceManager.getConnection();
+      const connection = currentConnection;
       if (!connection) return;
 
-      // 使用 StorageServiceManager.getFileUrl 获取正确的 URL
+      // 使用 getFileUrl 获取正确的 URL
       // 这样可以正确处理 HuggingFace 等特殊协议
-      const fullPath = StorageServiceManager.getFileUrl(currentPath);
+      const fullPath = getFileUrl(currentPath);
 
       const success = await copyToClipboard(fullPath);
       if (success) {
@@ -1017,7 +1040,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     if (currentView === 'directory' && searchTerm.trim()) {
                       // 检查本地是否有搜索结果
                       const localResults = getDisplayFiles();
-                      const client = StorageServiceManager.getCurrentClient();
+                      const client = getCurrentClient();
 
                       // 如果本地没有结果且支持远程搜索且允许远程搜索，则触发远程搜索
                       if (
