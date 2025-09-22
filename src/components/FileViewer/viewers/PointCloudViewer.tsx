@@ -5,7 +5,7 @@ import { OrbitControls } from 'three-stdlib';
 import { PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
 import * as dat from 'dat.gui';
 import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
-import { StorageServiceManager } from '../../../services/storage';
+import { useStorageStore } from '../../../stores/storageStore';
 
 // 点云数据点接口
 interface PCDPoint {
@@ -476,6 +476,7 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
   previewContent,
 }) => {
   const { t } = useTranslation();
+  const { downloadFile } = useStorageStore();
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -526,7 +527,8 @@ export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
         }
       } else {
         // 获取存储服务并读取整个点云文件
-        arrayBuffer = await StorageServiceManager.getFileArrayBuffer(filePath);
+        const blob = await downloadFile(filePath);
+        arrayBuffer = await blob.arrayBuffer();
         console.log('从存储服务加载文件，大小:', arrayBuffer.byteLength);
       }
 

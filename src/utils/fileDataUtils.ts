@@ -1,4 +1,4 @@
-import { StorageServiceManager } from '../services/storage';
+import { useStorageStore } from '../stores/storageStore';
 import { detectEncodingWithFallback } from './textEncodingDetection';
 
 // MIME 类型映射
@@ -44,8 +44,10 @@ export const getMimeType = (filename: string): string => {
  * @returns Promise<ArrayBuffer> 文件数据
  */
 export async function getFileArrayBuffer(filePath: string): Promise<ArrayBuffer> {
-  // 使用 StorageServiceManager 的统一方法
-  return await StorageServiceManager.getFileArrayBuffer(filePath);
+  // 使用 useStorageStore.getState() 的统一方法
+  const store = useStorageStore.getState();
+  const blob = await store.downloadFile(filePath);
+  return await blob.arrayBuffer();
 }
 
 /**
@@ -111,16 +113,17 @@ export async function getFileHeader(
   maxBytes: number = 2048
 ): Promise<Uint8Array> {
   // 获取文件的下载 URL
-  const fileUrl = StorageServiceManager.getFileUrl(filePath);
+  const store = useStorageStore.getState();
+  const fileUrl = store.getFileUrl(filePath);
 
   if (
     fileUrl.startsWith('local://') ||
     fileUrl.startsWith('webdav://') ||
     fileUrl.startsWith('webdavs://')
   ) {
-    // 对于本地文件和需要认证的 WebDAV 文件，使用 StorageServiceManager.downloadFile
+    // 对于本地文件和需要认证的 WebDAV 文件，使用 store.downloadFile
     // 浏览器的 fetch 无法处理 WebDAV 认证头，所以需要通过后端下载
-    const fileBlob = await StorageServiceManager.getFileAsBlob(filePath);
+    const fileBlob = await store.downloadFile(filePath);
     const arrayBuffer = await fileBlob.arrayBuffer();
     const actualBytes = Math.min(maxBytes, arrayBuffer.byteLength);
     return new Uint8Array(arrayBuffer.slice(0, actualBytes));
@@ -143,7 +146,8 @@ export async function getFileHeader(
 
 export async function getFileUrl(filePath: string): Promise<string> {
   // 获取文件的下载 URL
-  const fileUrl = StorageServiceManager.getFileUrl(filePath);
+  const store = useStorageStore.getState();
+  const fileUrl = store.getFileUrl(filePath);
 
   if (
     fileUrl.startsWith('local://') ||
@@ -152,7 +156,7 @@ export async function getFileUrl(filePath: string): Promise<string> {
   ) {
     // 对于本地文件和需要认证的 WebDAV 文件，获取数据并创建 Blob URL
     // 浏览器的 iframe 无法处理 WebDAV 认证头，所以需要通过后端下载
-    const fileBlob = await StorageServiceManager.getFileAsBlob(filePath);
+    const fileBlob = await store.downloadFile(filePath);
     // 获取文件名以确定 MIME 类型
     const fileName = filePath.split('/').pop() || '';
     const mimeType = getMimeType(fileName);

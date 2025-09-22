@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Home, ArrowLeft, ChevronRight, Copy, Edit3, Check, X } from 'lucide-react';
 import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
-import { StorageServiceManager } from '../../services/storage';
+import { useStorageStore } from '../../stores/storageStore';
 import { parseUserInput } from '../../utils/pathUtils';
 
 interface BreadcrumbNavigationProps {
@@ -37,6 +37,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
   compact = false,
 }) => {
   const { t } = useTranslation();
+  const { getFileUrl } = useStorageStore();
   const [isEditing, setIsEditing] = useState(false);
   const [inputPath, setInputPath] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +54,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
     // 尝试获取完整的协议URL作为初始值
     // 这样用户可以看到和复制功能一致的格式
     try {
-      const fullUrl = StorageServiceManager.getFileUrl(currentPath);
+      const fullUrl = getFileUrl(currentPath);
       setInputPath(fullUrl);
     } catch {
       // 如果出错，使用当前路径作为初始值

@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event';
 import { StorageFile } from '../types';
-import { StorageServiceManager } from './storage';
+import { useStorageStore } from '../stores/storageStore';
 import { navigationHistoryService } from './navigationHistory';
 
 /**
@@ -85,7 +85,15 @@ export class FileAssociationService {
       navigationHistoryService.clearDirectoryCache();
 
       // 连接到本地存储（使用临时连接，不保存到已保存连接）
-      const success = await StorageServiceManager.connectToLocal(fileDir, 'File Association', true);
+      const store = useStorageStore.getState();
+      const config = {
+        type: 'local' as const,
+        rootPath: fileDir,
+        url: fileDir,
+        name: 'File Association',
+        isTemporary: true,
+      };
+      const success = await store.connectWithConfig(config);
 
       if (!success) {
         return {
@@ -127,7 +135,8 @@ export class FileAssociationService {
   private async createStorageFile(fileName: string): Promise<StorageFile> {
     try {
       // 尝试获取文件大小
-      const fileSize = await StorageServiceManager.getFileSize(fileName);
+      const store = useStorageStore.getState();
+      const fileSize = await store.getFileSize(fileName);
 
       return {
         filename: fileName,
@@ -169,12 +178,13 @@ export class FileAssociationService {
    */
   public async isConnectedViaFileAssociation(): Promise<boolean> {
     try {
-      if (!StorageServiceManager.isConnected()) {
+      const store = useStorageStore.getState();
+      if (!store.isConnected()) {
         return false;
       }
 
-      const currentConnection = StorageServiceManager.getCurrentConnection();
-      return currentConnection.type === 'local';
+      const currentConnection = store.currentConnection;
+      return currentConnection?.type === 'local';
     } catch (error) {
       // 如果获取当前连接失败，说明没有连接
       return false;

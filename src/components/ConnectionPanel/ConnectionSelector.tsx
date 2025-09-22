@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
-import { StoredConnection } from '../../services/connectionStorage';
-import { StorageServiceManager } from '../../services/storage';
+import { StoredConnection, connectionStorage } from '../../services/connectionStorage';
+import { useConnectionManager } from '../../hooks/useStorage';
 import { formatConnectionDisplayName } from '../../utils/urlUtils';
 
 interface UndoToastProps {
@@ -73,7 +73,11 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   selectedConnection,
 }) => {
   const { t } = useTranslation();
-  const [connections, setConnections] = useState<StoredConnection[]>([]);
+
+  // 使用新的 Zustand hook
+  const { connections, loadConnections, removeConnection, updateConnection, setDefaultConnection } =
+    useConnectionManager();
+
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -81,13 +85,10 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const loadConnections = () => {
-    setConnections(StorageServiceManager.getStoredConnections());
-  };
-
+  // 加载连接列表（仅在组件挂载时）
   useEffect(() => {
     loadConnections();
-  }, []);
+  }, [loadConnections]);
 
   // 点击外部区域关闭下拉框
   useEffect(() => {
@@ -128,9 +129,8 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
     }
 
     // 立即删除连接
-    StorageServiceManager.deleteStoredConnection(connection.id);
+    removeConnection(connection.id);
     setDeletedConnection(connection);
-    loadConnections();
 
     // 设置3秒后的自动清理（稍晚一点让动画完成）
     const timer = setTimeout(() => {
@@ -142,20 +142,21 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
   const handleUndoDelete = () => {
     if (deletedConnection && undoTimer) {
       // 恢复连接
-      StorageServiceManager.restoreConnection(deletedConnection);
+      connectionStorage.restoreConnection(deletedConnection);
 
       // 清理状态
       clearTimeout(undoTimer);
       setDeletedConnection(null);
       setUndoTimer(null);
+
+      // 重新加载连接列表
       loadConnections();
     }
   };
 
   const handleSetDefault = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    StorageServiceManager.setDefaultConnection(id);
-    loadConnections();
+    setDefaultConnection(id);
   };
 
   const handleEdit = (connection: StoredConnection, e: React.MouseEvent) => {
@@ -166,8 +167,8 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
 
   const handleSaveEdit = (id: string) => {
     if (editName.trim()) {
-      StorageServiceManager.renameStoredConnection(id, editName.trim());
-      loadConnections();
+      // 使用 updateConnection 方法来重命名
+      updateConnection(id, { name: editName.trim() });
     }
     setEditingId(null);
     setEditName('');

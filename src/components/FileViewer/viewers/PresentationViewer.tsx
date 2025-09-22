@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Presentation, AlertCircle } from 'lucide-react';
 import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
-import { StorageServiceManager } from '../../../services/storage';
+import { useStorageStore } from '../../../stores/storageStore';
 import { parse } from 'pptxtojson';
 import DOMPurify from 'dompurify';
 
@@ -313,6 +313,7 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
   onMetadataLoaded,
 }) => {
   const { t } = useTranslation();
+  const { downloadFile } = useStorageStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [presentationData, setPresentationData] = useState<PresentationData | null>(null);
@@ -324,7 +325,8 @@ export const PresentationViewer: React.FC<PresentationViewerProps> = ({
         setError('');
 
         // 获取文件内容
-        const arrayBuffer = await StorageServiceManager.getFileArrayBuffer(filePath);
+        const blob = await downloadFile(filePath);
+        const arrayBuffer = await blob.arrayBuffer();
 
         // 使用 pptxtojson 解析 PPTX 文件
         const data = await parse(arrayBuffer);

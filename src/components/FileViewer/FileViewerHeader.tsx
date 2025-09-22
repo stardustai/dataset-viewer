@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Download, Copy } from 'lucide-react';
 import { StorageFile } from '../../types';
-import { StorageServiceManager } from '../../services/storage';
+import { useStorageStore } from '../../stores/storageStore';
 import { FileIcon } from '../../utils/fileIcons';
 import { copyToClipboard, showCopyToast, showToast } from '../../utils/clipboard';
 import { formatFileSize } from '../../utils/fileUtils';
@@ -53,6 +53,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
   totalSize = 0,
 }) => {
   const { t } = useTranslation();
+  const { downloadFileWithProgress, currentConnection, getFileUrl } = useStorageStore();
 
   const getFileExtension = (filename: string): string => {
     return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
@@ -88,7 +89,7 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
       console.log('Starting download for file:', file.basename, 'Path:', filePath);
 
       // 不传 savePath，让后端自动使用默认下载路径
-      const result = await StorageServiceManager.downloadFileWithProgress(filePath, file.basename);
+      const result = await downloadFileWithProgress(filePath, file.basename);
       console.log('Download initiated:', result);
 
       // 下载进度将通过事件系统处理，这里不需要显示 alert
@@ -107,12 +108,12 @@ export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
   // 复制完整路径到剪贴板
   const copyFullPath = async () => {
     try {
-      const connection = StorageServiceManager.getConnection();
+      const connection = currentConnection;
       if (!connection) return;
 
-      // 使用 StorageServiceManager.getFileUrl 获取正确的 URL
+      // 使用 getFileUrl 获取正确的 URL
       // 这样可以正确处理 HuggingFace 等特殊协议
-      const fullPath = StorageServiceManager.getFileUrl(filePath);
+      const fullPath = getFileUrl(filePath);
 
       const success = await copyToClipboard(fullPath);
       if (success) {

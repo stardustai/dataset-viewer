@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { SearchResult, FullFileSearchResult } from '../../../types';
+import { useStorageStore } from '../../../stores/storageStore';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -62,6 +63,9 @@ export const useFileSearch = ({
   setLoading,
   setError,
 }: UseFileSearchProps) => {
+  // 获取存储服务
+  const { getFileContent } = useStorageStore();
+
   // 防止重复搜索和导航期间搜索的引用
   const lastSearchTermRef = useRef<string>('');
   const lastSearchModeRef = useRef<boolean>(false);
@@ -202,12 +206,10 @@ export const useFileSearch = ({
         const newTargetPosition = Math.max(0, targetPosition - chunkSize / 2);
         const endPosition = Math.min(newTargetPosition + chunkSize * 2, totalSize);
 
-        const { StorageServiceManager } = await import('../../../services/storage');
-        const newContent = await StorageServiceManager.getFileContent(
-          filePath,
-          newTargetPosition,
-          endPosition - newTargetPosition
-        );
+        const newContent = await getFileContent(filePath, {
+          start: newTargetPosition,
+          length: endPosition - newTargetPosition,
+        });
 
         setContent(newContent.content);
         setCurrentFilePosition(newTargetPosition);

@@ -2,7 +2,7 @@ import { forwardRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
-import { StorageServiceManager } from '../../services/storage';
+import { useStorageStore } from '../../stores/storageStore';
 import type { StorageClient } from '../../services/storage/types';
 import { LazyComponentWrapper } from './common';
 import { pluginManager } from '../../services/plugin/pluginManager';
@@ -112,6 +112,7 @@ export const FileViewerContent = forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
+    const { getFileUrl } = useStorageStore();
     const [openAsText, setOpenAsText] = useState(!!forceTextMode);
 
     // 处理加载状态
@@ -290,7 +291,7 @@ export const FileViewerContent = forwardRef<
         <LazyComponentWrapper
           component={ArchiveViewer}
           props={{
-            url: StorageServiceManager.getFileUrl(filePath),
+            url: getFileUrl(filePath),
             filename: file.basename,
             storageClient,
           }}

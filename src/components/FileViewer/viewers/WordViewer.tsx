@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import mammoth from 'mammoth';
 import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
-import { StorageServiceManager } from '../../../services/storage';
+import { useStorageStore } from '../../../stores/storageStore';
 import DOMPurify from 'dompurify';
 
 interface WordViewerProps {
@@ -50,6 +50,7 @@ const extractTextFromRtf = (content: string, t: (key: string) => string): string
 
 export const WordViewer: React.FC<WordViewerProps> = ({ filePath, fileName, className = '' }) => {
   const { t } = useTranslation();
+  const { downloadFile, getFileContent } = useStorageStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [htmlContent, setHtmlContent] = useState<string>('');
@@ -73,13 +74,14 @@ export const WordViewer: React.FC<WordViewerProps> = ({ filePath, fileName, clas
       try {
         if (isDocx) {
           // 对于 DOCX 文件，需要获取二进制数据
-          const arrayBuffer = await StorageServiceManager.getFileArrayBuffer(filePath);
+          const blob = await downloadFile(filePath);
+          const arrayBuffer = await blob.arrayBuffer();
           const result = await extractTextFromDocx(arrayBuffer);
           setHtmlContent(result.html);
           setTextContent(result.text);
         } else if (isRtf) {
           // 对于 RTF 文件，可以作为文本读取
-          const fileContent = await StorageServiceManager.getFileContent(filePath);
+          const fileContent = await getFileContent(filePath);
           const text = extractTextFromRtf(fileContent.content, t);
           setTextContent(text);
           setHtmlContent('');

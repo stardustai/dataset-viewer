@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { StorageFile, SearchResult, FullFileSearchResult } from '../../../types';
-import { StorageServiceManager } from '../../../services/storage';
+import { useStorageStore } from '../../../stores/storageStore';
 import { configManager } from '../../../config';
 import { getFileType } from '../../../utils/fileTypes';
 
 export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode?: boolean) => {
+  const { getFileSize, getFileContent } = useStorageStore();
+
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         }
 
         // 获取文件大小
-        const fileSize = await StorageServiceManager.getFileSize(filePath);
+        const fileSize = await getFileSize(filePath);
         setTotalSize(fileSize);
 
         // 判断是否为大文件
@@ -94,8 +96,8 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
 
         // 根据文件大小选择加载策略
         const result = isLarge
-          ? await StorageServiceManager.getFileContent(filePath, 0, config.streaming.chunkSize)
-          : await StorageServiceManager.getFileContent(filePath);
+          ? await getFileContent(filePath, { start: 0, length: config.streaming.chunkSize })
+          : await getFileContent(filePath);
 
         const byteLength = new TextEncoder().encode(result.content).length;
         setContent(result.content);
@@ -132,11 +134,10 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
       setLoadingMore(true);
       const chunkSize = config.streaming.chunkSize;
       const endPosition = Math.min(nextPosition + chunkSize, totalSize);
-      const result = await StorageServiceManager.getFileContent(
-        filePath,
-        nextPosition,
-        endPosition - nextPosition
-      );
+      const result = await getFileContent(filePath, {
+        start: nextPosition,
+        length: endPosition - nextPosition,
+      });
       const byteLength = new TextEncoder().encode(result.content).length;
 
       setContent(prev => prev + result.content);
@@ -184,11 +185,10 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         const startPosition = Math.max(0, currentStartPosition - chunkSize);
         const endPosition = currentStartPosition;
 
-        const result = await StorageServiceManager.getFileContent(
-          filePath,
-          startPosition,
-          endPosition - startPosition
-        );
+        const result = await getFileContent(filePath, {
+          start: startPosition,
+          length: endPosition - startPosition,
+        });
         const byteLength = new TextEncoder().encode(result.content).length;
 
         // 在内容前面插入新内容
@@ -242,11 +242,10 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
         const chunkSize = config.streaming.chunkSize;
         const endPosition = Math.min(targetPosition + chunkSize, totalSize);
 
-        const result = await StorageServiceManager.getFileContent(
-          filePath,
-          targetPosition,
-          endPosition - targetPosition
-        );
+        const result = await getFileContent(filePath, {
+          start: targetPosition,
+          length: endPosition - targetPosition,
+        });
         const byteLength = new TextEncoder().encode(result.content).length;
         setContent(result.content);
         setCurrentFilePosition(endPosition); // 文件位置：跳转后的结束位置
@@ -319,14 +318,13 @@ export const useFileLoader = (file: StorageFile, filePath: string, forceTextMode
           const endPosition = Math.min(currentSamplePosition + sampleSize, totalSize);
 
           try {
-            const sampleContent = await StorageServiceManager.getFileContent(
-              filePath,
-              currentSamplePosition,
-              endPosition - currentSamplePosition
-            );
+            const sampleContent = await getFileContent(filePath, {
+              start: currentSamplePosition,
+              length: endPosition - currentSamplePosition,
+            });
             const sampleLines = sampleContent.content.split('\n');
 
-            sampleLines.forEach((line, lineIndex) => {
+            sampleLines.forEach((line: string, lineIndex: number) => {
               let match;
               regex.lastIndex = 0;
               while ((match = regex.exec(line)) !== null) {
