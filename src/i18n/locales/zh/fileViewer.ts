@@ -75,6 +75,7 @@ export const fileViewer = {
 
   // 数据表格查看器
   'data.table.loading': '正在加载数据文件 "{{fileName}}"...',
+  'data.table.loading.initial': '正在加载初始数据 ({{loaded}}/{{total}})...',
   'data.table.search.placeholder': '在数据中搜索...',
   'data.table.load.more': '加载更多 ({{count}} 条记录剩余)',
   'data.table.loading.more': '正在加载更多数据...',

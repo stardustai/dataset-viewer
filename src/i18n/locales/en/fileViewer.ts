@@ -77,6 +77,7 @@ export const fileViewer = {
 
   // Data Table Viewer
   'data.table.loading': 'Loading data file "{{fileName}}"...',
+  'data.table.loading.initial': 'Loading initial data ({{loaded}}/{{total}})...',
   'data.table.search.placeholder': 'Search data...',
   'data.table.load.more': 'Load more ({{count}} records remaining)',
   'data.table.loading.more': 'Loading more data...',

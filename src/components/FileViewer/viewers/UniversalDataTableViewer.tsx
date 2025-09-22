@@ -20,6 +20,44 @@ import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table
 import { UnifiedContentModal } from '../common';
 import { StorageClient } from '../../../services/storage/StorageClient';
 
+/**
+ * 安全的JSON序列化函数，处理BigInt等特殊类型
+ */
+function safeStringify(value: any): string {
+  try {
+    return JSON.stringify(
+      value,
+      (_key, val) => {
+        // 处理BigInt类型
+        if (typeof val === 'bigint') {
+          return val.toString() + 'n'; // 添加'n'后缀表示这是BigInt
+        }
+        // 处理Symbol类型
+        if (typeof val === 'symbol') {
+          return val.toString();
+        }
+        // 处理Function类型
+        if (typeof val === 'function') {
+          return '[Function]';
+        }
+        // 处理undefined
+        if (val === undefined) {
+          return '[undefined]';
+        }
+        return val;
+      },
+      2
+    );
+  } catch (error) {
+    // 如果序列化失败，返回toString()结果
+    try {
+      return String(value);
+    } catch (stringError) {
+      return '[Object]';
+    }
+  }
+}
+
 interface DataColumn {
   id: string;
   header: string;
@@ -110,7 +148,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
 
   // 打开内容详情弹窗
   const openContentModal = (value: unknown, column: string, rowIndex: number) => {
-    const content = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    const content = typeof value === 'string' ? value : safeStringify(value);
     setModalContentData({
       content,
       title: t('data.table.cell.details'),
@@ -152,8 +190,13 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
         onMetadataLoaded(meta);
       }
 
-      // 先清空loading状态，让用户看到表格结构
+      // 先清空loading状态和数据，立即显示表格结构
       setLoading(false);
+      setData([]);
+      setLoadedRows(0);
+
+      // 让UI有时间渲染表格结构，然后开始渐进式加载数据
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       // 然后开始渐进式加载数据
       const initialRowCount = Math.min(MAX_INITIAL_ROWS, meta.numRows);
@@ -498,18 +541,6 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
                     : t('data.table.loading.more')}
                 </span>
               </div>
-            </div>
-          )}
-
-          {/* Load More Button */}
-          {!loadingMore && !initialLoading && loadedRows < totalRows && (
-            <div className="flex justify-center py-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={loadMoreData}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                {t('data.table.load.more', { count: totalRows - loadedRows })}
-              </button>
             </div>
           )}
         </div>
