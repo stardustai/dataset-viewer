@@ -1099,11 +1099,6 @@ impl ZipHandler {
                 }
                 Ok(n) => {
                     output.extend_from_slice(&buffer[..n]);
-                    println!(
-                        "解压进度: 已输出{}字节，目标{}字节",
-                        output.len(),
-                        max_output_size
-                    );
                 }
                 Err(e) => return Err(format!("Decompression error: {}", e)),
             }

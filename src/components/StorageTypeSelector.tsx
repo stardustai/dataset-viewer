@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Server, Folder, Cloud, Bot, Network, Terminal, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { StorageClientType } from '../services/storage/types';
+import { storageIconMap } from '../utils/connectionIcons';
 
 interface StorageTypeSelectorProps {
   selectedType: StorageClientType;
@@ -20,25 +21,25 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
     {
       type: 'webdav' as StorageClientType,
       label: t('storage.type.webdav'),
-      icon: Server,
+      icon: storageIconMap.webdav,
       description: t('storage.type.webdav.description'),
     },
     {
       type: 'oss' as StorageClientType,
       label: t('storage.type.s3'),
-      icon: Cloud,
+      icon: storageIconMap.oss,
       description: t('storage.type.s3.description'),
     },
     {
       type: 'huggingface' as StorageClientType,
       label: t('storage.type.huggingface'),
-      icon: Bot,
+      icon: storageIconMap.huggingface,
       description: t('storage.type.huggingface.description'),
     },
     {
       type: 'local' as StorageClientType,
       label: t('storage.type.local'),
-      icon: Folder,
+      icon: storageIconMap.local,
       description: t('storage.type.local.description'),
     },
   ];
@@ -48,13 +49,13 @@ export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
     {
       type: 'ssh' as StorageClientType,
       label: t('storage.type.ssh'),
-      icon: Terminal,
+      icon: storageIconMap.ssh,
       description: t('storage.type.ssh.description'),
     },
     {
       type: 'smb' as StorageClientType,
       label: t('storage.type.smb'),
-      icon: Network,
+      icon: storageIconMap.smb,
       description: t('storage.type.smb.description'),
     },
   ];

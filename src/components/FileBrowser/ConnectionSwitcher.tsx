@@ -1,18 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ChevronDown,
-  Database,
-  Cloud,
-  HardDrive,
-  User,
-  Settings,
-  Trash2,
-  Star,
-  StarOff,
-} from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useStorageStore } from '../../stores/storageStore';
 import { formatConnectionDisplayName } from '../../utils/urlUtils';
+import { getConnectionIcon } from '../../utils/connectionIcons';
 import { StoredConnection } from '../../services/connectionStorage';
 
 interface ConnectionSwitcherProps {
@@ -27,7 +18,6 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
     loadConnections,
     connectWithConfig,
     removeConnection,
-    setDefaultConnection,
     connectionStatus,
   } = useStorageStore();
 
@@ -52,25 +42,9 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 获取连接图标
-  const getConnectionIcon = (type: string) => {
-    const iconProps = { size: 16, className: 'text-gray-500 dark:text-gray-400' };
-
-    switch (type) {
-      case 'webdav':
-        return <Cloud {...iconProps} />;
-      case 'local':
-        return <HardDrive {...iconProps} />;
-      case 'oss':
-        return <Database {...iconProps} />;
-      case 'ssh':
-      case 'smb':
-        return <User {...iconProps} />;
-      case 'huggingface':
-        return <Database {...iconProps} />;
-      default:
-        return <Settings {...iconProps} />;
-    }
+  // 获取连接图标 - 使用公共工具函数
+  const getStorageIcon = (type: string) => {
+    return getConnectionIcon(type, 16, 'text-gray-500 dark:text-gray-400');
   };
 
   // 切换连接
@@ -100,72 +74,28 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
     }
   };
 
-  // 设置默认连接
-  const handleSetDefault = (e: React.MouseEvent, connectionId: string) => {
-    e.stopPropagation();
-    setDefaultConnection(connectionId);
-    loadConnections(); // 重新加载以更新默认状态
-  };
-
   // 获取当前连接显示名称
   const getCurrentDisplayName = () => {
     if (!currentConnection) return t('no.connection');
     return formatConnectionDisplayName(currentConnection);
   };
 
-  // 获取连接状态显示文本
-  const getStatusText = () => {
-    switch (connectionStatus) {
-      case 'connecting':
-        return t('connecting');
-      case 'connected':
-        return t('connected');
-      case 'error':
-        return t('connection.error');
-      case 'disconnected':
-        return t('disconnected');
-      default:
-        return t('no.connection');
-    }
-  };
-
-  // 获取状态颜色
-  const getStatusColor = () => {
-    switch (connectionStatus) {
-      case 'connecting':
-        return 'text-yellow-600 dark:text-yellow-400';
-      case 'connected':
-        return 'text-green-600 dark:text-green-400';
-      case 'error':
-        return 'text-red-600 dark:text-red-400';
-      case 'disconnected':
-        return 'text-gray-500 dark:text-gray-400';
-      default:
-        return 'text-gray-500 dark:text-gray-400';
-    }
-  };
-
   return (
-    <div className="relative min-w-[280px]" ref={dropdownRef}>
+    <div className="relative min-w-64" ref={dropdownRef}>
       {/* 主按钮 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isConnecting}
-        className="flex items-center justify-between w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        className="flex items-center justify-between w-full p-2 bg-white dark:bg-gray-800 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
       >
         <div className="flex items-center space-x-3 min-w-0">
-          {currentConnection && getConnectionIcon(currentConnection.type)}
+          {currentConnection && getStorageIcon(currentConnection.type)}
           <div className="flex flex-col items-start min-w-0">
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
               {getCurrentDisplayName()}
             </span>
-            <span className={`text-xs ${getStatusColor()}`}>{getStatusText()}</span>
           </div>
         </div>
-        <ChevronDown
-          size={16}
-          className={`text-gray-400 dark:text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
       </button>
 
       {/* 下拉菜单 */}
@@ -192,15 +122,12 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
                     onClick={() => handleConnectionSwitch(connection)}
                   >
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      {getConnectionIcon(connection.config.type)}
+                      {getStorageIcon(connection.config.type)}
                       <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                             {connection.name}
                           </span>
-                          {connection.isDefault && (
-                            <Star size={12} className="text-yellow-500 fill-current" />
-                          )}
                         </div>
                         <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                           {formatConnectionDisplayName(connection.config)}
@@ -210,16 +137,6 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
 
                     {/* 操作按钮 */}
                     <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {!connection.isDefault && (
-                        <button
-                          onClick={e => handleSetDefault(e, connection.id)}
-                          className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-yellow-500 dark:hover:text-yellow-400 rounded transition-colors"
-                          title={t('set.as.default')}
-                        >
-                          <StarOff size={14} />
-                        </button>
-                      )}
-
                       <button
                         onClick={e => handleDeleteConnection(e, connection.id)}
                         className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors"
