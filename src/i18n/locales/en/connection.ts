@@ -1,6 +1,5 @@
 export const connection = {
   // Application description for connection page
-  'connect.storage': 'Connect to data source or local file system',
   'app.tagline': 'Easily view and search your datasets',
   'app.description':
     'Cross-platform dataset viewer supporting WebDAV, object storage, and local file systems with powerful features like streaming and virtual scrolling, designed for large datasets.',
@@ -33,13 +32,7 @@ export const connection = {
   'storage.type.huggingface.description': 'AI Datasets',
 
   // Connection name formats
-  'connection.name.webdav': 'WebDAV({{host}})',
-  'connection.name.ssh': 'SSH({{host}})',
-  'connection.name.smb': 'SMB({{host}}/{{share}})',
-  'connection.name.local': 'Local Files({{path}})',
   'connection.name.s3': 'S3({{host}}-{{bucket}})',
-  'connection.name.oss': 'OSS({{host}}-{{bucket}})',
-  'connection.name.huggingface': 'Hugging Face({{org}})',
 
   // Form fields
   'server.url': 'Server URL',
@@ -54,19 +47,9 @@ export const connection = {
   // OSS specific fields
   'oss.platform.select': 'Select Platform',
   'oss.region.select': 'Select Region',
-  'oss.endpoint': 'Endpoint',
   'oss.endpoint.placeholder': 'https://oss-cn-hangzhou.aliyuncs.com or https://s3.amazonaws.com',
-  'oss.endpoint.description':
-    'Support Alibaba Cloud OSS, AWS S3, MinIO and other S3 API compatible object storage services',
   'oss.endpoint.custom': 'Custom Endpoint',
   'oss.endpoint.custom.description': 'Enter S3 API compatible object storage service endpoint',
-  'oss.endpoint.current': 'Current Endpoint:',
-  'oss.platforms.aliyun': 'Alibaba Cloud OSS',
-  'oss.platforms.aws': 'AWS S3',
-  'oss.platforms.tencent': 'Tencent Cloud COS',
-  'oss.platforms.huawei': 'Huawei Cloud OBS',
-  'oss.platforms.minio': 'MinIO',
-  'oss.platforms.custom': 'Custom',
   'oss.access.key': 'Access Key',
   'oss.access.key.placeholder': 'Access Key ID',
   'oss.secret.key': 'Secret Key',
@@ -75,7 +58,6 @@ export const connection = {
   'oss.bucket.placeholder': 'Bucket name or path, e.g.: my-bucket or my-bucket/path/prefix',
   'oss.region': 'Region',
   'oss.region.placeholder': 'e.g.: cn-hangzhou, us-east-1',
-  'oss.region.optional': 'Region (Optional)',
 
   // SSH specific fields
   'ssh.server': 'Server URL',
@@ -108,14 +90,6 @@ export const connection = {
   'error.access.key.required': 'Please enter Access Key',
   'error.secret.key.required': 'Please enter Secret Key',
   'error.bucket.required': 'Please enter Bucket name',
-  'error.ssh.server.required': 'Please enter SSH server address',
-  'error.ssh.username.required': 'Please enter SSH username',
-  'error.ssh.password.required': 'Please enter SSH password or private key file',
-  'error.ssh.path.required': 'Please enter remote path',
-  'error.smb.server.required': 'Please enter SMB server address',
-  'error.smb.share.required': 'Please enter share name',
-  'error.smb.username.required': 'Please enter username',
-  'error.smb.password.required': 'Please enter password',
 
   // Connection management
   'no.saved.connections': 'No saved connections',
@@ -123,12 +97,6 @@ export const connection = {
     'Connection information can be automatically saved after successful connection',
   'connection.select.saved': 'Select saved connection',
   'or.new.connection': 'Or create new connection',
-  'save.connection': 'Save Connection',
-  'save.password': 'Save Password',
-  'save.password.warning':
-    'Password will be saved in plain text in local storage, please use with caution',
-  'connection.name.placeholder': 'Connection name (optional)',
-  'connection.name.hint': 'Leave empty to auto-generate name',
   'set.default': 'Set as default',
   'unset.default': 'Unset default',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
@@ -142,18 +110,8 @@ export const connection = {
   'error.oss.connection.failed': 'OSS connection failed',
 
   // SSH errors
-  'error.ssh.connection.failed': 'SSH connection failed',
-  'error.ssh.authentication.failed':
-    'SSH authentication failed, please check username and password or private key',
-  'error.ssh.key.not.found': 'Private key file not found or cannot be read',
-  'error.ssh.permission.denied': 'SSH permission denied, please check user permissions',
 
   // SMB errors
-  'error.smb.connection.failed': 'SMB connection failed',
-  'error.smb.authentication.failed':
-    'SMB authentication failed, please check username and password',
-  'error.smb.share.not.found': 'Specified shared directory not found',
-  'error.smb.permission.denied': 'SMB access denied, please check user permissions',
 
   // OSS help information
   'oss.help.credentials.title': 'How to get Access Key:',
@@ -173,11 +131,8 @@ export const connection = {
   'huggingface.help.token.step1': 'Visit',
   'huggingface.help.token.step2': 'Create new access token',
   'huggingface.help.token.step3': 'Select "Read" permission',
-  'error.huggingface.connection.failed': 'Hugging Face connection failed',
 
   // Connection switching
-  'connection.switch.failed': 'Failed to switch connection',
-  'connection.switch.error': 'Error occurred while switching connection: {{error}}',
   'connection.switch.type_mismatch':
     'Connection type mismatch: Cannot use {{connectionType}} client to connect to "{{connectionName}}"',
   'connection.switch.missing_credentials':

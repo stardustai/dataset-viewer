@@ -1,6 +1,5 @@
 export const connection = {
   // 连接页面应用描述
-  'connect.storage': '连接到数据源或本地文件系统',
   'app.tagline': '轻松查看和搜索您的数据集',
   'app.description':
     '跨平台数据集查看工具，支持 WebDAV、对象存储和本地文件系统，提供流式传输和虚拟滚动等强大功能，专为大数据集设计。',
@@ -33,13 +32,7 @@ export const connection = {
   'storage.type.huggingface.description': 'AI 数据集',
 
   // 连接名称格式
-  'connection.name.webdav': 'WebDAV({{host}})',
-  'connection.name.ssh': 'SSH({{host}})',
-  'connection.name.smb': 'SMB({{host}}/{{share}})',
-  'connection.name.local': '本机文件({{path}})',
   'connection.name.s3': 'S3({{host}}-{{bucket}})',
-  'connection.name.oss': 'OSS({{host}}-{{bucket}})',
-  'connection.name.huggingface': 'Hugging Face({{org}})',
 
   // 表单字段
   'server.url': '服务器地址',
@@ -54,18 +47,9 @@ export const connection = {
   // OSS 特定字段
   'oss.platform.select': '选择平台',
   'oss.region.select': '选择区域',
-  'oss.endpoint': '端点地址',
   'oss.endpoint.placeholder': 'https://oss-cn-hangzhou.aliyuncs.com 或 https://s3.amazonaws.com',
-  'oss.endpoint.description': '支持阿里云 OSS、AWS S3、MinIO 等兼容 S3 API 的对象存储服务',
   'oss.endpoint.custom': '自定义端点',
   'oss.endpoint.custom.description': '输入兼容 S3 API 的对象存储服务端点',
-  'oss.endpoint.current': '当前端点：',
-  'oss.platforms.aliyun': '阿里云 OSS',
-  'oss.platforms.aws': 'AWS S3',
-  'oss.platforms.tencent': '腾讯云 COS',
-  'oss.platforms.huawei': '华为云 OBS',
-  'oss.platforms.minio': 'MinIO',
-  'oss.platforms.custom': '自定义',
   'oss.access.key': 'Access Key',
   'oss.access.key.placeholder': '访问密钥 ID',
   'oss.secret.key': 'Secret Key',
@@ -74,7 +58,6 @@ export const connection = {
   'oss.bucket.placeholder': '存储桶名称或路径，如：my-bucket 或 my-bucket/path/prefix',
   'oss.region': '区域',
   'oss.region.placeholder': '例如：cn-hangzhou、us-east-1',
-  'oss.region.optional': '区域 (可选)',
 
   // SSH 特定字段
   'ssh.server': '服务器地址',
@@ -107,25 +90,12 @@ export const connection = {
   'error.access.key.required': '请输入 Access Key',
   'error.secret.key.required': '请输入 Secret Key',
   'error.bucket.required': '请输入 Bucket 名称',
-  'error.ssh.server.required': '请输入 SSH 服务器地址',
-  'error.ssh.username.required': '请输入 SSH 用户名',
-  'error.ssh.password.required': '请输入 SSH 密码或私钥文件',
-  'error.ssh.path.required': '请输入远程路径',
-  'error.smb.server.required': '请输入 SMB 服务器地址',
-  'error.smb.share.required': '请输入共享名称',
-  'error.smb.username.required': '请输入用户名',
-  'error.smb.password.required': '请输入密码',
 
   // 连接管理
   'no.saved.connections': '暂无已保存的连接',
   'save.connection.hint': '连接成功后可自动保存连接信息',
   'connection.select.saved': '选择已保存的连接',
   'or.new.connection': '或新建连接',
-  'save.connection': '保存连接',
-  'save.password': '保存密码',
-  'save.password.warning': '密码将以明文形式保存在本地存储中，请谨慎使用',
-  'connection.name.placeholder': '连接名称（可选）',
-  'connection.name.hint': '留空将自动生成名称',
   'set.default': '设为默认',
   'unset.default': '取消默认',
   'confirm.delete.connection': '确定要删除这个连接吗？',
@@ -138,16 +108,8 @@ export const connection = {
   'error.oss.connection.failed': 'OSS 连接失败',
 
   // SSH 错误
-  'error.ssh.connection.failed': 'SSH 连接失败',
-  'error.ssh.authentication.failed': 'SSH 身份验证失败，请检查用户名和密码或私钥',
-  'error.ssh.key.not.found': '私钥文件不存在或无法读取',
-  'error.ssh.permission.denied': 'SSH 权限被拒绝，请检查用户权限',
 
   // SMB 错误
-  'error.smb.connection.failed': 'SMB 连接失败',
-  'error.smb.authentication.failed': 'SMB 身份验证失败，请检查用户名和密码',
-  'error.smb.share.not.found': '找不到指定的共享目录',
-  'error.smb.permission.denied': 'SMB 访问被拒绝，请检查用户权限',
 
   // OSS 帮助信息
   'oss.help.credentials.title': 'Access Key 获取方式：',
@@ -167,11 +129,8 @@ export const connection = {
   'huggingface.help.token.step1': '访问',
   'huggingface.help.token.step2': '创建新的访问令牌',
   'huggingface.help.token.step3': '选择 "Read" 权限即可',
-  'error.huggingface.connection.failed': '连接 Hugging Face 失败',
 
   // 连接切换
-  'connection.switch.failed': '切换连接失败',
-  'connection.switch.error': '切换连接时发生错误：{{error}}',
   'connection.switch.type_mismatch':
     '连接类型不匹配：无法使用 {{connectionType}} 客户端连接到 "{{connectionName}}"',
   'connection.switch.missing_credentials': '连接 "{{connectionName}}" 缺少必要的认证信息',

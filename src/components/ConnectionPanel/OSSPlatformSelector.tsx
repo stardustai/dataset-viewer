@@ -360,13 +360,9 @@ export const OSSPlatformSelector: React.FC<OSSPlatformSelectorProps> = ({
         <div>
           <label
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            title={
-              isCustom
-                ? t('oss.endpoint.custom.description', '输入兼容 S3 API 的对象存储服务端点')
-                : undefined
-            }
+            title={isCustom ? t('oss.endpoint.custom.description') : undefined}
           >
-            {isCustom ? t('oss.endpoint.custom', '自定义端点') : t('oss.region.select', '选择区域')}
+            {isCustom ? t('oss.endpoint.custom') : t('oss.region.select')}
           </label>
           {isCustom ? (
             <input

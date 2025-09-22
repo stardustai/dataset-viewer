@@ -1,24 +1,13 @@
 export const fileBrowser = {
   // 数据浏览器界面
-  'file.browser': '数据浏览器',
-  'go.back': '返回',
-  'go.home': '主页',
   'directory.empty': '此目录为空',
-  'all.files.hidden': '所有文件都是隐藏文件',
   'hide.hidden': '隐藏文件',
   'show.hidden.files': '显示以 . 开头的隐藏文件',
   'hide.hidden.files': '隐藏以 . 开头的隐藏文件',
 
   // 搜索功能
   'search.files': '搜索文件名...',
-  'search.files.placeholder': '搜索文件...',
-  'search.global': '搜索数据集',
-  'no.search.results': '没有找到匹配的文件',
-  'try.different.search': '尝试其他搜索词或清除搜索',
-  'clear.search': '清除搜索',
   'search.results.count': '找到 {{count}} 个文件',
-  'no.matching.files': '未找到匹配的文件',
-  'try.different.keywords': '请尝试不同的搜索关键词',
 
   // 性能指示器
   'performance.virtualized.mode': '虚拟化模式',
@@ -41,8 +30,6 @@ export const fileBrowser = {
   // 加载状态
   'loading.directory': '正在加载 {{path}} 目录...',
   'loading.directory.root': '正在加载根目录...',
-  'loading.status': '正在加载...',
   'loading.more': '正在加载更多文件...',
-  'loading.more.description': '请稍候，正在获取更多内容',
   'loading.more.failed': '加载更多文件失败',
 };

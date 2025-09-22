@@ -34,9 +34,6 @@ export const settings = {
   'cache.clear.failed': '缓存清理失败',
 
   // 插件管理
-  'settings.plugins': '插件管理',
-  'plugins.description': '安装和管理文件查看器插件，扩展更多文件格式支持',
-  'manage.plugins': '管理插件', // 保留兼容性
   'plugin.management': '插件管理',
 
   // 关于

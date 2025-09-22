@@ -1,16 +1,13 @@
 export const common = {
   // 应用信息
   'app.name': '数据集查看器',
-  'app.initializing': '正在初始化...',
 
   // 连接状态
-  'connected.to': '已连接到',
   'saved.connections': '已保存的连接',
   'no.connection': '未连接',
   'no.saved.connections': '暂无已保存的连接',
   connected: '已连接',
   disconnected: '已断开',
-  'connection.error': '连接错误',
 
   // 基础操作
   save: '保存',
@@ -88,7 +85,6 @@ export const common = {
   'breadcrumb.edit.path': '编辑路径',
 
   // 连接管理
-  'set.as.default': '设为默认',
   'delete.connection': '删除连接',
   'confirm.delete.connection': '确定要删除这个连接吗？',
 };

@@ -3,15 +3,11 @@ export const fileViewer = {
   'file.viewer': 'File Viewer',
   'viewer.go.back': 'Go back',
   'viewer.download': 'Download',
-  'viewer.percent.loaded': '{{percent}}% loaded',
 
   // Search functionality
   'search.in.file': 'Search in file...',
   'viewer.search.placeholder': 'Search in file...',
   'viewer.search.results': '{{current}} of {{total}}',
-  'search.results': 'search results',
-  'previous.result': 'Previous result',
-  'next.result': 'Next result',
   'viewer.previous.result': 'Previous result',
   'viewer.next.result': 'Next result',
 
@@ -25,45 +21,24 @@ export const fileViewer = {
   'search.too.many.results': 'Too many results, showing only first 5000 matches',
   'search.sampling': '(Sampling)',
   'line.number': 'Line {{line}}',
-  'line.content': 'Line {{line}} content',
   image: 'Image',
-  'truncated.image': 'Truncated Image',
-  'image.truncated.title': 'Image Data Truncated',
-  'image.truncated.description':
-    'This line contains image data, but it has been truncated for display. Please expand the full line content to view the image.',
 
   // Loading control
-  'load.more': 'Load More Content',
   loaded: 'loaded',
   'viewer.load.more': 'Load More Content',
-  'viewer.load.all': 'Load All Content',
-  'viewer.fully.loaded': 'File fully loaded',
   'viewer.position.info': 'Viewed {{current}} / {{total}} ({{percent}}%)',
-  'file.shown': 'Shown',
-  'file.complete': 'Complete file',
-  'file.remaining': 'Remaining',
-  'load.more.chunk': 'Load More (512KB)',
   'load.complete.content': 'Load Complete Content',
 
   // Directory browser load more
-  'directory.load.more': 'Load More Files',
-  'directory.loading.more': 'Loading more files...',
-  'directory.loaded.files': '{{count}} files loaded',
-  'directory.has.more': 'More files available',
 
   // Viewer functionality
-  'viewer.toggle.wrap': 'Toggle word wrap',
   'viewer.jump.percent': 'Jump to percentage',
   'viewer.jump.percent.large': 'Jump to file position by percentage (large file mode)',
   'viewer.jump': 'Jump',
-  'viewer.line.numbers.estimated':
-    'Line numbers are estimated (starting from approx. line {{startLine}})',
 
   // Syntax highlighting
-  'syntax.highlighting': 'Syntax Highlighting',
   'syntax.highlighting.enable': 'Enable syntax highlighting',
   'syntax.highlighting.disable': 'Disable syntax highlighting',
-  'syntax.highlighting.language': 'Language: {{language}}',
 
   // Media viewer
   'viewer.zoom.in': 'Zoom in',
@@ -73,63 +48,39 @@ export const fileViewer = {
 
   // Copy functionality
   'copy.full.path': 'Copy full path',
-  'copy.line.content': 'Copy line content',
-  'copy.content': 'Copy content',
   copied: 'Copied',
   'copied.to.clipboard': 'Copied to clipboard',
   'copy.failed': 'Copy failed',
 
   // Format functionality
   'format.json': 'Format JSON',
-  'format.json.success': 'JSON formatted successfully',
-  'format.json.failed': 'JSON format failed: content is not valid JSON',
   'format.xml': 'Format XML',
-  'format.xml.success': 'XML formatted successfully',
-  'format.xml.failed': 'XML format failed: content is not valid XML',
-  'formatted.content': 'Formatted Content',
   'formatted.json': 'Formatted',
   'formatted.xml': 'Formatted',
   'original.content': 'Original Content',
-  'content.details': 'Content Details',
 
   // Loading status
   'loading.file': 'Loading file "{{filename}}"...',
   'loading.analyzing.archive': 'Analyzing archive...',
   'loading.preview': 'Loading preview...',
   'loading.more.content': 'Loading more content...',
-  'loading.text': 'Loading...',
   'preparing.preview': 'Preparing preview...',
   'select.file.for.preview': 'Select a file to preview',
 
   // Stream status
-  'stream.paused': 'Paused',
-  'stream.completed': 'Loading completed',
-  'stream.error': 'Error',
 
   // Archive files
-  'archive.empty': 'Archive is empty',
   'folder.selected': 'Folder Selected',
   'folder.info.message':
     'This is a folder. Folders in archives are used for organizing file structure and cannot be entered or previewed.',
   'archive.root': 'Home',
-  'archive.back': 'Back',
 
   // Data Table Viewer
-  'data.table.viewer': 'Data Table Viewer',
   'data.table.loading': 'Loading data file "{{fileName}}"...',
-  'data.table.error': 'Error loading data',
-  'data.table.rows': 'Rows',
-  'data.table.columns': 'Columns',
   'data.table.search.placeholder': 'Search data...',
-  'data.table.search.global': 'Global search...',
-  'data.table.search.column': 'Search this column...',
-  'data.table.filter': 'Filter',
-  'data.table.clear.filter': 'Clear filter',
   'data.table.load.more': 'Load more ({{count}} records remaining)',
   'data.table.loading.more': 'Loading more data...',
-  'data.table.loaded.rows': 'Loaded {{loaded}} / {{total}} rows',
   'data.table.showing.filtered': 'Showing {{showing}} / {{total}} loaded records',
-  'data.table.sheet.label': 'Sheet',
   'data.table.columns.toggle': 'Show/Hide column panel',
   'data.table.columns.visibility': 'Column visibility',
   'data.table.all.loaded': 'All data loaded',
@@ -142,13 +93,11 @@ export const fileViewer = {
   'data.table.cell.click.view': 'Click to view full content',
   'data.table.cell.double.click.view': 'Double click to view details',
   'data.table.cell.details': 'Cell Details',
-  'line.position': 'Line {{line}}',
   'line.content.title': 'Line {{line}} Content',
   'content.stats.chars': 'Characters: {{characters}}',
   'cell.position': 'Location: {{column}} column, row {{row}}',
   'data.table.cell.copy': 'Copy cell content',
   'data.table.null.value': 'null',
-  'data.table.items.count': '{{count}} items',
   'data.table.sheet.switch': 'Switch sheet',
   'data.table.sheet': 'Sheet',
   'data.table.data.type': 'Data Type',
@@ -178,18 +127,12 @@ export const fileViewer = {
 
   // Markdown 查看器
   'markdown.preview': 'Markdown Preview',
-  'markdown.rendered': 'Rendered View',
-  'markdown.raw': 'Raw Content',
   'markdown.parsing': 'Parsing Markdown...',
 
   // Word document viewer
   'word.viewer': 'Word Document Viewer',
-  'word.extracted.text': 'Extracted Text',
-  'word.raw.content': 'Raw Content',
   'word.doc.unsupported': 'This is an old version Word document format',
   'word.doc.suggestion': 'Please download and open with Microsoft Word, or convert to .docx format',
-  'word.preview.limitation':
-    'This is a simplified document preview. For the best viewing experience, please download and open with dedicated Word processing software.',
   'word.doc.legacy.title': 'Legacy Word Document',
   'word.doc.legacy.message':
     'This file is a legacy Word document format (.doc) that requires specialized parser.\n\nRecommendations:\n1. Download and open with Microsoft Word\n2. Convert to .docx format for better support',
@@ -201,7 +144,6 @@ export const fileViewer = {
   'word.load.failed': 'Failed to load document. Please try downloading the file to view content.',
 
   // Presentation viewer
-  'presentation.viewer': 'Presentation Viewer',
   'presentation.fileSize': 'File size: {{size}} MB',
   'presentation.slideCount': '{{count}} slides',
   'presentation.preview.title': 'PowerPoint Presentation Preview',
@@ -210,7 +152,6 @@ export const fileViewer = {
   'presentation.preview.limitation.title': 'Preview Limitations',
   'presentation.preview.limitation.description':
     'Due to the complexity of presentations, not all content and effects can be fully displayed in the browser. We recommend downloading the file and opening it with PowerPoint or compatible software for the best experience.',
-  'presentation.download.to.view': 'Download file to view complete presentation',
   'presentation.load.error':
     'Failed to load presentation. Please try downloading the file to view content.',
   'loading.presentation': 'Loading presentation "{{filename}}"...',
@@ -241,9 +182,6 @@ export const fileViewer = {
   lines: 'Lines',
 
   // View modes
-  'virtual.viewer': 'Virtual Viewer',
-  'virtual.view': 'Virtual View',
-  'simple.view': 'Simple View',
 
   // PCD Point Cloud Viewer
   'pcd.loading': 'Loading point cloud data...',
@@ -259,7 +197,6 @@ export const fileViewer = {
 
   // Plugin related
   'plugin.loading': 'Loading plugin...',
-  'plugin.loading.component': 'Loading plugin component...',
   'plugin.notFound': 'No plugin found for file "{{filename}}"',
   'plugin.noSuitablePlugin': 'No suitable plugin found for this file type',
 };

@@ -12,14 +12,8 @@ interface ConnectionSwitcherProps {
 
 export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnectionChange }) => {
   const { t } = useTranslation();
-  const {
-    currentConnection,
-    connections,
-    loadConnections,
-    connectWithConfig,
-    removeConnection,
-    connectionStatus,
-  } = useStorageStore();
+  const { currentConnection, connections, loadConnections, connectWithConfig, removeConnection } =
+    useStorageStore();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);

@@ -35,7 +35,7 @@ export const LazyComponentWrapper: React.FC<LazyComponentWrapperProps> = ({
           >
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
-              {loadingText || t('loading', '加载中...')}
+              {loadingText || t('loading')}
             </span>
           </div>
         }

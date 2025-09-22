@@ -1,24 +1,13 @@
 export const fileBrowser = {
   // Data browser interface
-  'file.browser': 'Data Browser',
-  'go.back': 'Go back',
-  'go.home': 'Home',
   'directory.empty': 'This directory is empty',
-  'all.files.hidden': 'All files are hidden files',
   'hide.hidden': 'Hide Hidden',
   'show.hidden.files': 'Show hidden files starting with .',
   'hide.hidden.files': 'Hide hidden files starting with .',
 
   // Search functionality
   'search.files': 'Search file names...',
-  'search.files.placeholder': 'Search files...',
-  'search.global': 'Search datasets',
-  'no.search.results': 'No matching files found',
-  'try.different.search': 'Try different keywords or clear search',
-  'clear.search': 'Clear search',
   'search.results.count': 'Found {{count}} files',
-  'no.matching.files': 'No matching files found',
-  'try.different.keywords': 'Try different search keywords',
 
   // Performance indicator
   'performance.virtualized.mode': 'Virtualized Mode',
@@ -41,8 +30,6 @@ export const fileBrowser = {
   // Loading status
   'loading.directory': 'Loading{{path}} directory...',
   'loading.directory.root': 'Loading root directory...',
-  'loading.status': 'Loading...',
   'loading.more': 'Loading more files...',
-  'loading.more.description': 'Please wait while we fetch additional content',
   'loading.more.failed': 'Failed to load more files',
 };

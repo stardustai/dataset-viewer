@@ -13,29 +13,15 @@ export const download = {
   'download.close': 'Close',
 
   // Download status
-  'download.status.preparing': 'Preparing',
-  'download.status.downloading': 'Downloading',
-  'download.status.completed': 'Completed',
-  'download.status.error': 'Failed',
-  'download.status.cancelled': 'Cancelled',
   'download.status.stopped': 'Download stopped',
 
   // Download actions
   'download.remove.stopped': 'Remove stopped download',
 
   // Folder download
-  'download.folder': 'Download Folder',
   'download.folder.all': 'Download All',
-  'download.folder.recursive': 'Download Folder (Recursive)',
-  'download.folder.progress': 'Folder Download Progress',
-  'download.folder.current': 'Current File',
-  'download.folder.completed': 'Folder Download Completed',
   'download.folder.select.directory': 'Select Save Directory',
 
   // Download control
-  'download.recursive.on': 'Enable recursive download (include subdirectories)',
-  'download.recursive.off': 'Disable recursive download (current folder only)',
   'download.stop.all': 'Stop all downloads',
-  'download.resume.service': 'Resume download service',
-  'download.service.stopped': 'Download service is stopped',
 };

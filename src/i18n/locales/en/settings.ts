@@ -35,10 +35,6 @@ export const settings = {
   'cache.clear.failed': 'Failed to clear cache',
 
   // Plugin management
-  'settings.plugins': 'Plugin Management',
-  'plugins.description':
-    'Install and manage file viewer plugins to extend support for more file formats',
-  'manage.plugins': 'Manage Plugins', // Keep for compatibility
   'plugin.management': 'Plugin Management',
 
   // About

@@ -1,15 +1,12 @@
 export const errors = {
   // 连接错误
   'error.connection.failed': '连接失败，请检查服务器地址和凭据。',
-  'error.credentials': '连接失败，请验证服务器地址和凭据。',
   'error.oss.connection.failed': 'OSS 连接失败，请检查配置信息。',
   'error.unknown': '未知错误',
 
   // 文件操作错误
   'error.load.directory': '加载目录内容失败',
   'error.failed.path': '失败路径',
-  'error.load.file': '加载文件内容失败',
-  'error.load.more.content': '加载更多内容失败',
   'error.load.archive': '加载压缩文件失败',
   'error.load.details': '加载详细信息失败',
   'error.preview.file': '预览文件失败',
@@ -23,7 +20,6 @@ export const errors = {
 
   // 下载错误
   'download.failed': '下载失败',
-  'errors.download.failed': '文件下载失败：{{error}}',
   'error.failedToLoadDataFile': '加载数据文件失败',
   'error.failedToSwitchSheet': '切换工作表失败',
 
@@ -35,13 +31,8 @@ export const errors = {
   'viewer.audio.not.supported': '您的浏览器不支持该音频格式',
   'viewer.pdf.not.supported': '您的浏览器不支持PDF预览',
   'viewer.video.playback.error': '视频播放出错',
-  'viewer.spreadsheet.preview.not.available': '电子表格预览不可用',
 
   // 预览错误
-  'preview.failed': '预览失败',
-  'retry.preview': '重试预览',
-  'preview.no.content': '文件内容为空',
-  'preview.render.error': '预览渲染失败',
 
   // 压缩文件格式错误
   'archive.format.7z.not.supported':
@@ -51,7 +42,6 @@ export const errors = {
   'archive.format.brotli.not.supported': '暂不支持 Brotli 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
   'archive.format.lz4.not.supported': '暂不支持 LZ4 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
   'archive.format.zstd.not.supported': '暂不支持 Zstd 格式。支持的格式：ZIP、TAR、TAR.GZ、GZIP',
-  'archive.format.unsupported': '不支持的压缩文件格式',
 
   // 错误边界
   'error.boundary.title': '应用出现错误',

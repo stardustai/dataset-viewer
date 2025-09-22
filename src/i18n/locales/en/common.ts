@@ -1,16 +1,13 @@
 export const common = {
   // App information
   'app.name': 'Dataset Viewer',
-  'app.initializing': 'Initializing...',
 
   // Connection status
-  'connected.to': 'Connected to',
   'saved.connections': 'Saved Connections',
   'no.connection': 'No Connection',
   'no.saved.connections': 'No saved connections',
   connected: 'Connected',
   disconnected: 'Disconnected',
-  'connection.error': 'Connection Error',
 
   // Basic operations
   save: 'Save',
@@ -89,7 +86,6 @@ export const common = {
   'breadcrumb.edit.path': 'Edit path',
 
   // Connection management
-  'set.as.default': 'Set as default',
   'delete.connection': 'Delete connection',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
 };
