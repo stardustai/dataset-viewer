@@ -8,6 +8,7 @@ export const storageIconMap = {
   webdav: Server,
   local: Folder,
   oss: Cloud,
+  s3: Cloud,
   huggingface: Bot,
   ssh: Terminal,
   smb: Network,
