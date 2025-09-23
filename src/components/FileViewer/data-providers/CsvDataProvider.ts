@@ -297,7 +297,9 @@ export class CsvDataProvider implements DataProvider {
 
   private async getStreamingBuffer(): Promise<CsvStreamingBuffer> {
     if (!this.streamingBuffer) {
-      this.streamingBuffer = new CsvStreamingBuffer(this.filePath, this.fileSize);
+      const store = useStorageStore.getState();
+      const url = store.getFileUrl(this.filePath);
+      this.streamingBuffer = new CsvStreamingBuffer(url, this.fileSize);
     }
     return this.streamingBuffer;
   }
