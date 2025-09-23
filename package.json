@@ -2,7 +2,7 @@
   "name": "dataset-viewer",
   "displayName": "Dataset Viewer",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.6.0-beta.0",
   "type": "module",
   "workspaces": [
     "packages/*"
