@@ -3,13 +3,19 @@ import Papa from 'papaparse';
 import { useStorageStore } from '../../../stores/storageStore';
 
 /**
- * CSV 流式缓冲区实现
- * 支持分块读取 CSV 文件，用于大文件的流式加载
+ * CSV streaming buffer implementation
+ * Reads and parses CSV files in 1MB chunks sequentially
  */
 class CsvStreamingBuffer {
   private protocolUrl: string;
   private fileSize: number;
-  private chunks: Map<string, { text: string; encoding: string }> = new Map();
+  private readonly chunkSize = 1024 * 1024; // 1MB chunk size
+  private headerText: string = '';
+  private columns: string[] = [];
+  private nextReadOffset = 0; // Next file read position
+  private isFileCompletelyLoaded = false; // Whether file is completely loaded
+  private allRows: string[][] = []; // Store all loaded rows
+  private loadedChunks = 0; // Number of chunks loaded
 
   constructor(protocolUrl: string, fileSize: number) {
     this.protocolUrl = protocolUrl;
@@ -17,67 +23,257 @@ class CsvStreamingBuffer {
   }
 
   /**
-   * 读取指定范围的文本数据
-   * @param start 起始字节位置
-   * @param length 读取长度（字节）
-   * @returns Promise<string> 文本内容
+   * 初始化，读取文件头获取列信息，并处理第一个分块
    */
-  async readTextRange(start: number, length?: number): Promise<string> {
-    // 边界校验
-    const from = Math.max(0, Math.min(start, this.fileSize));
-    const actualLength = length ? Math.min(length, this.fileSize - from) : this.fileSize - from;
-    const to = from + actualLength;
-
-    if (actualLength <= 0) {
-      return '';
+  async initialize(): Promise<void> {
+    if (this.headerText) {
+      return; // 已经初始化过了
     }
 
-    // 生成缓存键
-    const cacheKey = `${from}-${to}`;
+    console.debug(`CSV initializing: reading first chunk from ${this.protocolUrl}`);
 
-    // 检查缓存
-    if (this.chunks.has(cacheKey)) {
-      return this.chunks.get(cacheKey)!.text;
+    // 读取第一个 1MB 分块
+    const store = useStorageStore.getState();
+    const requestLength = Math.min(this.chunkSize, this.fileSize);
+    const fileContent = await store.getFileContent(this.protocolUrl, {
+      start: 0,
+      length: requestLength,
+    });
+
+    let text = fileContent.content;
+    let textEndOffset = text.length; // 实际处理的文本结束位置
+
+    // 处理第一个分块的边界（如果不是整个文件）
+    if (text.length === this.chunkSize && this.fileSize > this.chunkSize && !text.endsWith('\n')) {
+      const lastNewlineIndex = text.lastIndexOf('\n');
+      if (lastNewlineIndex !== -1) {
+        text = text.substring(0, lastNewlineIndex + 1);
+        textEndOffset = lastNewlineIndex + 1;
+        console.debug(
+          `CSV init: truncated first chunk from ${this.chunkSize} to ${textEndOffset} bytes`
+        );
+      }
     }
 
-    try {
-      // 使用 storageStore 进行范围读取
-      const store = useStorageStore.getState();
-      const fileContent = await store.getFileContent(this.protocolUrl, {
-        start: from,
-        length: actualLength,
+    // 找到第一个换行符，获取标题行
+    const firstNewlineIndex = text.indexOf('\n');
+    if (firstNewlineIndex === -1) {
+      throw new Error('CSV file appears to have no line breaks');
+    }
+
+    const headerLine = text.substring(0, firstNewlineIndex);
+    const parseResult = Papa.parse<string[]>(headerLine, { header: false });
+    this.columns = parseResult.data[0] || [];
+    this.headerText = headerLine;
+
+    // 解析第一个分块的数据部分（跳过标题行）
+    const dataText = text.substring(firstNewlineIndex + 1);
+    if (dataText.trim()) {
+      const dataParseResult = Papa.parse<string[]>(dataText, {
+        skipEmptyLines: true,
+        header: false,
       });
 
-      const text = fileContent.content;
+      let rows = dataParseResult.data;
+      // 过滤掉空行
+      rows = rows.filter(row => row.length > 0 && row.some(cell => cell.trim() !== ''));
 
-      // 缓存读取的数据块（限制缓存大小以避免内存溢出）
-      if (this.chunks.size < 50) {
-        // 最多缓存50个块
-        this.chunks.set(cacheKey, { text, encoding: fileContent.encoding });
-      }
-
-      return text;
-    } catch (error) {
-      console.error(`Failed to read CSV text range ${from}-${to}:`, error);
-      throw error;
+      console.debug(`CSV init: parsed ${rows.length} data rows from first chunk`);
+      this.allRows.push(...rows);
     }
+
+    // 设置下次读取的位置 - 关键修复：使用实际的字节偏移
+    this.nextReadOffset = textEndOffset;
+    this.loadedChunks = 1;
+
+    console.debug(
+      `CSV initialized: ${this.columns.length} columns, ${this.allRows.length} initial rows, next offset: ${this.nextReadOffset}`
+    );
   }
 
   /**
-   * 读取文件头部数据用于元数据分析
-   * @param maxBytes 最大读取字节数，默认 8KB
-   * @returns Promise<string> 头部文本内容
+   * 确保加载到指定行数的数据
    */
-  async readHeader(maxBytes: number = 8192): Promise<string> {
-    const length = Math.min(maxBytes, this.fileSize);
-    return this.readTextRange(0, length);
+  async ensureDataLoaded(requiredRows: number): Promise<void> {
+    await this.initialize();
+
+    // 如果已经有足够的数据或文件已完全加载，直接返回
+    if (this.allRows.length >= requiredRows || this.isFileCompletelyLoaded) {
+      return;
+    }
+
+    console.debug(
+      `CSV ensuring data loaded: current ${this.allRows.length} rows, required ${requiredRows} rows`
+    );
+
+    // 继续加载分块直到有足够的数据
+    while (this.allRows.length < requiredRows && !this.isFileCompletelyLoaded) {
+      const newRows = await this.loadNextChunk();
+      if (newRows.length === 0) {
+        break; // 没有更多数据
+      }
+    }
+
+    console.debug(
+      `CSV data loaded: ${this.allRows.length} total rows, file complete: ${this.isFileCompletelyLoaded}`
+    );
+  }
+
+  /**
+   * 加载下一个分块
+   */
+  private async loadNextChunk(): Promise<string[][]> {
+    if (this.nextReadOffset >= this.fileSize || this.isFileCompletelyLoaded) {
+      console.debug('CSV file completely loaded, no more data to read');
+      return [];
+    }
+
+    // 计算本次读取的长度
+    const remainingBytes = this.fileSize - this.nextReadOffset;
+    const readLength = Math.min(this.chunkSize, remainingBytes);
+
+    console.debug(
+      `CSV loading chunk ${this.loadedChunks}: offset ${this.nextReadOffset}, length ${readLength}`
+    );
+
+    // 读取数据
+    const store = useStorageStore.getState();
+    const fileContent = await store.getFileContent(this.protocolUrl, {
+      start: this.nextReadOffset,
+      length: readLength,
+    });
+
+    let text = fileContent.content;
+    let actualBytesConsumed = readLength;
+
+    // 处理分块边界：如果不是文件末尾且末尾不是换行符，需要找到最后一个完整行
+    if (this.nextReadOffset + readLength < this.fileSize && !text.endsWith('\n')) {
+      const lastNewlineIndex = text.lastIndexOf('\n');
+      if (lastNewlineIndex !== -1) {
+        // 截断到最后一个完整行
+        text = text.substring(0, lastNewlineIndex + 1);
+        actualBytesConsumed = lastNewlineIndex + 1;
+        console.debug(
+          `CSV chunk boundary: truncated from ${readLength} to ${actualBytesConsumed} bytes`
+        );
+      }
+    }
+
+    // 解析 CSV 数据
+    const parseResult = Papa.parse<string[]>(text, {
+      skipEmptyLines: true,
+      header: false,
+    });
+
+    let rows = parseResult.data;
+
+    // 过滤掉空行
+    rows = rows.filter(row => row.length > 0 && row.some(cell => cell.trim() !== ''));
+
+    // 如果这不是第一个分块，需要处理可能的重复行
+    if (this.loadedChunks > 0 && rows.length > 0) {
+      // 检查第一行是否可能是上个分块的不完整行的延续
+      // 简单策略：如果第一行列数不匹配，就跳过
+      if (this.columns.length > 0 && rows[0].length !== this.columns.length) {
+        console.debug(`CSV chunk: skipping potentially incomplete first row`);
+        rows = rows.slice(1);
+      }
+    }
+
+    console.debug(
+      `CSV chunk ${this.loadedChunks} parsed: ${rows.length} rows from ${text.length} bytes, next offset will be: ${this.nextReadOffset + actualBytesConsumed}`
+    );
+
+    // 添加到总行数组
+    this.allRows.push(...rows);
+
+    // 更新状态 - 关键：确保下次从正确位置开始读取
+    this.nextReadOffset += actualBytesConsumed;
+    this.loadedChunks++;
+
+    // Check if entire file has been read
+    if (this.nextReadOffset >= this.fileSize) {
+      this.isFileCompletelyLoaded = true;
+      console.debug(
+        `CSV file loading completed. Total chunks: ${this.loadedChunks}, Total rows: ${this.allRows.length}`
+      );
+    }
+
+    return rows;
+  }
+
+  /**
+   * 获取指定范围的行数据
+   */
+  async getRows(startRow: number, limit: number): Promise<string[][]> {
+    await this.initialize();
+
+    if (limit <= 0) {
+      return [];
+    }
+
+    // 确保加载到所需的行数
+    const requiredRows = startRow + limit;
+    await this.ensureDataLoaded(requiredRows);
+
+    // 从缓存的数据中提取指定范围
+    const endRow = Math.min(startRow + limit, this.allRows.length);
+    const result = this.allRows.slice(startRow, endRow);
+
+    console.debug(
+      `CSV getRows: returned ${result.length} rows from range ${startRow}-${endRow} (total cached: ${this.allRows.length})`
+    );
+    return result;
+  }
+
+  /**
+   * 重置读取状态，从头开始（这个方法现在不应该被调用）
+   */
+  private resetReading(): void {
+    this.nextReadOffset = 0;
+    this.isFileCompletelyLoaded = false;
+    this.allRows = [];
+    this.loadedChunks = 0;
+    this.headerText = '';
+    this.columns = [];
+    console.debug('CSV reading state reset');
+  }
+
+  /**
+   * Get current loaded row count
+   */
+  async getLoadedRowCount(): Promise<number> {
+    await this.initialize();
+    return this.allRows.length;
+  }
+
+  /**
+   * 获取列信息
+   */
+  getColumns(): string[] {
+    return this.columns;
+  }
+
+  /**
+   * 检查是否还有更多数据可以加载
+   */
+  hasMoreData(): boolean {
+    return !this.isFileCompletelyLoaded && this.nextReadOffset < this.fileSize;
+  }
+
+  /**
+   * 获取当前已加载的行数
+   */
+  getTotalRowsLoaded(): number {
+    return this.allRows.length;
   }
 
   /**
    * 清理缓存
    */
   clearCache(): void {
-    this.chunks.clear();
+    this.allRows = [];
+    this.resetReading();
   }
 
   /**
@@ -93,10 +289,6 @@ export class CsvDataProvider implements DataProvider {
   private fileSize: number;
   private metadata: DataMetadata | null = null;
   private streamingBuffer: CsvStreamingBuffer | null = null;
-  private cachedParsedChunks: Map<string, string[][]> = new Map();
-  private lastAccessTime: Map<string, number> = new Map();
-  private readonly maxCacheSize = 20;
-  private readonly maxSmallFileSize = 1024 * 1024; // 1MB
 
   constructor(filePath: string, fileSize: number) {
     this.filePath = filePath;
@@ -110,68 +302,6 @@ export class CsvDataProvider implements DataProvider {
     return this.streamingBuffer;
   }
 
-  /**
-   * 清理过期的缓存项
-   */
-  private cleanupCache(): void {
-    if (this.cachedParsedChunks.size <= this.maxCacheSize) {
-      return;
-    }
-
-    // 按照最后访问时间排序，移除最旧的项
-    const entries = Array.from(this.lastAccessTime.entries());
-    entries.sort((a, b) => a[1] - b[1]);
-
-    // 移除一半的最旧项
-    const itemsToRemove = Math.ceil(this.cachedParsedChunks.size / 2);
-    for (let i = 0; i < itemsToRemove; i++) {
-      const [key] = entries[i];
-      this.cachedParsedChunks.delete(key);
-      this.lastAccessTime.delete(key);
-    }
-
-    console.debug(
-      `CSV cache cleanup: removed ${itemsToRemove} items, ${this.cachedParsedChunks.size} remaining`
-    );
-  }
-
-  /**
-   * 更新缓存访问时间
-   */
-  private updateCacheAccess(key: string): void {
-    this.lastAccessTime.set(key, Date.now());
-  }
-
-  /**
-   * 解析 CSV 文本块并返回行数组
-   */
-  private parseCsvChunk(text: string, isFirstChunk: boolean = false): string[][] {
-    if (!text) return [];
-
-    try {
-      const parseResult = Papa.parse<string[]>(text, {
-        skipEmptyLines: true,
-        header: false,
-      });
-
-      if (parseResult.errors.length > 0) {
-        console.warn('CSV parsing warnings:', parseResult.errors);
-      }
-
-      let rows = parseResult.data;
-
-      // 如果不是第一个块，移除第一行（可能是不完整的行）
-      if (!isFirstChunk && rows.length > 0) {
-        rows = rows.slice(1);
-      }
-
-      return rows;
-    } catch (error) {
-      console.error('Error parsing CSV chunk:', error);
-      return [];
-    }
-  }
-
   async loadMetadata(): Promise<DataMetadata> {
     if (this.metadata) {
       return this.metadata;
@@ -179,49 +309,18 @@ export class CsvDataProvider implements DataProvider {
 
     try {
       const buffer = await this.getStreamingBuffer();
+      await buffer.initialize();
 
-      // 只读取文件头部来获取列信息和推断数据类型
-      const headerText = await buffer.readHeader(8192); // 读取前8KB
-
-      if (!headerText) {
-        this.metadata = {
-          numRows: 0,
-          numColumns: 0,
-          columns: [],
-          fileSize: this.fileSize,
-        };
-        return this.metadata;
-      }
-
-      // 解析头部获取列信息
-      const headerLines = headerText.split('\n').filter(line => line.trim());
-      if (headerLines.length === 0) {
-        this.metadata = {
-          numRows: 0,
-          numColumns: 0,
-          columns: [],
-          fileSize: this.fileSize,
-        };
-        return this.metadata;
-      }
-
-      // 解析第一行作为列名
-      const parseResult = Papa.parse<string[]>(headerLines[0], {
-        header: false,
-      });
-
-      const headerRow = parseResult.data[0] || [];
-      const columns: DataColumn[] = headerRow.map((header, index) => ({
+      const columns: DataColumn[] = buffer.getColumns().map((header, index) => ({
         name: header || `Column ${index + 1}`,
-        type: 'string', // 暂时设为字符串，后续可以通过采样推断类型
+        type: 'string', // 暂时设为字符串类型
       }));
 
-      // 估算总行数（基于文件大小和平均行长度）
-      const avgLineLength = Math.max(headerText.length / headerLines.length, 50);
-      const estimatedRows = Math.floor(this.fileSize / avgLineLength) - 1; // 减去标题行
+      // Get current loaded row count
+      const numRows = await buffer.getLoadedRowCount();
 
       this.metadata = {
-        numRows: Math.max(0, estimatedRows),
+        numRows: Math.max(0, numRows),
         numColumns: columns.length,
         columns,
         fileSize: this.fileSize,
@@ -246,118 +345,26 @@ export class CsvDataProvider implements DataProvider {
 
       const buffer = await this.getStreamingBuffer();
 
-      // 对于大文件，使用流式加载策略
-      if (this.fileSize > this.maxSmallFileSize) {
-        return this.loadDataStreaming(buffer, offset, limit);
-      } else {
-        // 小文件直接加载全部内容
-        return this.loadDataComplete(buffer, offset, limit);
+      // 边界校验
+      const validOffset = Math.max(0, offset);
+      const validLimit = Math.max(0, limit);
+
+      if (validLimit === 0) {
+        return [];
       }
+
+      console.debug(
+        `CSV loading: rows ${validOffset}-${validOffset + validLimit} for ${this.filePath}`
+      );
+
+      // 使用分块读取
+      const rows = await buffer.getRows(validOffset, validLimit);
+
+      return this.convertRowsToObjects(rows);
     } catch (error) {
       console.error('Error loading CSV data:', error);
       throw error;
     }
-  }
-
-  /**
-   * 流式加载数据（用于大文件）
-   */
-  private async loadDataStreaming(
-    buffer: CsvStreamingBuffer,
-    offset: number,
-    limit: number
-  ): Promise<Record<string, unknown>[]> {
-    // 生成缓存键
-    const cacheKey = `${offset}-${limit}`;
-
-    // 检查缓存
-    if (this.cachedParsedChunks.has(cacheKey)) {
-      this.updateCacheAccess(cacheKey);
-      const cachedRows = this.cachedParsedChunks.get(cacheKey)!;
-      console.debug(`CSV streaming: cache hit for rows ${offset}-${offset + limit}`);
-      return this.convertRowsToObjects(cachedRows);
-    }
-
-    console.debug(`CSV streaming: loading rows ${offset}-${offset + limit} for ${this.filePath}`);
-
-    // 估算需要读取的字节范围
-    const avgBytesPerRow = Math.max(this.fileSize / Math.max(this.metadata!.numRows, 1), 100);
-
-    // 从文件头开始读取，直到覆盖所需的行数
-    // 为了保证边界正确，我们读取更大的块
-    const estimatedStart = 0; // 总是从头开始以确保行边界正确
-    const estimatedLength = Math.ceil((offset + limit) * avgBytesPerRow * 1.5); // 多读取一些
-
-    // 限制最大读取长度
-    const maxLength = Math.min(estimatedLength, this.fileSize);
-
-    // 读取并解析数据
-    const startTime = performance.now();
-    const text = await buffer.readTextRange(estimatedStart, maxLength);
-    const readTime = performance.now() - startTime;
-
-    const parseStartTime = performance.now();
-    const allRows = this.parseCsvChunk(text, true);
-    const parseTime = performance.now() - parseStartTime;
-
-    console.debug(
-      `CSV streaming: read ${(maxLength / 1024).toFixed(1)}KB in ${readTime.toFixed(1)}ms, parsed ${allRows.length} rows in ${parseTime.toFixed(1)}ms`
-    );
-
-    // 跳过标题行
-    const dataRows = allRows.length > 0 ? allRows.slice(1) : [];
-
-    // 提取请求的行范围
-    const requestedRows = dataRows.slice(offset, offset + limit);
-
-    // 缓存解析结果
-    this.cleanupCache();
-    this.cachedParsedChunks.set(cacheKey, requestedRows);
-    this.updateCacheAccess(cacheKey);
-
-    return this.convertRowsToObjects(requestedRows);
-  }
-
-  /**
-   * 完整加载数据（用于小文件）
-   */
-  private async loadDataComplete(
-    buffer: CsvStreamingBuffer,
-    offset: number,
-    limit: number
-  ): Promise<Record<string, unknown>[]> {
-    const cacheKey = 'complete';
-
-    // 检查是否已缓存完整数据
-    if (!this.cachedParsedChunks.has(cacheKey)) {
-      console.debug(`CSV complete loading: loading entire file ${this.filePath}`);
-
-      const startTime = performance.now();
-      // 读取整个文件
-      const text = await buffer.readTextRange(0, this.fileSize);
-      const readTime = performance.now() - startTime;
-
-      const parseStartTime = performance.now();
-      const allRows = this.parseCsvChunk(text, true);
-      const parseTime = performance.now() - parseStartTime;
-
-      console.debug(
-        `CSV complete: read ${(this.fileSize / 1024).toFixed(1)}KB in ${readTime.toFixed(1)}ms, parsed ${allRows.length} rows in ${parseTime.toFixed(1)}ms`
-      );
-
-      // 跳过标题行并缓存所有数据行
-      const dataRows = allRows.length > 0 ? allRows.slice(1) : [];
-      this.cachedParsedChunks.set(cacheKey, dataRows);
-      this.updateCacheAccess(cacheKey);
-    } else {
-      this.updateCacheAccess(cacheKey);
-      console.debug(`CSV complete: using cached data for ${this.filePath}`);
-    }
-
-    const allDataRows = this.cachedParsedChunks.get(cacheKey)!;
-    const requestedRows = allDataRows.slice(offset, offset + limit);
-
-    return this.convertRowsToObjects(requestedRows);
   }
 
   /**
@@ -407,8 +414,6 @@ export class CsvDataProvider implements DataProvider {
       this.streamingBuffer.clearCache();
       this.streamingBuffer = null;
     }
-    this.cachedParsedChunks.clear();
-    this.lastAccessTime.clear();
     this.metadata = null;
 
     console.debug(`CSV provider disposed for ${this.filePath}`);
