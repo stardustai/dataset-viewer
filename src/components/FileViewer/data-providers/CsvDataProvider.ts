@@ -5,6 +5,7 @@ import { useStorageStore } from '../../../stores/storageStore';
 /**
  * CSV streaming buffer implementation
  * Reads and parses CSV files in 1MB chunks sequentially
+ * Uses Papa Parse incremental parsing to handle CSV record boundaries correctly
  */
 class CsvStreamingBuffer {
   private protocolUrl: string;
@@ -16,6 +17,7 @@ class CsvStreamingBuffer {
   private isFileCompletelyLoaded = false; // Whether file is completely loaded
   private allRows: string[][] = []; // Store all loaded rows
   private loadedChunks = 0; // Number of chunks loaded
+  private partialBuffer = ''; // Buffer for incomplete records from previous chunk
 
   constructor(protocolUrl: string, fileSize: number) {
     this.protocolUrl = protocolUrl;
@@ -32,62 +34,11 @@ class CsvStreamingBuffer {
 
     console.debug(`CSV initializing: reading first chunk from ${this.protocolUrl}`);
 
-    // 读取第一个 1MB 分块
-    const store = useStorageStore.getState();
-    const requestLength = Math.min(this.chunkSize, this.fileSize);
-    const fileContent = await store.getFileContent(this.protocolUrl, {
-      start: 0,
-      length: requestLength,
-    });
-
-    let text = fileContent.content;
-    let textEndOffset = text.length; // 实际处理的文本结束位置
-
-    // 处理第一个分块的边界（如果不是整个文件）
-    if (text.length === this.chunkSize && this.fileSize > this.chunkSize && !text.endsWith('\n')) {
-      const lastNewlineIndex = text.lastIndexOf('\n');
-      if (lastNewlineIndex !== -1) {
-        text = text.substring(0, lastNewlineIndex + 1);
-        textEndOffset = lastNewlineIndex + 1;
-        console.debug(
-          `CSV init: truncated first chunk from ${this.chunkSize} to ${textEndOffset} bytes`
-        );
-      }
-    }
-
-    // 找到第一个换行符，获取标题行
-    const firstNewlineIndex = text.indexOf('\n');
-    if (firstNewlineIndex === -1) {
-      throw new Error('CSV file appears to have no line breaks');
-    }
-
-    const headerLine = text.substring(0, firstNewlineIndex);
-    const parseResult = Papa.parse<string[]>(headerLine, { header: false });
-    this.columns = parseResult.data[0] || [];
-    this.headerText = headerLine;
-
-    // 解析第一个分块的数据部分（跳过标题行）
-    const dataText = text.substring(firstNewlineIndex + 1);
-    if (dataText.trim()) {
-      const dataParseResult = Papa.parse<string[]>(dataText, {
-        skipEmptyLines: true,
-        header: false,
-      });
-
-      let rows = dataParseResult.data;
-      // 过滤掉空行
-      rows = rows.filter(row => row.length > 0 && row.some(cell => cell.trim() !== ''));
-
-      console.debug(`CSV init: parsed ${rows.length} data rows from first chunk`);
-      this.allRows.push(...rows);
-    }
-
-    // 设置下次读取的位置 - 关键修复：使用实际的字节偏移
-    this.nextReadOffset = textEndOffset;
-    this.loadedChunks = 1;
+    // 读取第一个分块以获取标题和初始数据
+    await this.loadNextChunk();
 
     console.debug(
-      `CSV initialized: ${this.columns.length} columns, ${this.allRows.length} initial rows, next offset: ${this.nextReadOffset}`
+      `CSV initialized: ${this.columns.length} columns, ${this.allRows.length} initial rows`
     );
   }
 
@@ -143,63 +94,105 @@ class CsvStreamingBuffer {
       length: readLength,
     });
 
-    let text = fileContent.content;
-    let actualBytesConsumed = readLength;
+    // 拼接上次的残留数据
+    let textToProcess = this.partialBuffer + fileContent.content;
+    this.partialBuffer = '';
 
-    // 处理分块边界：如果不是文件末尾且末尾不是换行符，需要找到最后一个完整行
-    if (this.nextReadOffset + readLength < this.fileSize && !text.endsWith('\n')) {
-      const lastNewlineIndex = text.lastIndexOf('\n');
-      if (lastNewlineIndex !== -1) {
-        // 截断到最后一个完整行
-        text = text.substring(0, lastNewlineIndex + 1);
-        actualBytesConsumed = lastNewlineIndex + 1;
-        console.debug(
-          `CSV chunk boundary: truncated from ${readLength} to ${actualBytesConsumed} bytes`
-        );
-      }
-    }
+    const newRows: string[][] = [];
+    let isFirstChunk = this.loadedChunks === 0;
+    let headerProcessed = false;
 
-    // 解析 CSV 数据
-    const parseResult = Papa.parse<string[]>(text, {
-      skipEmptyLines: true,
-      header: false,
+    return new Promise<string[][]>((resolve, reject) => {
+      Papa.parse(textToProcess, {
+        step: (result, parser) => {
+          if (result.errors.length > 0) {
+            // 检查是否是因为不完整的行导致的错误
+            const incompleteError = result.errors.some(
+              error => error.message.includes('Unexpected') || error.message.includes('Unclosed')
+            );
+
+            if (incompleteError && this.nextReadOffset + readLength < this.fileSize) {
+              // 这可能是不完整的行，停止解析并保存残留
+              parser.abort();
+              return;
+            }
+          }
+
+          if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+            const row = result.data as string[];
+
+            // 处理标题行（仅第一个分块）
+            if (isFirstChunk && !headerProcessed) {
+              this.columns = row;
+              this.headerText = row.join(',');
+              headerProcessed = true;
+              return;
+            }
+
+            // 过滤掉空行
+            if (row.some(cell => cell && cell.trim() !== '')) {
+              newRows.push(row);
+            }
+          }
+        },
+        complete: results => {
+          // 检查是否有残留的未解析内容
+          if (results.meta.cursor && results.meta.cursor < textToProcess.length) {
+            this.partialBuffer = textToProcess.substring(results.meta.cursor);
+            console.debug(
+              `CSV chunk ${this.loadedChunks}: saved ${this.partialBuffer.length} bytes to partial buffer`
+            );
+          }
+
+          console.debug(
+            `CSV chunk ${this.loadedChunks} parsed: ${newRows.length} rows, partial buffer: ${this.partialBuffer.length} bytes`
+          );
+
+          // 添加到总行数组
+          this.allRows.push(...newRows);
+
+          // 更新状态
+          this.nextReadOffset += readLength;
+          this.loadedChunks++;
+
+          // Check if entire file has been read
+          if (this.nextReadOffset >= this.fileSize) {
+            // 处理最后的残留数据
+            if (this.partialBuffer.trim()) {
+              const finalResult = Papa.parse<string[]>(this.partialBuffer, {
+                skipEmptyLines: true,
+                header: false,
+              });
+
+              if (finalResult.data && finalResult.data.length > 0) {
+                const finalRows = finalResult.data.filter(
+                  row => row.length > 0 && row.some(cell => cell && cell.trim() !== '')
+                );
+                this.allRows.push(...finalRows);
+                newRows.push(...finalRows);
+                console.debug(
+                  `CSV final chunk: added ${finalRows.length} rows from partial buffer`
+                );
+              }
+            }
+
+            this.isFileCompletelyLoaded = true;
+            console.debug(
+              `CSV file loading completed. Total chunks: ${this.loadedChunks}, Total rows: ${this.allRows.length}`
+            );
+          }
+
+          resolve(newRows);
+        },
+        error: (error: unknown) => {
+          console.error('CSV parsing error:', error);
+          reject(error);
+        },
+        header: false,
+        skipEmptyLines: true,
+        encoding: 'UTF-8',
+      });
     });
-
-    let rows = parseResult.data;
-
-    // 过滤掉空行
-    rows = rows.filter(row => row.length > 0 && row.some(cell => cell.trim() !== ''));
-
-    // 如果这不是第一个分块，需要处理可能的重复行
-    if (this.loadedChunks > 0 && rows.length > 0) {
-      // 检查第一行是否可能是上个分块的不完整行的延续
-      // 简单策略：如果第一行列数不匹配，就跳过
-      if (this.columns.length > 0 && rows[0].length !== this.columns.length) {
-        console.debug(`CSV chunk: skipping potentially incomplete first row`);
-        rows = rows.slice(1);
-      }
-    }
-
-    console.debug(
-      `CSV chunk ${this.loadedChunks} parsed: ${rows.length} rows from ${text.length} bytes, next offset will be: ${this.nextReadOffset + actualBytesConsumed}`
-    );
-
-    // 添加到总行数组
-    this.allRows.push(...rows);
-
-    // 更新状态 - 关键：确保下次从正确位置开始读取
-    this.nextReadOffset += actualBytesConsumed;
-    this.loadedChunks++;
-
-    // Check if entire file has been read
-    if (this.nextReadOffset >= this.fileSize) {
-      this.isFileCompletelyLoaded = true;
-      console.debug(
-        `CSV file loading completed. Total chunks: ${this.loadedChunks}, Total rows: ${this.allRows.length}`
-      );
-    }
-
-    return rows;
   }
 
   /**
@@ -236,6 +229,7 @@ class CsvStreamingBuffer {
     this.loadedChunks = 0;
     this.headerText = '';
     this.columns = [];
+    this.partialBuffer = '';
     console.debug('CSV reading state reset');
   }
 
