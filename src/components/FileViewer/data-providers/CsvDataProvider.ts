@@ -19,6 +19,10 @@ class CsvStreamingBuffer {
   private loadedChunks = 0; // Number of chunks loaded
   private partialBuffer = ''; // Buffer for incomplete records from previous chunk
 
+  // Concurrency protection
+  private _loadNextChunkInFlight: Promise<string[][]> | null = null;
+  private _ensureDataLoadedInFlight: Promise<void> | null = null;
+
   constructor(protocolUrl: string, fileSize: number) {
     this.protocolUrl = protocolUrl;
     this.fileSize = fileSize;
@@ -46,6 +50,13 @@ class CsvStreamingBuffer {
    * 确保加载到指定行数的数据
    */
   async ensureDataLoaded(requiredRows: number): Promise<void> {
+    // 如果已经有正在进行的加载操作，等待它完成
+    if (this._ensureDataLoadedInFlight) {
+      await this._ensureDataLoadedInFlight;
+      // 递归调用以检查是否需要更多数据
+      return this.ensureDataLoaded(requiredRows);
+    }
+
     await this.initialize();
 
     // 如果已经有足够的数据或文件已完全加载，直接返回
@@ -53,6 +64,20 @@ class CsvStreamingBuffer {
       return;
     }
 
+    // 创建并发保护的Promise
+    this._ensureDataLoadedInFlight = this._doEnsureDataLoaded(requiredRows);
+
+    try {
+      await this._ensureDataLoadedInFlight;
+    } finally {
+      this._ensureDataLoadedInFlight = null;
+    }
+  }
+
+  /**
+   * 实际执行数据加载的内部方法
+   */
+  private async _doEnsureDataLoaded(requiredRows: number): Promise<void> {
     console.debug(
       `CSV ensuring data loaded: current ${this.allRows.length} rows, required ${requiredRows} rows`
     );
@@ -74,11 +99,30 @@ class CsvStreamingBuffer {
    * 加载下一个分块
    */
   private async loadNextChunk(): Promise<string[][]> {
+    // 如果已经有正在进行的加载操作，等待它完成
+    if (this._loadNextChunkInFlight) {
+      return this._loadNextChunkInFlight;
+    }
+
     if (this.nextReadOffset >= this.fileSize || this.isFileCompletelyLoaded) {
       console.debug('CSV file completely loaded, no more data to read');
       return [];
     }
 
+    // 创建并发保护的Promise
+    this._loadNextChunkInFlight = this._doLoadNextChunk();
+
+    try {
+      return await this._loadNextChunkInFlight;
+    } finally {
+      this._loadNextChunkInFlight = null;
+    }
+  }
+
+  /**
+   * 实际执行块加载的内部方法
+   */
+  private async _doLoadNextChunk(): Promise<string[][]> {
     // 计算本次读取的长度
     const remainingBytes = this.fileSize - this.nextReadOffset;
     const readLength = Math.min(this.chunkSize, remainingBytes);
@@ -229,6 +273,11 @@ class CsvStreamingBuffer {
     this.headerText = '';
     this.columns = [];
     this.partialBuffer = '';
+
+    // 重置并发保护标志
+    this._loadNextChunkInFlight = null;
+    this._ensureDataLoadedInFlight = null;
+
     console.debug('CSV reading state reset');
   }
 
