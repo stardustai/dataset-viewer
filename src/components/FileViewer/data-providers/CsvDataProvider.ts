@@ -1,7 +1,6 @@
 import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
 import { useStorageStore } from '../../../stores/storageStore';
-import { detectEncodingWithFallback } from '../../../utils/textEncodingDetection';
 
 /**
  * CSV streaming buffer implementation
@@ -19,7 +18,6 @@ class CsvStreamingBuffer {
   private allRows: string[][] = []; // Store all loaded rows
   private loadedChunks = 0; // Number of chunks loaded
   private partialBuffer = ''; // Buffer for incomplete records from previous chunk
-  private detectedEncoding: string | null = null; // Cache detected encoding
 
   constructor(protocolUrl: string, fileSize: number) {
     this.protocolUrl = protocolUrl;
@@ -95,16 +93,6 @@ class CsvStreamingBuffer {
       start: this.nextReadOffset,
       length: readLength,
     });
-
-    // 在第一个块时检测编码
-    if (this.loadedChunks === 0 && !this.detectedEncoding) {
-      const buffer = new Uint8Array(Buffer.from(fileContent.content, 'binary'));
-      const detected = detectEncodingWithFallback(buffer);
-      this.detectedEncoding = detected.encoding;
-      console.debug(
-        `CSV encoding detected: ${this.detectedEncoding} (confidence: ${detected.confidence})`
-      );
-    }
 
     // 拼接上次的残留数据
     let textToProcess = this.partialBuffer + fileContent.content;
@@ -202,7 +190,6 @@ class CsvStreamingBuffer {
         },
         header: false,
         skipEmptyLines: true,
-        encoding: this.detectedEncoding || 'utf-8',
       });
     });
   }
@@ -242,7 +229,6 @@ class CsvStreamingBuffer {
     this.headerText = '';
     this.columns = [];
     this.partialBuffer = '';
-    this.detectedEncoding = null;
     console.debug('CSV reading state reset');
   }
 
