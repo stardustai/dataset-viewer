@@ -1,5 +1,5 @@
 import * as dat from 'dat.gui';
-import type React from 'react';
+import type { FC } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
@@ -472,7 +472,7 @@ const extractPointCloudStats = (points: THREE.Points): PCDStats => {
   };
 };
 
-export const PointCloudViewer: React.FC<PointCloudViewerProps> = ({
+export const PointCloudViewer: FC<PointCloudViewerProps> = ({
   filePath,
   onMetadataLoaded,
   previewContent,

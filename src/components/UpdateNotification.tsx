@@ -1,5 +1,5 @@
 import { AlertCircle, Download, RefreshCw, X } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { settingsStorage } from '../services/settingsStorage';
@@ -10,7 +10,7 @@ interface UpdateNotificationProps {
   onClose: () => void;
 }
 
-export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
+export const UpdateNotification: FC<UpdateNotificationProps> = ({ onClose }) => {
   const { t } = useTranslation();
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);

@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export interface OSSPlatform {
@@ -317,7 +317,7 @@ interface OSSPlatformSelectorProps {
   disabled?: boolean;
 }
 
-export const OSSPlatformSelector: React.FC<OSSPlatformSelectorProps> = ({
+export const OSSPlatformSelector: FC<OSSPlatformSelectorProps> = ({
   selectedPlatform,
   selectedRegion,
   customEndpoint,

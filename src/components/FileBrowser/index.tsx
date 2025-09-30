@@ -14,7 +14,7 @@ import {
   Settings,
   X,
 } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { defaultPluginAssociationService } from '../../services/defaultPluginAssociationService';
@@ -64,7 +64,7 @@ interface FileBrowserProps {
 const nullToUndefined = <T,>(value: T | null): T | undefined =>
   value === null ? undefined : value;
 
-export const FileBrowser: React.FC<FileBrowserProps> = ({
+export const FileBrowser: FC<FileBrowserProps> = ({
   onFileSelect,
   onDisconnect,
   initialPath = '',

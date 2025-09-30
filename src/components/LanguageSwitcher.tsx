@@ -1,9 +1,9 @@
 import { Globe } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { settingsStorage } from '../services/settingsStorage';
 
-export const LanguageSwitcher: React.FC = () => {
+export const LanguageSwitcher: FC = () => {
   const { i18n, t } = useTranslation();
 
   const toggleLanguage = () => {

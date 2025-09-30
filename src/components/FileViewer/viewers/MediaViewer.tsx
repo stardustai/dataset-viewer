@@ -1,4 +1,4 @@
-import type React from 'react';
+import type { FC } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dav1dDecoderService } from '../../../services/dav1dDecoder';
@@ -8,13 +8,13 @@ import {
   getFileUrl,
   getMimeType,
 } from '../../../utils/fileDataUtils';
-import { formatFileSize } from '../../../utils/fileUtils';
+import { formatFileSize } from '../../../utils/typeUtils';
 import { ErrorDisplay, LoadingDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 import { AV1VideoPlayer } from './AV1VideoPlayer';
 import { ImageRenderer } from './ImageRenderer';
 
 // AV1 视频播放器包装组件，处理按需加载
-const AV1VideoPlayerWrapper: React.FC<{
+const AV1VideoPlayerWrapper: FC<{
   filePath: string;
   fileName?: string;
   onError?: (error: string) => void;
@@ -106,7 +106,7 @@ interface MediaViewerProps {
   previewContent?: Uint8Array; // 可选的预览内容，避免重复请求
 }
 
-export const MediaViewer: React.FC<MediaViewerProps> = ({
+export const MediaViewer: FC<MediaViewerProps> = ({
   filePath,
   fileName,
   fileType,

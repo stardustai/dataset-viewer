@@ -1,11 +1,11 @@
 import { User } from 'lucide-react';
-import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PasswordInput } from '../../common';
 import { ConnectButton, ErrorDisplay } from '../common';
 import type { UnifiedConnectionFormProps } from './types';
+import type { FC, FormEvent } from 'react';
 
-export const WebDAVConnectionForm: React.FC<UnifiedConnectionFormProps> = ({
+export const WebDAVConnectionForm: FC<UnifiedConnectionFormProps> = ({
   config,
   onChange,
   connecting,
@@ -15,7 +15,7 @@ export const WebDAVConnectionForm: React.FC<UnifiedConnectionFormProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onConnect();
   };
@@ -80,7 +80,7 @@ export const WebDAVConnectionForm: React.FC<UnifiedConnectionFormProps> = ({
         <PasswordInput
           id="password"
           value={config.password || ''}
-          onChange={value => handleFieldChange('password', value)}
+          onChange={(value: string) => handleFieldChange('password', value)}
           placeholder={t('password.placeholder')}
           isFromStorage={isPasswordFromStorage}
           required

@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import mammoth from 'mammoth';
-import type React from 'react';
+import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStorageStore } from '../../../stores/storageStore';
@@ -49,7 +49,7 @@ const extractTextFromRtf = (content: string, t: (key: string) => string): string
   }
 };
 
-export const WordViewer: React.FC<WordViewerProps> = ({ filePath, fileName, className = '' }) => {
+export const WordViewer: FC<WordViewerProps> = ({ filePath, fileName, className = '' }) => {
   const { t } = useTranslation();
   const { downloadFile, getFileContent } = useStorageStore();
   const [loading, setLoading] = useState(true);

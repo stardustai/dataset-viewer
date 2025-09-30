@@ -1,12 +1,13 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FC, MouseEvent } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { defaultPluginAssociationService } from '../../services/defaultPluginAssociationService';
 import { pluginFramework, type ViewerOption } from '../../services/plugin/pluginFramework';
 import type { StorageFile } from '../../types';
 import { FileIcon } from '../../utils/fileIcons';
 import { getFileType } from '../../utils/fileTypes';
-import { formatFileSize } from '../../utils/fileUtils';
+import { formatFileSize } from '../../utils/typeUtils';
 import { ContextMenu } from '../common/ContextMenu';
 
 interface VirtualizedFileListProps {
@@ -18,7 +19,7 @@ interface VirtualizedFileListProps {
   onScrollToBottom?: () => void;
 }
 
-export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
+export const VirtualizedFileList: FC<VirtualizedFileListProps> = ({
   files,
   onFileClick,
   onFileOpenAsText,
@@ -50,7 +51,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   const processedFiles = files;
 
   // 创建虚拟化容器引用
-  const parentRef = React.useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // 虚拟化配置
   const virtualizer = useVirtualizer({
@@ -136,7 +137,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   };
 
   // Handle right-click context menu
-  const handleContextMenu = (e: React.MouseEvent, file: StorageFile) => {
+  const handleContextMenu = (e: MouseEvent, file: StorageFile) => {
     // Only show context menu for files, not directories
     if (file.type !== 'file' || !onFileOpenAsText) {
       return;

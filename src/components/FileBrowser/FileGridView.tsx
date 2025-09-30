@@ -1,12 +1,13 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FC, MouseEvent } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { defaultPluginAssociationService } from '../../services/defaultPluginAssociationService';
 import { pluginFramework, type ViewerOption } from '../../services/plugin/pluginFramework';
 import type { StorageFile } from '../../types';
 import { FileIcon } from '../../utils/fileIcons';
 import { getFileType } from '../../utils/fileTypes';
-import { formatFileSize } from '../../utils/fileUtils';
+import { formatFileSize } from '../../utils/typeUtils';
 import { ContextMenu } from '../common/ContextMenu';
 
 interface FileGridViewProps {
@@ -14,16 +15,14 @@ interface FileGridViewProps {
   onFileClick: (file: StorageFile) => void;
   onFileOpenAsText?: (file: StorageFile) => void;
   onFileOpenWithPlugin?: (file: StorageFile, pluginId: string) => void;
-  height?: number;
   onScrollToBottom?: () => void;
 }
 
-export const FileGridView: React.FC<FileGridViewProps> = ({
+export const FileGridView: FC<FileGridViewProps> = ({
   files,
   onFileClick,
   onFileOpenAsText,
   onFileOpenWithPlugin,
-  height,
   onScrollToBottom,
 }) => {
   // Use custom hook for responsive behavior
@@ -47,7 +46,7 @@ export const FileGridView: React.FC<FileGridViewProps> = ({
   });
 
   // 创建虚拟化容器引用
-  const parentRef = React.useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
   // 监听容器宽度变化
@@ -156,7 +155,7 @@ export const FileGridView: React.FC<FileGridViewProps> = ({
   }, [onScrollToBottom]);
 
   // Handle right-click context menu
-  const handleContextMenu = (e: React.MouseEvent, file: StorageFile) => {
+  const handleContextMenu = (e: MouseEvent<HTMLDivElement>, file: StorageFile) => {
     if (file.type !== 'file' || !onFileOpenAsText) {
       return;
     }

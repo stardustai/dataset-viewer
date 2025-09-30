@@ -1,5 +1,5 @@
 import { FolderSearch } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { commands } from '../../../types/tauri-commands';
@@ -20,7 +20,7 @@ interface SSHConnectionFormProps extends UnifiedConnectionFormProps {
   };
 }
 
-export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({
+export const SSHConnectionForm: FC<SSHConnectionFormProps> = ({
   config,
   onChange,
   connecting,

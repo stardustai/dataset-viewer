@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FolderDownloadService } from '../services/folderDownloadService';
 import { commands } from '../types/tauri-commands';
-import { formatFileSize } from '../utils/fileUtils';
+import { formatFileSize } from '../utils/typeUtils';
 
 interface DownloadProgressProps {
   isVisible: boolean;

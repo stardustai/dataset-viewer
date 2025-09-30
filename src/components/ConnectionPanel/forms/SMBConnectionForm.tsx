@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PasswordInput } from '../../common';
@@ -18,7 +18,7 @@ interface SMBConnectionFormProps extends UnifiedConnectionFormProps {
   showAdvancedOptions?: boolean;
 }
 
-export const SMBConnectionForm: React.FC<SMBConnectionFormProps> = ({
+export const SMBConnectionForm: FC<SMBConnectionFormProps> = ({
   config,
   onChange,
   connecting,

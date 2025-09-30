@@ -1,5 +1,5 @@
 import { Info, Zap } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface PerformanceIndicatorProps {
@@ -8,7 +8,7 @@ interface PerformanceIndicatorProps {
   className?: string;
 }
 
-export const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
+export const PerformanceIndicator: FC<PerformanceIndicatorProps> = ({
   fileCount,
   isVirtualized,
   className = '',

@@ -1,5 +1,5 @@
 import { Layers, Search, X } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface DataTableControlsProps {
@@ -14,7 +14,7 @@ interface DataTableControlsProps {
   onSheetChange?: (sheetIndex: number) => void;
 }
 
-export const DataTableControls: React.FC<DataTableControlsProps> = ({
+export const DataTableControls: FC<DataTableControlsProps> = ({
   globalFilter,
   onGlobalFilterChange,
   showColumnPanel,

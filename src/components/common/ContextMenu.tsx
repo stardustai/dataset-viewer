@@ -1,5 +1,5 @@
 import { Check, ChevronRight, FileText, Wand2 } from 'lucide-react';
-import type React from 'react';
+import type { FC, MouseEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ViewerOption } from '../../services/plugin/pluginFramework';
@@ -14,7 +14,7 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({
+export const ContextMenu: FC<ContextMenuProps> = ({
   x,
   y,
   compatiblePlugins,
@@ -29,7 +29,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const [submenuPosition, setSubmenuPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         // 检查是否点击了子菜单
         const target = event.target as HTMLElement;
@@ -59,7 +59,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     onClose();
   };
 
-  const handleOpenWithSubmenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleOpenWithSubmenu = (e: MouseEvent<HTMLButtonElement>) => {
     const button = e.currentTarget;
     const rect = button.getBoundingClientRect();
 

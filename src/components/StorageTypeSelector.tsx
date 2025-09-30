@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StorageClientType } from '../services/storage/types';
@@ -10,7 +10,7 @@ interface StorageTypeSelectorProps {
   onTypeChange: (type: StorageClientType) => void;
 }
 
-export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
+export const StorageTypeSelector: FC<StorageTypeSelectorProps> = ({
   selectedType,
   onTypeChange,
 }) => {

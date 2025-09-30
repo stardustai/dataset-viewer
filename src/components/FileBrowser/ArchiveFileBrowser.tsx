@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ArchiveInfo, StorageFile } from '../../types';
@@ -26,7 +26,7 @@ interface ArchiveFileBrowserProps {
   onShowHiddenChange?: (show: boolean) => void;
 }
 
-export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
+export const ArchiveFileBrowser: FC<ArchiveFileBrowserProps> = ({
   archiveInfo,
   onFileSelect,
   onBack,

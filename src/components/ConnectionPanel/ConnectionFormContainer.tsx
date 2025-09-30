@@ -1,4 +1,4 @@
-import type React from 'react';
+import type { FC, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StoredConnection } from '../../services/connectionStorage';
 import type { StorageClientType } from '../../services/storage/types';
@@ -26,7 +26,7 @@ interface ConnectionFormContainerProps {
   onFormDataChange: (updates: Partial<Record<string, any>>) => void;
 }
 
-export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = ({
+export const ConnectionFormContainer: FC<ConnectionFormContainerProps> = ({
   storageType,
   selectedStoredConnection,
   formData,
@@ -41,7 +41,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   const { t } = useTranslation();
 
   // 创建表单提交处理器
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = (e?: FormEvent) => {
     if (e) e.preventDefault();
     onConnect();
   };

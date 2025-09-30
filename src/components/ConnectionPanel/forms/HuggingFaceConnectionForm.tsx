@@ -1,5 +1,5 @@
 import { Bot } from 'lucide-react';
-import type React from 'react';
+import type { FC, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PasswordInput } from '../../common';
 import { ConnectButton, ErrorDisplay } from '../common';
@@ -12,7 +12,7 @@ interface HuggingFaceConnectionFormProps extends UnifiedConnectionFormProps {
   };
 }
 
-export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps> = ({
+export const HuggingFaceConnectionForm: FC<HuggingFaceConnectionFormProps> = ({
   config,
   onChange,
   connecting,
@@ -22,7 +22,7 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
 }) => {
   const { t } = useTranslation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onConnect();
   };

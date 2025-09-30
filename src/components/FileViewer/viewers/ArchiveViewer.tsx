@@ -1,5 +1,5 @@
 import { Archive, Copy, Download, Folder, Loader2 } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CompressionService } from '../../../services/compression';
@@ -15,8 +15,8 @@ import {
   isSpreadsheetFile,
   isTextLikeFile,
 } from '../../../utils/fileTypes';
-import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
-import { safeParseInt } from '../../../utils/typeUtils';
+import { formatModifiedTime } from '../../../utils/fileUtils';
+import { formatFileSize, safeParseInt } from '../../../utils/typeUtils';
 import {
   ErrorDisplay,
   LoadingDisplay,
@@ -66,7 +66,7 @@ interface ArchiveViewerProps {
 
 // 移除不再需要的LoadMoreProgress接口
 
-export const ArchiveViewer: React.FC<ArchiveViewerProps> = ({ url, filename, storageClient }) => {
+export const ArchiveViewer: FC<ArchiveViewerProps> = ({ url, filename, storageClient }) => {
   const { t } = useTranslation();
   const { isConnected, getCurrentClient } = useStorageStore();
   const [archiveInfo, setArchiveInfo] = useState<ArchiveInfo | null>(null);

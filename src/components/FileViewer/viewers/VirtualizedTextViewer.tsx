@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type React from 'react';
+import type { ReactNode, MouseEvent } from 'react';
 import {
   forwardRef,
   useCallback,
@@ -93,7 +93,7 @@ export const VirtualizedTextViewer = forwardRef<
       title?: string;
       searchTerm?: string;
       fileName?: string;
-      description?: React.ReactNode;
+      description?: ReactNode;
     }>({ isOpen: false });
     const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
     const [isHighlighting, setIsHighlighting] = useState(false);
@@ -460,7 +460,7 @@ export const VirtualizedTextViewer = forwardRef<
 
         // 简化的搜索高亮渲染
         const renderSearchHighlight = (text: string) => {
-          const parts: React.ReactNode[] = [];
+          const parts: ReactNode[] = [];
           let lastIndex = 0;
           let match;
 
@@ -648,7 +648,7 @@ export const VirtualizedTextViewer = forwardRef<
       });
     };
 
-    const handleContentClick = (originalLineIndex: number, event: React.MouseEvent) => {
+    const handleContentClick = (originalLineIndex: number, event: MouseEvent) => {
       const selection = window.getSelection();
       if (selection?.toString().length || (event.target as HTMLElement).closest('button')) {
         return;

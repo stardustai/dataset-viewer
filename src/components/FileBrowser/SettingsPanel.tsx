@@ -1,5 +1,5 @@
 import { Check, Download, Globe, Moon, RefreshCw, Settings, Sun, Trash2, X } from 'lucide-react';
-import type React from 'react';
+import type { FC } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
@@ -15,7 +15,7 @@ interface SettingsPanelProps {
   onClose: () => void;
 }
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
+export const SettingsPanel: FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);

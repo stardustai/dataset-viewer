@@ -15,7 +15,8 @@ import {
   Music,
   Presentation,
 } from 'lucide-react';
-import React, { type FC, type ReactNode, useEffect, useState } from 'react';
+import type { FC, ReactNode } from 'react';
+import { cloneElement, isValidElement, ReactElement, useEffect, useState } from 'react';
 import type { FileType } from './fileTypes';
 
 interface FileIconConfig {
@@ -82,7 +83,7 @@ export const FileIcon: FC<FileIconProps> = ({
   // 如果有插件图标
   if (pluginIcon) {
     // 如果是 React 节点，应用正确的尺寸样式
-    if (React.isValidElement(pluginIcon)) {
+    if (isValidElement(pluginIcon)) {
       const sizeClasses = {
         sm: 'w-4 h-4',
         md: 'w-5 h-5',
@@ -90,7 +91,7 @@ export const FileIcon: FC<FileIconProps> = ({
       };
 
       // 克隆组件并应用尺寸样式（保留原有颜色等样式）
-      const clonedIcon = React.cloneElement(pluginIcon as React.ReactElement<any>, {
+      const clonedIcon = cloneElement(pluginIcon as ReactElement<any>, {
         className:
           `${sizeClasses[size]} ${(pluginIcon as any).props?.className || ''} flex-shrink-0`.trim(),
       });

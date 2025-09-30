@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowUpDown, ChevronDown, ChevronUp, Database, Loader2 } from 'lucide-react';
-import type React from 'react';
+import type { FC, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StorageClient } from '../../../services/storage/StorageClient';
@@ -103,7 +103,7 @@ function createProvider(
   }
 }
 
-export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> = ({
+export const UniversalDataTableViewer: FC<UniversalDataTableViewerProps> = ({
   filePath,
   fileName,
   fileSize,
@@ -140,7 +140,7 @@ export const UniversalDataTableViewer: React.FC<UniversalDataTableViewerProps> =
   const [modalContentData, setModalContentData] = useState<{
     content: string;
     title: string;
-    description?: React.ReactNode;
+    description?: ReactNode;
   } | null>(null);
 
   // Refs

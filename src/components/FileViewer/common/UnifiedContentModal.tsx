@@ -1,5 +1,5 @@
 import { Braces, Check, Copy, X } from 'lucide-react';
-import type React from 'react';
+import type { FC, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
@@ -130,7 +130,7 @@ interface HighlightedTextRendererProps {
   className?: string;
 }
 
-const HighlightedTextRenderer: React.FC<HighlightedTextRendererProps> = ({
+const HighlightedTextRenderer: FC<HighlightedTextRendererProps> = ({
   content,
   fileName,
   searchTerm,
@@ -243,7 +243,7 @@ export interface UnifiedContentModalData {
   fileName?: string;
 
   // 自定义描述区域
-  description?: React.ReactNode;
+  description?: ReactNode;
 }
 
 interface UnifiedContentModalProps {
@@ -259,10 +259,10 @@ interface UnifiedContentModalProps {
   fileName?: string;
 
   // 自定义描述区域
-  description?: React.ReactNode;
+  description?: ReactNode;
 }
 
-export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
+export const UnifiedContentModal: FC<UnifiedContentModalProps> = ({
   isOpen,
   onClose,
   content,
