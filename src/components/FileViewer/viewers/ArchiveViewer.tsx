@@ -1,34 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Archive, Copy, Folder, Download, Loader2 } from 'lucide-react';
-import { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
+import { Archive, Copy, Download, Folder, Loader2 } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CompressionService } from '../../../services/compression';
-import { useStorageStore } from '../../../stores/storageStore';
 import type { StorageClient } from '../../../services/storage/types';
+import { useStorageStore } from '../../../stores/storageStore';
+import type { ArchiveEntry, ArchiveInfo, FilePreview } from '../../../types';
 import { copyToClipboard, showCopyToast, showToast } from '../../../utils/clipboard';
 import {
   getFileType,
-  isMediaFile,
   isDataFile,
+  isMediaFile,
+  isPointCloudFile,
   isSpreadsheetFile,
   isTextLikeFile,
-  isPointCloudFile,
 } from '../../../utils/fileTypes';
 import { formatFileSize, formatModifiedTime } from '../../../utils/fileUtils';
 import { safeParseInt } from '../../../utils/typeUtils';
-
-import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
-import { VirtualizedTextViewer } from './VirtualizedTextViewer';
-import { MediaViewer } from './MediaViewer';
-import { UniversalDataTableViewer } from './UniversalDataTableViewer';
-import { PointCloudViewer } from './PointCloudViewer';
 import {
-  LoadingDisplay,
   ErrorDisplay,
+  LoadingDisplay,
   StatusDisplay,
   UnsupportedFormatDisplay,
 } from '../../common';
+import { ArchiveFileBrowser } from '../../FileBrowser/ArchiveFileBrowser';
 import { ManualLoadButton } from '../common';
-import { useTranslation } from 'react-i18next';
+import { MediaViewer } from './MediaViewer';
+import { PointCloudViewer } from './PointCloudViewer';
+import { UniversalDataTableViewer } from './UniversalDataTableViewer';
+import { VirtualizedTextViewer } from './VirtualizedTextViewer';
 
 // 错误信息翻译辅助函数
 const translateError = (error: string, t: (key: string) => string): string => {

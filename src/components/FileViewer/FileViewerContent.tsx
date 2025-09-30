@@ -1,23 +1,23 @@
+import { Loader2 } from 'lucide-react';
 import { forwardRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
-import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
-import { useStorageStore } from '../../stores/storageStore';
-import type { StorageClient } from '../../services/storage/types';
-import { LazyComponentWrapper } from './common';
-import { pluginManager } from '../../services/plugin/pluginManager';
 import { pluginFramework } from '../../services/plugin/pluginFramework';
+import { pluginManager } from '../../services/plugin/pluginManager';
+import type { StorageClient } from '../../services/storage/types';
+import { useStorageStore } from '../../stores/storageStore';
+import type { FullFileSearchResult, SearchResult, StorageFile } from '../../types';
+import { UnsupportedFormatDisplay } from '../common';
+import { LazyComponentWrapper } from './common';
 import { PluginViewer } from './PluginViewer';
 import {
+  ArchiveViewer,
+  MediaViewer,
+  PointCloudViewer,
+  PresentationViewer,
+  UniversalDataTableViewer,
   VirtualizedTextViewer,
   WordViewer,
-  PresentationViewer,
-  MediaViewer,
-  UniversalDataTableViewer,
-  ArchiveViewer,
-  PointCloudViewer,
 } from './viewers';
-import { UnsupportedFormatDisplay } from '../common';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;

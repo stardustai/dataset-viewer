@@ -1,6 +1,6 @@
-import { ArchiveInfo, FilePreview } from '../types';
-import { commands } from '../types/tauri-commands';
 import { useStorageStore } from '../stores/storageStore';
+import type { ArchiveInfo, FilePreview } from '../types';
+import { commands } from '../types/tauri-commands';
 
 export class CompressionService {
   /**

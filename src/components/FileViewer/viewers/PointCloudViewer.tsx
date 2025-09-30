@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import * as dat from 'dat.gui';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
-import { OrbitControls } from 'three-stdlib';
-import { PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
-import * as dat from 'dat.gui';
-import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
+import { OrbitControls, PCDLoader, PLYLoader, XYZLoader } from 'three-stdlib';
 import { useStorageStore } from '../../../stores/storageStore';
+import { ErrorDisplay, LoadingDisplay } from '../../common/StatusDisplay';
 
 // 点云数据点接口
 interface PCDPoint {
@@ -367,7 +367,7 @@ const calculatePointColor = (
       }
       break;
 
-    case 'height':
+    case 'height': {
       const normalizedHeight =
         (point.z - stats.bounds.min.z) / (stats.bounds.max.z - stats.bounds.min.z);
       // 使用更自然的渐变色：蓝色(低) -> 绿色(中) -> 红色(高)
@@ -385,13 +385,15 @@ const calculatePointColor = (
         b = 0.2 - t * 0.2;
       }
       break;
+    }
 
-    case 'uniform':
+    case 'uniform': {
       const color = new THREE.Color(uniformColor);
       r = color.r;
       g = color.g;
       b = color.b;
       break;
+    }
   }
 
   return { r, g, b };

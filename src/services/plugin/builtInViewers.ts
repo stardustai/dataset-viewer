@@ -3,16 +3,16 @@
  * 将所有内置组件注册为"插件"，统一在打开方式菜单中展示
  */
 
-import { BuiltInViewer, pluginFramework } from './pluginFramework';
 import {
-  WordViewer,
-  PresentationViewer,
-  MediaViewer,
-  UniversalDataTableViewer,
   ArchiveViewer,
+  MediaViewer,
   PointCloudViewer,
+  PresentationViewer,
+  UniversalDataTableViewer,
+  WordViewer,
 } from '../../components/FileViewer/viewers';
 import { getExtensionsByType, getMediaExtensions } from '../../utils/fileTypes';
+import { type BuiltInViewer, pluginFramework } from './pluginFramework';
 
 /**
  * 注册所有内置查看器

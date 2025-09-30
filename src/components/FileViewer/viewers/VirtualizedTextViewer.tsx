@@ -1,25 +1,26 @@
-import React, {
-  useEffect,
-  useRef,
-  useCallback,
+import { useVirtualizer } from '@tanstack/react-virtual';
+import type React from 'react';
+import {
   forwardRef,
+  useCallback,
+  useEffect,
   useImperativeHandle,
-  useState,
   useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
+import { useTheme } from '../../../hooks/useTheme';
+import type { FoldableRange } from '../../../utils/folding';
 import {
   getLanguageFromFileName,
-  isLanguageSupported,
   highlightLine,
+  isLanguageSupported,
 } from '../../../utils/syntaxHighlighter';
-import { useTheme } from '../../../hooks/useTheme';
-import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { UnifiedContentModal } from '../common/UnifiedContentModal';
-import { MarkdownPreviewModal } from './MarkdownPreviewModal';
 import { FoldingIndicator, useFoldingLogic } from './CodeFoldingControls';
-import type { FoldableRange } from '../../../utils/folding';
+import { MarkdownPreviewModal } from './MarkdownPreviewModal';
 
 interface VirtualizedTextViewerProps {
   content: string;

@@ -9,7 +9,7 @@ import { getFileType } from '../../utils/fileTypes';
 import { formatFileSize } from '../../utils/fileUtils';
 import { ContextMenu } from '../common/ContextMenu';
 
-interface VirtualizedFileListProps {
+interface FileGridViewProps {
   files: StorageFile[];
   onFileClick: (file: StorageFile) => void;
   onFileOpenAsText?: (file: StorageFile) => void;
@@ -18,7 +18,7 @@ interface VirtualizedFileListProps {
   onScrollToBottom?: () => void;
 }
 
-export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
+export const FileGridView: React.FC<FileGridViewProps> = ({
   files,
   onFileClick,
   onFileOpenAsText,
@@ -46,18 +46,53 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     defaultPluginId: null,
   });
 
-  // 直接使用传入的文件列表，不进行过滤和排序（由调用方处理）
-  const processedFiles = files;
-
   // 创建虚拟化容器引用
   const parentRef = React.useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
-  // 虚拟化配置
+  // 监听容器宽度变化
+  useEffect(() => {
+    const updateWidth = () => {
+      if (parentRef.current) {
+        setContainerWidth(parentRef.current.offsetWidth);
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  // 根据屏幕宽度计算每行显示的列数
+  const getColumnsCount = () => {
+    if (containerWidth === 0) return 4; // 默认值
+
+    // 移动端：2列
+    if (isMobile) return 2;
+
+    // 桌面端：根据宽度动态计算
+    // 每个网格项宽度约 180px，加上间距
+    const itemWidth = 180;
+    const gap = 12;
+    const padding = 48; // 左右padding
+    const availableWidth = containerWidth - padding;
+    const columns = Math.floor(availableWidth / (itemWidth + gap));
+
+    // 最少2列，最多6列
+    return Math.max(2, Math.min(6, columns));
+  };
+
+  const columnsCount = getColumnsCount();
+
+  // 计算虚拟化的行数
+  const rowCount = Math.ceil(files.length / columnsCount);
+
+  // 虚拟化配置 - 按行虚拟化
   const virtualizer = useVirtualizer({
-    count: processedFiles.length,
+    count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 60, // 每行高度
-    overscan: 10, // 预渲染行数以提升滚动体验
+    estimateSize: () => (isMobile ? 132 : 148), // 每行高度：卡片高度 + 间距
+    overscan: 3, // 预渲染行数
   });
 
   // 添加滚动到底部检测逻辑
@@ -70,32 +105,25 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     let lastScrollTime = Date.now();
 
     const handleScroll = () => {
-      // 清除之前的延时器
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
 
-      // 使用短延时来避免过于频繁的调用
       timeoutId = setTimeout(() => {
         const { scrollTop, scrollHeight, clientHeight } = container;
 
-        // 检查容器是否可滚动
         if (scrollHeight <= clientHeight) {
-          // 如果内容高度小于等于容器高度，直接触发加载
           onScrollToBottom();
           return;
         }
 
-        // 计算滚动速度
         const now = Date.now();
         const scrollDistance = scrollTop - lastScrollTop;
         const timeElapsed = now - lastScrollTime;
-        const scrollSpeed = Math.abs(scrollDistance) / Math.max(timeElapsed, 1); // px/ms
+        const scrollSpeed = Math.abs(scrollDistance) / Math.max(timeElapsed, 1);
 
-        // 根据滚动速度动态调整阈值
-        // 滚动越快，越早开始预加载
-        const baseThreshold = 300; // 基础阈值 300px
-        const speedMultiplier = Math.min(scrollSpeed * 50, 200); // 最多增加 200px
+        const baseThreshold = 300;
+        const speedMultiplier = Math.min(scrollSpeed * 50, 200);
         const threshold = baseThreshold + speedMultiplier;
 
         const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold;
@@ -104,13 +132,11 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
           onScrollToBottom();
         }
 
-        // 更新滚动状态
         lastScrollTop = scrollTop;
         lastScrollTime = now;
-      }, 100) as unknown as number; // 减少延时以更快响应
+      }, 100) as unknown as number;
     };
 
-    // 初始检查，如果内容不够高度，立即触发
     const checkInitialHeight = () => {
       const { scrollHeight, clientHeight } = container;
       if (scrollHeight <= clientHeight) {
@@ -129,15 +155,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     };
   }, [onScrollToBottom]);
 
-  // 渲染文件图标
-  const renderFileIcon = (file: StorageFile) => {
-    const fileType = file.type === 'directory' ? 'directory' : getFileType(file.filename);
-    return <FileIcon fileType={fileType} size="md" className="mr-3" filename={file.filename} />;
-  };
-
   // Handle right-click context menu
   const handleContextMenu = (e: React.MouseEvent, file: StorageFile) => {
-    // Only show context menu for files, not directories
     if (file.type !== 'file' || !onFileOpenAsText) {
       return;
     }
@@ -145,10 +164,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
-    // 获取兼容的插件列表
     const compatiblePlugins = pluginFramework.getCompatiblePlugins(file.filename);
-
-    // 获取默认插件ID
     const defaultPluginId = defaultPluginAssociationService.getDefaultPluginForFile(file.filename);
 
     setContextMenu({
@@ -183,7 +199,6 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
       return;
     }
 
-    // 如果需要设为默认
     if (setAsDefault) {
       const extension = defaultPluginAssociationService.getExtensionFromFilename(
         contextMenu.file.filename
@@ -193,104 +208,77 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
       }
     }
 
-    // 使用插件打开文件
     onFileOpenWithPlugin(contextMenu.file, pluginId);
   };
-  const formatDate = (dateString: string): string => {
-    // 如果日期字符串为空或无效，返回横杠
-    if (!dateString || dateString.trim() === '') {
-      return '—';
-    }
 
-    const date = new Date(dateString);
-
-    // 如果日期无效，返回横杠
-    if (Number.isNaN(date.getTime())) {
-      return '—';
-    }
-
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    const isThisYear = date.getFullYear() === now.getFullYear();
-
-    // 移动端使用简洁格式
-    if (isMobile) {
-      if (isToday) {
-        return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-      } else if (isThisYear) {
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      } else {
-        return date.toLocaleDateString(undefined, { year: '2-digit', month: 'short' });
-      }
-    }
-
-    // 桌面端使用完整格式
-    return date.toLocaleString();
+  // 渲染文件图标
+  const renderFileIcon = (file: StorageFile) => {
+    const fileType = file.type === 'directory' ? 'directory' : getFileType(file.filename);
+    return <FileIcon fileType={fileType} size="lg" className="mb-2" filename={file.filename} />;
   };
 
   return (
-    <div
-      ref={parentRef}
-      style={{ height: height ? `${height}px` : '100%' }}
-      className="h-full overflow-auto"
-      data-virtualized-container="true"
-    >
+    <div ref={parentRef} className="h-full overflow-auto pt-2" data-virtualized-container="true">
       <div
+        className="w-full relative"
         style={{
           height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
         }}
       >
-        {virtualizer.getVirtualItems().map(virtualItem => {
-          const file = processedFiles[virtualItem.index];
+        {virtualizer.getVirtualItems().map(virtualRow => {
+          const startIndex = virtualRow.index * columnsCount;
+          const endIndex = Math.min(startIndex + columnsCount, files.length);
+          const rowFiles = files.slice(startIndex, endIndex);
 
           return (
             <div
-              key={virtualItem.key}
+              key={virtualRow.key}
+              className="absolute top-0 left-0 w-full px-5"
               style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${virtualItem.size}px`,
-                transform: `translateY(${virtualItem.start}px)`,
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
               }}
-              className="border-b border-gray-200 dark:border-gray-700"
             >
               <div
-                role="button"
-                tabIndex={0}
-                onClick={() => onFileClick(file)}
-                onContextMenu={e => handleContextMenu(e, file)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onFileClick(file);
-                  }
+                className="grid gap-3 h-full items-center"
+                style={{
+                  gridTemplateColumns: `repeat(${columnsCount}, minmax(0, 1fr))`,
                 }}
-                className="flex items-center px-4 lg:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors h-full"
               >
-                {/* 文件图标和名称 */}
-                <div className="flex items-center flex-1 min-w-0 pr-2 lg:pr-4">
-                  {renderFileIcon(file)}
-                  <span
-                    className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
-                    title={file.basename}
+                {rowFiles.map((file, colIndex) => (
+                  <div
+                    key={`${startIndex + colIndex}-${file.filename}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onFileClick(file)}
+                    onContextMenu={e => handleContextMenu(e, file)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onFileClick(file);
+                      }
+                    }}
+                    className="flex flex-col items-center justify-center px-3 py-2.5 rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 hover:border-indigo-400/60 dark:hover:border-indigo-500/60 cursor-pointer transition-all duration-200 group h-[136px]"
                   >
-                    {file.basename}
-                  </span>
-                </div>
+                    {/* 文件图标 */}
+                    <div className="flex-shrink-0 my-2 scale-150">{renderFileIcon(file)}</div>
 
-                {/* 文件大小 */}
-                <div className="w-16 sm:w-20 lg:w-24 text-sm text-gray-500 dark:text-gray-400 text-right pr-2 lg:pr-4 flex-shrink-0">
-                  {file.type === 'file' ? formatFileSize(file.size) : '—'}
-                </div>
+                    {/* 文件名 */}
+                    <div
+                      className="text-sm text-center font-medium text-gray-900 dark:text-gray-100 w-full truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+                      title={file.basename}
+                    >
+                      {file.basename}
+                    </div>
 
-                {/* 修改时间 */}
-                <div className="w-24 sm:w-32 lg:w-48 text-sm text-gray-500 dark:text-gray-400 text-right flex-shrink-0">
-                  {formatDate(file.lastmod)}
-                </div>
+                    {/* 文件大小 */}
+                    {file.type === 'file' && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                        {formatFileSize(file.size)}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           );

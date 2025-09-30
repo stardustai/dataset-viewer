@@ -1,6 +1,6 @@
 import React from 'react';
+import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import ReactDOM from 'react-dom/client';
-import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
 import App from './App';
 import { registerBuiltInViewers } from './services/plugin/builtInViewers';
 

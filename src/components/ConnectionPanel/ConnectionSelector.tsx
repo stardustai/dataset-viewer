@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Edit2, Star, StarOff, Trash2 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
-import { StoredConnection, connectionStorage } from '../../services/connectionStorage';
 import { useConnectionManager } from '../../hooks/useStorage';
+import { connectionStorage, type StoredConnection } from '../../services/connectionStorage';
 import { formatConnectionDisplayName } from '../../utils/urlUtils';
 
 interface UndoToastProps {

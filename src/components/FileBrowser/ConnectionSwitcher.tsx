@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { StoredConnection } from '../../services/connectionStorage';
 import { useStorageStore } from '../../stores/storageStore';
-import { formatConnectionDisplayName } from '../../utils/urlUtils';
 import { getConnectionIcon } from '../../utils/connectionIcons';
-import { StoredConnection } from '../../services/connectionStorage';
+import { formatConnectionDisplayName } from '../../utils/urlUtils';
 
 interface ConnectionSwitcherProps {
   onConnectionChange?: () => void;

@@ -1,25 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  Package,
-  Download,
   AlertCircle,
-  Loader,
-  RefreshCw,
-  X,
   ArrowUp,
+  Download,
+  Loader,
   MoreVertical,
+  Package,
+  RefreshCw,
   Trash2,
+  X,
 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as semver from 'semver';
-import { commands } from '../../types/tauri-commands';
+import { pluginManager } from '../../services/plugin/pluginManager';
 import type {
   LocalPluginInfo,
-  PluginVersionInfo,
   PluginInstallOptions,
+  PluginVersionInfo,
 } from '../../types/tauri-commands';
-import { pluginManager } from '../../services/plugin/pluginManager';
-import { showToast, showErrorToast } from '../../utils/clipboard';
+import { commands } from '../../types/tauri-commands';
+import { showErrorToast, showToast } from '../../utils/clipboard';
 
 interface PluginManagerProps {
   onClose: () => void;

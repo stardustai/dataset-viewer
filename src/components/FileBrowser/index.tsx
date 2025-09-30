@@ -1,45 +1,48 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Download,
   Eye,
   EyeOff,
-  ChevronUp,
-  ChevronDown,
-  RefreshCw,
-  Search,
-  X,
-  Settings,
-  ArrowLeft,
-  Download,
+  Grid,
+  List,
   Loader2,
   Package,
+  RefreshCw,
+  Search,
+  Settings,
+  X,
 } from 'lucide-react';
-import { StorageFile } from '../../types';
-import { commands } from '../../types/tauri-commands';
-import { compareFileSize } from '../../utils/typeUtils';
-import { useStorageStore } from '../../stores/storageStore';
-import { ListOptions } from '../../services/storage/types';
-import { cleanPath } from '../../utils/pathUtils';
-import type { StorageClient as IStorageClient } from '../../services/storage/types';
-import { navigationHistoryService } from '../../services/navigationHistory';
-import { VirtualizedFileList } from './VirtualizedFileList';
-import { PerformanceIndicator } from './PerformanceIndicator';
-import { SettingsPanel } from './SettingsPanel';
-import { ConnectionSwitcher } from './ConnectionSwitcher';
-import { PluginManager } from '../PluginManager';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { defaultPluginAssociationService } from '../../services/defaultPluginAssociationService';
+import { FolderDownloadService } from '../../services/folderDownloadService';
+import { navigationHistoryService } from '../../services/navigationHistory';
+import type { StorageClient as IStorageClient, ListOptions } from '../../services/storage/types';
+import { useStorageStore } from '../../stores/storageStore';
+import type { StorageFile } from '../../types';
+import { commands } from '../../types/tauri-commands';
+import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
+import { cleanPath } from '../../utils/pathUtils';
+import { compareFileSize } from '../../utils/typeUtils';
 import {
-  LoadingDisplay,
-  HiddenFilesDisplay,
-  NoSearchResultsDisplay,
-  NoLocalResultsDisplay,
-  NoRemoteResultsDisplay,
+  BreadcrumbNavigation,
   EmptyDisplay,
   ErrorDisplay,
-  BreadcrumbNavigation,
+  HiddenFilesDisplay,
+  LoadingDisplay,
+  NoLocalResultsDisplay,
+  NoRemoteResultsDisplay,
+  NoSearchResultsDisplay,
 } from '../common';
-import { copyToClipboard, showCopyToast, showErrorToast } from '../../utils/clipboard';
-import { FolderDownloadService } from '../../services/folderDownloadService';
+import { PluginManager } from '../PluginManager';
+import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { FileGridView } from './FileGridView';
+import { PerformanceIndicator } from './PerformanceIndicator';
+import { SettingsPanel } from './SettingsPanel';
+import { VirtualizedFileList } from './VirtualizedFileList';
 
 interface FileBrowserProps {
   onFileSelect: (
@@ -58,9 +61,8 @@ interface FileBrowserProps {
 }
 
 // 类型适配函数：将 null 转换为 undefined
-const nullToUndefined = function <T>(value: T | null): T | undefined {
-  return value === null ? undefined : value;
-};
+const nullToUndefined = <T,>(value: T | null): T | undefined =>
+  value === null ? undefined : value;
 
 export const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileSelect,
@@ -92,6 +94,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     }
   });
 
+  // 视图模式状态
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    try {
+      const saved = localStorage.getItem('file-browser-view-mode');
+      return saved === 'grid' ? 'grid' : 'list';
+    } catch {
+      return 'list';
+    }
+  });
+
   // 保存隐藏文件显示偏好到localStorage
   useEffect(() => {
     try {
@@ -100,6 +112,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 忽略localStorage错误
     }
   }, [showHidden]);
+
+  // 保存视图模式偏好到localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('file-browser-view-mode', viewMode);
+    } catch {
+      // 忽略localStorage错误
+    }
+  }, [viewMode]);
 
   const [sortField, setSortField] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -652,7 +673,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
       // 获取完整的文件列表（处理分页）
       setIsRefreshing(true); // 使用刷新状态而不是全屏loading
-      let allFiles: StorageFile[] = [];
+      const allFiles: StorageFile[] = [];
       let hasMorePages = true;
       let marker: string | undefined;
 
@@ -1030,7 +1051,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
             showHomeIcon={true}
           />
 
-          {/* 搜索框和刷新按钮 */}
+          {/* 搜索框和工具按钮 */}
           <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
             {searchTerm && (
               <div className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -1048,6 +1069,32 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                 <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
             )}
+
+            {/* 视图模式切换按钮 - 紧凑版 */}
+            <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+                title={t('view.toggle.list')}
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+                title={t('view.toggle.grid')}
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+            </div>
 
             <div className="relative">
               <Search className="absolute left-2 lg:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -1148,62 +1195,64 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
 
           {!loading && !error && (
             <>
-              {/* 表头 */}
-              <div
-                ref={tableHeaderRef}
-                className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3"
-              >
-                <div className="flex items-center">
-                  <div className="flex-1 pr-2 lg:pr-4">
-                    <div
-                      className="flex items-center cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
-                      onClick={() => handleSort('name')}
-                    >
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('name')}
-                      </span>
-                      {sortField === 'name' &&
-                        (sortDirection === 'asc' ? (
-                          <ChevronUp className="ml-1 w-3 h-3" />
-                        ) : (
-                          <ChevronDown className="ml-1 w-3 h-3" />
-                        ))}
+              {/* 表头 - 仅在列表视图模式下显示 */}
+              {viewMode === 'list' && (
+                <div
+                  ref={tableHeaderRef}
+                  className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3"
+                >
+                  <div className="flex items-center">
+                    <div className="flex-1 pr-2 lg:pr-4">
+                      <div
+                        className="flex items-center cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
+                        onClick={() => handleSort('name')}
+                      >
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          {t('name')}
+                        </span>
+                        {sortField === 'name' &&
+                          (sortDirection === 'asc' ? (
+                            <ChevronUp className="ml-1 w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="ml-1 w-3 h-3" />
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-16 sm:w-20 lg:w-24 text-right pr-2 lg:pr-4">
-                    <div
-                      className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
-                      onClick={() => handleSort('size')}
-                    >
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('size')}
-                      </span>
-                      {sortField === 'size' &&
-                        (sortDirection === 'asc' ? (
-                          <ChevronUp className="ml-1 w-3 h-3" />
-                        ) : (
-                          <ChevronDown className="ml-1 w-3 h-3" />
-                        ))}
+                    <div className="w-16 sm:w-20 lg:w-24 text-right pr-2 lg:pr-4">
+                      <div
+                        className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
+                        onClick={() => handleSort('size')}
+                      >
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          {t('size')}
+                        </span>
+                        {sortField === 'size' &&
+                          (sortDirection === 'asc' ? (
+                            <ChevronUp className="ml-1 w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="ml-1 w-3 h-3" />
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-24 sm:w-32 lg:w-48 text-right">
-                    <div
-                      className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
-                      onClick={() => handleSort('modified')}
-                    >
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('modified')}
-                      </span>
-                      {sortField === 'modified' &&
-                        (sortDirection === 'asc' ? (
-                          <ChevronUp className="ml-1 w-3 h-3" />
-                        ) : (
-                          <ChevronDown className="ml-1 w-3 h-3" />
-                        ))}
+                    <div className="w-24 sm:w-32 lg:w-48 text-right">
+                      <div
+                        className="flex items-center justify-end cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
+                        onClick={() => handleSort('modified')}
+                      >
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          {t('modified')}
+                        </span>
+                        {sortField === 'modified' &&
+                          (sortDirection === 'asc' ? (
+                            <ChevronUp className="ml-1 w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="ml-1 w-3 h-3" />
+                          ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* 文件列表或空状态 */}
               {files.length > 0 ? (
@@ -1232,13 +1281,23 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                     ref={fileListRef}
                     className="bg-white dark:bg-gray-800 relative flex-1 overflow-hidden"
                   >
-                    <VirtualizedFileList
-                      files={getDisplayFiles()}
-                      onFileClick={handleItemClick}
-                      onFileOpenAsText={handleOpenAsText}
-                      onFileOpenWithPlugin={handleOpenWithPlugin}
-                      onScrollToBottom={handleScrollToBottom}
-                    />
+                    {viewMode === 'list' ? (
+                      <VirtualizedFileList
+                        files={getDisplayFiles()}
+                        onFileClick={handleItemClick}
+                        onFileOpenAsText={handleOpenAsText}
+                        onFileOpenWithPlugin={handleOpenWithPlugin}
+                        onScrollToBottom={handleScrollToBottom}
+                      />
+                    ) : (
+                      <FileGridView
+                        files={getDisplayFiles()}
+                        onFileClick={handleItemClick}
+                        onFileOpenAsText={handleOpenAsText}
+                        onFileOpenWithPlugin={handleOpenWithPlugin}
+                        onScrollToBottom={handleScrollToBottom}
+                      />
+                    )}
                     {/* Loading more indicator - 绝对定位覆盖层 */}
                     {loadingMore && (
                       <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gray-50/95 dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 backdrop-blur-sm">

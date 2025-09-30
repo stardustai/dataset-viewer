@@ -1,20 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
 import { emit } from '@tauri-apps/api/event';
+import { useEffect, useRef, useState } from 'react';
 import { ConnectionPanel } from './components/ConnectionPanel';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import DownloadProgress from './components/DownloadProgress';
 import { FileBrowser } from './components/FileBrowser';
 import { FileViewer } from './components/FileViewer';
-import DownloadProgress from './components/DownloadProgress';
 import { UpdateNotification, useUpdateNotification } from './components/UpdateNotification';
-import ErrorBoundary from './components/common/ErrorBoundary';
-import { StorageFile } from './types';
-import { useStorageStore } from './stores/storageStore';
-import { navigationHistoryService } from './services/navigationHistory';
-import { fileAssociationService } from './services/fileAssociationService';
-import { pluginInitialization } from './services/plugin/pluginInitialization';
 import { useTheme } from './hooks/useTheme';
+import { fileAssociationService } from './services/fileAssociationService';
+import { navigationHistoryService } from './services/navigationHistory';
+import { pluginInitialization } from './services/plugin/pluginInitialization';
+import { useStorageStore } from './stores/storageStore';
+import type { StorageFile } from './types';
 import './i18n';
 import './App.css';
-import { StorageClient } from './services/storage/types';
+import type { StorageClient } from './services/storage/types';
 
 type AppState = 'initializing' | 'connecting' | 'browsing' | 'viewing';
 

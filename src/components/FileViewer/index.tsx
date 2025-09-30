@@ -1,11 +1,13 @@
-import React, { useRef, useState } from 'react';
-import { StorageFile } from '../../types';
+import type React from 'react';
+import { useRef, useState } from 'react';
 import type { StorageClient } from '../../services/storage/types';
+import type { StorageFile } from '../../types';
+import { FileViewerContent } from './FileViewerContent';
 import { FileViewerHeader } from './FileViewerHeader';
 import { FileViewerSearchBar } from './FileViewerSearchBar';
-import { FileViewerContent } from './FileViewerContent';
 import { useFileLoader } from './hooks/useFileLoader';
 import { useFileSearch } from './hooks/useFileSearch';
+
 // 定义 VirtualizedTextViewer 的 ref 接口
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;

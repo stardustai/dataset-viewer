@@ -1,12 +1,18 @@
+import { enableMapSet } from 'immer';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { enableMapSet } from 'immer';
+import { connectionStorage, type StoredConnection } from '../services/connectionStorage';
+import type { StorageClient } from '../services/storage/StorageClient';
 import { StorageClientFactory } from '../services/storage/StorageManager';
-import { StorageClient } from '../services/storage/StorageClient';
-import { connectionStorage, StoredConnection } from '../services/connectionStorage';
-import { DirectoryResult, ListOptions, FileContent, ReadOptions } from '../services/storage/types';
-import type { ConnectionConfig, StorageClientType } from '../services/storage/types';
+import type {
+  ConnectionConfig,
+  DirectoryResult,
+  FileContent,
+  ListOptions,
+  ReadOptions,
+  StorageClientType,
+} from '../services/storage/types';
 import type { StorageFile } from '../types';
 
 // 启用 Immer 的 Map 和 Set 支持

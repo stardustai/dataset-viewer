@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event';
-import { StorageFile } from '../types';
 import { useStorageStore } from '../stores/storageStore';
+import type { StorageFile } from '../types';
 import { navigationHistoryService } from './navigationHistory';
 
 /**
@@ -104,7 +104,7 @@ export class FileAssociationService {
       }
 
       // 获取相对路径（文件名）
-      const fileName = filePath.split(/[\/\\]/).pop() || '';
+      const fileName = filePath.split(/[/\\]/).pop() || '';
 
       // 创建文件对象
       const file = await this.createStorageFile(fileName);

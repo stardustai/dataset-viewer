@@ -1,24 +1,25 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
+  type ColumnFiltersState,
   createColumnHelper,
   flexRender,
-  SortingState,
-  ColumnFiltersState,
-  VisibilityState,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronUp, ChevronDown, Database, ArrowUpDown, Loader2 } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../../common';
-import type { DataProvider, DataMetadata } from '../data-providers';
-import { ParquetDataProvider, XlsxDataProvider, CsvDataProvider } from '../data-providers';
-import { DataTableControls, DataTableColumnPanel, DataTableCell } from '../table-components';
+import { ArrowUpDown, ChevronDown, ChevronUp, Database, Loader2 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { StorageClient } from '../../../services/storage/StorageClient';
+import { ErrorDisplay, LoadingDisplay } from '../../common';
 import { UnifiedContentModal } from '../common';
-import { StorageClient } from '../../../services/storage/StorageClient';
+import type { DataMetadata, DataProvider } from '../data-providers';
+import { CsvDataProvider, ParquetDataProvider, XlsxDataProvider } from '../data-providers';
+import { DataTableCell, DataTableColumnPanel, DataTableControls } from '../table-components';
 
 /**
  * 安全的JSON序列化函数，处理BigInt等特殊类型

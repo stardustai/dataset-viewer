@@ -1,4 +1,4 @@
-import { ArchiveEntry, StorageFile } from '../types';
+import type { ArchiveEntry, StorageFile } from '../types';
 import { getMimeType } from './fileTypes';
 
 /**

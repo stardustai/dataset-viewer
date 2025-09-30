@@ -1,4 +1,4 @@
-import { FileText, ChevronRight, Check, Wand2 } from 'lucide-react';
+import { Check, ChevronRight, FileText, Wand2 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

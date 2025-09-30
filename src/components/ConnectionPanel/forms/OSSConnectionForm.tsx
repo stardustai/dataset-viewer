@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OSSPlatformSelector, OSS_PLATFORMS } from '../OSSPlatformSelector';
-import { ConnectButton, ErrorDisplay } from '../common';
 import { PasswordInput } from '../../common';
-import { UnifiedConnectionFormProps } from './types';
+import { ConnectButton, ErrorDisplay } from '../common';
+import { OSS_PLATFORMS, OSSPlatformSelector } from '../OSSPlatformSelector';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface OSSConnectionFormProps extends UnifiedConnectionFormProps {
   config: {

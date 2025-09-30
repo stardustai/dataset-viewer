@@ -1,6 +1,7 @@
-import React, { Component, ReactNode } from 'react';
+import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import type React from 'react';
+import { Component, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface ErrorBoundaryState {
   hasError: boolean;

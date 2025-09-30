@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
-import { StorageClientType } from '../services/storage/types';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { StorageClientType } from '../services/storage/types';
 import { storageIconMap } from '../utils/connectionIcons';
 
 interface StorageTypeSelectorProps {

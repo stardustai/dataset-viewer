@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import type { FileAccessor, PluginViewerProps } from '@dataset-viewer/sdk';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { pluginManager } from '../../services/plugin/pluginManager';
-import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
-import type { StorageFile } from '../../types';
-import type { FileAccessor, PluginViewerProps } from '@dataset-viewer/sdk';
 import type { StorageClient } from '../../services/storage/types';
+import type { StorageFile } from '../../types';
+import { ErrorDisplay, LoadingDisplay } from '../common/StatusDisplay';
 
 interface LocalPluginViewerProps {
   file: StorageFile;
