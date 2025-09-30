@@ -27,6 +27,7 @@ import { PerformanceIndicator } from './PerformanceIndicator';
 import { SettingsPanel } from './SettingsPanel';
 import { ConnectionSwitcher } from './ConnectionSwitcher';
 import { PluginManager } from '../PluginManager';
+import { defaultPluginAssociationService } from '../../services/defaultPluginAssociationService';
 import {
   LoadingDisplay,
   HiddenFilesDisplay,
@@ -46,7 +47,8 @@ interface FileBrowserProps {
     path: string,
     storageClient?: IStorageClient,
     files?: StorageFile[],
-    forceTextMode?: boolean
+    forceTextMode?: boolean,
+    pluginId?: string
   ) => void;
   onDisconnect: () => void;
   initialPath?: string;
@@ -236,7 +238,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
   };
 
   // 检查是否应该允许远程搜索
-  // 对于 HuggingFace，只有在首页或组织根页面才允许远程搜索
+  // 只有 HuggingFace 连接支持远程搜索，且仅在首页或组织根页面允许
   const shouldAllowRemoteSearch = () => {
     try {
       const connection = currentConnection;
@@ -245,9 +247,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
         return false;
       }
 
-      // 只有 HuggingFace 需要特殊处理
+      // 只有 HuggingFace 类型的连接支持远程搜索
       if (connection.type !== 'huggingface') {
-        return true;
+        return false;
       }
 
       // 对于 HuggingFace，检查当前路径
@@ -267,7 +269,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 其他情况（在具体数据集内部）不允许远程搜索
       return false;
     } catch {
-      return true; // 出错时允许搜索（保持向后兼容）
+      return false; // 出错时不允许搜索
     }
   };
   const loadDirectory = async (path: string, isManual = false, forceReload = false) => {
@@ -849,7 +851,21 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
       // 处理所有类型的文件，不仅仅是文本文件
       const currentStorageClient = getCurrentClient();
       const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
-      onFileSelect(file, fullPath, currentStorageClient, files);
+
+      // 检查是否有用户设置的默认插件
+      const defaultPluginId = defaultPluginAssociationService.getDefaultPluginForFile(
+        file.filename
+      );
+
+      // 如果有默认插件，则使用默认插件打开；否则使用默认行为
+      onFileSelect(
+        file,
+        fullPath,
+        currentStorageClient,
+        files,
+        false,
+        defaultPluginId || undefined
+      );
     }
   };
 
@@ -859,6 +875,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
     // 通过forceTextMode参数告诉FileViewer强制以文本格式打开
     onFileSelect(file, fullPath, currentStorageClient, files, true);
+  };
+
+  const handleOpenWithPlugin = (file: StorageFile, pluginId: string) => {
+    // 使用指定的插件打开文件
+    const currentStorageClient = getCurrentClient();
+    const fullPath = currentPath ? `${currentPath}/${file.basename}` : file.basename;
+    // 传递pluginId给文件查看器
+    onFileSelect(file, fullPath, currentStorageClient, files, false, pluginId);
   };
 
   const connection = currentConnection;
@@ -1212,6 +1236,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
                       files={getDisplayFiles()}
                       onFileClick={handleItemClick}
                       onFileOpenAsText={handleOpenAsText}
+                      onFileOpenWithPlugin={handleOpenWithPlugin}
                       onScrollToBottom={handleScrollToBottom}
                     />
                     {/* Loading more indicator - 绝对定位覆盖层 */}

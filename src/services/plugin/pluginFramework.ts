@@ -1,7 +1,18 @@
-import { ReactNode } from 'react';
+import { ReactNode, ComponentType } from 'react';
 import { PluginBundle, PluginInstance } from '@dataset-viewer/sdk';
 import { commands } from '../../types/tauri-commands';
 import i18n from '../../i18n';
+
+/**
+ * 内置查看器接口
+ */
+export interface BuiltInViewer {
+  id: string; // 例如: 'builtin:word', 'builtin:media'
+  name: string; // 显示名称的国际化key，例如: 'viewer.word'
+  supportedExtensions: string[]; // 支持的文件扩展名
+  component: ComponentType<any>; // React组件
+  priority?: number; // 优先级，数字越大优先级越高
+}
 
 /**
  * 插件错误类型
@@ -37,6 +48,17 @@ export interface PluginLoadResult {
 }
 
 /**
+ * 统一的查看器选项接口（内置 + 外部插件）
+ */
+export interface ViewerOption {
+  id: string;
+  name: string;
+  isBuiltIn: boolean;
+  pluginInstance?: PluginInstance;
+  builtInViewer?: BuiltInViewer;
+}
+
+/**
  * 插件框架 - 负责插件的管理和动态加载
  *
  * 加载策略:
@@ -56,12 +78,46 @@ export class PluginFramework {
   private loadingPromises = new Map<string, Promise<PluginLoadResult>>();
   private pluginFileCache = new Map<string, string>(); // 插件文件内容缓存
   private lastValidationCache = new Map<string, boolean>(); // 插件验证结果缓存
+  private builtInViewers: BuiltInViewer[] = []; // 内置查看器注册表
 
   static getInstance(): PluginFramework {
     if (!PluginFramework.instance) {
       PluginFramework.instance = new PluginFramework();
     }
     return PluginFramework.instance;
+  }
+
+  /**
+   * 注册内置查看器
+   */
+  registerBuiltInViewer(viewer: BuiltInViewer): void {
+    this.builtInViewers.push(viewer);
+  }
+
+  /**
+   * 获取所有内置查看器
+   */
+  getBuiltInViewers(): BuiltInViewer[] {
+    return [...this.builtInViewers];
+  }
+
+  /**
+   * 根据ID获取内置查看器
+   */
+  getBuiltInViewer(id: string): BuiltInViewer | undefined {
+    return this.builtInViewers.find(viewer => viewer.id === id);
+  }
+
+  /**
+   * 获取文件支持的内置查看器
+   */
+  getCompatibleBuiltInViewers(filename: string): BuiltInViewer[] {
+    const ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+    return this.builtInViewers
+      .filter(viewer =>
+        viewer.supportedExtensions.some(supportedExt => supportedExt.toLowerCase() === ext)
+      )
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
   }
 
   /**
@@ -502,6 +558,38 @@ export class PluginFramework {
   }
 
   /**
+   * 获取所有可以处理指定文件的查看器（内置 + 插件）
+   */
+  getCompatiblePlugins(filename: string): ViewerOption[] {
+    const viewers: ViewerOption[] = [];
+
+    // 添加兼容的外部插件
+    for (const plugin of this.plugins.values()) {
+      if (plugin.canHandle(filename)) {
+        viewers.push({
+          id: plugin.metadata.id,
+          name: plugin.metadata.name,
+          isBuiltIn: false,
+          pluginInstance: plugin,
+        });
+      }
+    }
+
+    // 添加兼容的内置查看器
+    const builtInViewers = this.getCompatibleBuiltInViewers(filename);
+    for (const viewer of builtInViewers) {
+      viewers.push({
+        id: viewer.id,
+        name: viewer.name,
+        isBuiltIn: true,
+        builtInViewer: viewer,
+      });
+    }
+
+    return viewers;
+  }
+
+  /**
    * 获取所有已加载的插件
    */
   getAllPlugins(): PluginInstance[] {
@@ -700,3 +788,6 @@ This limitation exists because require() is synchronous but plugin files are loa
     this.logPlugin('info', 'System', '🧹 插件系统清理完成');
   }
 }
+
+// 导出单例实例
+export const pluginFramework = PluginFramework.getInstance();

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
 import App from './App';
+import { registerBuiltInViewers } from './services/plugin/builtInViewers';
 
 // 为插件系统全局暴露依赖
 declare global {
@@ -22,6 +23,9 @@ window.ReactJSXRuntime = {
   jsxs,
   Fragment,
 };
+
+// 注册所有内置查看器
+registerBuiltInViewers();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
