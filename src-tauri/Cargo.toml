@@ -1,6 +1,6 @@
 [package]
 name = "dataset-viewer"
-version = "1.6.0-beta.1"
+version = "1.6.0"
 description = "Dataset Viewer - A modern multi-source dataset browser"
 authors = ["you"]
 edition = "2021"
