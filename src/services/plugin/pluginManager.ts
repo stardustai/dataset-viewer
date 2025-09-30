@@ -250,6 +250,13 @@ export class PluginManager {
   }
 
   /**
+   * 根据插件ID获取插件实例
+   */
+  getPluginById(pluginId: string): PluginInstance | null {
+    return this.framework.getPlugin(pluginId);
+  }
+
+  /**
    * 获取所有已加载的插件实例
    */
   getLoadedPlugins(): PluginInstance[] {

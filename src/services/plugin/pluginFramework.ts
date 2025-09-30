@@ -502,6 +502,19 @@ export class PluginFramework {
   }
 
   /**
+   * 获取所有可以处理指定文件的插件（支持多个插件处理同一格式）
+   */
+  getCompatiblePlugins(filename: string): PluginInstance[] {
+    const compatiblePlugins: PluginInstance[] = [];
+    for (const plugin of this.plugins.values()) {
+      if (plugin.canHandle(filename)) {
+        compatiblePlugins.push(plugin);
+      }
+    }
+    return compatiblePlugins;
+  }
+
+  /**
    * 获取所有已加载的插件
    */
   getAllPlugins(): PluginInstance[] {
@@ -700,3 +713,6 @@ This limitation exists because require() is synchronous but plugin files are loa
     this.logPlugin('info', 'System', '🧹 插件系统清理完成');
   }
 }
+
+// 导出单例实例
+export const pluginFramework = PluginFramework.getInstance();

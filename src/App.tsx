@@ -44,6 +44,7 @@ function App() {
   const [isReturningFromViewer, setIsReturningFromViewer] = useState(false);
   const [isFileAssociationMode, setIsFileAssociationMode] = useState(false);
   const [forceTextMode, setForceTextMode] = useState(false);
+  const [selectedPluginId, setSelectedPluginId] = useState<string | undefined>(undefined);
 
   // 用于跟踪文件关联是否已处理的 ref，必须在顶层声明
   const fileAssociationHandledRef = useRef(false);
@@ -62,12 +63,14 @@ function App() {
     path: string,
     storageClient?: StorageClient,
     files?: StorageFile[],
-    isForceTextMode?: boolean
+    isForceTextMode?: boolean,
+    pluginId?: string
   ) => {
     setSelectedFile(file);
     setSelectedFilePath(path);
     setSelectedStorageClient(storageClient); // 保存存储客户端引用
     setForceTextMode(!!isForceTextMode); // 设置强制文本模式
+    setSelectedPluginId(pluginId); // 保存选中的插件ID
 
     // 检查是否存在关联文件（如YOLO标注的txt文件）
     if (files && file.basename) {
@@ -235,6 +238,7 @@ function App() {
     setSelectedFilePath('');
     setSelectedStorageClient(undefined);
     setForceTextMode(false); // 重置强制文本模式
+    setSelectedPluginId(undefined); // 重置选中的插件ID
 
     // 只有当是文件关联模式时，才需要刷新列表
     // 这是因为文件关联模式下，应用直接打开文件，FileBrowser可能没有正确的目录状态
@@ -294,6 +298,7 @@ function App() {
               onBack={handleBackToBrowser}
               hideBackButton={isFileViewerMode} // 如果是文件查看模式则隐藏返回按钮
               forceTextMode={forceTextMode}
+              pluginId={selectedPluginId}
             />
           </div>
         )}

@@ -21,6 +21,7 @@ interface FileViewerProps {
   onBack: () => void;
   hideBackButton?: boolean; // 新增属性，用于隐藏返回按钮
   forceTextMode?: boolean; // 新增属性，用于强制以文本格式打开
+  pluginId?: string; // 新增属性，指定使用的插件ID
 }
 
 export const FileViewer: React.FC<FileViewerProps> = ({
@@ -31,6 +32,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
   onBack,
   hideBackButton,
   forceTextMode,
+  pluginId,
 }) => {
   const fileLoader = useFileLoader(file, filePath, forceTextMode);
 
@@ -211,6 +213,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
         setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
         loadFileContent={loadFileContent}
         forceTextMode={forceTextMode}
+        pluginId={pluginId}
       />
     </div>
   );

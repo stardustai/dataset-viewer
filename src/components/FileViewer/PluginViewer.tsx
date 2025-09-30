@@ -13,6 +13,7 @@ interface LocalPluginViewerProps {
   content?: string | ArrayBuffer;
   storageClient: StorageClient;
   isLargeFile: boolean;
+  pluginId?: string; // 新增：指定使用的插件ID
 }
 
 /**
@@ -52,6 +53,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
   content,
   storageClient,
   isLargeFile,
+  pluginId,
 }) => {
   const { t } = useTranslation();
   const pluginComponent = useRef<React.ComponentType<PluginViewerProps> | null>(null);
@@ -94,13 +96,23 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
       setLoading(true);
       setError(null);
 
-      // 通过插件管理器查找合适的插件
-      const plugin = pluginManager.findViewerForFile(file.basename);
-
-      if (!plugin) {
-        setError(t('plugin.notFound', { filename: file.basename }));
-        setLoading(false);
-        return;
+      // 如果指定了 pluginId，则使用指定的插件；否则通过插件管理器自动查找
+      let plugin;
+      if (pluginId) {
+        plugin = pluginManager.getPluginById(pluginId);
+        if (!plugin) {
+          setError(t('plugin.notFound', { filename: file.basename }));
+          setLoading(false);
+          return;
+        }
+      } else {
+        // 通过插件管理器查找合适的插件
+        plugin = pluginManager.findViewerForFile(file.basename);
+        if (!plugin) {
+          setError(t('plugin.notFound', { filename: file.basename }));
+          setLoading(false);
+          return;
+        }
       }
 
       // 设置插件组件和命名空间
@@ -114,7 +126,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
       setError(errorMessage);
       setLoading(false);
     }
-  }, [file.basename]);
+  }, [file.basename, pluginId, t]);
 
   if (loading && !error) {
     return <LoadingDisplay message={t('plugin.loading')} className="h-full" />;

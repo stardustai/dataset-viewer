@@ -6,11 +6,15 @@ import { FileIcon } from '../../utils/fileIcons';
 import { getFileType } from '../../utils/fileTypes';
 import { formatFileSize } from '../../utils/fileUtils';
 import { ContextMenu } from '../common/ContextMenu';
+import { pluginFramework } from '../../services/plugin/pluginFramework';
+import { defaultPluginAssociationService } from '../../services/defaultPluginAssociationService';
+import type { PluginInstance } from '@dataset-viewer/sdk';
 
 interface VirtualizedFileListProps {
   files: StorageFile[];
   onFileClick: (file: StorageFile) => void;
   onFileOpenAsText?: (file: StorageFile) => void;
+  onFileOpenWithPlugin?: (file: StorageFile, pluginId: string) => void;
   height?: number;
   onScrollToBottom?: () => void;
 }
@@ -19,6 +23,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
   files,
   onFileClick,
   onFileOpenAsText,
+  onFileOpenWithPlugin,
   height,
   onScrollToBottom,
 }) => {
@@ -31,11 +36,15 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     x: number;
     y: number;
     file: StorageFile | null;
+    compatiblePlugins: PluginInstance[];
+    defaultPluginId: string | null;
   }>({
     visible: false,
     x: 0,
     y: 0,
     file: null,
+    compatiblePlugins: [],
+    defaultPluginId: null,
   });
 
   // 直接使用传入的文件列表，不进行过滤和排序（由调用方处理）
@@ -137,11 +146,19 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
+    // 获取兼容的插件列表
+    const compatiblePlugins = pluginFramework.getCompatiblePlugins(file.filename);
+
+    // 获取默认插件ID
+    const defaultPluginId = defaultPluginAssociationService.getDefaultPluginForFile(file.filename);
+
     setContextMenu({
       visible: true,
       x: e.clientX,
       y: e.clientY,
       file,
+      compatiblePlugins,
+      defaultPluginId,
     });
   };
 
@@ -151,6 +168,8 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
       x: 0,
       y: 0,
       file: null,
+      compatiblePlugins: [],
+      defaultPluginId: null,
     });
   };
 
@@ -158,6 +177,25 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     if (contextMenu.file && onFileOpenAsText) {
       onFileOpenAsText(contextMenu.file);
     }
+  };
+
+  const handleOpenWithPlugin = (pluginId: string, setAsDefault: boolean) => {
+    if (!contextMenu.file || !onFileOpenWithPlugin) {
+      return;
+    }
+
+    // 如果需要设为默认
+    if (setAsDefault) {
+      const extension = defaultPluginAssociationService.getExtensionFromFilename(
+        contextMenu.file.filename
+      );
+      if (extension) {
+        defaultPluginAssociationService.setDefaultPlugin(extension, pluginId);
+      }
+    }
+
+    // 使用插件打开文件
+    onFileOpenWithPlugin(contextMenu.file, pluginId);
   };
   const formatDate = (dateString: string): string => {
     // 如果日期字符串为空或无效，返回横杠
@@ -261,11 +299,14 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
       </div>
 
       {/* Context Menu */}
-      {contextMenu.visible && (
+      {contextMenu.visible && contextMenu.file && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          compatiblePlugins={contextMenu.compatiblePlugins}
+          defaultPluginId={contextMenu.defaultPluginId}
           onOpenAsText={handleOpenAsText}
+          onOpenWithPlugin={handleOpenWithPlugin}
           onClose={handleCloseContextMenu}
         />
       )}

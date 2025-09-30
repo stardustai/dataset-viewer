@@ -72,6 +72,7 @@ interface FileViewerContentProps {
   setDataMetadata: (metadata: any) => void;
   loadFileContent: (forceLoad?: boolean) => Promise<void>;
   forceTextMode?: boolean; // 新增属性，用于强制以文本格式打开
+  pluginId?: string; // 新增属性，指定使用的插件ID
 }
 
 export const FileViewerContent = forwardRef<
@@ -108,6 +109,7 @@ export const FileViewerContent = forwardRef<
       setIsMarkdownPreviewOpen,
       loadFileContent,
       forceTextMode,
+      pluginId,
     },
     ref
   ) => {
@@ -144,7 +146,7 @@ export const FileViewerContent = forwardRef<
       !forceTextMode &&
       !openAsText &&
       storageClient &&
-      pluginManager.findViewerForFile(file.basename)
+      (pluginId || pluginManager.findViewerForFile(file.basename))
     ) {
       return (
         <PluginViewer
@@ -153,6 +155,7 @@ export const FileViewerContent = forwardRef<
           content={content}
           storageClient={storageClient}
           isLargeFile={isLargeFile}
+          pluginId={pluginId}
         />
       );
     }

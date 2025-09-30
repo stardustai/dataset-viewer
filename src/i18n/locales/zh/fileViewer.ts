@@ -155,6 +155,7 @@ export const fileViewer = {
 
   // 右键菜单
   'context.menu.open.as.text': '以文本格式打开',
+  'context.menu.open.with': '打开方式',
 
   // 长行优化
   'expand.long.line': '展开',
