@@ -89,6 +89,20 @@ A modern, high-performance dataset viewer built with Tauri, React, and TypeScrip
 - **Remote Access**: Connect to WebDAV, SSH/SFTP, SMB, cloud storage, HuggingFace
 - **Performance-Critical**: Instant file access and lightning-fast search
 
+## 🔌 Plugin Development
+
+Extend Dataset Viewer's capabilities by creating custom plugins! Our plugin system allows you to add support for new file formats and viewers.
+
+- 📖 **[Plugin Development Guide (Wiki)](https://github.com/stardustai/dataset-viewer/wiki/Plugin-Development-Guide)** - Complete guide to building plugins
+- 📦 **[@dataset-viewer/sdk](https://www.npmjs.com/package/@dataset-viewer/sdk)** - Official SDK for plugin development
+- 🎨 **[Example Plugins](https://github.com/stardustai/dataset-viewer/tree/main/packages)** - CAD Viewer, Sketch Viewer, and more
+
+Get started with our SDK and create plugins for:
+- Custom file format viewers
+- Data converters and analyzers
+- Integration with external tools
+- Enhanced visualization components
+
 ## 🤝 Contributing
 
 We welcome contributions! You can help by:
@@ -96,6 +110,7 @@ We welcome contributions! You can help by:
 - 🐛 [Reporting bugs](https://github.com/stardustai/dataset-viewer/issues) with clear reproduction steps
 - 💡 [Suggesting features](https://github.com/stardustai/dataset-viewer/issues) and explaining their usefulness
 - 🔧 Submitting code: Fork → Branch → Changes → PR
+- 🔌 Creating plugins to extend functionality
 - 📖 Improving documentation and examples
 - ⭐ Starring the repository to show support
 
