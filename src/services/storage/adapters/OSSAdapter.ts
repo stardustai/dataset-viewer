@@ -134,11 +134,15 @@ export const ossStorageAdapter: StorageAdapter = {
   }),
 
   buildConnectionConfig: (formData: Record<string, any>, existingConnection?: any) => {
+    // 清理 bucket 字段：去除首尾空格和尾部斜杠
+    const rawBucket = formData.bucket?.trim() || '';
+    const cleanBucket = rawBucket.replace(/\/+$/, ''); // 去除尾部的所有斜杠
+
     const config: ConnectionConfig = {
       type: 'oss',
       url: formData.endpoint?.trim() || formData.url?.trim(), // 优先使用 endpoint，兼容 url
       region: formData.region?.trim() || 'cn-hangzhou', // 默认使用阿里云杭州区域
-      bucket: formData.bucket?.trim(),
+      bucket: cleanBucket, // 使用清理后的 bucket
       username: formData.accessKey?.trim(),
       password:
         formData.isPasswordFromStorage && existingConnection?.config.password
@@ -146,7 +150,7 @@ export const ossStorageAdapter: StorageAdapter = {
           : formData.secretKey,
       name: existingConnection
         ? existingConnection.name
-        : `OSS (${formData.bucket?.trim()?.split('/')[0] || 'unknown'})`,
+        : `OSS (${cleanBucket.split('/')[0] || 'unknown'})`,
     };
 
     return config;

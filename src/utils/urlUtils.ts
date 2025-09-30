@@ -28,7 +28,13 @@ export function formatConnectionDisplayName(config: any): string {
       return config.rootPath || '';
 
     case 'oss':
-      return `OSS: ${config.username || config.accessKeyId || ''}`;
+      // 显示 bucket 名称（可能包含路径前缀）
+      if (config.bucket) {
+        const bucketName = config.bucket.split('/')[0]; // 提取桶名，不包含路径前缀
+        const hasPrefix = config.bucket.includes('/');
+        return hasPrefix ? `${bucketName}/...` : bucketName;
+      }
+      return config.username || config.accessKeyId || 'OSS';
 
     case 'huggingface':
       return `HuggingFace: ${config.organization || 'hub'}`;
