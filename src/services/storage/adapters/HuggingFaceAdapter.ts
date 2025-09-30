@@ -1,5 +1,5 @@
-import { StorageAdapter } from '../StorageClient';
-import { ConnectionConfig } from '../types';
+import type { StorageAdapter } from '../StorageClient';
+import type { ConnectionConfig } from '../types';
 
 /**
  * HuggingFace 存储适配器
@@ -33,7 +33,7 @@ export const huggingfaceStorageAdapter: StorageAdapter = {
     }
 
     // 将用户界面的 : 格式转换为内部 ~ 格式
-    const normalizedPath = path.replace(/([^\/]+):([^\/]+)/, '$1~$2');
+    const normalizedPath = path.replace(/([^/]+):([^/]+)/, '$1~$2');
 
     // 解析 HuggingFace 路径格式
     const pathInfo = parseHuggingFacePath(normalizedPath);

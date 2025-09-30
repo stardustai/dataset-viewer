@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { SearchResult, FullFileSearchResult } from '../../../types';
+import type { RefObject } from 'react';
 import { useStorageStore } from '../../../stores/storageStore';
+import type { FullFileSearchResult, SearchResult } from '../../../types';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -19,7 +20,7 @@ interface UseFileSearchProps {
   totalSize: number;
   currentFilePosition: number;
   loadedContentSize: number;
-  textViewerRef: React.RefObject<VirtualizedTextViewerRef | null>;
+  textViewerRef: RefObject<VirtualizedTextViewerRef | null>;
   performFullFileSearch: (term: string) => Promise<FullFileSearchResult[]>;
   setSearchLoading: (loading: boolean) => void;
   setFullFileSearchLoading: (loading: boolean) => void;

@@ -1,5 +1,5 @@
-import { StorageAdapter } from '../StorageClient';
-import { ConnectionConfig } from '../types';
+import type { StorageAdapter } from '../StorageClient';
+import type { ConnectionConfig } from '../types';
 
 /**
  * 本地文件系统存储适配器

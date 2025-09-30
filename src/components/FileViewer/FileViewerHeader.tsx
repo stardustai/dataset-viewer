@@ -1,11 +1,11 @@
-import React from 'react';
+import { ArrowLeft, Copy, Download } from 'lucide-react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Download, Copy } from 'lucide-react';
-import { StorageFile } from '../../types';
 import { useStorageStore } from '../../stores/storageStore';
-import { FileIcon } from '../../utils/fileIcons';
+import type { StorageFile } from '../../types';
 import { copyToClipboard, showCopyToast, showToast } from '../../utils/clipboard';
-import { formatFileSize } from '../../utils/fileUtils';
+import { FileIcon } from '../../utils/fileIcons';
+import { formatFileSize } from '../../utils/typeUtils';
 
 interface FileViewerHeaderProps {
   file: StorageFile;
@@ -39,7 +39,7 @@ interface FileViewerHeaderProps {
   totalSize?: number;
 }
 
-export const FileViewerHeader: React.FC<FileViewerHeaderProps> = ({
+export const FileViewerHeader: FC<FileViewerHeaderProps> = ({
   file,
   filePath,
   fileType,

@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Check, ChevronRight, Copy, Edit3, Home, X } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import type { FC, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Home, ArrowLeft, ChevronRight, Copy, Edit3, Check, X } from 'lucide-react';
-import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { useStorageStore } from '../../stores/storageStore';
+import { copyToClipboard, showCopyToast } from '../../utils/clipboard';
 import { parseUserInput } from '../../utils/pathUtils';
 
 interface BreadcrumbNavigationProps {
@@ -21,7 +22,7 @@ interface BreadcrumbNavigationProps {
   compact?: boolean; // 紧凑模式，用于ArchiveTreeList
 }
 
-export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
+export const BreadcrumbNavigation: FC<BreadcrumbNavigationProps> = ({
   currentPath,
   onNavigateHome,
   onNavigateBack,
@@ -99,7 +100,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
   };
 
   // 键盘事件处理
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       confirmNavigation();
     } else if (e.key === 'Escape') {
@@ -144,7 +145,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
           {defaultHomeLabel}
         </span>
         {getPathSegments().map((part, index) => (
-          <React.Fragment key={index}>
+          <Fragment key={index}>
             <span>/</span>
             <span
               className="cursor-pointer hover:text-gray-900 dark:hover:text-gray-200"
@@ -152,7 +153,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
             >
               {part}
             </span>
-          </React.Fragment>
+          </Fragment>
         ))}
       </div>
     );
@@ -232,7 +233,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
 
             {/* 路径段 */}
             {getPathSegments().map((segment, index) => (
-              <React.Fragment key={index}>
+              <Fragment key={index}>
                 <ChevronRight className="w-3 h-3 lg:w-4 lg:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                 <span
                   onClick={() => onNavigateToSegment(index)}
@@ -241,7 +242,7 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
                 >
                   {segment}
                 </span>
-              </React.Fragment>
+              </Fragment>
             ))}
           </div>
         )}

@@ -1,11 +1,11 @@
-import { ReactNode } from 'react';
+import type { PluginInstance } from '@dataset-viewer/sdk';
+import type { ReactNode } from 'react';
 import {
   commands,
   type LocalPluginInfo,
   type PluginInstallRequest,
 } from '../../types/tauri-commands';
 import { PluginFramework } from './pluginFramework';
-import { PluginInstance } from '@dataset-viewer/sdk';
 
 /**
  * 插件管理器 - 负责插件的生命周期管理

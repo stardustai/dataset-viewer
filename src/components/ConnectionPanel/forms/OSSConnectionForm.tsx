@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import type { FC, FormEvent } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OSSPlatformSelector, OSS_PLATFORMS } from '../OSSPlatformSelector';
-import { ConnectButton, ErrorDisplay } from '../common';
 import { PasswordInput } from '../../common';
-import { UnifiedConnectionFormProps } from './types';
+import { ConnectButton, ErrorDisplay } from '../common';
+import { OSS_PLATFORMS, OSSPlatformSelector } from '../OSSPlatformSelector';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface OSSConnectionFormProps extends UnifiedConnectionFormProps {
   config: {
@@ -20,7 +21,7 @@ interface OSSConnectionFormProps extends UnifiedConnectionFormProps {
  * OSS 连接表单组件
  * 支持阿里云 OSS、AWS S3 等兼容的对象存储服务
  */
-export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
+export const OSSConnectionForm: FC<OSSConnectionFormProps> = ({
   config,
   onChange,
   connecting,
@@ -140,7 +141,7 @@ export const OSSConnectionForm: React.FC<OSSConnectionFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {

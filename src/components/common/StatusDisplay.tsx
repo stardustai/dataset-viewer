@@ -1,16 +1,16 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  Loader2,
+  AlertTriangle,
   Archive,
-  Search,
+  EyeOff,
   File,
   FileText,
   Folder,
-  EyeOff,
-  AlertTriangle,
-  LucideIcon,
+  Loader2,
+  type LucideIcon,
+  Search,
 } from 'lucide-react';
+import type { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type StatusType =
   | 'loading'
@@ -65,7 +65,7 @@ const getIconProps = (type: StatusType) => {
   return baseProps;
 };
 
-export const StatusDisplay: React.FC<StatusDisplayProps> = ({
+export const StatusDisplay: FC<StatusDisplayProps> = ({
   type,
   message,
   secondaryMessage,
@@ -123,7 +123,7 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
 };
 
 // 预定义的常用状态组件
-export const LoadingDisplay: React.FC<{
+export const LoadingDisplay: FC<{
   message?: string;
   icon?: LucideIcon;
   className?: string;
@@ -150,7 +150,7 @@ const translateErrorMessage = (error: string, t: (key: string) => string): strin
   return error;
 };
 
-export const ErrorDisplay: React.FC<{
+export const ErrorDisplay: FC<{
   message: string;
   onRetry?: () => void;
   className?: string;
@@ -169,7 +169,7 @@ export const ErrorDisplay: React.FC<{
   );
 };
 
-export const EmptyDisplay: React.FC<{
+export const EmptyDisplay: FC<{
   message: string;
   secondaryMessage?: string;
   className?: string;
@@ -182,7 +182,7 @@ export const EmptyDisplay: React.FC<{
   />
 );
 
-export const UnsupportedFormatDisplay: React.FC<{
+export const UnsupportedFormatDisplay: FC<{
   message?: string;
   secondaryMessage?: string;
   className?: string;
@@ -208,7 +208,7 @@ export const UnsupportedFormatDisplay: React.FC<{
   );
 };
 
-export const HiddenFilesDisplay: React.FC<{
+export const HiddenFilesDisplay: FC<{
   onShowHidden: () => void;
   className?: string;
 }> = ({ onShowHidden, className }) => {
@@ -223,7 +223,7 @@ export const HiddenFilesDisplay: React.FC<{
   );
 };
 
-export const NoSearchResultsDisplay: React.FC<{
+export const NoSearchResultsDisplay: FC<{
   searchTerm: string;
   onClearSearch: () => void;
   className?: string;
@@ -240,7 +240,7 @@ export const NoSearchResultsDisplay: React.FC<{
   );
 };
 
-export const NoLocalResultsDisplay: React.FC<{
+export const NoLocalResultsDisplay: FC<{
   searchTerm: string;
   onRemoteSearch: () => void;
   className?: string;
@@ -257,7 +257,7 @@ export const NoLocalResultsDisplay: React.FC<{
   );
 };
 
-export const NoRemoteResultsDisplay: React.FC<{
+export const NoRemoteResultsDisplay: FC<{
   searchTerm: string;
   onClearSearch: () => void;
   className?: string;

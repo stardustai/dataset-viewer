@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Eye, EyeOff, GalleryHorizontal, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import type { FC } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ZoomIn, ZoomOut, RotateCcw, GalleryHorizontal, Eye, EyeOff } from 'lucide-react';
 import { getFileArrayBuffer } from '../../../utils/fileDataUtils';
 
 interface ImageRendererProps {
@@ -18,7 +19,7 @@ interface YoloAnnotation {
   height: number;
 }
 
-export const ImageRenderer: React.FC<ImageRendererProps> = ({
+export const ImageRenderer: FC<ImageRendererProps> = ({
   mediaUrl,
   fileName,
   filePath,

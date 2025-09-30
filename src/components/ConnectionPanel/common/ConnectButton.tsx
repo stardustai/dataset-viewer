@@ -1,6 +1,6 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
+import type { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ConnectButtonProps {
   connecting: boolean;
@@ -11,7 +11,7 @@ interface ConnectButtonProps {
   connectText?: string;
 }
 
-export const ConnectButton: React.FC<ConnectButtonProps> = ({
+export const ConnectButton: FC<ConnectButtonProps> = ({
   connecting,
   onClick,
   type = 'submit',

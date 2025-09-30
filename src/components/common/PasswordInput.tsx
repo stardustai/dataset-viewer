@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
+import type { FC } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lock, Eye, EyeOff } from 'lucide-react';
 
 interface PasswordInputProps {
   id: string;
@@ -12,7 +13,7 @@ interface PasswordInputProps {
   isFromStorage?: boolean;
 }
 
-export const PasswordInput: React.FC<PasswordInputProps> = ({
+export const PasswordInput: FC<PasswordInputProps> = ({
   id,
   value,
   onChange,

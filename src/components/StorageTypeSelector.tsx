@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
-import { StorageClientType } from '../services/storage/types';
+import type { FC } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { StorageClientType } from '../services/storage/types';
 import { storageIconMap } from '../utils/connectionIcons';
 
 interface StorageTypeSelectorProps {
@@ -9,7 +10,7 @@ interface StorageTypeSelectorProps {
   onTypeChange: (type: StorageClientType) => void;
 }
 
-export const StorageTypeSelector: React.FC<StorageTypeSelectorProps> = ({
+export const StorageTypeSelector: FC<StorageTypeSelectorProps> = ({
   selectedType,
   onTypeChange,
 }) => {

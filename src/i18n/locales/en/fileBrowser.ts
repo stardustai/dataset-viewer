@@ -32,4 +32,10 @@ export const fileBrowser = {
   'loading.directory.root': 'Loading root directory...',
   'loading.more': 'Loading more files...',
   'loading.more.failed': 'Failed to load more files',
+
+  // View mode
+  'view.mode.list': 'List View',
+  'view.mode.grid': 'Grid View',
+  'view.toggle.list': 'Switch to list view',
+  'view.toggle.grid': 'Switch to grid view',
 };

@@ -1,9 +1,9 @@
-import React from 'react';
+import { ChevronDown, ChevronUp, Code, Eye, Loader2, Move, Percent, Search, X } from 'lucide-react';
+import type { FC, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Loader2, ChevronUp, ChevronDown, X, Move, Percent, Eye, Code } from 'lucide-react';
-import { SearchResult, FullFileSearchResult } from '../../types';
-import { getLanguageFromFileName, isLanguageSupported } from '../../utils/syntaxHighlighter';
 import { useSyntaxHighlighting } from '../../hooks/useSyntaxHighlighting';
+import type { FullFileSearchResult, SearchResult } from '../../types';
+import { getLanguageFromFileName, isLanguageSupported } from '../../utils/syntaxHighlighter';
 
 interface FileViewerSearchBarProps {
   searchTerm: string;
@@ -25,13 +25,13 @@ interface FileViewerSearchBarProps {
   onPrevResult: () => void;
   onNextResult: () => void;
   onPercentageJump: () => void;
-  onPercentKeyPress: (e: React.KeyboardEvent) => void;
+  onPercentKeyPress: (e: KeyboardEvent) => void;
   isMarkdown?: boolean;
   onMarkdownPreview?: () => void;
   fileName?: string;
 }
 
-export const FileViewerSearchBar: React.FC<FileViewerSearchBarProps> = ({
+export const FileViewerSearchBar: FC<FileViewerSearchBarProps> = ({
   searchTerm,
   setSearchTerm,
   fullFileSearchMode,

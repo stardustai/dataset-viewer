@@ -1,25 +1,26 @@
-import React, {
-  useEffect,
-  useRef,
-  useCallback,
+import { useVirtualizer } from '@tanstack/react-virtual';
+import type { ReactNode, MouseEvent } from 'react';
+import {
   forwardRef,
+  useCallback,
+  useEffect,
   useImperativeHandle,
-  useState,
   useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
+import { useTheme } from '../../../hooks/useTheme';
+import type { FoldableRange } from '../../../utils/folding';
 import {
   getLanguageFromFileName,
-  isLanguageSupported,
   highlightLine,
+  isLanguageSupported,
 } from '../../../utils/syntaxHighlighter';
-import { useTheme } from '../../../hooks/useTheme';
-import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
 import { UnifiedContentModal } from '../common/UnifiedContentModal';
-import { MarkdownPreviewModal } from './MarkdownPreviewModal';
 import { FoldingIndicator, useFoldingLogic } from './CodeFoldingControls';
-import type { FoldableRange } from '../../../utils/folding';
+import { MarkdownPreviewModal } from './MarkdownPreviewModal';
 
 interface VirtualizedTextViewerProps {
   content: string;
@@ -92,7 +93,7 @@ export const VirtualizedTextViewer = forwardRef<
       title?: string;
       searchTerm?: string;
       fileName?: string;
-      description?: React.ReactNode;
+      description?: ReactNode;
     }>({ isOpen: false });
     const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
     const [isHighlighting, setIsHighlighting] = useState(false);
@@ -459,7 +460,7 @@ export const VirtualizedTextViewer = forwardRef<
 
         // 简化的搜索高亮渲染
         const renderSearchHighlight = (text: string) => {
-          const parts: React.ReactNode[] = [];
+          const parts: ReactNode[] = [];
           let lastIndex = 0;
           let match;
 
@@ -647,7 +648,7 @@ export const VirtualizedTextViewer = forwardRef<
       });
     };
 
-    const handleContentClick = (originalLineIndex: number, event: React.MouseEvent) => {
+    const handleContentClick = (originalLineIndex: number, event: MouseEvent) => {
       const selection = window.getSelection();
       if (selection?.toString().length || (event.target as HTMLElement).closest('button')) {
         return;

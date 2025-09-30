@@ -1,9 +1,9 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Folder, FolderOpen, FolderSearch } from 'lucide-react';
+import type { FC, FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { commands } from '../../../types/tauri-commands';
 import { ConnectButton, ErrorDisplay } from '../common';
-import { UnifiedConnectionFormProps } from './types';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface LocalConnectionFormProps extends UnifiedConnectionFormProps {
   config: {
@@ -11,7 +11,7 @@ interface LocalConnectionFormProps extends UnifiedConnectionFormProps {
   };
 }
 
-export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
+export const LocalConnectionForm: FC<LocalConnectionFormProps> = ({
   config,
   onChange,
   connecting,
@@ -28,7 +28,7 @@ export const LocalConnectionForm: React.FC<LocalConnectionFormProps> = ({
     { label: t('local.path.home'), path: '~' },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (config.rootPath?.trim()) {
       onConnect();

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import mammoth from 'mammoth';
-import { LoadingDisplay, ErrorDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
-import { useStorageStore } from '../../../stores/storageStore';
 import DOMPurify from 'dompurify';
+import mammoth from 'mammoth';
+import type { FC } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useStorageStore } from '../../../stores/storageStore';
+import { ErrorDisplay, LoadingDisplay, UnsupportedFormatDisplay } from '../../common/StatusDisplay';
 
 interface WordViewerProps {
   filePath: string;
@@ -33,7 +34,7 @@ const extractTextFromDocx = async (
 const extractTextFromRtf = (content: string, t: (key: string) => string): string => {
   try {
     // 移除 RTF 控制字符和格式代码
-    let text = content
+    const text = content
       .replace(/\{\\[^}]*\}/g, '') // 移除 RTF 控制组
       .replace(/\\[a-z]+\d*\s?/gi, '') // 移除 RTF 控制词
       .replace(/\{|\}/g, '') // 移除大括号
@@ -48,7 +49,7 @@ const extractTextFromRtf = (content: string, t: (key: string) => string): string
   }
 };
 
-export const WordViewer: React.FC<WordViewerProps> = ({ filePath, fileName, className = '' }) => {
+export const WordViewer: FC<WordViewerProps> = ({ filePath, fileName, className = '' }) => {
   const { t } = useTranslation();
   const { downloadFile, getFileContent } = useStorageStore();
   const [loading, setLoading] = useState(true);

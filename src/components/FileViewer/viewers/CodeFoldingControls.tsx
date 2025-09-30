@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { FC, MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   createFoldingProvider,
   type FoldableRange,
@@ -15,10 +16,10 @@ interface FoldingIndicatorProps {
   onToggle: () => void;
 }
 
-export const FoldingIndicator: React.FC<FoldingIndicatorProps> = ({ isCollapsed, onToggle }) => {
+export const FoldingIndicator: FC<FoldingIndicatorProps> = ({ isCollapsed, onToggle }) => {
   const { t } = useTranslation();
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: MouseEvent) => {
     e.stopPropagation();
     onToggle();
   };

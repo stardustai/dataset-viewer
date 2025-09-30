@@ -1,11 +1,13 @@
-import React, { useRef, useState } from 'react';
-import { StorageFile } from '../../types';
+import type { FC, KeyboardEvent } from 'react';
+import { useRef, useState } from 'react';
 import type { StorageClient } from '../../services/storage/types';
+import type { StorageFile } from '../../types';
+import { FileViewerContent } from './FileViewerContent';
 import { FileViewerHeader } from './FileViewerHeader';
 import { FileViewerSearchBar } from './FileViewerSearchBar';
-import { FileViewerContent } from './FileViewerContent';
 import { useFileLoader } from './hooks/useFileLoader';
 import { useFileSearch } from './hooks/useFileSearch';
+
 // 定义 VirtualizedTextViewer 的 ref 接口
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -24,7 +26,7 @@ interface FileViewerProps {
   pluginId?: string; // 新增属性，指定使用的插件ID
 }
 
-export const FileViewer: React.FC<FileViewerProps> = ({
+export const FileViewer: FC<FileViewerProps> = ({
   file,
   filePath,
   storageClient,
@@ -125,7 +127,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
     }
   };
 
-  const handlePercentKeyPress = (e: React.KeyboardEvent) => {
+  const handlePercentKeyPress = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
       handlePercentageJump();
     } else if (e.key === 'Escape') {

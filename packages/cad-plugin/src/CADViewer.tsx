@@ -1,4 +1,5 @@
-import { useRef, useEffect, useState, useCallback, FC } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import type { FC, RefObject } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { AcApDocManager, AcApSettingManager } from '@mlightcad/cad-simple-viewer';
 import { AcDbOpenDatabaseOptions } from '@mlightcad/data-model';
@@ -59,7 +60,7 @@ export const CADViewer: FC<PluginViewerProps> = ({
   };
 
   // 等待容器准备就绪的辅助函数
-  const waitForContainerReady = (ref: React.RefObject<HTMLDivElement | null>) =>
+  const waitForContainerReady = (ref: RefObject<HTMLDivElement | null>) =>
     new Promise<void>((resolve) => {
       const ready = () => ref.current && ref.current.offsetWidth > 0 && ref.current.offsetHeight > 0;
       if (ready()) return resolve();

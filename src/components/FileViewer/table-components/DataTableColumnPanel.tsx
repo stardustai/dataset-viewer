@@ -1,14 +1,14 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
 import type { Table } from '@tanstack/react-table';
+import { X } from 'lucide-react';
+import type { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableColumnPanelProps {
   table: Table<any>;
   onClose: () => void;
 }
 
-export const DataTableColumnPanel: React.FC<DataTableColumnPanelProps> = ({ table, onClose }) => {
+export const DataTableColumnPanel: FC<DataTableColumnPanelProps> = ({ table, onClose }) => {
   const { t } = useTranslation();
 
   return (

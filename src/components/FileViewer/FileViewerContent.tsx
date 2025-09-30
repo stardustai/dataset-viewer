@@ -1,23 +1,24 @@
-import { forwardRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
-import { StorageFile, SearchResult, FullFileSearchResult } from '../../types';
-import { useStorageStore } from '../../stores/storageStore';
-import type { StorageClient } from '../../services/storage/types';
-import { LazyComponentWrapper } from './common';
-import { pluginManager } from '../../services/plugin/pluginManager';
+import { forwardRef, useState } from 'react';
+import type { RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import { pluginFramework } from '../../services/plugin/pluginFramework';
+import { pluginManager } from '../../services/plugin/pluginManager';
+import type { StorageClient } from '../../services/storage/types';
+import { useStorageStore } from '../../stores/storageStore';
+import type { FullFileSearchResult, SearchResult, StorageFile } from '../../types';
+import { UnsupportedFormatDisplay } from '../common';
+import { LazyComponentWrapper } from './common';
 import { PluginViewer } from './PluginViewer';
 import {
+  ArchiveViewer,
+  MediaViewer,
+  PointCloudViewer,
+  PresentationViewer,
+  UniversalDataTableViewer,
   VirtualizedTextViewer,
   WordViewer,
-  PresentationViewer,
-  MediaViewer,
-  UniversalDataTableViewer,
-  ArchiveViewer,
-  PointCloudViewer,
 } from './viewers';
-import { UnsupportedFormatDisplay } from '../common';
 
 interface VirtualizedTextViewerRef {
   scrollToLine: (lineNumber: number, column?: number) => void;
@@ -61,9 +62,9 @@ interface FileViewerContentProps {
   canLoadBefore?: boolean; // 新增：是否可以向前加载
   loadedChunks: number;
   loadedContentSize: number;
-  containerRef: React.RefObject<HTMLDivElement | null>;
-  mainContainerRef: React.RefObject<HTMLDivElement | null>;
-  loadMoreSectionRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: RefObject<HTMLDivElement | null>;
+  mainContainerRef: RefObject<HTMLDivElement | null>;
+  loadMoreSectionRef: RefObject<HTMLDivElement | null>;
   isMarkdownPreviewOpen: boolean;
   setIsMarkdownPreviewOpen: (open: boolean) => void;
   handleSearchResults: (results: SearchResult[], isLimited?: boolean) => void;

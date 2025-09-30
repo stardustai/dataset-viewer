@@ -1,16 +1,17 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { Braces, Check, Copy, X } from 'lucide-react';
+import type { FC, ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Braces, X, Check } from 'lucide-react';
+import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
+import { useTheme } from '../../../hooks/useTheme';
 import { copyToClipboard, showCopyToast } from '../../../utils/clipboard';
-import { VirtualizedTextViewer } from '../viewers/VirtualizedTextViewer';
-import { ImageRenderer } from '../viewers/ImageRenderer';
 import {
   getLanguageFromFileName,
-  isLanguageSupported,
   highlightCodeBlock,
+  isLanguageSupported,
 } from '../../../utils/syntaxHighlighter';
-import { useTheme } from '../../../hooks/useTheme';
-import { useSyntaxHighlighting } from '../../../hooks/useSyntaxHighlighting';
+import { ImageRenderer } from '../viewers/ImageRenderer';
+import { VirtualizedTextViewer } from '../viewers/VirtualizedTextViewer';
 
 // 检测是否为 base64 编码的图片
 const isBase64Image = (text: string): { isImage: boolean; dataUrl?: string; format?: string } => {
@@ -129,7 +130,7 @@ interface HighlightedTextRendererProps {
   className?: string;
 }
 
-const HighlightedTextRenderer: React.FC<HighlightedTextRendererProps> = ({
+const HighlightedTextRenderer: FC<HighlightedTextRendererProps> = ({
   content,
   fileName,
   searchTerm,
@@ -242,7 +243,7 @@ export interface UnifiedContentModalData {
   fileName?: string;
 
   // 自定义描述区域
-  description?: React.ReactNode;
+  description?: ReactNode;
 }
 
 interface UnifiedContentModalProps {
@@ -258,10 +259,10 @@ interface UnifiedContentModalProps {
   fileName?: string;
 
   // 自定义描述区域
-  description?: React.ReactNode;
+  description?: ReactNode;
 }
 
-export const UnifiedContentModal: React.FC<UnifiedContentModalProps> = ({
+export const UnifiedContentModal: FC<UnifiedContentModalProps> = ({
   isOpen,
   onClose,
   content,

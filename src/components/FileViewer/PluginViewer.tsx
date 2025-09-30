@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import type { FileAccessor, PluginViewerProps } from '@dataset-viewer/sdk';
+import type { ComponentType, FC } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { pluginManager } from '../../services/plugin/pluginManager';
-import { LoadingDisplay, ErrorDisplay } from '../common/StatusDisplay';
-import type { StorageFile } from '../../types';
-import type { FileAccessor, PluginViewerProps } from '@dataset-viewer/sdk';
 import type { StorageClient } from '../../services/storage/types';
+import type { StorageFile } from '../../types';
+import { ErrorDisplay, LoadingDisplay } from '../common/StatusDisplay';
 
 interface LocalPluginViewerProps {
   file: StorageFile;
@@ -47,7 +48,7 @@ const createFileAccessor = (storageClient: StorageClient, filePath: string): Fil
   },
 });
 
-export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
+export const PluginViewer: FC<LocalPluginViewerProps> = ({
   file,
   filePath,
   content,
@@ -56,7 +57,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
   pluginId,
 }) => {
   const { t } = useTranslation();
-  const pluginComponent = useRef<React.ComponentType<PluginViewerProps> | null>(null);
+  const pluginComponent = useRef<ComponentType<PluginViewerProps> | null>(null);
   const [pluginNamespace, setPluginNamespace] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +117,7 @@ export const PluginViewer: React.FC<LocalPluginViewerProps> = ({
       }
 
       // 设置插件组件和命名空间
-      pluginComponent.current = plugin.component as React.ComponentType<PluginViewerProps>;
+      pluginComponent.current = plugin.component as ComponentType<PluginViewerProps>;
       setPluginNamespace(`plugin:${plugin.metadata.id}`);
       // 插件组件加载完成，初始设置为不加载，让插件自己决定是否需要 loading
       setLoading(false);

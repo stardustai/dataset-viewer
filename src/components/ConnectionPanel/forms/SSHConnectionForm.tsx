@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { FolderSearch } from 'lucide-react';
+import type { FC } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { commands } from '../../../types/tauri-commands';
-import { ConnectButton, ErrorDisplay } from '../common';
 import { PasswordInput } from '../../common';
-import { UnifiedConnectionFormProps } from './types';
+import { ConnectButton, ErrorDisplay } from '../common';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface SSHConnectionFormProps extends UnifiedConnectionFormProps {
   config: {
@@ -19,7 +20,7 @@ interface SSHConnectionFormProps extends UnifiedConnectionFormProps {
   };
 }
 
-export const SSHConnectionForm: React.FC<SSHConnectionFormProps> = ({
+export const SSHConnectionForm: FC<SSHConnectionFormProps> = ({
   config,
   onChange,
   connecting,

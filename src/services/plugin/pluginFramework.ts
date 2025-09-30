@@ -1,7 +1,7 @@
-import { ReactNode, ComponentType } from 'react';
-import { PluginBundle, PluginInstance } from '@dataset-viewer/sdk';
-import { commands } from '../../types/tauri-commands';
+import type { PluginBundle, PluginInstance } from '@dataset-viewer/sdk';
+import type { ComponentType, ReactNode } from 'react';
 import i18n from '../../i18n';
+import { commands } from '../../types/tauri-commands';
 
 /**
  * 内置查看器接口

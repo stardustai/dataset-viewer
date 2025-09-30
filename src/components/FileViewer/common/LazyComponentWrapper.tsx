@@ -1,9 +1,10 @@
-import React, { Suspense, ComponentType } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
+import type { FC, LazyExoticComponent, ComponentType } from 'react';
+import { Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface LazyComponentWrapperProps {
-  component: ComponentType<any> | React.LazyExoticComponent<ComponentType<any>>;
+  component: ComponentType<any> | LazyExoticComponent<ComponentType<any>>;
   props: Record<string, any>;
   loadingText?: string;
   fallbackHeight?: string | number;
@@ -14,7 +15,7 @@ interface LazyComponentWrapperProps {
  * 支持同步和异步组件的统一渲染
  * 为异步组件提供统一的加载状态
  */
-export const LazyComponentWrapper: React.FC<LazyComponentWrapperProps> = ({
+export const LazyComponentWrapper: FC<LazyComponentWrapperProps> = ({
   component: Component,
   props,
   loadingText,

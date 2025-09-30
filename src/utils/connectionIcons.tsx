@@ -1,5 +1,5 @@
-import { Server, Folder, Cloud, Bot, Network, Terminal, Settings } from 'lucide-react';
-import { StorageClientType } from '../services/storage/types';
+import { Bot, Cloud, Folder, Network, Server, Settings, Terminal } from 'lucide-react';
+import type { StorageClientType } from '../services/storage/types';
 
 /**
  * 存储类型的图标映射配置

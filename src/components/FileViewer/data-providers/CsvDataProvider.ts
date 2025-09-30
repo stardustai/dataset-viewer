@@ -1,6 +1,6 @@
-import { DataProvider, DataMetadata, DataColumn } from './ParquetDataProvider';
 import Papa from 'papaparse';
 import { useStorageStore } from '../../../stores/storageStore';
+import type { DataColumn, DataMetadata, DataProvider } from './ParquetDataProvider';
 
 /**
  * CSV streaming buffer implementation
@@ -139,11 +139,11 @@ class CsvStreamingBuffer {
     });
 
     // 拼接上次的残留数据
-    let textToProcess = this.partialBuffer + fileContent.content;
+    const textToProcess = this.partialBuffer + fileContent.content;
     this.partialBuffer = '';
 
     const newRows: string[][] = [];
-    let isFirstChunk = this.loadedChunks === 0;
+    const isFirstChunk = this.loadedChunks === 0;
     let headerProcessed = false;
 
     return new Promise<string[][]>((resolve, reject) => {

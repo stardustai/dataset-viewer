@@ -1,19 +1,20 @@
-import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import type { FC } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronUp, ChevronDown, Search, X } from 'lucide-react';
-import { StorageFile, ArchiveInfo } from '../../types';
-import { VirtualizedFileList } from './VirtualizedFileList';
+import type { ArchiveInfo, StorageFile } from '../../types';
+import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
+import { cleanPath } from '../../utils/pathUtils';
+import { compareFileSize } from '../../utils/typeUtils';
 import {
-  LoadingDisplay,
-  HiddenFilesDisplay,
-  NoSearchResultsDisplay,
+  BreadcrumbNavigation,
   EmptyDisplay,
   ErrorDisplay,
-  BreadcrumbNavigation,
+  HiddenFilesDisplay,
+  LoadingDisplay,
+  NoSearchResultsDisplay,
 } from '../common';
-import { cleanPath } from '../../utils/pathUtils';
-import { buildArchiveFileTree, getFilesAtPath } from '../../utils/archiveUtils';
-import { compareFileSize } from '../../utils/typeUtils';
+import { VirtualizedFileList } from './VirtualizedFileList';
 
 interface ArchiveFileBrowserProps {
   archiveInfo: ArchiveInfo;
@@ -25,7 +26,7 @@ interface ArchiveFileBrowserProps {
   onShowHiddenChange?: (show: boolean) => void;
 }
 
-export const ArchiveFileBrowser: React.FC<ArchiveFileBrowserProps> = ({
+export const ArchiveFileBrowser: FC<ArchiveFileBrowserProps> = ({
   archiveInfo,
   onFileSelect,
   onBack,

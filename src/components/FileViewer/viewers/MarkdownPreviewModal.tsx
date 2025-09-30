@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import DOMPurify from 'dompurify';
 import { X } from 'lucide-react';
 import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
-import DOMPurify from 'dompurify';
-import { highlightMarkdownCode } from '../../../utils/syntaxHighlighter';
+import type { FC } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../hooks/useTheme';
+import { highlightMarkdownCode } from '../../../utils/syntaxHighlighter';
 
 interface MarkdownPreviewModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ interface MarkdownPreviewModalProps {
   fileName: string;
 }
 
-export const MarkdownPreviewModal: React.FC<MarkdownPreviewModalProps> = ({
+export const MarkdownPreviewModal: FC<MarkdownPreviewModalProps> = ({
   isOpen,
   onClose,
   content,

@@ -1,25 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  Package,
-  Download,
   AlertCircle,
-  Loader,
-  RefreshCw,
-  X,
   ArrowUp,
+  Download,
+  Loader,
   MoreVertical,
+  Package,
+  RefreshCw,
   Trash2,
+  X,
 } from 'lucide-react';
+import type { FC } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as semver from 'semver';
-import { commands } from '../../types/tauri-commands';
+import { pluginManager } from '../../services/plugin/pluginManager';
 import type {
   LocalPluginInfo,
-  PluginVersionInfo,
   PluginInstallOptions,
+  PluginVersionInfo,
 } from '../../types/tauri-commands';
-import { pluginManager } from '../../services/plugin/pluginManager';
-import { showToast, showErrorToast } from '../../utils/clipboard';
+import { commands } from '../../types/tauri-commands';
+import { showErrorToast, showToast } from '../../utils/clipboard';
 
 interface PluginManagerProps {
   onClose: () => void;
@@ -41,7 +42,7 @@ interface PluginCardProps {
   onCheckUpdate: (pluginId: string) => void;
 }
 
-const PluginCard: React.FC<PluginCardProps> = ({
+const PluginCard: FC<PluginCardProps> = ({
   plugin,
   isInstalled,
   onToggle,
@@ -241,7 +242,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
   );
 };
 
-export const PluginManager: React.FC<PluginManagerProps> = ({ onClose }) => {
+export const PluginManager: FC<PluginManagerProps> = ({ onClose }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'installed' | 'available'>('installed');
   const [installedPlugins, setInstalledPlugins] = useState<ExtendedPluginInfo[]>([]);

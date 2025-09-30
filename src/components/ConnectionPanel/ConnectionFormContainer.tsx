@@ -1,16 +1,16 @@
-import React from 'react';
+import type { FC, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StorageClientType } from '../../services/storage/types';
-import { StoredConnection } from '../../services/connectionStorage';
-import { ConnectionSelector } from './ConnectionSelector';
+import type { StoredConnection } from '../../services/connectionStorage';
+import type { StorageClientType } from '../../services/storage/types';
 import { StorageTypeSelector } from '../StorageTypeSelector';
+import { ConnectionSelector } from './ConnectionSelector';
 import {
+  HuggingFaceConnectionForm,
   LocalConnectionForm,
   OSSConnectionForm,
-  WebDAVConnectionForm,
-  HuggingFaceConnectionForm,
-  SSHConnectionForm,
   SMBConnectionForm,
+  SSHConnectionForm,
+  WebDAVConnectionForm,
 } from './forms';
 
 interface ConnectionFormContainerProps {
@@ -26,7 +26,7 @@ interface ConnectionFormContainerProps {
   onFormDataChange: (updates: Partial<Record<string, any>>) => void;
 }
 
-export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = ({
+export const ConnectionFormContainer: FC<ConnectionFormContainerProps> = ({
   storageType,
   selectedStoredConnection,
   formData,
@@ -41,7 +41,7 @@ export const ConnectionFormContainer: React.FC<ConnectionFormContainerProps> = (
   const { t } = useTranslation();
 
   // 创建表单提交处理器
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = (e?: FormEvent) => {
     if (e) e.preventDefault();
     onConnect();
   };

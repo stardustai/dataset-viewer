@@ -21,7 +21,7 @@ import { createPlugin, PluginLogger } from '@dataset-viewer/sdk';
 import type { PluginViewerProps } from '@dataset-viewer/sdk';
 
 // 创建插件组件
-const TextViewer: React.FC<PluginViewerProps> = ({ file, fileAccessor }) => {
+const TextViewer: FC<PluginViewerProps> = ({ file, fileAccessor }) => {
   const [content, setContent] = useState<string>('');
   const logger = new PluginLogger('text-viewer');
 

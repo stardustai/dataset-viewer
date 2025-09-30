@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
-import { Settings, Download, RefreshCw, Check, X, Sun, Moon, Trash2, Globe } from 'lucide-react';
+import { Check, Download, Globe, Moon, RefreshCw, Settings, Sun, Trash2, X } from 'lucide-react';
+import type { FC } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { updateService } from '../../services/updateService';
 import { useTheme } from '../../hooks/useTheme';
-import { navigationHistoryService } from '../../services/navigationHistory';
 import { connectionStorage } from '../../services/connectionStorage';
+import { navigationHistoryService } from '../../services/navigationHistory';
 import { settingsStorage } from '../../services/settingsStorage';
-import { showToast } from '../../utils/clipboard';
+import { updateService } from '../../services/updateService';
 import type { UpdateCheckResult } from '../../types';
+import { showToast } from '../../utils/clipboard';
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
+export const SettingsPanel: FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);

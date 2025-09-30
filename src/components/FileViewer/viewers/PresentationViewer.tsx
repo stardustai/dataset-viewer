@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Presentation, AlertCircle } from 'lucide-react';
-import { LoadingDisplay, ErrorDisplay } from '../../common/StatusDisplay';
-import { useStorageStore } from '../../../stores/storageStore';
-import { parse } from 'pptxtojson';
 import DOMPurify from 'dompurify';
+import { AlertCircle, Presentation } from 'lucide-react';
+import { parse } from 'pptxtojson';
+import type { FC, CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useStorageStore } from '../../../stores/storageStore';
+import { ErrorDisplay, LoadingDisplay } from '../../common/StatusDisplay';
 
 interface PresentationMetadata {
   slideCount: number;
@@ -53,7 +54,7 @@ const renderSlideElement = (
   key: string,
   t: (key: string) => string
 ) => {
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     position: 'absolute',
     left: `${element.left}pt`,
     top: `${element.top}pt`,
@@ -154,7 +155,7 @@ const renderSlideElement = (
 
                         const cellContent =
                           typeof cell === 'object' ? cell.text || cell.content || '' : String(cell);
-                        const cellStyle: React.CSSProperties = {
+                        const cellStyle: CSSProperties = {
                           height: element.rowHeights?.[rowIndex]
                             ? `${element.rowHeights[rowIndex]}pt`
                             : 'auto',
@@ -223,7 +224,7 @@ const renderSlideElement = (
 };
 
 // 渲染单个幻灯片
-const SlideRenderer: React.FC<{
+const SlideRenderer: FC<{
   slide: Slide;
   slideSize: { width: number; height: number };
   t: (key: string) => string;
@@ -272,7 +273,7 @@ const SlideRenderer: React.FC<{
     }
   }
 
-  const slideStyle: React.CSSProperties = {
+  const slideStyle: CSSProperties = {
     position: 'relative',
     width: `${slideSize.width}pt`,
     height: `${slideSize.height}pt`,
@@ -305,7 +306,7 @@ const SlideRenderer: React.FC<{
   );
 };
 
-export const PresentationViewer: React.FC<PresentationViewerProps> = ({
+export const PresentationViewer: FC<PresentationViewerProps> = ({
   filePath,
   fileName,
   fileSize,

@@ -1,8 +1,8 @@
-import React from 'react';
+import { AlertTriangle, Database, FileText, Image, Loader2, Zap } from 'lucide-react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Image, Database, Zap, AlertTriangle, Loader2 } from 'lucide-react';
-import { ArchiveEntry } from '../../../types';
-import { formatFileSize } from '../../../utils/fileUtils';
+import type { ArchiveEntry } from '../../../types';
+import { formatFileSize } from '../../../utils/typeUtils';
 import { StatusDisplay } from '../../common';
 
 interface ManualLoadButtonProps {
@@ -12,7 +12,7 @@ interface ManualLoadButtonProps {
   loadType: 'media' | 'data' | 'pointCloud' | 'unsupported';
 }
 
-export const ManualLoadButton: React.FC<ManualLoadButtonProps> = ({
+export const ManualLoadButton: FC<ManualLoadButtonProps> = ({
   entry,
   onLoad,
   isLoading,

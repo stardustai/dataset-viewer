@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import type { FC, MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dav1dDecoderService } from '../../../services/dav1dDecoder';
 import { ErrorDisplay } from '../../common/StatusDisplay';
+
 interface AV1VideoPlayerProps {
   videoData: Uint8Array;
   fileName?: string;
@@ -14,7 +16,7 @@ interface DecodedFrame {
   data: Uint8Array;
 }
 
-export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => {
+export const AV1VideoPlayer: FC<AV1VideoPlayerProps> = ({ videoData }) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -329,7 +331,7 @@ export const AV1VideoPlayer: React.FC<AV1VideoPlayerProps> = ({ videoData }) => 
 
   // 进度条点击跳转
   const handleProgressClick = useCallback(
-    async (event: React.MouseEvent<HTMLDivElement>) => {
+    async (event: MouseEvent<HTMLDivElement>) => {
       if (!isDecoderReady.current) return;
 
       const rect = event.currentTarget.getBoundingClientRect();

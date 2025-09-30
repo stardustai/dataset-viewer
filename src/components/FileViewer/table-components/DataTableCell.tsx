@@ -1,6 +1,7 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Maximize2 } from 'lucide-react';
+import type { FC } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableCellProps {
   value: any;
@@ -56,12 +57,7 @@ function formatBigInt(value: bigint): string {
   return str + 'n';
 }
 
-export const DataTableCell: React.FC<DataTableCellProps> = ({
-  value,
-  column,
-  rowIndex,
-  onOpenModal,
-}) => {
+export const DataTableCell: FC<DataTableCellProps> = ({ value, column, rowIndex, onOpenModal }) => {
   const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
   const [showExpandButton, setShowExpandButton] = useState(false);

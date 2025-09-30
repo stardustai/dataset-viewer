@@ -1,16 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
+import type { FC, MouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { StoredConnection } from '../../services/connectionStorage';
 import { useStorageStore } from '../../stores/storageStore';
-import { formatConnectionDisplayName } from '../../utils/urlUtils';
 import { getConnectionIcon } from '../../utils/connectionIcons';
-import { StoredConnection } from '../../services/connectionStorage';
+import { formatConnectionDisplayName } from '../../utils/urlUtils';
 
 interface ConnectionSwitcherProps {
   onConnectionChange?: () => void;
 }
 
-export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnectionChange }) => {
+export const ConnectionSwitcher: FC<ConnectionSwitcherProps> = ({ onConnectionChange }) => {
   const { t } = useTranslation();
   const { currentConnection, connections, loadConnections, connectWithConfig, removeConnection } =
     useStorageStore();
@@ -26,7 +27,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
@@ -61,7 +62,7 @@ export const ConnectionSwitcher: React.FC<ConnectionSwitcherProps> = ({ onConnec
   };
 
   // 删除连接
-  const handleDeleteConnection = (e: React.MouseEvent, connectionId: string) => {
+  const handleDeleteConnection = (e: MouseEvent, connectionId: string) => {
     e.stopPropagation();
     if (confirm(t('confirm.delete.connection'))) {
       removeConnection(connectionId);

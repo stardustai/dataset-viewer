@@ -1,8 +1,3 @@
-import { formatFileSize } from './typeUtils';
-
-// 重新导出工具函数，保持向后兼容
-export { formatFileSize };
-
 /**
  * 格式化修改时间为人类可读的字符串
  * @param timeString 时间字符串

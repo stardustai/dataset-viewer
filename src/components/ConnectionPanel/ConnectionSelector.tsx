@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Edit2, Star, StarOff, Trash2 } from 'lucide-react';
+import type { FC, MouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Trash2, Edit2, Star, StarOff } from 'lucide-react';
-import { StoredConnection, connectionStorage } from '../../services/connectionStorage';
 import { useConnectionManager } from '../../hooks/useStorage';
+import { connectionStorage, type StoredConnection } from '../../services/connectionStorage';
 import { formatConnectionDisplayName } from '../../utils/urlUtils';
 
 interface UndoToastProps {
@@ -10,7 +11,7 @@ interface UndoToastProps {
   onUndo: () => void;
 }
 
-const UndoToast: React.FC<UndoToastProps> = ({ deletedConnection, onUndo }) => {
+const UndoToast: FC<UndoToastProps> = ({ deletedConnection, onUndo }) => {
   const { t } = useTranslation();
 
   return (
@@ -68,7 +69,7 @@ interface ConnectionSelectorProps {
   selectedConnection?: StoredConnection | null;
 }
 
-export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
+export const ConnectionSelector: FC<ConnectionSelectorProps> = ({
   onSelect,
   selectedConnection,
 }) => {
@@ -92,7 +93,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
 
   // 点击外部区域关闭下拉框
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         // 如果正在编辑，也取消编辑状态
@@ -120,7 +121,7 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
     };
   }, [undoTimer]);
 
-  const handleDelete = (connection: StoredConnection, e: React.MouseEvent) => {
+  const handleDelete = (connection: StoredConnection, e: MouseEvent) => {
     e.stopPropagation();
 
     // 清除之前的撤销计时器
@@ -154,12 +155,12 @@ export const ConnectionSelector: React.FC<ConnectionSelectorProps> = ({
     }
   };
 
-  const handleSetDefault = (id: string, e: React.MouseEvent) => {
+  const handleSetDefault = (id: string, e: MouseEvent) => {
     e.stopPropagation();
     setDefaultConnection(id);
   };
 
-  const handleEdit = (connection: StoredConnection, e: React.MouseEvent) => {
+  const handleEdit = (connection: StoredConnection, e: MouseEvent) => {
     e.stopPropagation();
     setEditingId(connection.id);
     setEditName(connection.name);

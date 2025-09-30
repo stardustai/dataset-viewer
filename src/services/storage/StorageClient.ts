@@ -1,31 +1,31 @@
+import type { ArchiveInfo } from '../../types';
 import {
   commands,
-  DirectoryResult,
-  ListOptions,
-  ConnectionConfig as TauriConnectionConfig,
+  type DirectoryResult,
+  type ListOptions,
+  type ConnectionConfig as TauriConnectionConfig,
 } from '../../types/tauri-commands';
-import {
-  StorageClient as IStorageClient,
-  ConnectionConfig,
-  StorageClientType,
-  FileContent,
-  ReadOptions,
-} from './types';
-import { ArchiveInfo } from '../../types';
 import { detectEncodingWithFallback } from '../../utils/textEncodingDetection';
+import type {
+  ConnectionConfig,
+  FileContent,
+  StorageClient as IStorageClient,
+  ReadOptions,
+  StorageClientType,
+} from './types';
 
 // 通用连接对象接口 - 不同存储类型有不同的连接对象结构
 interface BaseConnection {
   [key: string]: any; // 允许任何属性，因为不同存储类型有不同的连接对象
 }
 
-// 导入平台特定的适配器
-import { webdavStorageAdapter } from './adapters/WebDAVAdapter';
+import { huggingfaceStorageAdapter } from './adapters/HuggingFaceAdapter';
 import { localStorageAdapter } from './adapters/LocalAdapter';
 import { ossStorageAdapter } from './adapters/OSSAdapter';
-import { huggingfaceStorageAdapter } from './adapters/HuggingFaceAdapter';
-import { sshStorageAdapter } from './adapters/SSHAdapter';
 import { smbStorageAdapter } from './adapters/SMBAdapter';
+import { sshStorageAdapter } from './adapters/SSHAdapter';
+// 导入平台特定的适配器
+import { webdavStorageAdapter } from './adapters/WebDAVAdapter';
 
 /**
  * 存储客户端排序选项

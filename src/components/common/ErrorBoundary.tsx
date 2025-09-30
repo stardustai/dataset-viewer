@@ -1,21 +1,22 @@
-import React, { Component, ReactNode } from 'react';
+import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import type { FC, ErrorInfo } from 'react';
+import { Component, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
-  errorInfo: React.ErrorInfo | null;
+  errorInfo: ErrorInfo | null;
 }
 
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 // 错误显示组件
-const ErrorDisplay: React.FC<{
+const ErrorDisplay: FC<{
   error: Error | null;
   onRetry: () => void;
   onGoHome: () => void;
@@ -99,7 +100,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // 记录错误信息
     console.error('ErrorBoundary caught an error:', error, errorInfo);
 

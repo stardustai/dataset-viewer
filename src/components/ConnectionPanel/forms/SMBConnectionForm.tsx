@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff } from 'lucide-react';
-import { ConnectButton, ErrorDisplay } from '../common';
+import type { FC } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PasswordInput } from '../../common';
-import { UnifiedConnectionFormProps } from './types';
+import { ConnectButton, ErrorDisplay } from '../common';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface SMBConnectionFormProps extends UnifiedConnectionFormProps {
   config: {
@@ -17,7 +18,7 @@ interface SMBConnectionFormProps extends UnifiedConnectionFormProps {
   showAdvancedOptions?: boolean;
 }
 
-export const SMBConnectionForm: React.FC<SMBConnectionFormProps> = ({
+export const SMBConnectionForm: FC<SMBConnectionFormProps> = ({
   config,
   onChange,
   connecting,

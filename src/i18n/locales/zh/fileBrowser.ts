@@ -32,4 +32,10 @@ export const fileBrowser = {
   'loading.directory.root': '正在加载根目录...',
   'loading.more': '正在加载更多文件...',
   'loading.more.failed': '加载更多文件失败',
+
+  // 视图模式
+  'view.mode.list': '列表视图',
+  'view.mode.grid': '网格视图',
+  'view.toggle.list': '切换到列表视图',
+  'view.toggle.grid': '切换到网格视图',
 };

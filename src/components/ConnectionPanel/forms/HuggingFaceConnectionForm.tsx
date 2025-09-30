@@ -1,9 +1,9 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Bot } from 'lucide-react';
-import { ConnectButton, ErrorDisplay } from '../common';
+import type { FC, FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PasswordInput } from '../../common';
-import { UnifiedConnectionFormProps } from './types';
+import { ConnectButton, ErrorDisplay } from '../common';
+import type { UnifiedConnectionFormProps } from './types';
 
 interface HuggingFaceConnectionFormProps extends UnifiedConnectionFormProps {
   config: {
@@ -12,7 +12,7 @@ interface HuggingFaceConnectionFormProps extends UnifiedConnectionFormProps {
   };
 }
 
-export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps> = ({
+export const HuggingFaceConnectionForm: FC<HuggingFaceConnectionFormProps> = ({
   config,
   onChange,
   connecting,
@@ -22,7 +22,7 @@ export const HuggingFaceConnectionForm: React.FC<HuggingFaceConnectionFormProps>
 }) => {
   const { t } = useTranslation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onConnect();
   };

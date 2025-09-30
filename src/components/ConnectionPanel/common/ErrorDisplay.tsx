@@ -1,11 +1,11 @@
-import React from 'react';
+import type { FC } from 'react';
 
 interface ErrorDisplayProps {
   error: string;
   className?: string;
 }
 
-export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, className = '' }) => {
+export const ErrorDisplay: FC<ErrorDisplayProps> = ({ error, className = '' }) => {
   if (!error) return null;
 
   return (

@@ -1,14 +1,14 @@
-import React from 'react';
+import type { FC } from 'react';
 import { LanguageSwitcher } from '../LanguageSwitcher';
-import { FeatureShowcase } from './FeatureShowcase';
 import { ConnectionFormContainer } from './ConnectionFormContainer';
+import { FeatureShowcase } from './FeatureShowcase';
 import useConnectionLogic from './useConnectionLogic';
 
 interface ConnectionPanelProps {
   onConnect: () => void;
 }
 
-export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ onConnect }) => {
+export const ConnectionPanel: FC<ConnectionPanelProps> = ({ onConnect }) => {
   const connectionLogic = useConnectionLogic(onConnect);
 
   return (
