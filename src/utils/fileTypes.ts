@@ -231,3 +231,24 @@ export const isTextLikeFile = (filename: string): boolean => {
 export const isPointCloudFile = (filename: string): boolean => {
   return getFileType(filename) === 'pointcloud';
 };
+
+/**
+ * 获取指定文件类型的所有扩展名
+ */
+export const getExtensionsByType = (type: FileType): string[] => {
+  return Object.entries(FILE_EXTENSIONS)
+    .filter(([_, config]) => config.type === type)
+    .map(([ext]) => ext);
+};
+
+/**
+ * 获取媒体类型（图片、视频、音频、PDF）的所有扩展名
+ */
+export const getMediaExtensions = (): string[] => {
+  return [
+    ...getExtensionsByType('image'),
+    ...getExtensionsByType('video'),
+    ...getExtensionsByType('audio'),
+    ...getExtensionsByType('pdf'),
+  ];
+};

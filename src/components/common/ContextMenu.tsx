@@ -2,12 +2,12 @@ import { FileText, ChevronRight, Check, Wand2 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PluginInstance } from '@dataset-viewer/sdk';
+import type { ViewerOption } from '../../services/plugin/pluginFramework';
 
 interface ContextMenuProps {
   x: number;
   y: number;
-  compatiblePlugins: PluginInstance[];
+  compatiblePlugins: ViewerOption[];
   defaultPluginId: string | null;
   onOpenAsText: () => void;
   onOpenWithPlugin: (pluginId: string, setAsDefault: boolean) => void;
@@ -123,19 +123,22 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             top: submenuPosition.y,
           }}
         >
-          {compatiblePlugins.map(plugin => {
-            const isDefault = plugin.metadata.id === defaultPluginId;
+          {compatiblePlugins.map(viewer => {
+            const isDefault = viewer.id === defaultPluginId;
+            // 获取显示名称（内置查看器需要翻译，外部插件直接使用名称）
+            const displayName = viewer.isBuiltIn ? t(viewer.name) : viewer.name;
+
             return (
               <button
-                key={plugin.metadata.id}
+                key={viewer.id}
                 type="button"
                 onClick={e => {
                   e.stopPropagation();
-                  handlePluginSelect(plugin.metadata.id, true);
+                  handlePluginSelect(viewer.id, true);
                 }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"
               >
-                <span>{plugin.metadata.name}</span>
+                <span>{displayName}</span>
                 {isDefault && <Check className="w-3 h-3 text-blue-500" />}
               </button>
             );

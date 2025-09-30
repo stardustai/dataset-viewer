@@ -6,9 +6,8 @@ import { FileIcon } from '../../utils/fileIcons';
 import { getFileType } from '../../utils/fileTypes';
 import { formatFileSize } from '../../utils/fileUtils';
 import { ContextMenu } from '../common/ContextMenu';
-import { pluginFramework } from '../../services/plugin/pluginFramework';
+import { pluginFramework, type ViewerOption } from '../../services/plugin/pluginFramework';
 import { defaultPluginAssociationService } from '../../services/defaultPluginAssociationService';
-import type { PluginInstance } from '@dataset-viewer/sdk';
 
 interface VirtualizedFileListProps {
   files: StorageFile[];
@@ -36,7 +35,7 @@ export const VirtualizedFileList: React.FC<VirtualizedFileListProps> = ({
     x: number;
     y: number;
     file: StorageFile | null;
-    compatiblePlugins: PluginInstance[];
+    compatiblePlugins: ViewerOption[];
     defaultPluginId: string | null;
   }>({
     visible: false,

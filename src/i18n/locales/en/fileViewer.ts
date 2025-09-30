@@ -177,6 +177,9 @@ export const fileViewer = {
   'context.menu.open.as.text': 'Open as Text',
   'context.menu.open.with': 'Open With',
 
+  // Built-in viewer names
+  'viewer.builtin': 'Built-in Viewer',
+
   // Long line optimization
   'expand.long.line': 'Expand',
   'collapse.long.line': 'Collapse',

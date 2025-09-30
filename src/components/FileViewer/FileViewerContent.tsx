@@ -6,6 +6,7 @@ import { useStorageStore } from '../../stores/storageStore';
 import type { StorageClient } from '../../services/storage/types';
 import { LazyComponentWrapper } from './common';
 import { pluginManager } from '../../services/plugin/pluginManager';
+import { pluginFramework } from '../../services/plugin/pluginFramework';
 import { PluginViewer } from './PluginViewer';
 import {
   VirtualizedTextViewer,
@@ -117,51 +118,78 @@ export const FileViewerContent = forwardRef<
     const { getFileUrl } = useStorageStore();
     const [openAsText, setOpenAsText] = useState(!!forceTextMode);
 
-    // 处理加载状态
-    if (loading) {
-      return (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span>{t('loading')}</span>
-          </div>
-        </div>
-      );
-    }
+    // 构建内置查看器的配置
+    const getBuiltInViewerConfig = (viewerId: string) => {
+      const ext = file.basename.toLowerCase();
+      const configs: Record<string, { component: any; props: any }> = {
+        'builtin:word': {
+          component: WordViewer,
+          props: { filePath, fileName: file.basename, fileSize: file.size },
+        },
+        'builtin:presentation': {
+          component: PresentationViewer,
+          props: {
+            filePath,
+            fileName: file.basename,
+            fileSize: file.size,
+            onMetadataLoaded: setPresentationMetadata,
+          },
+        },
+        'builtin:media': {
+          component: MediaViewer,
+          props: {
+            filePath,
+            fileName: file.basename,
+            fileType: fileType as 'image' | 'pdf' | 'video' | 'audio',
+            fileSize: file.size,
+            hasAssociatedFiles,
+          },
+        },
+        'builtin:spreadsheet': {
+          component: UniversalDataTableViewer,
+          props: {
+            filePath,
+            fileName: file.basename,
+            fileSize: file.size,
+            fileType:
+              ext.endsWith('.xlsx') || ext.endsWith('.xls')
+                ? 'xlsx'
+                : ext.endsWith('.ods')
+                  ? 'ods'
+                  : 'csv',
+            onMetadataLoaded: setDataMetadata,
+            storageClient,
+          },
+        },
+        'builtin:data': {
+          component: UniversalDataTableViewer,
+          props: {
+            filePath,
+            fileName: file.basename,
+            fileSize: file.size,
+            fileType: ext.endsWith('.parquet') || ext.endsWith('.pqt') ? 'parquet' : 'csv',
+            onMetadataLoaded: setDataMetadata,
+            storageClient,
+          },
+        },
+        'builtin:archive': {
+          component: ArchiveViewer,
+          props: {
+            url: getFileUrl(filePath),
+            filename: file.basename,
+            storageClient,
+          },
+        },
+        'builtin:pointcloud': {
+          component: PointCloudViewer,
+          props: { filePath, onMetadataLoaded: setDataMetadata },
+        },
+      };
+      return configs[viewerId];
+    };
 
-    // 处理错误状态
-    if (error) {
-      return (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-red-600 dark:text-red-400">
-            <p className="text-lg font-medium mb-2">{t('error')}</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        </div>
-      );
-    }
-
-    // 检查是否有插件可以处理此文件（但不在强制文本模式下）
-    if (
-      !forceTextMode &&
-      !openAsText &&
-      storageClient &&
-      (pluginId || pluginManager.findViewerForFile(file.basename))
-    ) {
-      return (
-        <PluginViewer
-          file={file}
-          filePath={filePath}
-          content={content}
-          storageClient={storageClient}
-          isLargeFile={isLargeFile}
-          pluginId={pluginId}
-        />
-      );
-    }
-
-    // 如果强制文本模式或用户选择以文本格式打开，或者是文本/Markdown文件
-    if (forceTextMode || openAsText || fileInfo.isText || fileInfo.isMarkdown) {
+    // 渲染文本/Markdown查看器
+    const renderTextViewer = (isMarkdownMode = false) => {
       return (
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* 顶部加载状态指示器 */}
@@ -186,7 +214,7 @@ export const FileViewerContent = forwardRef<
               currentSearchIndex={currentSearchIndex}
               searchResults={fullFileSearchMode ? fullFileSearchResults : searchResults}
               fileName={file.basename}
-              isMarkdown={fileInfo.isMarkdown && !openAsText}
+              isMarkdown={isMarkdownMode && !openAsText}
               isMarkdownPreviewOpen={isMarkdownPreviewOpen}
               setIsMarkdownPreviewOpen={setIsMarkdownPreviewOpen}
             />
@@ -203,117 +231,121 @@ export const FileViewerContent = forwardRef<
           )}
         </div>
       );
+    };
+
+    // 渲染内置查看器
+    const renderBuiltInViewer = (viewerId: string) => {
+      // 特殊处理文本和 Markdown 查看器
+      if (viewerId === 'builtin:text') {
+        return renderTextViewer(false);
+      }
+      if (viewerId === 'builtin:markdown') {
+        return renderTextViewer(true);
+      }
+
+      const config = getBuiltInViewerConfig(viewerId);
+      if (!config) return null;
+
+      const extraProps =
+        viewerId === 'builtin:pointcloud'
+          ? {
+              loadingText: t('loading.pointCloud', '正在加载点云渲染器...'),
+              fallbackHeight: 'h-64',
+            }
+          : {};
+
+      return (
+        <LazyComponentWrapper component={config.component} props={config.props} {...extraProps} />
+      );
+    };
+
+    // 处理加载状态
+    if (loading) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span>{t('loading')}</span>
+          </div>
+        </div>
+      );
     }
 
-    if (fileInfo.isWord) {
+    // 处理错误状态
+    if (error) {
       return (
-        <LazyComponentWrapper
-          component={WordViewer}
-          props={{
-            filePath,
-            fileName: file.basename,
-            fileSize: file.size,
-          }}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-red-600 dark:text-red-400">
+            <p className="text-lg font-medium mb-2">{t('error')}</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // 如果指定了 pluginId，优先使用指定的查看器
+    if (pluginId && !forceTextMode) {
+      // 检查是否是内置查看器
+      if (pluginId.startsWith('builtin:')) {
+        const builtInViewer = pluginFramework.getBuiltInViewer(pluginId);
+        if (builtInViewer) {
+          return renderBuiltInViewer(pluginId);
+        }
+      } else if (storageClient) {
+        // 外部插件
+        return (
+          <PluginViewer
+            file={file}
+            filePath={filePath}
+            content={content}
+            storageClient={storageClient}
+            isLargeFile={isLargeFile}
+            pluginId={pluginId}
+          />
+        );
+      }
+    }
+
+    // 检查是否有插件可以处理此文件（但不在强制文本模式下）
+    if (
+      !forceTextMode &&
+      !openAsText &&
+      storageClient &&
+      pluginManager.findViewerForFile(file.basename)
+    ) {
+      return (
+        <PluginViewer
+          file={file}
+          filePath={filePath}
+          content={content}
+          storageClient={storageClient}
+          isLargeFile={isLargeFile}
         />
       );
     }
 
-    if (fileInfo.isPresentation) {
-      return (
-        <LazyComponentWrapper
-          component={PresentationViewer}
-          props={{
-            filePath,
-            fileName: file.basename,
-            fileSize: file.size,
-            onMetadataLoaded: setPresentationMetadata,
-          }}
-        />
-      );
+    // 如果强制文本模式或用户选择以文本格式打开
+    if (forceTextMode || openAsText) {
+      return renderTextViewer(fileInfo.isMarkdown);
     }
 
-    if (fileInfo.isMedia) {
-      return (
-        <LazyComponentWrapper
-          component={MediaViewer}
-          props={{
-            filePath,
-            fileName: file.basename,
-            fileType: fileType as 'image' | 'pdf' | 'video' | 'audio',
-            fileSize: file.size,
-            hasAssociatedFiles,
-          }}
-        />
-      );
-    }
+    // 自动检测文件类型并使用对应的内置查看器
+    const builtInViewerMap: Record<string, string> = {
+      isText: 'builtin:text',
+      isMarkdown: 'builtin:markdown',
+      isWord: 'builtin:word',
+      isPresentation: 'builtin:presentation',
+      isMedia: 'builtin:media',
+      isSpreadsheet: 'builtin:spreadsheet',
+      isData: 'builtin:data',
+      isArchive: 'builtin:archive',
+      isPointCloud: 'builtin:pointcloud',
+    };
 
-    if (fileInfo.isSpreadsheet) {
-      return (
-        <LazyComponentWrapper
-          component={UniversalDataTableViewer}
-          props={{
-            filePath,
-            fileName: file.basename,
-            fileSize: file.size,
-            fileType:
-              file.basename.toLowerCase().endsWith('.xlsx') ||
-              file.basename.toLowerCase().endsWith('.xls')
-                ? 'xlsx'
-                : file.basename.toLowerCase().endsWith('.ods')
-                  ? 'ods'
-                  : 'csv',
-            onMetadataLoaded: setDataMetadata,
-            storageClient,
-          }}
-        />
-      );
-    }
-
-    if (fileInfo.isData) {
-      return (
-        <LazyComponentWrapper
-          component={UniversalDataTableViewer}
-          props={{
-            filePath,
-            fileName: file.basename,
-            fileSize: file.size,
-            fileType:
-              file.basename.toLowerCase().endsWith('.parquet') ||
-              file.basename.toLowerCase().endsWith('.pqt')
-                ? 'parquet'
-                : 'csv',
-            onMetadataLoaded: setDataMetadata,
-            storageClient,
-          }}
-        />
-      );
-    }
-
-    if (fileInfo.isArchive) {
-      return (
-        <LazyComponentWrapper
-          component={ArchiveViewer}
-          props={{
-            url: getFileUrl(filePath),
-            filename: file.basename,
-            storageClient,
-          }}
-        />
-      );
-    }
-
-    if (fileInfo.isPointCloud) {
-      return (
-        <LazyComponentWrapper
-          component={PointCloudViewer}
-          props={{
-            filePath,
-            onMetadataLoaded: setDataMetadata,
-          }}
-          loadingText={t('loading.pointCloud', '正在加载点云渲染器...')}
-          fallbackHeight="h-64"
-        />
-      );
+    for (const [key, viewerId] of Object.entries(builtInViewerMap)) {
+      if (fileInfo[key as keyof typeof fileInfo]) {
+        return renderBuiltInViewer(viewerId);
+      }
     }
 
     return (
