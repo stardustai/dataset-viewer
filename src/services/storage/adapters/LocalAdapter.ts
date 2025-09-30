@@ -39,19 +39,27 @@ export const localStorageAdapter: StorageAdapter = {
       return `local://${rootPath}`;
     }
 
-    // 如果已经是绝对路径（Linux/macOS、Windows 盘符、UNC）、或 ~ 开头，直接返回
+    let finalPath: string;
+
+    // 如果已经是绝对路径（Linux/macOS、Windows 盘符、UNC）、或 ~ 开头，直接使用
     const isWindowsAbs = /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith('\\\\');
     if (path.startsWith('/') || path.startsWith('~') || isWindowsAbs) {
-      return `local://${path.replace(/\\/g, '/')}`;
+      finalPath = path.replace(/\\/g, '/');
+    } else {
+      // 对于相对路径，与根路径拼接
+      const cleanPath = path.replace(/^\/+/, '');
+      const fullPath = `${rootPath}/${cleanPath}`;
+      // 清理多余的斜杠
+      finalPath = fullPath.replace(/\/+/g, '/');
     }
 
-    // 对于相对路径，与根路径拼接
-    const cleanPath = path.replace(/^\/+/, '');
-    const fullPath = `${rootPath}/${cleanPath}`;
+    // 如果是绝对路径(以 / 开头),移除开头的 / 以避免 local:/// 三斜杠
+    // 后端会自动补回 /
+    if (finalPath.startsWith('/')) {
+      finalPath = finalPath.substring(1);
+    }
 
-    // 清理多余的斜杠并构建 local URL
-    const normalizedPath = fullPath.replace(/\/+/g, '/');
-    return `local://${normalizedPath}`;
+    return `local://${finalPath}`;
   },
 
   generateConnectionName: (config: ConnectionConfig) => {

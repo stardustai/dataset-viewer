@@ -10,15 +10,22 @@ impl ProtocolHandler {
     /// 简单提取相对路径
     /// 从协议URL中提取路径部分，供各存储客户端使用
     pub fn extract_relative_path(protocol_url: &str, _client: &dyn StorageClient) -> String {
-        // 特殊处理 local:// 协议中的 ~ 路径
-        if protocol_url.starts_with("local://~/") {
-            // 直接提取 ~/ 开头的路径，然后进行URL解码
+        // 处理 local:// 协议
+        if protocol_url.starts_with("local://") {
+            // 提取路径部分（移除 local:// 前缀）
             let encoded_path = protocol_url.strip_prefix("local://").unwrap_or("");
 
-            // 使用 urlencoding crate 进行URL解码
-            return urlencoding::decode(encoded_path)
+            // 使用 urlencoding crate 进行URL解码，支持中文等非ASCII字符
+            let decoded = urlencoding::decode(encoded_path)
                 .map(|decoded| decoded.into_owned())
                 .unwrap_or_else(|_| encoded_path.to_string());
+
+            // 如果不是 ~ 开头且不是 / 开头(前端移除了 /),自动补回 / 还原绝对路径
+            if !decoded.starts_with('~') && !decoded.starts_with('/') {
+                return format!("/{}", decoded);
+            }
+
+            return decoded;
         }
 
         // 对于所有其他协议（包括 WebDAV），传递完整的协议 URL
