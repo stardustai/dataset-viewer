@@ -217,7 +217,7 @@ export const FileGridView: FC<FileGridViewProps> = ({
   };
 
   return (
-    <div ref={parentRef} className="h-full overflow-auto pt-2" data-virtualized-container="true">
+    <div ref={parentRef} className="h-full overflow-auto py-2" data-virtualized-container="true">
       <div
         className="w-full relative"
         style={{
