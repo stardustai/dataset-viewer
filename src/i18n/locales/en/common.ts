@@ -94,6 +94,7 @@ export const common = {
   'pcd.toolbar.height': 'Height coloring',
   'pcd.toolbar.rgb': 'RGB coloring',
   'pcd.toolbar.intensity': 'Intensity coloring',
+  'pcd.toolbar.lod': 'Toggle LOD optimization (for large point clouds)',
   'pcd.progress.loading': 'Loading',
   'pcd.progress.parsing': 'Parsing',
   'pcd.progress.optimizing': 'Optimizing',

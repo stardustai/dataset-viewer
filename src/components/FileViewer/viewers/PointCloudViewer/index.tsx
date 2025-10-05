@@ -28,6 +28,7 @@ export const PointCloudViewer: FC<PointCloudViewerProps> = ({
   const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
   const [colorMode, setColorMode] = useState<ColorMode>('height');
   const [pointSize, setPointSize] = useState(0.1);
+  const [lodEnabled, setLodEnabled] = useState(false);
 
   // 加载点云文件
   const loadPointCloud = useCallback(async () => {
@@ -87,6 +88,13 @@ export const PointCloudViewer: FC<PointCloudViewerProps> = ({
       setStats(pointCloudStats);
       setLoadingProgress(null);
 
+      // 大于 100 万点时默认开启 LOD
+      const shouldEnableLod = pointCloudStats.pointCount >= 1000000;
+      setLodEnabled(shouldEnableLod);
+      if (shouldEnableLod) {
+        renderer.setLODEnabled(true);
+      }
+
       // 调用元数据回调
       onMetadataLoaded?.({
         numRows: pointCloudStats.pointCount,
@@ -143,6 +151,12 @@ export const PointCloudViewer: FC<PointCloudViewerProps> = ({
     rendererRef.current?.setPointSize(size);
   }, []);
 
+  // 切换 LOD
+  const handleLodToggle = useCallback((enabled: boolean) => {
+    setLodEnabled(enabled);
+    rendererRef.current?.setLODEnabled(enabled);
+  }, []);
+
   return (
     <div className="relative w-full h-full bg-gray-900">
       <div ref={containerRef} className="w-full h-full" />
@@ -153,6 +167,8 @@ export const PointCloudViewer: FC<PointCloudViewerProps> = ({
         onColorModeChange={handleColorModeChange}
         pointSize={pointSize}
         onPointSizeChange={handlePointSizeChange}
+        lodEnabled={lodEnabled}
+        onLodToggle={handleLodToggle}
         loadingProgress={loadingProgress}
       />
     </div>

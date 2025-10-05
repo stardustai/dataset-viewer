@@ -93,6 +93,7 @@ export const common = {
   'pcd.toolbar.height': '高度着色',
   'pcd.toolbar.rgb': 'RGB 着色',
   'pcd.toolbar.intensity': '反射率着色',
+  'pcd.toolbar.lod': '切换 LOD 优化（适用于大型点云）',
   'pcd.progress.loading': '加载中',
   'pcd.progress.parsing': '解析中',
   'pcd.progress.optimizing': '优化中',

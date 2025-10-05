@@ -237,6 +237,12 @@ export class PointCloudRenderer {
     }
   }
 
+  setLODEnabled(enabled: boolean): void {
+    if (this.lod) {
+      this.lod.setLODEnabled(enabled);
+    }
+  }
+
   setColorMode(mode: ColorMode): void {
     if (!this.lod) return;
 
