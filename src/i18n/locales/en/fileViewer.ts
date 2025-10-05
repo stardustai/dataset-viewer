@@ -188,16 +188,20 @@ export const fileViewer = {
 
   // View modes
 
-  // PCD Point Cloud Viewer
-  'pcd.error.loadFailed': 'Failed to load PCD file',
-  'pcd.toolbar.rgb': 'RGB',
+  // Point Cloud Viewer
+  'pcd.toolbar.decreaseSize': 'Decrease point size',
+  'pcd.toolbar.increaseSize': 'Increase point size',
   'pcd.toolbar.height': 'Height',
+  'pcd.toolbar.rgb': 'RGB',
   'pcd.toolbar.intensity': 'Intensity',
+  'pcd.toolbar.lod': 'Toggle LOD optimization (for large point clouds)',
   'pcd.toolbar.rgbMode': 'Switch to RGB colors',
   'pcd.toolbar.heightMode': 'Switch to height colors',
   'pcd.toolbar.intensityMode': 'Switch to intensity mode',
-  'pcd.toolbar.decreaseSize': 'Decrease point size',
-  'pcd.toolbar.increaseSize': 'Increase point size',
+  'pcd.progress.loading': 'Loading',
+  'pcd.progress.parsing': 'Parsing',
+  'pcd.progress.optimizing': 'Optimizing',
+  'pcd.error.loadFailed': 'Failed to load point cloud file',
 
   // Code folding
   'fold.range': 'Fold range',

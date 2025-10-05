@@ -73,6 +73,10 @@ export class PointCloudRenderer {
   }
 
   async loadPointCloud(arrayBuffer: ArrayBuffer, fileExtension: string): Promise<PointCloudStats> {
+    // Reset instance caches for all load types
+    this.originalColors = null;
+    this.intensityValues = null;
+
     // 对于 PCD 文件使用流式加载
     if (fileExtension === 'pcd') {
       return this.loadPCDStreaming(arrayBuffer);
@@ -335,6 +339,10 @@ export class PointCloudRenderer {
   };
 
   private async loadPCDStreaming(arrayBuffer: ArrayBuffer): Promise<PointCloudStats> {
+    // Reset instance caches to prevent corruption from previous loads
+    this.originalColors = null;
+    this.intensityValues = null;
+
     const allPositions: number[] = [];
     const allColors: number[] = [];
     let firstChunk = true;

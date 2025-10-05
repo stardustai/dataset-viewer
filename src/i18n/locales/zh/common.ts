@@ -86,16 +86,4 @@ export const common = {
   // 连接管理
   'delete.connection': '删除连接',
   'confirm.delete.connection': '确定要删除这个连接吗？',
-
-  // 点云查看器
-  'pcd.toolbar.decreaseSize': '减小点大小',
-  'pcd.toolbar.increaseSize': '增大点大小',
-  'pcd.toolbar.height': '高度着色',
-  'pcd.toolbar.rgb': 'RGB 着色',
-  'pcd.toolbar.intensity': '反射率着色',
-  'pcd.toolbar.lod': '切换 LOD 优化（适用于大型点云）',
-  'pcd.progress.loading': '加载中',
-  'pcd.progress.parsing': '解析中',
-  'pcd.progress.optimizing': '优化中',
-  'pcd.error.loadFailed': '加载点云文件失败',
 };
