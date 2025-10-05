@@ -340,8 +340,8 @@ export class PointCloudRenderer {
 
   private async loadPCDStreaming(arrayBuffer: ArrayBuffer): Promise<PointCloudStats> {
     // Reset instance caches to prevent corruption from previous loads
-    this.originalColors = null;
-    this.intensityValues = null;
+    this.originalColors = null as number[] | null;
+    this.intensityValues = null as number[] | null;
 
     const allPositions: number[] = [];
     const allColors: number[] = [];
