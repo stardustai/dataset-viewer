@@ -21,7 +21,6 @@ export const common = {
   ok: 'OK',
   retry: 'Retry',
   loading: 'Loading...',
-  'loading.pointCloud': 'Loading point cloud renderer...',
   optional: '(Optional)',
   connecting: 'Connecting...',
   deleted: 'Deleted',
