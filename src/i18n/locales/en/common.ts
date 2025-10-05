@@ -21,7 +21,6 @@ export const common = {
   ok: 'OK',
   retry: 'Retry',
   loading: 'Loading...',
-  'loading.pointCloud': 'Loading point cloud renderer...',
   optional: '(Optional)',
   connecting: 'Connecting...',
   deleted: 'Deleted',
@@ -88,4 +87,15 @@ export const common = {
   // Connection management
   'delete.connection': 'Delete connection',
   'confirm.delete.connection': 'Are you sure you want to delete this connection?',
+
+  // Point Cloud Viewer
+  'pcd.toolbar.decreaseSize': 'Decrease point size',
+  'pcd.toolbar.increaseSize': 'Increase point size',
+  'pcd.toolbar.height': 'Height coloring',
+  'pcd.toolbar.rgb': 'RGB coloring',
+  'pcd.toolbar.intensity': 'Intensity coloring',
+  'pcd.progress.loading': 'Loading',
+  'pcd.progress.parsing': 'Parsing',
+  'pcd.progress.optimizing': 'Optimizing',
+  'pcd.error.loadFailed': 'Failed to load point cloud file',
 };

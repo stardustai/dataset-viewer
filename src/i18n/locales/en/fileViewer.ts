@@ -189,11 +189,15 @@ export const fileViewer = {
   // View modes
 
   // PCD Point Cloud Viewer
-  'pcd.loading': 'Loading point cloud data...',
   'pcd.error.loadFailed': 'Failed to load PCD file',
-  'pcd.mouseHint': 'Drag to rotate, scroll to zoom, right-click to pan',
-  'pcd.pointCloudInfo': 'Point Cloud Info',
-  'pcd.totalPoints': 'Rendering {{count}} points',
+  'pcd.toolbar.rgb': 'RGB',
+  'pcd.toolbar.height': 'Height',
+  'pcd.toolbar.intensity': 'Intensity',
+  'pcd.toolbar.rgbMode': 'Switch to RGB colors',
+  'pcd.toolbar.heightMode': 'Switch to height colors',
+  'pcd.toolbar.intensityMode': 'Switch to intensity mode',
+  'pcd.toolbar.decreaseSize': 'Decrease point size',
+  'pcd.toolbar.increaseSize': 'Increase point size',
 
   // Code folding
   'fold.range': 'Fold range',

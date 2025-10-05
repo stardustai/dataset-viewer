@@ -20,7 +20,6 @@ export const common = {
   ok: '确定',
   retry: '重试',
   loading: '加载中...',
-  'loading.pointCloud': '正在加载点云渲染器...',
   optional: '(可选)',
   close: '关闭',
   connecting: '连接中...',
@@ -87,4 +86,15 @@ export const common = {
   // 连接管理
   'delete.connection': '删除连接',
   'confirm.delete.connection': '确定要删除这个连接吗？',
+
+  // 点云查看器
+  'pcd.toolbar.decreaseSize': '减小点大小',
+  'pcd.toolbar.increaseSize': '增大点大小',
+  'pcd.toolbar.height': '高度着色',
+  'pcd.toolbar.rgb': 'RGB 着色',
+  'pcd.toolbar.intensity': '反射率着色',
+  'pcd.progress.loading': '加载中',
+  'pcd.progress.parsing': '解析中',
+  'pcd.progress.optimizing': '优化中',
+  'pcd.error.loadFailed': '加载点云文件失败',
 };

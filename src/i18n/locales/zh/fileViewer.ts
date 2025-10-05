@@ -169,11 +169,15 @@ export const fileViewer = {
   // View modes
 
   // PCD 点云文件查看器
-  'pcd.loading': '正在加载点云数据...',
   'pcd.error.loadFailed': '加载PCD文件失败',
-  'pcd.mouseHint': '鼠标拖拽旋转，滚轮缩放，右键平移',
-  'pcd.pointCloudInfo': '点云信息',
-  'pcd.totalPoints': '正在渲染 {{count}} 个点',
+  'pcd.toolbar.rgb': '原色',
+  'pcd.toolbar.height': '高度',
+  'pcd.toolbar.intensity': '反射率',
+  'pcd.toolbar.rgbMode': '切换到原色模式',
+  'pcd.toolbar.heightMode': '切换到高度着色',
+  'pcd.toolbar.intensityMode': '切换到反射率模式',
+  'pcd.toolbar.decreaseSize': '减小点大小',
+  'pcd.toolbar.increaseSize': '增大点大小',
 
   // 代码折叠
   'fold.range': '折叠区间',

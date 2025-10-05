@@ -247,17 +247,7 @@ export const FileViewerContent = forwardRef<
       const config = getBuiltInViewerConfig(viewerId);
       if (!config) return null;
 
-      const extraProps =
-        viewerId === 'builtin:pointcloud'
-          ? {
-              loadingText: t('loading.pointCloud', '正在加载点云渲染器...'),
-              fallbackHeight: 'h-64',
-            }
-          : {};
-
-      return (
-        <LazyComponentWrapper component={config.component} props={config.props} {...extraProps} />
-      );
+      return <LazyComponentWrapper component={config.component} props={config.props} />;
     };
 
     // 处理加载状态

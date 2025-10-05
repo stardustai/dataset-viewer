@@ -32,7 +32,7 @@ export const LazyComponentWrapper: FC<LazyComponentWrapperProps> = ({
       <Suspense
         fallback={
           <div
-            className={`flex items-center justify-center ${typeof fallbackHeight === 'string' ? fallbackHeight : 'h-64'}`}
+            className={`flex-1 flex items-center justify-center ${typeof fallbackHeight === 'string' ? fallbackHeight : 'h-64'}`}
           >
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
