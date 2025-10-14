@@ -31,8 +31,8 @@ export const localStorageAdapter: StorageAdapter = {
 
     let rootPath = connection.rootPath;
 
-    // 标准化根路径：移除末尾斜杠
-    rootPath = rootPath.replace(/\/+$/, '');
+    // 标准化根路径：移除末尾斜杠，将反斜杠转为正斜杠
+    rootPath = rootPath.replace(/\/+$/, '').replace(/\\/g, '/');
 
     // 如果是空路径，返回根路径
     if (!path || path === '' || path === '/') {
@@ -41,9 +41,12 @@ export const localStorageAdapter: StorageAdapter = {
 
     let finalPath: string;
 
+    // 检查是否是 Windows 绝对路径（盘符格式：C:、D: 等）或 UNC 路径
+    const isWindowsAbs = /^[a-zA-Z]:[\\/]/.test(path);
+    const isUncPath = path.startsWith('\\\\') || path.startsWith('//');
+
     // 如果已经是绝对路径（Linux/macOS、Windows 盘符、UNC）、或 ~ 开头，直接使用
-    const isWindowsAbs = /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith('\\\\');
-    if (path.startsWith('/') || path.startsWith('~') || isWindowsAbs) {
+    if (path.startsWith('/') || path.startsWith('~') || isWindowsAbs || isUncPath) {
       finalPath = path.replace(/\\/g, '/');
     } else {
       // 对于相对路径，与根路径拼接
@@ -53,9 +56,9 @@ export const localStorageAdapter: StorageAdapter = {
       finalPath = fullPath.replace(/\/+/g, '/');
     }
 
-    // 如果是绝对路径(以 / 开头),移除开头的 / 以避免 local:/// 三斜杠
-    // 后端会自动补回 /
-    if (finalPath.startsWith('/')) {
+    // 只有 Unix 绝对路径(以 / 开头但不是 UNC 路径)才移除开头的 /
+    // Windows 路径（盘符开头）和 UNC 路径保持原样
+    if (finalPath.startsWith('/') && !isUncPath && !isWindowsAbs) {
       finalPath = finalPath.substring(1);
     }
 

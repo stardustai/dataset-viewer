@@ -20,8 +20,20 @@ impl ProtocolHandler {
                 .map(|decoded| decoded.into_owned())
                 .unwrap_or_else(|_| encoded_path.to_string());
 
-            // 如果不是 ~ 开头且不是 / 开头(前端移除了 /),自动补回 / 还原绝对路径
-            if !decoded.starts_with('~') && !decoded.starts_with('/') {
+            // 检查是否是 Windows 绝对路径（盘符格式：C:、D: 等，或 UNC 路径：//server）
+            let is_windows_absolute = decoded.len() >= 2
+                && decoded.chars().nth(0).unwrap_or(' ').is_ascii_alphabetic()
+                && decoded.chars().nth(1) == Some(':');
+
+            let is_unc_path = decoded.starts_with("//") || decoded.starts_with("\\\\");
+
+            // 如果不是 ~ 开头、不是 / 开头、不是 Windows 绝对路径、不是 UNC 路径
+            // 则自动补回 / 还原 Unix 绝对路径
+            if !decoded.starts_with('~')
+                && !decoded.starts_with('/')
+                && !is_windows_absolute
+                && !is_unc_path
+            {
                 return format!("/{}", decoded);
             }
 
