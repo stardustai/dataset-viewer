@@ -31,7 +31,7 @@ export const localStorageAdapter: StorageAdapter = {
 
     let rootPath = connection.rootPath;
 
-    // 标准化根路径：移除末尾斜杠，将反斜杠转为正斜杠
+    // 标准化根路径：移除末尾斜杠，统一使用正斜杠
     rootPath = rootPath.replace(/\/+$/, '').replace(/\\/g, '/');
 
     // 如果是空路径，返回根路径
@@ -39,27 +39,40 @@ export const localStorageAdapter: StorageAdapter = {
       return `local://${rootPath}`;
     }
 
+    // 统一标准化路径：所有反斜杠转为正斜杠，移除所有前导斜杠
+    let normalizedPath = path.replace(/\\/g, '/').replace(/^\/+/, '');
+
     let finalPath: string;
 
-    // 检查是否是 Windows 绝对路径（盘符格式：C:、D: 等）或 UNC 路径
-    const isWindowsAbs = /^[a-zA-Z]:[\\/]/.test(path);
-    const isUncPath = path.startsWith('\\\\') || path.startsWith('//');
-
-    // 如果已经是绝对路径（Linux/macOS、Windows 盘符、UNC）、或 ~ 开头，直接使用
-    if (path.startsWith('/') || path.startsWith('~') || isWindowsAbs || isUncPath) {
-      finalPath = path.replace(/\\/g, '/');
+    // 除了 ~ 开头的路径，其他都处理为绝对路径
+    if (normalizedPath.startsWith('~')) {
+      // ~ 开头的路径保持原样
+      finalPath = normalizedPath;
+    } else if (/^[a-zA-Z]:\//.test(normalizedPath)) {
+      // Windows 绝对路径（如 C:/path 或 D:/path），直接使用
+      finalPath = normalizedPath;
+    } else if (
+      normalizedPath.includes('/') &&
+      !normalizedPath.startsWith(rootPath.replace(/\\/g, '/'))
+    ) {
+      // 包含路径分隔符的，可能是相对路径，与根路径拼接
+      const fullPath = `${rootPath}/${normalizedPath}`;
+      finalPath = fullPath.replace(/\/+/g, '/');
     } else {
-      // 对于相对路径，先标准化路径分隔符，然后与根路径拼接
-      const normalizedPath = path.replace(/\\/g, '/');
-      const cleanPath = normalizedPath.replace(/^\/+/, '');
-      const fullPath = `${rootPath}/${cleanPath}`;
-      // 清理多余的斜杠
+      // 单个文件名或已经包含根路径的，与根路径拼接
+      const fullPath = `${rootPath}/${normalizedPath}`;
       finalPath = fullPath.replace(/\/+/g, '/');
     }
 
-    // 只有 Unix 绝对路径(以 / 开头但不是 UNC 路径)才移除开头的 /
-    // Windows 路径（盘符开头）和 UNC 路径保持原样
-    if (finalPath.startsWith('/') && !isUncPath && !isWindowsAbs) {
+    // 清理路径：移除 Windows 路径的前导斜杠（如 /C:/path 变为 C:/path）
+    // Unix 路径保留前导斜杠以便后端处理
+    if (/^\/[a-zA-Z]:\//.test(finalPath)) {
+      finalPath = finalPath.substring(1);
+    }
+
+    // 对于 Unix 绝对路径（以 / 开头），移除开头的 / 避免 local:/// 三斜杠
+    // 后端会自动为需要的路径补回 /
+    if (finalPath.startsWith('/') && !/^[a-zA-Z]:\//.test(finalPath)) {
       finalPath = finalPath.substring(1);
     }
 

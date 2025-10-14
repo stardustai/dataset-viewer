@@ -20,20 +20,17 @@ impl ProtocolHandler {
                 .map(|decoded| decoded.into_owned())
                 .unwrap_or_else(|_| encoded_path.to_string());
 
-            // 检查是否是 Windows 绝对路径（盘符格式：C:、D: 等，或 UNC 路径：//server）
-            let is_windows_absolute = decoded.len() >= 2
-                && decoded.chars().nth(0).unwrap_or(' ').is_ascii_alphabetic()
-                && decoded.chars().nth(1) == Some(':');
+            // 检查是否是 Windows 绝对路径（盘符格式：C:/、D:/ 等）
+            let is_windows_absolute = decoded.len() >= 3
+                && decoded
+                    .chars()
+                    .nth(0)
+                    .map_or(false, |c| c.is_ascii_alphabetic())
+                && decoded.chars().nth(1) == Some(':')
+                && decoded.chars().nth(2) == Some('/');
 
-            let is_unc_path = decoded.starts_with("//") || decoded.starts_with("\\\\");
-
-            // 如果不是 ~ 开头、不是 / 开头、不是 Windows 绝对路径、不是 UNC 路径
-            // 则自动补回 / 还原 Unix 绝对路径
-            if !decoded.starts_with('~')
-                && !decoded.starts_with('/')
-                && !is_windows_absolute
-                && !is_unc_path
-            {
+            // 如果不是 ~ 开头、不是 / 开头、不是 Windows 绝对路径，自动补回 / 还原 Unix 绝对路径
+            if !decoded.starts_with('~') && !decoded.starts_with('/') && !is_windows_absolute {
                 return format!("/{}", decoded);
             }
 
