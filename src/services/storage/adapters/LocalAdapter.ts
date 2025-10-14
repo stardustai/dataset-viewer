@@ -49,8 +49,9 @@ export const localStorageAdapter: StorageAdapter = {
     if (path.startsWith('/') || path.startsWith('~') || isWindowsAbs || isUncPath) {
       finalPath = path.replace(/\\/g, '/');
     } else {
-      // 对于相对路径，与根路径拼接
-      const cleanPath = path.replace(/^\/+/, '');
+      // 对于相对路径，先标准化路径分隔符，然后与根路径拼接
+      const normalizedPath = path.replace(/\\/g, '/');
+      const cleanPath = normalizedPath.replace(/^\/+/, '');
       const fullPath = `${rootPath}/${cleanPath}`;
       // 清理多余的斜杠
       finalPath = fullPath.replace(/\/+/g, '/');
