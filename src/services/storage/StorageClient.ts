@@ -518,6 +518,10 @@ export class StorageClient implements IStorageClient {
     // 使用现有的 toProtocolUrl 方法构建完整的协议 URL
     const protocolUrl = this.toProtocolUrl(path);
 
+    // Convert protocol URL to Tauri-compatible URL (handles Windows conversion)
+    const { convertProtocolUrl } = await import('../../utils/protocolUtils');
+    const fetchUrl = await convertProtocolUrl(protocolUrl, this.protocol);
+
     try {
       let response: Response;
 
@@ -526,7 +530,7 @@ export class StorageClient implements IStorageClient {
         const endPos = length !== undefined ? start + length - 1 : '';
         const rangeHeader = `bytes=${start}-${endPos}`;
 
-        response = await fetch(protocolUrl, {
+        response = await fetch(fetchUrl, {
           method: 'GET',
           headers: {
             Range: rangeHeader,
@@ -534,7 +538,7 @@ export class StorageClient implements IStorageClient {
         });
       } else {
         // 处理完整文件请求
-        response = await fetch(protocolUrl, {
+        response = await fetch(fetchUrl, {
           method: 'GET',
         });
       }
@@ -578,8 +582,12 @@ export class StorageClient implements IStorageClient {
     // 使用现有的 toProtocolUrl 方法构建完整的协议 URL
     const protocolUrl = this.toProtocolUrl(path);
 
+    // Convert protocol URL to Tauri-compatible URL (handles Windows conversion)
+    const { convertProtocolUrl } = await import('../../utils/protocolUtils');
+    const fetchUrl = await convertProtocolUrl(protocolUrl, this.protocol);
+
     try {
-      const response = await fetch(protocolUrl, {
+      const response = await fetch(fetchUrl, {
         method: 'HEAD', // 使用 HEAD 请求获取文件信息
       });
 

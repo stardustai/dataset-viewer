@@ -31,10 +31,14 @@ class StreamingAsyncBuffer implements AsyncBuffer {
   private protocolUrl: string;
   private _byteLength: number;
   private chunks: Map<string, ArrayBuffer> = new Map();
+  private protocol: string;
 
   constructor(protocolUrl: string, byteLength: number) {
     this.protocolUrl = protocolUrl;
     this._byteLength = byteLength;
+    // Extract protocol name from URL (e.g., 'local' from 'local://')
+    const protocolMatch = protocolUrl.match(/^([a-z]+):\/\//);
+    this.protocol = protocolMatch ? protocolMatch[1] : 'local';
   }
 
   get byteLength(): number {
@@ -64,13 +68,17 @@ class StreamingAsyncBuffer implements AsyncBuffer {
     }
 
     try {
+      // Convert protocol URL to Tauri-compatible URL (handles Windows conversion)
+      const { convertProtocolUrl } = await import('../../../utils/protocolUtils');
+      const fetchUrl = await convertProtocolUrl(this.protocolUrl, this.protocol);
+
       // 直接使用 fetch 和协议 URL 获取文件数据
       let response: Response;
 
       if (length < this._byteLength) {
         // 范围请求
         const rangeHeader = `bytes=${from}-${to - 1}`;
-        response = await fetch(this.protocolUrl, {
+        response = await fetch(fetchUrl, {
           method: 'GET',
           headers: {
             Range: rangeHeader,
@@ -78,7 +86,7 @@ class StreamingAsyncBuffer implements AsyncBuffer {
         });
       } else {
         // 完整文件请求
-        response = await fetch(this.protocolUrl, {
+        response = await fetch(fetchUrl, {
           method: 'GET',
         });
       }
