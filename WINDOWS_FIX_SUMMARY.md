@@ -155,4 +155,10 @@ File Path:       /Users/test/file.json ✅
 
 ## Related Issue
 
-Fixes: #<issue_number> - 打开文件失败 (File opening failure on Windows)
+Fixes the issue: 打开文件失败 (File opening failure on Windows)
+
+The issue reported that opening files on Windows resulted in an error:
+```
+Failed to get file size: Error: Failed to get file size via LOCAL protocol: 
+Failed to execute 'fetch' on 'Window': Failed to parse URL from local://D:\work\asset...
+```
