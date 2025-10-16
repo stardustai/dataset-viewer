@@ -17,6 +17,11 @@ export async function convertProtocolUrl(protocolUrl: string, protocol: string):
     // Extract the path after the protocol
     let pathWithQuery = protocolUrl.replace(protocolPrefix, '');
     
+    // Normalize Windows backslashes to forward slashes for URL compatibility
+    // This is needed because Windows paths like C:\Users\... contain backslashes
+    // which are not valid in URLs
+    pathWithQuery = pathWithQuery.replace(/\\/g, '/');
+    
     // Separate path from query parameters (for archive file entries)
     let path = pathWithQuery;
     let queryString = '';
