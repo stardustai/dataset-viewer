@@ -31,8 +31,8 @@ export const localStorageAdapter: StorageAdapter = {
 
     let rootPath = connection.rootPath;
 
-    // 标准化根路径：移除末尾斜杠
-    rootPath = rootPath.replace(/\/+$/, '');
+    // 标准化根路径：将 Windows 反斜杠转换为正斜杠，移除末尾斜杠
+    rootPath = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
 
     // 如果是空路径，返回根路径
     if (!path || path === '' || path === '/') {
