@@ -55,8 +55,16 @@ export class CompressionService {
     // 构建协议URL：protocol://host/path/to/archive.zip?entry=internal/file.txt
     const protocolUrl = `${archiveProtocolUrl}?entry=${encodeURIComponent(normalizedEntryPath)}`;
 
+    // Extract protocol name from URL (e.g., 'local' from 'local://')
+    const protocolMatch = archiveProtocolUrl.match(/^([a-z]+):\/\//);
+    const protocol = protocolMatch ? protocolMatch[1] : 'local';
+
+    // Convert protocol URL to Tauri-compatible URL (handles Windows conversion)
+    const { convertProtocolUrl } = await import('../utils/protocolUtils');
+    const fetchUrl = await convertProtocolUrl(protocolUrl, protocol);
+
     try {
-      const response = await fetch(protocolUrl, {
+      const response = await fetch(fetchUrl, {
         headers: maxPreviewSize ? { Range: `bytes=0-${maxPreviewSize - 1}` } : {},
       });
 

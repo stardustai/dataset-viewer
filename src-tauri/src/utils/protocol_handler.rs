@@ -10,25 +10,53 @@ impl ProtocolHandler {
     /// 简单提取相对路径
     /// 从协议URL中提取路径部分，供各存储客户端使用
     pub fn extract_relative_path(protocol_url: &str, _client: &dyn StorageClient) -> String {
-        // 处理 local:// 协议
-        if protocol_url.starts_with("local://") {
-            // 提取路径部分（移除 local:// 前缀）
-            let encoded_path = protocol_url.strip_prefix("local://").unwrap_or("");
+        // 处理所有自定义协议：local, webdav, ssh, oss, huggingface, smb 等
+        let protocols = [
+            "local",
+            "webdav",
+            "webdavs",
+            "ssh",
+            "oss",
+            "huggingface",
+            "smb",
+        ];
 
-            // 使用 urlencoding crate 进行URL解码，支持中文等非ASCII字符
-            let decoded = urlencoding::decode(encoded_path)
-                .map(|decoded| decoded.into_owned())
-                .unwrap_or_else(|_| encoded_path.to_string());
+        for protocol in &protocols {
+            let prefix = format!("{}://", protocol);
+            if protocol_url.starts_with(&prefix) {
+                // 提取路径部分（移除协议前缀）
+                let mut path = protocol_url.strip_prefix(&prefix).unwrap_or("");
 
-            // 如果不是 ~ 开头且不是 / 开头(前端移除了 /),自动补回 / 还原绝对路径
-            if !decoded.starts_with('~') && !decoded.starts_with('/') {
-                return format!("/{}", decoded);
+                // 移除 Windows 的 localhost/ 前缀
+                // Windows: protocol://localhost/path -> path
+                if path.starts_with("localhost/") {
+                    path = path.strip_prefix("localhost/").unwrap_or(path);
+                } else if path == "localhost" {
+                    path = "";
+                }
+
+                // 使用 urlencoding crate 进行URL解码，支持中文等非ASCII字符
+                let decoded = urlencoding::decode(path)
+                    .map(|s| s.into_owned())
+                    .unwrap_or_else(|_| path.to_string());
+
+                // Windows 盘符路径直接返回 (C:/... 或 C:\...)
+                // 检查第二个字符是否为 ':'
+                if decoded.len() >= 2 && decoded.chars().nth(1) == Some(':') {
+                    return decoded;
+                }
+
+                // Unix 路径或网络路径处理
+                // 如果不是 ~ 开头且不是 / 开头，且不为空，自动补回 / 还原绝对路径
+                if !decoded.starts_with('~') && !decoded.starts_with('/') && !decoded.is_empty() {
+                    return format!("/{}", decoded);
+                }
+
+                return decoded;
             }
-
-            return decoded;
         }
 
-        // 对于所有其他协议（包括 WebDAV），传递完整的协议 URL
+        // 对于其他协议，传递完整的协议 URL
         // 让各存储客户端自己处理协议转换
         protocol_url.to_string()
     }
