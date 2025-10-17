@@ -364,14 +364,14 @@ impl ProtocolHandler {
             drop(manager);
 
             // 从URL中提取压缩包路径（移除查询参数）
-            let archive_path = if let Ok(parsed_url) = url::Url::parse(&archive_url) {
-                // 构建不含查询参数的URL
-                let mut clean_url = parsed_url.clone();
-                clean_url.set_query(None);
-                Self::extract_relative_path(&clean_url.to_string(), &*client_arc)
+            // 使用简单的字符串操作而不是 url::Url::parse，因为 local://~ 路径无法被正确解析
+            let clean_archive_url = if let Some(query_pos) = archive_url.find('?') {
+                archive_url[..query_pos].to_string()
             } else {
-                Self::extract_relative_path(&archive_url, &*client_arc)
+                archive_url.clone()
             };
+
+            let archive_path = Self::extract_relative_path(&clean_archive_url, &*client_arc);
 
             let archive_handler = ArchiveHandler::new();
 
@@ -591,14 +591,30 @@ impl ProtocolHandler {
     ) {
         // 解析协议 URL
         if let Some(protocol_url_part) = uri.strip_prefix(protocol_prefix) {
-            let protocol_url = format!("{}{}", protocol_prefix, protocol_url_part);
+            // 先对URL部分进行解码（因为Tauri会对整个URL进行编码，导致 ? 变成 %3F）
+            let decoded_url_part = urlencoding::decode(protocol_url_part)
+                .map(|s| s.into_owned())
+                .unwrap_or_else(|_| protocol_url_part.to_string());
 
-            // 解析URL以检查查询参数
-            if let Ok(parsed_url) = url::Url::parse(&protocol_url) {
-                let query_pairs: std::collections::HashMap<String, String> = parsed_url
-                    .query_pairs()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
-                    .collect();
+            let protocol_url = format!("{}{}", protocol_prefix, decoded_url_part);
+
+            // 手动解析查询参数，避免使用 url::Url::parse（对于 local://~ 路径会失败）
+            if let Some(query_start) = protocol_url.find('?') {
+                let query_string = &protocol_url[query_start + 1..];
+                let mut query_pairs: std::collections::HashMap<String, String> =
+                    std::collections::HashMap::new();
+
+                // 解析查询参数
+                for pair in query_string.split('&') {
+                    if let Some(eq_pos) = pair.find('=') {
+                        let key = &pair[..eq_pos];
+                        let value = &pair[eq_pos + 1..];
+                        // URL 解码
+                        if let Ok(decoded_value) = urlencoding::decode(value) {
+                            query_pairs.insert(key.to_string(), decoded_value.to_string());
+                        }
+                    }
+                }
 
                 // 检查是否包含entry参数，表示这是压缩包内文件请求
                 if let Some(entry_path) = query_pairs.get("entry") {
