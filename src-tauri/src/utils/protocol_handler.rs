@@ -7,6 +7,12 @@ use std::sync::Arc;
 pub struct ProtocolHandler;
 
 impl ProtocolHandler {
+    /// 创建带有默认 HTTP 版本的 Response Builder
+    /// Windows 平台要求明确指定 HTTP 版本
+    fn response_builder() -> tauri::http::response::Builder {
+        tauri::http::Response::builder().version(tauri::http::Version::HTTP_11)
+    }
+
     /// 简单提取相对路径
     /// 从协议URL中提取路径部分，供各存储客户端使用
     pub fn extract_relative_path(protocol_url: &str, _client: &dyn StorageClient) -> String {
@@ -98,7 +104,7 @@ impl ProtocolHandler {
     /// 处理 OPTIONS 预检请求
     /// 所有存储客户端的OPTIONS处理都是相同的
     pub async fn handle_options_request(responder: tauri::UriSchemeResponder) {
-        let response = tauri::http::Response::builder()
+        let response = Self::response_builder()
             .status(200)
             .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -112,7 +118,7 @@ impl ProtocolHandler {
     /// 处理不支持的方法
     /// 所有存储客户端的错误处理都是相似的
     pub async fn handle_unsupported_method(responder: tauri::UriSchemeResponder) {
-        let response = tauri::http::Response::builder()
+        let response = Self::response_builder()
             .status(405)
             .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -125,7 +131,7 @@ impl ProtocolHandler {
 
     /// 处理没有客户端的错误
     pub async fn handle_no_client_error(responder: tauri::UriSchemeResponder) {
-        let response = tauri::http::Response::builder()
+        let response = Self::response_builder()
             .status(503)
             .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -137,7 +143,7 @@ impl ProtocolHandler {
 
     /// 处理无效协议的错误
     pub async fn handle_invalid_protocol_error(responder: tauri::UriSchemeResponder) {
-        let response = tauri::http::Response::builder()
+        let response = Self::response_builder()
             .status(400)
             .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -149,7 +155,7 @@ impl ProtocolHandler {
 
     /// 处理文件未找到错误
     pub async fn handle_file_not_found(responder: tauri::UriSchemeResponder) {
-        let response = tauri::http::Response::builder()
+        let response = Self::response_builder()
             .status(404)
             .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -161,7 +167,7 @@ impl ProtocolHandler {
 
     /// 处理错误请求
     pub async fn handle_bad_request(responder: tauri::UriSchemeResponder) {
-        let response = tauri::http::Response::builder()
+        let response = Self::response_builder()
             .status(400)
             .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -181,7 +187,7 @@ impl ProtocolHandler {
     ) {
         match client.get_file_size(relative_path).await {
             Ok(size) => {
-                let response = tauri::http::Response::builder()
+                let response = Self::response_builder()
                     .status(200)
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -251,7 +257,7 @@ impl ProtocolHandler {
             match client.read_file_range(relative_path, start, length).await {
                 Ok(data) => {
                     let actual_end = start + data.len() as u64 - 1;
-                    let response = tauri::http::Response::builder()
+                    let response = Self::response_builder()
                         .status(206)
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -290,7 +296,7 @@ impl ProtocolHandler {
     ) {
         match client.read_full_file(relative_path).await {
             Ok(data) => {
-                let response = tauri::http::Response::builder()
+                let response = Self::response_builder()
                     .status(200)
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -333,7 +339,7 @@ impl ProtocolHandler {
                 )
                 .await;
             } else {
-                let response = tauri::http::Response::builder()
+                let response = Self::response_builder()
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                     .header("Access-Control-Allow-Headers", "Range, Content-Type")
@@ -432,7 +438,7 @@ impl ProtocolHandler {
             .await
         {
             Ok(preview) => {
-                let response = tauri::http::Response::builder()
+                let response = Self::response_builder()
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                     .header("Access-Control-Allow-Headers", "Range, Content-Type")
@@ -493,7 +499,7 @@ impl ProtocolHandler {
                     {
                         Ok(preview) => {
                             let actual_end = start + preview.content.len() as u64 - 1;
-                            let response = tauri::http::Response::builder()
+                            let response = Self::response_builder()
                                 .header("Access-Control-Allow-Origin", "*")
                                 .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                                 .header("Access-Control-Allow-Headers", "Range, Content-Type")
@@ -521,7 +527,7 @@ impl ProtocolHandler {
                         }
                     }
                 } else {
-                    let response = tauri::http::Response::builder()
+                    let response = Self::response_builder()
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                         .header("Access-Control-Allow-Headers", "Range, Content-Type")
@@ -531,7 +537,7 @@ impl ProtocolHandler {
                     responder.respond(response);
                 }
             } else {
-                let response = tauri::http::Response::builder()
+                let response = Self::response_builder()
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                     .header("Access-Control-Allow-Headers", "Range, Content-Type")
@@ -556,7 +562,7 @@ impl ProtocolHandler {
                 .await
             {
                 Ok(preview) => {
-                    let response = tauri::http::Response::builder()
+                    let response = Self::response_builder()
                         .header("Access-Control-Allow-Origin", "*")
                         .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
                         .header("Access-Control-Allow-Headers", "Range, Content-Type")
