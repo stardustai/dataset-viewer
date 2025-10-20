@@ -80,7 +80,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.15",
     "typescript": "~5.9.2",
-    "vite": "^7.1.5"
+    "vite": "^7.1.11"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
